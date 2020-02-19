@@ -23,9 +23,9 @@ type MongoDBStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MongoDB is the Schema for the mongodbs API
+// MongoDB is the Schema for the mongodb API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=mongodbs,scope=Namespaced
+// +kubebuilder:resource:path=mongodb,scope=Namespaced
 type MongoDB struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

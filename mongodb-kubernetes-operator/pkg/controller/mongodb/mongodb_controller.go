@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_mongodb")
+var log = logf.Log.WithName("controller_replicaset")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -34,7 +34,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMongoDB{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReplicaSetController{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -64,11 +64,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileMongoDB implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileMongoDB{}
+// blank assignment to verify that ReplicaSetController implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReplicaSetController{}
 
-// ReconcileMongoDB reconciles a MongoDB object
-type ReconcileMongoDB struct {
+// ReplicaSetController reconciles a MongoDB object
+type ReplicaSetController struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
@@ -82,7 +82,7 @@ type ReconcileMongoDB struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileMongoDB) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReplicaSetController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling MongoDB")
 
