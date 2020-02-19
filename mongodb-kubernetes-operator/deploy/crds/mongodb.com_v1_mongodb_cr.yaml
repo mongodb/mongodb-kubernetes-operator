@@ -3,5 +3,6 @@ kind: MongoDB
 metadata:
   name: example-mongodb
 spec:
-  # Add fields here
-  size: 3
+  members: 3
+  kind: ReplicaSet
+  version: "4.0.6"

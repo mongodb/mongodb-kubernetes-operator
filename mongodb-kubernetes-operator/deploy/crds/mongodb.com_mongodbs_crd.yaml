@@ -14,8 +14,43 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
+      description: MongoDB is the Schema for the mongodbs API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: MongoDBSpec defines the desired state of MongoDB
+          properties:
+            kind:
+              description: Kind defines which kind of MongoDB deployment the resource
+                should create
+              type: string
+            members:
+              description: Members is the number of members in the replica set
+              format: int32
+              type: integer
+            version:
+              description: Version defines which version of MongoDB will be used
+              type: string
+          required:
+          - kind
+          - version
+          type: object
+        status:
+          description: MongoDBStatus defines the observed state of MongoDB
+          type: object
       type: object
-      x-kubernetes-preserve-unknown-fields: true
+  version: v1
   versions:
   - name: v1
     served: true
