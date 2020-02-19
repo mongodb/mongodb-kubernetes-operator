@@ -1,0 +1,7 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  # Add fields here
+  size: 3
