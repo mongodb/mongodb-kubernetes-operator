@@ -69,8 +69,8 @@ type SystemLog struct {
 	Path        string `json:"path"`
 }
 
-func newProcess(name, hostName, version string, replSetName string) Process {
-	p := Process{
+func newProcess(name, hostName, version, replSetName string) Process {
+	return Process{
 		Name:     name,
 		HostName: hostName,
 		Storage: Storage{
@@ -84,7 +84,6 @@ func newProcess(name, hostName, version string, replSetName string) Process {
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		},
 	}
-	return p
 }
 
 type Replication struct {
