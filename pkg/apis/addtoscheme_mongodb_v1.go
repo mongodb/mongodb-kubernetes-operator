@@ -1,7 +1,7 @@
 package apis
 
 import (
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 )
 
 func init() {

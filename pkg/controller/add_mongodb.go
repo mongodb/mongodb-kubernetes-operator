@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/mongodb-kubernetes-operator/pkg/controller/mongodb"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 )
 
 func init() {

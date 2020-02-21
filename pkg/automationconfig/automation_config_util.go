@@ -2,29 +2,27 @@ package automationconfig
 
 import (
 	"fmt"
-	appsv1 "k8s.io/api/apps/v1"
-	"math"
 	"github.com/blang/semver"
 	"github.com/spf13/cast"
+	"math"
 	"strings"
 )
 
 // getDnsForStatefulSet returns hostnames and names of pods in stateful set "set". This is a preferred way of getting hostnames
 // it must be always used if it's possible to read the statefulset from Kubernetes
-func getDnsForStatefulSet(set appsv1.StatefulSet, clusterName string) ([]string, []string) {
-	return getDNSNames(set.Name, set.Spec.ServiceName, set.Namespace, clusterName, int(*set.Spec.Replicas))
+func getDnsForStatefulSet(opts Options) ([]string, []string) {
+	return getDNSNames(opts.Name, opts.ServiceName, opts.Namespace, opts.ClusterDomain, opts.Replicas)
 }
 
 // calculateWiredTigerCache returns the cache that needs to be dedicated to mongodb engine.
 // This was fixed in SERVER-16571 so we don't need to enable this for some latest version of mongodb (see the ticket)
-func calculateWiredTigerCache(set appsv1.StatefulSet, version string) *float32 {
-	shouldCalculate, err := versionMatchesRange(version, ">=4.0.0 <4.0.9 || <3.6.13")
-
+func calculateWiredTigerCache(opts Options) *float32 {
+	shouldCalculate, err := versionMatchesRange(opts.Version, ">=4.0.0 <4.0.9 || <3.6.13")
 	if err != nil || shouldCalculate {
 		// Note, that if the limit is 0 then it's not specified in fact (unbounded)
-		if memory := set.Spec.Template.Spec.Containers[0].Resources.Limits.Memory(); memory != nil && (*memory).Value() != 0 {
+		if memory := opts.Memory; memory != nil && cast.ToFloat64(*memory) != 0 {
 			// Value() returns size in bytes so we need to transform to Gigabytes
-			wt := cast.ToFloat64((*memory).Value()) / 1000000000
+			wt := cast.ToFloat64(*memory) / 1000000000
 			// https://docs.mongodb.com/manual/core/wiredtiger/#memory-use
 			wt = math.Max((wt-1)*0.5, 0.256)
 			// rounding fractional part to 3 digits
@@ -89,4 +87,3 @@ func compareVersions(version1, version2 string) (int, error) {
 	}
 	return v1.Compare(v2), nil
 }
-

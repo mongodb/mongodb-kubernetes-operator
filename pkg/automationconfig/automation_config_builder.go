@@ -4,6 +4,7 @@ type Builder struct {
 	processes   []Process
 	replicaSets []ReplicaSet
 	version     string
+	auth        Auth
 }
 
 func NewBuilder() *Builder {
@@ -36,6 +37,11 @@ func (b *Builder) AddReplicaSets(replicaSets []ReplicaSet) *Builder {
 	return b
 }
 
+func (b *Builder) SetAuth(auth Auth) *Builder {
+	b.auth = auth
+	return b
+}
+
 func (b *Builder) Build() AutomationConfig {
 	processesCopy := make([]Process, len(b.processes))
 	copy(processesCopy, b.processes)
@@ -47,5 +53,6 @@ func (b *Builder) Build() AutomationConfig {
 		Processes:   processesCopy,
 		ReplicaSets: replicaSetsCopy,
 		Version:     b.version,
+		Auth:        b.auth,
 	}
 }
