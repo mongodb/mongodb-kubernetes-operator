@@ -47,6 +47,18 @@ func (m *MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
+//func (m MongoDB) BuildAutomationConfig() automationconfig.AutomationConfig {
+//	sts := m.BuildStatefulSet()
+//	clusterDomain := "svc.cluster.local" // TODO: make configurable
+//	hostnames, names := automationconfig.getDnsForStatefulSet(sts, clusterDomain)
+//	processes := make([]automationconfig.Process, len(hostnames))
+//	wiredTigerCache := automationconfig.CalculateWiredTigerCache(sts, m.Spec.Version)
+//	for idx, hostname := range hostnames {
+//		processes[idx] = automationconfig.NewProcess(names[idx], hostname, m.Spec.Version, *wiredTigerCache)
+//	}
+//	return automationconfig.NewBuilder().Build()
+//}
+
 // TODO: build the correct statefulset - this is a dummy implementation
 // BuildStatefulSet constructs an instance of appsv1.StatefulSet
 // which should be created during reconciliation

@@ -3,7 +3,9 @@ module github.com/mongodb/mongodb-kubernetes-operator/mongodb-kubernetes-operato
 go 1.13
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/operator-framework/operator-sdk v0.15.1
+	github.com/spf13/cast v1.3.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
