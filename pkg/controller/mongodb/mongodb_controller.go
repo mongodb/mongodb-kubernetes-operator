@@ -2,8 +2,11 @@ package mongodb
 
 import (
 	"context"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"fmt"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"go.uber.org/zap"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -79,6 +81,22 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	// TODO: Read current automation config version from config map
+
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
+	_ = automationconfig.NewBuilder().
+		SetTopology(automationconfig.ReplicaSetTopology).
+		SetName(mdb.Name).
+		SetDomain(domain).
+		SetMembers(mdb.Spec.Members).
+		SetMongoDBVersion(mdb.Spec.Version).
+		SetAutomationConfigVersion("1").
+		Build()
+
+	// TODO: Write the new config to the config map
+
+	// TODO: Create the service for the MDB resource
+
 	sts := mdb.BuildStatefulSet()
 	if err := r.stsClient.CreateOrUpdate(sts); err != nil {
 		log.Errorf("failed Creating/Updating StatefulSet: %s", err)
@@ -87,4 +105,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
+}
+
+func getDomain(service, namespace, clusterName string) string {
+	if clusterName == "" {
+		clusterName = "cluster.local"
+	}
+	return fmt.Sprint("%s.%s.svc.%s", service, namespace, clusterName)
 }

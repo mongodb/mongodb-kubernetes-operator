@@ -69,23 +69,20 @@ type SystemLog struct {
 	Path        string `json:"path"`
 }
 
-func NewProcess(name, hostName, version string, cacheSizeGb *float32) Process {
+func newProcess(name, hostName, version string, replSetName string) Process {
 	p := Process{
 		Name:     name,
 		HostName: hostName,
 		Storage: Storage{
 			DBPath: DefaultMongoDBDataDir,
 		},
+		Replication: Replication{ReplicaSetName: replSetName},
 		ProcessType: Mongod,
 		Version:     version,
 		SystemLog: SystemLog{
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		},
-	}
-
-	if cacheSizeGb != nil {
-		p.Storage.WiredTiger.EngineConfig.CacheSizeGB = *cacheSizeGb
 	}
 	return p
 }
@@ -132,19 +129,6 @@ type ReplicaSetMember struct {
 	Votes       int    `json:"votes"`
 }
 
-func NewReplicaSet(processes []Process, name, protocolVersion string) ReplicaSet {
-	rs := ReplicaSet{
-		Id:              name,
-		Members:         make([]ReplicaSetMember, len(processes)),
-		ProtocolVersion: protocolVersion,
-	}
-
-	for i := range processes {
-		rs.Members[i] = newReplicaSetMember(processes[i], string(i))
-	}
-	return rs
-}
-
 func newReplicaSetMember(p Process, id string) ReplicaSetMember {
 	return ReplicaSetMember{
 		Id:          id,
@@ -160,36 +144,4 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-}
-
-type Options struct {
-	Name          string
-	Namespace     string
-	ClusterDomain string
-	ServiceName   string
-	Version       string
-	Replicas      int
-	Memory        *string
-}
-
-func New(opts Options) AutomationConfig {
-	hostnames, names := getDnsForStatefulSet(opts)
-	processes := make([]Process, len(hostnames))
-	wiredTigerCache := calculateWiredTigerCache(opts)
-	for idx, hostname := range hostnames {
-		processes[idx] = NewProcess(names[idx], hostname, opts.Version, wiredTigerCache)
-	}
-
-	// reference the replica set from this process
-	for i := range processes {
-		processes[i].Replication.ReplicaSetName = opts.Name
-	}
-
-	rs := NewReplicaSet(processes, opts.Name, "1")
-
-	return NewBuilder().
-		AddProcesses(processes).
-		AddReplicaSet(rs).
-		SetAuth(DisabledAuth()).
-		Build()
 }

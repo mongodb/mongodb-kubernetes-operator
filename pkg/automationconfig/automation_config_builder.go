@@ -1,10 +1,26 @@
 package automationconfig
 
+import (
+	"fmt"
+	"github.com/spf13/cast"
+)
+
+type Topology string
+
+const (
+	ReplicaSetTopology Topology = "ReplicaSet"
+)
+
 type Builder struct {
-	processes   []Process
-	replicaSets []ReplicaSet
-	version     string
-	auth        Auth
+	processes      []Process
+	replicaSets    []ReplicaSet
+	version        string
+	auth           Auth
+	members        int
+	domain         string
+	name           string
+	topology       Topology
+	mongodbVersion string
 }
 
 func NewBuilder() *Builder {
@@ -14,45 +30,60 @@ func NewBuilder() *Builder {
 	}
 }
 
-func (b *Builder) SetVersion(version string) *Builder {
+func (b *Builder) SetTopology(topology Topology) *Builder {
+	b.topology = topology
+	return b
+}
+
+func (b *Builder) SetMembers(members int) *Builder {
+	b.members = members
+	return b
+}
+
+func (b *Builder) SetDomain(domain string) *Builder {
+	b.domain = domain
+	return b
+}
+
+func (b *Builder) SetName(name string) *Builder {
+	b.name = name
+	return b
+}
+
+func (b *Builder) SetMongoDBVersion(version string) *Builder {
+	b.mongodbVersion = version
+	return b
+}
+
+func (b *Builder) SetAutomationConfigVersion(version string) *Builder {
 	b.version = version
 	return b
 }
 
-func (b *Builder) AddProcess(p Process) *Builder {
-	return b.AddProcesses([]Process{p})
-}
-
-func (b *Builder) AddProcesses(processes []Process) *Builder {
-	b.processes = append(b.processes, processes...)
-	return b
-}
-
-func (b *Builder) AddReplicaSet(rs ReplicaSet) *Builder {
-	return b.AddReplicaSets([]ReplicaSet{rs})
-}
-
-func (b *Builder) AddReplicaSets(replicaSets []ReplicaSet) *Builder {
-	b.replicaSets = append(b.replicaSets, replicaSets...)
-	return b
-}
-
-func (b *Builder) SetAuth(auth Auth) *Builder {
-	b.auth = auth
-	return b
-}
-
 func (b *Builder) Build() AutomationConfig {
-	processesCopy := make([]Process, len(b.processes))
-	copy(processesCopy, b.processes)
+	hostnames := make([]string, b.members)
+	for i := 0; i < b.members; i++ {
+		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
+	}
 
-	replicaSetsCopy := make([]ReplicaSet, len(b.replicaSets))
-	copy(replicaSetsCopy, b.replicaSets)
+	members := make([]ReplicaSetMember, b.members)
+	processes := make([]Process, b.members)
+	for i, h := range hostnames {
+		process := newProcess(fmt.Sprintf("%s-%d", b.name, i), h, b.mongodbVersion, b.name)
+		processes[i] = process
+		members[i] = newReplicaSetMember(process, cast.ToString(i))
+	}
 
 	return AutomationConfig{
-		Processes:   processesCopy,
-		ReplicaSets: replicaSetsCopy,
-		Version:     b.version,
-		Auth:        b.auth,
+		Version:   b.version,
+		Processes: processes,
+		ReplicaSets: []ReplicaSet{
+			{
+				Id:              b.name,
+				Members:         members,
+				ProtocolVersion: "1",
+			},
+		},
+		Auth: DisabledAuth(),
 	}
 }
