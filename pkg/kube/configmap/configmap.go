@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,6 +39,21 @@ func (c Client) Update(cm corev1.ConfigMap) error {
 // Create provides a thin wrapper and client.Client to create corev1.ConfigMap types
 func (c Client) Create(cm corev1.ConfigMap) error {
 	if err := c.client.Create(context.TODO(), &cm); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateOrUpdate will either Create the configmap if it doesn't exist, or Update it
+// if it does
+func (c Client) CreateOrUpdate(cm corev1.ConfigMap) error {
+	_, err := c.Get(types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace})
+	if err != nil && errors.IsNotFound(err) {
+		return c.Create(cm)
+	} else if err != nil {
+		return err
+	}
+	if err := c.Update(cm); err != nil {
 		return err
 	}
 	return nil
