@@ -127,7 +127,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion("1"). // TODO: Correctly set the version
+		SetAutomationConfigVersion(1). // TODO: Correctly set the version
 		Build()
 }
 
