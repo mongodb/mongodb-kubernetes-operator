@@ -17,7 +17,7 @@ var (
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
 	// +optional
-	Members int32 `json:"members"`
+	Members int `json:"members"`
 	// Type defines which type of MongoDB deployment the resource should create
 	Type Type `json:"type"`
 	// Version defines which version of MongoDB will be used
@@ -54,7 +54,7 @@ func (m MongoDB) BuildStatefulSet() appsv1.StatefulSet {
 	labels := map[string]string{
 		"app": m.ServiceName(),
 	}
-	replicas := m.Spec.Members
+	replicas := int32(m.Spec.Members)
 	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.Name,
