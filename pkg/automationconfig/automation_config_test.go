@@ -12,7 +12,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 	ac := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
-		SetAutomationConfigVersion("4.2.0").
+		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
 		Build()
 

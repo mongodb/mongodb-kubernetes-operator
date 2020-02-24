@@ -20,6 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const (
+	automationConfigKey = "automation-config"
+)
+
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -133,11 +137,11 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
-	acStr := string(acBytes)
+
 	return configmap.Builder().
 		SetName(mdb.ConfigMapName()).
 		SetNamespace(mdb.Namespace).
-		SetField("automation-config", acStr).
+		SetField(automationConfigKey, string(acBytes)).
 		Build(), nil
 }
 
