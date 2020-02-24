@@ -52,8 +52,10 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	scheme    *runtime.Scheme
+	client client.Client
+	scheme *runtime.Scheme
+
+	// stsClient holds a reference to a client used to work with StatefulSets.
 	stsClient statefulset.Client
 }
 
@@ -97,9 +99,16 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Create the service for the MDB resource
 
-	sts := mdb.BuildStatefulSet()
-	if err := r.stsClient.CreateOrUpdate(sts); err != nil {
-		log.Errorf("failed Creating/Updating StatefulSet: %s", err)
+	sts, err := statefulset.NewBuilder().
+		SetNamespace(request.NamespacedName.Namespace).
+		SetName(request.NamespacedName.Name).
+		SetReplicas(mdb.Spec.Members).
+		Build()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err = r.stsClient.CreateOrUpdate(sts); err != nil {
 		return reconcile.Result{}, err
 	}
 
