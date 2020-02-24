@@ -1,7 +1,6 @@
 package automationconfig
 
 import (
-	"encoding/json"
 	"path"
 )
 
@@ -144,9 +143,4 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-}
-
-func (ac AutomationConfig) ToJSON() (string, error) {
-	bytes, err := json.Marshal(ac)
-	return string(bytes), err
 }
