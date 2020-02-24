@@ -111,5 +111,5 @@ func getDomain(service, namespace, clusterName string) string {
 	if clusterName == "" {
 		clusterName = "cluster.local"
 	}
-	return fmt.Sprint("%s.%s.svc.%s", service, namespace, clusterName)
+	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
 }
