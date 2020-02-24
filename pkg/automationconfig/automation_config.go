@@ -146,7 +146,6 @@ type AutomationConfig struct {
 	Auth        Auth         `json:"auth"`
 }
 
-
 func (ac AutomationConfig) ToJSON() (string, error) {
 	bytes, err := json.Marshal(ac)
 	return string(bytes), err

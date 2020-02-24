@@ -31,19 +31,18 @@ spec:
         spec:
           description: MongoDBSpec defines the desired state of MongoDB
           properties:
-            kind:
-              description: Kind defines which kind of MongoDB deployment the resource
-                should create
-              type: string
             members:
               description: Members is the number of members in the replica set
-              format: int32
               type: integer
+            type:
+              description: Type defines which type of MongoDB deployment the resource
+                should create
+              type: string
             version:
               description: Version defines which version of MongoDB will be used
               type: string
           required:
-          - kind
+          - type
           - version
           type: object
         status:

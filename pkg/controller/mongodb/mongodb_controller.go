@@ -123,7 +123,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion("1").
+		SetAutomationConfigVersion("1"). // TODO: Correctly set the version
 		Build()
 }
 
@@ -135,7 +135,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 	}
 	acStr := string(acBytes)
 	return configmap.Builder().
-		SetName(fmt.Sprint("%s-config", mdb.Name)).
+		SetName(mdb.ConfigMapName()).
 		SetNamespace(mdb.Namespace).
 		SetField("automation-config", acStr).
 		Build(), nil
@@ -145,5 +145,5 @@ func getDomain(service, namespace, clusterName string) string {
 	if clusterName == "" {
 		clusterName = "cluster.local"
 	}
-	return fmt.Sprint("%s.%s.svc.%s", service, namespace, clusterName)
+	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
 }
