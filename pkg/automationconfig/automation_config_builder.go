@@ -55,8 +55,8 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
-func (b *Builder) SetAutomationConfigVersion(version string) *Builder {
-	b.version = version
+func (b *Builder) SetAutomationConfigVersion(version int) *Builder {
+	b.version = cast.ToString(version)
 	return b
 }
 
@@ -69,7 +69,7 @@ func (b *Builder) Build() AutomationConfig {
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
-		process := newProcess(fmt.Sprintf("%s-%d", b.name, i), h, b.mongodbVersion, b.name)
+		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name)
 		processes[i] = process
 		members[i] = newReplicaSetMember(process, cast.ToString(i))
 	}
@@ -86,4 +86,8 @@ func (b *Builder) Build() AutomationConfig {
 		},
 		Auth: DisabledAuth(),
 	}
+}
+
+func toHostName(name string, index int) string {
+	return fmt.Sprintf("%s-%d", name, index)
 }

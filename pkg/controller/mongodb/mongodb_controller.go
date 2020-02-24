@@ -90,7 +90,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion("1").
+		SetAutomationConfigVersion(1).
 		Build()
 
 	// TODO: Write the new config to the config map

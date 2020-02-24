@@ -12,18 +12,20 @@ func TestBuildAutomationConfig(t *testing.T) {
 	ac := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
-		SetAutomationConfigVersion("4.2.0").
+		SetMongoDBVersion("4.2.0").
+		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		Build()
 
 	assert.Len(t, ac.Processes, 3)
+	assert.Equal(t, "1", ac.Version)
 
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Storage.DBPath)
 		assert.Equal(t, "my-rs", p.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
-		assert.Equal(t, fmt.Sprintf("my-rs-%d", i), p.Name)
+		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 	}
 
