@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,8 +59,8 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    mdbClient.Client
-	scheme    *runtime.Scheme
+	client mdbClient.Client
+	scheme *runtime.Scheme
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -95,9 +96,17 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Create the service for the MDB resource
 
-	sts := mdb.BuildStatefulSet()
-	if err := r.client.CreateOrUpdate(&sts); err != nil {
+	sts, err := statefulset.NewBuilder().
+		SetNamespace(request.NamespacedName.Namespace).
+		SetName(request.NamespacedName.Name).
+		SetReplicas(mdb.Spec.Members).
+		Build()
+	if err != nil {
 		log.Errorf("failed Creating/Updating StatefulSet: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	if err = r.client.CreateOrUpdate(&sts); err != nil {
 		return reconcile.Result{}, err
 	}
 
