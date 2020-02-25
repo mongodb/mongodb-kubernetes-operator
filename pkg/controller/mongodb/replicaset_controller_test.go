@@ -3,7 +3,7 @@ package mongodb
 import (
 	"context"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/mock"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 		Status: mdbv1.MongoDBStatus{},
 	}
 
-	mgr := mock.NewManager(&mdb)
+	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr)
 
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})

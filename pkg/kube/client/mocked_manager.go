@@ -1,4 +1,4 @@
-package mock
+package client
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -15,11 +15,11 @@ import (
 
 // MockedManager exists to unit test the reconciliation loops and wrap the mocked client
 type MockedManager struct {
-	client client.Client
+	client k8sClient.Client
 }
 
 func NewManager(obj runtime.Object) *MockedManager {
-	c := NewClient()
+	c := NewMockedClient()
 	if obj != nil {
 		_ = c.Create(context.TODO(), obj)
 	}
@@ -60,12 +60,12 @@ func (m *MockedManager) GetAdmissionDecoder() admission.Decoder {
 }
 
 // GetAPIReader returns the client reader
-func (m *MockedManager) GetAPIReader() client.Reader {
+func (m *MockedManager) GetAPIReader() k8sClient.Reader {
 	return nil
 }
 
 // GetClient returns a client configured with the Config
-func (m *MockedManager) GetClient() client.Client {
+func (m *MockedManager) GetClient() k8sClient.Client {
 	return m.client
 }
 
@@ -74,7 +74,7 @@ func (m *MockedManager) GetEventRecorderFor(_ string) record.EventRecorder {
 }
 
 // GetFieldIndexer returns a client.FieldIndexer configured with the client
-func (m *MockedManager) GetFieldIndexer() client.FieldIndexer {
+func (m *MockedManager) GetFieldIndexer() k8sClient.FieldIndexer {
 	return nil
 }
 

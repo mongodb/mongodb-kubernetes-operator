@@ -1,4 +1,4 @@
-package mock
+package client
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestMockedClient(t *testing.T) {
-	mockedClient := NewClient()
+	mockedClient := NewMockedClient()
 
 	cm := configmap.Builder().
 		SetName("cm-name").

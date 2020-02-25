@@ -6,13 +6,12 @@ import (
 	"fmt"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -33,7 +32,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
-	return &ReplicaSetReconciler{client: mgrClient, scheme: mgr.GetScheme(), stsClient: statefulset.NewClient(mgrClient), cmClient: configmap.NewClient(mgrClient)}
+	return &ReplicaSetReconciler{client: mdbClient.NewClient(mgrClient), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -59,10 +58,8 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	cmClient  configmap.Client
+	client    mdbClient.Client
 	scheme    *runtime.Scheme
-	stsClient statefulset.Client
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -99,7 +96,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// TODO: Create the service for the MDB resource
 
 	sts := mdb.BuildStatefulSet()
-	if err := r.stsClient.CreateOrUpdate(sts); err != nil {
+	if err := r.client.CreateOrUpdate(&sts); err != nil {
 		log.Errorf("failed Creating/Updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
@@ -113,7 +110,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	if err != nil {
 		return err
 	}
-	if err := r.cmClient.CreateOrUpdate(cm); err != nil {
+	if err := r.client.CreateOrUpdate(&cm); err != nil {
 		return err
 	}
 	return nil
