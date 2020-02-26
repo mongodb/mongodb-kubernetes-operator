@@ -27,6 +27,7 @@ func newTestReplicaSet() mdbv1.MongoDB {
 		},
 		Spec: mdbv1.MongoDBSpec{
 			Members: 3,
+			Version: "4.2.2",
 		},
 	}
 }
@@ -61,10 +62,16 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
+	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
+
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, agentName, agentContainer.Name)
 	assert.Equal(t, os.Getenv(agentImageEnvVariable), agentContainer.Image)
 
 	expected, _ := resourcerequirements.Default()
 	assert.Equal(t, expected, agentContainer.Resources)
+
+	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
+	assert.Equal(t, mongodbName, mongodbContainer.Name)
+	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
 }

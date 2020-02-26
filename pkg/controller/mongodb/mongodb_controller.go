@@ -27,6 +27,7 @@ import (
 const (
 	automationConfigKey   = "automation-config"
 	agentName             = "mongodb-agent"
+	mongodbName           = "mongod"
 	agentImageEnvVariable = "AGENT_IMAGE"
 )
 
@@ -155,17 +156,10 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		Build(), nil
 }
 
-// buildStatefulSet takes a MongoDB resource and converts it into
-// the corresponding stateful set
-func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
-	labels := map[string]string{
-		"dummy": "label",
-	}
-
-	// TODO: don't always use defaults, make this configurable
+func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	resources, err := resourcerequirements.Default()
 	if err != nil {
-		return appsv1.StatefulSet{}, fmt.Errorf("error building resource requirements: %s", err)
+		return nil, fmt.Errorf("error building resource requirements for %s: %s", agentName, err)
 	}
 
 	agentContainer := corev1.Container{
@@ -175,14 +169,37 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
 	}
 
+	resources, err = resourcerequirements.Default()
+	if err != nil {
+		return nil, fmt.Errorf("error building resource requirements for %s: %s", mongodbName, err)
+	}
+
+	mongodbContainer := corev1.Container{
+		Name:      mongodbName,
+		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
+		Resources: resources,
+	}
+	return []corev1.Container{agentContainer, mongodbContainer}, nil
+}
+
+// buildStatefulSet takes a MongoDB resource and converts it into
+// the corresponding stateful set
+func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
+	labels := map[string]string{
+		"dummy": "label",
+	}
+
+	containers, err := buildContainers(mdb)
+	if err != nil {
+		return appsv1.StatefulSet{}, fmt.Errorf("error creating containers for %s/%s: %s", mdb.Namespace, mdb.Name, err)
+	}
+
 	podSpecTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				agentContainer,
-			},
+			Containers: containers,
 		},
 	}
 

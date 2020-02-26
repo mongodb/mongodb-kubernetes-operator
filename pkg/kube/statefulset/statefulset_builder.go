@@ -219,6 +219,6 @@ func NewBuilder() *Builder {
 		readinessProbePerContainer: map[string]*corev1.Probe{},
 		volumeClaimsTemplates:      []corev1.PersistentVolumeClaim{},
 		volumeMountsPerContainer:   map[string][]corev1.VolumeMount{},
-		replicas: 1,
+		replicas:                   1,
 	}
 }
