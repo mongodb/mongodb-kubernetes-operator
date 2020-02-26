@@ -2,6 +2,7 @@ package automationconfig
 
 import (
 	"fmt"
+
 	"github.com/spf13/cast"
 )
 

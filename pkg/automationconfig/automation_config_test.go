@@ -2,9 +2,10 @@ package automationconfig
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBuildAutomationConfig(t *testing.T) {

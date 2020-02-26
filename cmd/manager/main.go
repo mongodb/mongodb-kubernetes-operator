@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller"
 	"go.uber.org/zap"
-	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -49,7 +50,7 @@ func main() {
 	mgr, err := manager.New(cfg, manager.Options{
 		Namespace: namespace,
 	})
-	
+
 	if err != nil {
 		os.Exit(1)
 	}
