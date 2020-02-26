@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-	"go.uber.org/zap"
-	"os"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller"
+	"go.uber.org/zap"
+	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -20,9 +19,15 @@ var (
 	operatorMetricsPort int32 = 8686
 )
 
-func main() {
+func configureLogger() (*zap.Logger, error) {
 	// TODO: configure non development logger
-	log, err := zap.NewDevelopment()
+	logger, err := zap.NewDevelopment()
+	zap.ReplaceGlobals(logger)
+	return logger, err
+}
+
+func main() {
+	log, err := configureLogger()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -42,9 +47,9 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace:          "temp",
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Namespace: namespace,
 	})
+	
 	if err != nil {
 		os.Exit(1)
 	}
