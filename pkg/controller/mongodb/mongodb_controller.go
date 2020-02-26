@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -69,7 +70,7 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log := zap.S().With("ReplicaSet", request.Name, request.Namespace)
+	log := zap.S().With("ReplicaSet", request.NamespacedName)
 	log.Info("Reconciling MongoDB")
 
 	// TODO: generalize preparation for resource
@@ -83,6 +84,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
+		log.Errorf("error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -96,17 +98,26 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Create the service for the MDB resource
 
+	labels := map[string]string{
+		"dummy": "label",
+	}
+
 	sts, err := statefulset.NewBuilder().
+		SetPodTemplateSpec(corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: labels,
+			},
+			Spec: corev1.PodSpec{},
+		}).
 		SetNamespace(request.NamespacedName.Namespace).
 		SetName(request.NamespacedName.Name).
 		SetReplicas(mdb.Spec.Members).
+		SetLabels(labels).
+		SetMatchLabels(labels).
 		Build()
-	if err != nil {
-		log.Errorf("failed Creating/Updating StatefulSet: %s", err)
-		return reconcile.Result{}, err
-	}
 
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
+		log.Errorf("error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
