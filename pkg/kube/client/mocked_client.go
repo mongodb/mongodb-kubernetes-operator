@@ -5,7 +5,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,12 +27,6 @@ func NewMockedClient() k8sClient.Client {
 	return &mockedClient{backingMap: map[reflect.Type]map[k8sClient.ObjectKey]runtime.Object{}}
 }
 
-func getObjectKey(obj runtime.Object) k8sClient.ObjectKey {
-	ns := reflect.ValueOf(obj).Elem().FieldByName("Namespace").String()
-	name := reflect.ValueOf(obj).Elem().FieldByName("Name").String()
-	return types.NamespacedName{Name: name, Namespace: ns}
-}
-
 func (m *mockedClient) ensureMapFor(obj runtime.Object) map[k8sClient.ObjectKey]runtime.Object {
 	t := reflect.TypeOf(obj)
 	if _, ok := m.backingMap[t]; !ok {
@@ -54,10 +47,15 @@ func (m *mockedClient) Get(_ context.Context, key k8sClient.ObjectKey, obj runti
 
 func (m *mockedClient) Create(_ context.Context, obj runtime.Object, _ ...k8sClient.CreateOption) error {
 	relevantMap := m.ensureMapFor(obj)
-	if _, ok := relevantMap[getObjectKey(obj)]; ok {
+	objKey, err := k8sClient.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+	if _, ok := relevantMap[objKey]; ok {
 		return alreadyExistsError()
 	}
-	relevantMap[getObjectKey(obj)] = obj
+
+	relevantMap[objKey] = obj
 	return nil
 }
 
@@ -71,7 +69,11 @@ func (m *mockedClient) Delete(_ context.Context, _ runtime.Object, _ ...k8sClien
 
 func (m *mockedClient) Update(_ context.Context, obj runtime.Object, _ ...k8sClient.UpdateOption) error {
 	relevantMap := m.ensureMapFor(obj)
-	relevantMap[getObjectKey(obj)] = obj
+	objKey, err := k8sClient.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+	relevantMap[objKey] = obj
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -94,5 +95,13 @@ func (m *MockedManager) GetRESTMapper() meta.RESTMapper {
 }
 
 func (m *MockedManager) GetWebhookServer() *webhook.Server {
+	return nil
+}
+
+func (m *MockedManager) AddHealthzCheck(_ string, _ healthz.Checker) error {
+	return nil
+}
+
+func (m *MockedManager) AddReadyzCheck(_ string, _ healthz.Checker) error {
 	return nil
 }
