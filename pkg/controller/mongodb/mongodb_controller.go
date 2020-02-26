@@ -2,21 +2,27 @@ package mongodb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+const (
+	automationConfigKey = "automation-config"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -28,7 +34,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
-	return &ReplicaSetReconciler{client: mgrClient, scheme: mgr.GetScheme(), stsClient: statefulset.NewClient(mgrClient)}
+	return &ReplicaSetReconciler{client: mdbClient.NewClient(mgrClient), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -54,11 +60,8 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
+	client mdbClient.Client
 	scheme *runtime.Scheme
-
-	// stsClient holds a reference to a client used to work with StatefulSets.
-	stsClient statefulset.Client
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -88,17 +91,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Read current automation config version from config map
 
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
-	_ = automationconfig.NewBuilder().
-		SetTopology(automationconfig.ReplicaSetTopology).
-		SetName(mdb.Name).
-		SetDomain(domain).
-		SetMembers(mdb.Spec.Members).
-		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion(1).
-		Build()
-
-	// TODO: Write the new config to the config map
+	if err := r.ensureAutomationConfig(mdb); err != nil {
+		log.Errorf("failed creating config map: %s", err)
+		return reconcile.Result{}, err
+	}
 
 	// TODO: Create the service for the MDB resource
 
@@ -120,18 +116,50 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		SetMatchLabels(labels).
 		Build()
 
-	if err != nil {
-		log.Errorf("error building StatefulSet: %s", err)
-		return reconcile.Result{}, err
-	}
-
-	if err = r.stsClient.CreateOrUpdate(sts); err != nil {
+	if err = r.client.CreateOrUpdate(&sts); err != nil {
 		log.Errorf("error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
+}
+
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
+	cm, err := buildAutomationConfigConfigMap(mdb)
+	if err != nil {
+		return err
+	}
+	if err := r.client.CreateOrUpdate(&cm); err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
+	return automationconfig.NewBuilder().
+		SetTopology(automationconfig.ReplicaSetTopology).
+		SetName(mdb.Name).
+		SetDomain(domain).
+		SetMembers(mdb.Spec.Members).
+		SetMongoDBVersion(mdb.Spec.Version).
+		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		Build()
+}
+
+func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+	ac := buildAutomationConfig(mdb)
+	acBytes, err := json.Marshal(ac)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
+
+	return configmap.Builder().
+		SetName(mdb.ConfigMapName()).
+		SetNamespace(mdb.Namespace).
+		SetField(automationConfigKey, string(acBytes)).
+		Build(), nil
 }
 
 func getDomain(service, namespace, clusterName string) string {

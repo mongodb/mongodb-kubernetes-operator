@@ -47,6 +47,10 @@ func (m *MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
+func (m *MongoDB) ConfigMapName() string {
+	return m.Name + "-config"
+}
+
 // TODO: build the correct statefulset - this is a dummy implementation
 // BuildStatefulSet constructs an instance of appsv1.StatefulSet
 // which should be created during reconciliation
