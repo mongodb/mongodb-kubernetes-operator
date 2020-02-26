@@ -30,7 +30,7 @@ func New(limitsCpu, limitsMemory, requestsCpu, requestsMemory string) (corev1.Re
 
 // Default returns the default resource requirements for a container
 func Default() (corev1.ResourceRequirements, error) {
-	return New("1.0", "500m", "0.5", "400m")
+	return New("1.0", "500M", "0.5", "400M")
 }
 
 func buildResourceList(cpu, memory string) (corev1.ResourceList, error) {

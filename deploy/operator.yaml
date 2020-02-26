@@ -31,3 +31,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
+            - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
+              value: REPLACE_IMAGE
