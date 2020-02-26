@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+# This should be copied to .git/hooks/pre-commit
+
 if ! type goimports &> /dev/null; then
     echo "Installing goimports"
     GO111MODULE=off go get golang.org/x/tools/cmd/goimports
