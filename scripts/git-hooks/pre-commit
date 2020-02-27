@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+# This should be copied to .git/hooks/pre-commit
+
+if ! type goimports &> /dev/null; then
+    echo "Installing goimports"
+    GO111MODULE=off go get golang.org/x/tools/cmd/goimports
+fi
+
+# Formats each file that was changed.
+for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+do
+    goimports -w "${file}"
+    git add "$file"
+done
