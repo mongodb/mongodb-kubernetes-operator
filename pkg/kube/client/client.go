@@ -16,7 +16,6 @@ func NewClient(c k8sClient.Client) Client {
 type Client interface {
 	k8sClient.Client
 	CreateOrUpdate(obj runtime.Object) error
-
 }
 
 type client struct {
