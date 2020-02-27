@@ -158,16 +158,27 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 }
 
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
+	agentCommand := []string{
+		"agent/mongodb-agent",
+		"-cluster=/var/lib/automation/config/automation-config.json",
+		"-skipMongoStart",
+	}
 	agentContainer := corev1.Container{
 		Name:      agentName,
 		Image:     os.Getenv(agentImageEnvVariable),
 		Resources: resourcerequirements.Defaults(),
-		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
+		Command:   agentCommand,
 	}
 
+	mongoDbCommand := []string{
+		"/bin/sh",
+		"-c",
+		`while [ ! -f /data/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /data/mongodb-automation.conf`,
+	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
+		Command:   mongoDbCommand,
 		Resources: resourcerequirements.Defaults(),
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
