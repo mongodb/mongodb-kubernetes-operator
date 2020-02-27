@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -161,17 +162,10 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	labels := map[string]string{
 		"dummy": "label",
 	}
-
-	// TODO: don't always use defaults, make this configurable
-	resources, err := resourcerequirements.Default()
-	if err != nil {
-		return appsv1.StatefulSet{}, fmt.Errorf("error building resource requirements: %s", err)
-	}
-
 	agentContainer := corev1.Container{
 		Name:      agentName,
 		Image:     os.Getenv(agentImageEnvVariable),
-		Resources: resources,
+		Resources: resourcerequirements.Defaults(),
 		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
 	}
 

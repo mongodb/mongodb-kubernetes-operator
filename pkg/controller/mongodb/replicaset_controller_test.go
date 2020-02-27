@@ -2,6 +2,9 @@ package mongodb
 
 import (
 	"context"
+	"os"
+	"testing"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -10,9 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 )
 
 func init() {
@@ -65,6 +66,5 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.Equal(t, agentName, agentContainer.Name)
 	assert.Equal(t, os.Getenv(agentImageEnvVariable), agentContainer.Image)
 
-	expected, _ := resourcerequirements.Default()
-	assert.Equal(t, expected, agentContainer.Resources)
+	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
 }
