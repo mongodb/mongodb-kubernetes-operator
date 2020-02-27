@@ -160,7 +160,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentCommand := []string{
 		"agent/mongodb-agent",
-		"-cluster=/var/lib/automation/config/automation-config.json",
+		"-cluster=/var/lib/automation/config/automation-config",
 		"-skipMongoStart",
 	}
 	agentContainer := corev1.Container{
@@ -205,6 +205,9 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 	}
 
+	v := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
+	vm := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", "")
+
 	return statefulset.NewBuilder().
 		SetPodTemplateSpec(podSpecTemplate).
 		SetNamespace(mdb.Namespace).
@@ -212,6 +215,9 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
 		SetMatchLabels(labels).
+		AddVolumeMount(agentName, vm).
+		AddVolumeMount(mongodbName, vm).
+		AddVolume(v).
 		Build()
 }
 

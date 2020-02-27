@@ -83,6 +83,7 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		},
+		AuthSchemaVersion: 5,
 	}
 }
 
@@ -108,10 +109,18 @@ type LogRotate struct {
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 }
 
-type Security struct {
+type Args26 struct {
+	Net         Net         `json:"net"`
+	Security    Security    `json:"security"`
+	Replication Replication `json:"replication"`
 }
 
-type Args26 struct {
+type Net struct {
+	Port int `json:"port"`
+}
+
+type Security struct {
+	ClusterAuthMode string `json:"clusterAuthMode,omitempty"`
 }
 
 type ReplicaSet struct {
@@ -139,8 +148,22 @@ func newReplicaSetMember(p Process, id string) ReplicaSetMember {
 }
 
 type AutomationConfig struct {
-	Version     string       `json:"version"`
+	Version     int          `json:"version"`
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
+	Versions    []Version    `json:"versions"`
+	Name        string       `json:"name"`
+}
+
+type Version struct {
+	Builds []Build `json:"builds"`
+}
+
+type Build struct {
+	Architecture string `json:"architecture"`
+	GitVersion   string `json:"gitVersion"`
+	Platform     string `json:"platform"`
+	URL          string `json:"url"`
+	Win2008Plus  bool   `json:"win2008plus,omitempty"`
 }

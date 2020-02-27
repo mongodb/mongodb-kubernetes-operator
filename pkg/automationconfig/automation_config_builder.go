@@ -2,6 +2,7 @@ package automationconfig
 
 import (
 	"fmt"
+
 	"github.com/spf13/cast"
 )
 
@@ -14,7 +15,7 @@ const (
 type Builder struct {
 	processes      []Process
 	replicaSets    []ReplicaSet
-	version        string
+	version        int
 	auth           Auth
 	members        int
 	domain         string
@@ -50,13 +51,17 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
+func (b *Builder) AddVersion(version Version) *Builder {
+	return b
+}
+
 func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	b.mongodbVersion = version
 	return b
 }
 
 func (b *Builder) SetAutomationConfigVersion(version int) *Builder {
-	b.version = cast.ToString(version)
+	b.version = version
 	return b
 }
 
