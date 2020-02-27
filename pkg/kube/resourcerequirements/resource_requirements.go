@@ -10,9 +10,20 @@ const (
 	resourceCpu    = "cpu"
 )
 
-// New returns a new corev1.ResourceRequirements with the specified arguments, and an error
+// Defaults returns the default resource requirements for a container
+func Defaults() corev1.ResourceRequirements {
+	// we can safely ignore the error as we are passing all valid values
+	req, _ := newDefaultRequirements()
+	return req
+}
+
+func newDefaultRequirements() (corev1.ResourceRequirements, error) {
+	return newRequirements("1.0", "500M", "0.5", "400M")
+}
+
+// newRequirements returns a new corev1.ResourceRequirements with the specified arguments, and an error
 // which indicates if there was a problem parsing the input
-func New(limitsCpu, limitsMemory, requestsCpu, requestsMemory string) (corev1.ResourceRequirements, error) {
+func newRequirements(limitsCpu, limitsMemory, requestsCpu, requestsMemory string) (corev1.ResourceRequirements, error) {
 	limits, err := buildResourceList(limitsCpu, limitsMemory)
 	if err != nil {
 		return corev1.ResourceRequirements{}, err
@@ -26,11 +37,6 @@ func New(limitsCpu, limitsMemory, requestsCpu, requestsMemory string) (corev1.Re
 		Limits:   limits,
 		Requests: requests,
 	}, nil
-}
-
-// Default returns the default resource requirements for a container
-func Default() (corev1.ResourceRequirements, error) {
-	return New("1.0", "500M", "0.5", "400M")
 }
 
 func buildResourceList(cpu, memory string) (corev1.ResourceList, error) {

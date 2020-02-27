@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -157,27 +158,17 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 }
 
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
-	resources, err := resourcerequirements.Default()
-	if err != nil {
-		return nil, fmt.Errorf("error building resource requirements for %s: %s", agentName, err)
-	}
-
 	agentContainer := corev1.Container{
 		Name:      agentName,
 		Image:     os.Getenv(agentImageEnvVariable),
-		Resources: resources,
+		Resources: resourcerequirements.Defaults(),
 		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
-	}
-
-	resources, err = resourcerequirements.Default()
-	if err != nil {
-		return nil, fmt.Errorf("error building resource requirements for %s: %s", mongodbName, err)
 	}
 
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
-		Resources: resources,
+		Resources: resourcerequirements.Defaults(),
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
 }
