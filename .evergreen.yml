@@ -41,17 +41,6 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/generate_k8.sh
 
-  download:
-    - command: subprocess.exec
-      params:
-        working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - workdir
-          - url
-          - name
-          - perms
-        command: go run scripts/ci/download.go
-
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup

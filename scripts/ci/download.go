@@ -9,6 +9,12 @@ import (
 	"strconv"
 )
 
+// download.go uses the following environment variables:
+//   URL: The url of the file to download
+//   BINDIR: The directory which the newly downloaded file will be placed
+//   FILENAME: The name the file should have after being downloaded
+//   PERMISSIONS: The file permissions of the newly downloaded file
+
 func main() {
 	if err := downloadFile(mustMakeOptions()); err != nil {
 		panic(fmt.Errorf("error downloading file: %s", err))
