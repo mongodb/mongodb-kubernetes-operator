@@ -4,5 +4,5 @@ metadata:
   name: example-mongodb
 spec:
   members: 3
-  kind: ReplicaSet
+  type: ReplicaSet
   version: "4.0.6"

@@ -6,7 +6,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller"
 	"go.uber.org/zap"
 	"os"
-
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -31,6 +30,13 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	// TODO: implement mechanism to specify required/optional environment variables
+	if _, agentImageSpecified := os.LookupEnv("AGENT_IMAGE"); !agentImageSpecified {
+		log.Error("required environment variable AGENT_IMAGE not found")
+		os.Exit(1)
+	}
+
 	// get watch namespace from environment variable
 	namespace, nsSpecified := os.LookupEnv("WATCH_NAMESPACE")
 	if !nsSpecified {
@@ -49,7 +55,7 @@ func main() {
 	mgr, err := manager.New(cfg, manager.Options{
 		Namespace: namespace,
 	})
-	
+
 	if err != nil {
 		os.Exit(1)
 	}

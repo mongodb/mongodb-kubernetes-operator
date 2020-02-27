@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +26,9 @@ import (
 )
 
 const (
-	automationConfigKey = "automation-config"
+	automationConfigKey   = "automation-config"
+	agentName             = "mongodb-agent"
+	agentImageEnvVariable = "AGENT_IMAGE"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -92,32 +98,20 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// TODO: Read current automation config version from config map
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		log.Errorf("failed creating config map: %s", err)
+		log.Warnf("failed creating config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	// TODO: Create the service for the MDB resource
 
-	labels := map[string]string{
-		"dummy": "label",
+	sts, err := buildStatefulSet(mdb)
+	if err != nil {
+		log.Warnf("error building StatefulSet: %s", err)
+		return reconcile.Result{}, nil
 	}
 
-	sts, err := statefulset.NewBuilder().
-		SetPodTemplateSpec(corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: labels,
-			},
-			Spec: corev1.PodSpec{},
-		}).
-		SetNamespace(request.NamespacedName.Namespace).
-		SetName(request.NamespacedName.Name).
-		SetReplicas(mdb.Spec.Members).
-		SetLabels(labels).
-		SetMatchLabels(labels).
-		Build()
-
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		log.Errorf("error creating/updating StatefulSet: %s", err)
+		log.Warnf("error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -160,6 +154,40 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		SetNamespace(mdb.Namespace).
 		SetField(automationConfigKey, string(acBytes)).
 		Build(), nil
+}
+
+// buildStatefulSet takes a MongoDB resource and converts it into
+// the corresponding stateful set
+func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
+	labels := map[string]string{
+		"dummy": "label",
+	}
+	agentContainer := corev1.Container{
+		Name:      agentName,
+		Image:     os.Getenv(agentImageEnvVariable),
+		Resources: resourcerequirements.Defaults(),
+		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
+	}
+
+	podSpecTemplate := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: labels,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				agentContainer,
+			},
+		},
+	}
+
+	return statefulset.NewBuilder().
+		SetPodTemplateSpec(podSpecTemplate).
+		SetNamespace(mdb.Namespace).
+		SetName(mdb.Name).
+		SetReplicas(mdb.Spec.Members).
+		SetLabels(labels).
+		SetMatchLabels(labels).
+		Build()
 }
 
 func getDomain(service, namespace, clusterName string) string {
