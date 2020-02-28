@@ -93,7 +93,7 @@ buildvariants:
   - name: go_unit_tests
     display_name: go_unit_tests
     run_on:
-      - ubuntu1604-build
+      - archlinux-test
     stepback: false
     tasks:
       - name: unit_tests
