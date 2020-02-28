@@ -40,7 +40,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
-		assert.Equal(t, DefaultMongoDBDataDir, p.Storage.DBPath)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Storage.DBPath)
 		assert.Equal(t, "my-rs", p.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)

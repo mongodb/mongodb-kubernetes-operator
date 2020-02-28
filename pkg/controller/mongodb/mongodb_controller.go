@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -132,24 +133,21 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
-	modules := make([]string, 0)
-	version := automationconfig.MongoDbVersionConfig{
-		Builds: []automationconfig.BuildConfig{
-			{
-				Architecture: "amd64",
-				GitVersion:   "a0bbbff6ada159e19298d37946ac8dc4b497eadf",
-				Platform:     "linux",
-				Url:          "/linux/mongodb-linux-x86_64-rhel70-4.2.2.tgz",
-				Flavor:       "rhel",
-				MaxOsVersion: "8.0",
-				MinOsVersion: "7.0",
-				Modules:      modules,
-			},
-		},
-		Name: "4.2.2",
-	}
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
+	return automationconfig.NewBuilder().
+		SetTopology(automationconfig.ReplicaSetTopology).
+		SetName(mdb.Name).
+		SetDomain(domain).
+		SetMembers(mdb.Spec.Members).
+		SetMongoDBVersion(mdb.Spec.Version).
+		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		AddVersion(buildVersion406()).
+		Build()
+}
 
-	version406 := automationconfig.MongoDbVersionConfig{
+// buildVersion406 returns a compatible version.
+func buildVersion406() automationconfig.MongoDbVersionConfig {
+	return automationconfig.MongoDbVersionConfig{
 		Builds: []automationconfig.BuildConfig{
 			{
 				Architecture: "amd64",
@@ -159,7 +157,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 				Flavor:       "rhel",
 				MaxOsVersion: "8.0",
 				MinOsVersion: "7.0",
-				Modules:      make([]string, 0),
 			},
 			{
 				Architecture: "amd64",
@@ -169,23 +166,10 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 				Flavor:       "ubuntu",
 				MaxOsVersion: "17.04",
 				MinOsVersion: "16.04",
-				Modules:      make([]string, 0),
 			},
 		},
 		Name: "4.0.6",
 	}
-
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
-	return automationconfig.NewBuilder().
-		SetTopology(automationconfig.ReplicaSetTopology).
-		SetName(mdb.Name).
-		SetDomain(domain).
-		SetMembers(mdb.Spec.Members).
-		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion(1). // TODO: Correctly set the version
-		AddVersion(version).
-		AddVersion(version406).
-		Build()
 }
 
 func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
@@ -272,7 +256,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		Build()
 }
 
-func buildDataVolumeClaim() (corev1.VolumeMount, corev1.PersistentVolumeClaim) {
+func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	dataVolume := statefulset.CreateVolumeMount("data-volume", "/data", "")
 	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
 		ObjectMeta: metav1.ObjectMeta{

@@ -56,7 +56,6 @@ type Process struct {
 	HostName          string      `json:"hostname"`
 	Args26            Args26      `json:"args2_6"`
 	Replication       Replication `json:"replication"`
-	Storage           Storage     `json:"storage"`
 	ProcessType       ProcessType `json:"processType"`
 	Version           string      `json:"version"`
 	AuthSchemaVersion int         `json:"authSchemaVersion"`
@@ -71,11 +70,8 @@ type SystemLog struct {
 
 func newProcess(name, hostName, version, replSetName string) Process {
 	return Process{
-		Name:     name,
-		HostName: hostName,
-		Storage: Storage{
-			DBPath: DefaultMongoDBDataDir,
-		},
+		Name:        name,
+		HostName:    hostName,
 		Replication: Replication{ReplicaSetName: replSetName},
 		ProcessType: Mongod,
 		Version:     version,
@@ -88,6 +84,9 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Net: Net{
 				Port: 27017,
 			},
+			Storage: ArgsStorage{
+				DBPath: DefaultMongoDBDataDir,
+			},
 		},
 	}
 }
@@ -96,9 +95,8 @@ type Replication struct {
 	ReplicaSetName string `json:"replSetName"`
 }
 
-type Storage struct {
-	DBPath     string     `json:"dbPath"`
-	WiredTiger WiredTiger `json:"wiredTiger"`
+type ArgsStorage struct {
+	DBPath string `json:"dbPath"`
 }
 
 type WiredTiger struct {
@@ -115,8 +113,9 @@ type LogRotate struct {
 }
 
 type Args26 struct {
-	Net      Net      `json:"net"`
-	Security Security `json:"security"`
+	Net      Net         `json:"net"`
+	Security Security    `json:"security"`
+	Storage  ArgsStorage `json:"storage"`
 }
 
 type Net struct {
