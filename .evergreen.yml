@@ -33,6 +33,17 @@ functions:
           PERMISSIONS: "755"
           BINDIR: ${workdir}/bin
 
+  run_test_locally:
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/run_e2e_tests.sh
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+
   generate_k8s:
     - command: subprocess.exec
       type: setup
@@ -87,7 +98,7 @@ tasks:
     commands:
       - func: clone
       - func: setup_kubernetes_environment
-        # deploy operator and run test
+      - func: run_test_locally
 
 buildvariants:
   - name: go_unit_tests
