@@ -25,12 +25,13 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        add_to_path:
-          - ${workdir}/bin
-        working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - workdir
-        binary: scripts/ci/setup_operator_sdk.sh
+        working_dir: mongodb-kubernetes-operator/scripts/ci
+        command: go run download.go
+        env:
+          URL: https://github.com/operator-framework/operator-sdk/releases/download/v0.15.1/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+          FILENAME: operator-sdk
+          PERMISSIONS: "755"
+          BINDIR: ${workdir}/bin
 
   generate_k8s:
     - command: subprocess.exec
