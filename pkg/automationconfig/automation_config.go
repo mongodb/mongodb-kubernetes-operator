@@ -130,14 +130,14 @@ type ReplicaSet struct {
 }
 
 type ReplicaSetMember struct {
-	Id          string `json:"_id"`
+	Id          int    `json:"_id"`
 	Host        string `json:"host"`
 	Priority    int    `json:"priority"`
 	ArbiterOnly bool   `json:"arbiterOnly"`
 	Votes       int    `json:"votes"`
 }
 
-func newReplicaSetMember(p Process, id string) ReplicaSetMember {
+func newReplicaSetMember(p Process, id int) ReplicaSetMember {
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
@@ -152,18 +152,28 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-	Versions    []Version    `json:"versions"`
-	Name        string       `json:"name"`
+
+	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
+	Options  Options                `json:"options"`
 }
 
-type Version struct {
-	Builds []Build `json:"builds"`
+type Options struct {
+	DownloadBase string `json:"downloadBase"`
 }
 
-type Build struct {
-	Architecture string `json:"architecture"`
-	GitVersion   string `json:"gitVersion"`
-	Platform     string `json:"platform"`
-	URL          string `json:"url"`
-	Win2008Plus  bool   `json:"win2008plus,omitempty"`
+type BuildConfig struct {
+	Platform     string   `json:"platform"`
+	Url          string   `json:"url"`
+	GitVersion   string   `json:"gitVersion"`
+	Architecture string   `json:"architecture"`
+	Flavor       string   `json:"flavor"`
+	MinOsVersion string   `json:"minOsVersion"`
+	MaxOsVersion string   `json:"maxOsVersion"`
+	Modules      []string `json:"modules"`
+	// Note, that we are not including all "windows" parameters like "Win2008plus" as such distros won't be used
+}
+
+type MongoDbVersionConfig struct {
+	Name   string        `json:"name"`
+	Builds []BuildConfig `json:"builds"`
 }

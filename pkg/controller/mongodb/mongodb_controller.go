@@ -132,6 +132,39 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
+	modules := make([]string, 0)
+	version := automationconfig.MongoDbVersionConfig{
+		Builds: []automationconfig.BuildConfig{
+			{
+				Architecture: "amd64",
+				GitVersion:   "a0bbbff6ada159e19298d37946ac8dc4b497eadf",
+				Platform:     "linux",
+				Url:          "/linux/mongodb-linux-x86_64-rhel70-4.2.2.tgz",
+				Flavor:       "rhel",
+				MaxOsVersion: "8.0",
+				MinOsVersion: "7.0",
+				Modules:      modules,
+			},
+		},
+		Name: "4.2.2",
+	}
+
+	version406 := automationconfig.MongoDbVersionConfig{
+		Builds: []automationconfig.BuildConfig{
+			{
+				Architecture: "amd64",
+				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
+				Platform:     "linux",
+				Url:          "/linux/mongodb-linux-x86_64-rhel62-4.0.6.tgz",
+				Flavor:       "rhel",
+				MaxOsVersion: "8.0",
+				MinOsVersion: "7.0",
+				Modules:      make([]string, 0),
+			},
+		},
+		Name: "4.0.6",
+	}
+
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
@@ -140,6 +173,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		AddVersion(version).
+		AddVersion(version406).
 		Build()
 }
 
