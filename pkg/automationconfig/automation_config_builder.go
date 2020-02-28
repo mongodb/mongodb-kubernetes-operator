@@ -54,9 +54,9 @@ func (b *Builder) SetName(name string) *Builder {
 }
 
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
-	for _, build := range version.Builds {
-		if build.Modules == nil {
-			build.Modules = make([]string, 0)
+	for idx, _ := range version.Builds {
+		if version.Builds[idx].Modules == nil {
+			version.Builds[idx].Modules = make([]string, 0)
 		}
 	}
 	b.versions = append(b.versions, version)

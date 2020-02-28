@@ -84,6 +84,11 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		},
 		AuthSchemaVersion: 5,
+		Args26: Args26{
+			Net: Net{
+				Port: 27017,
+			},
+		},
 	}
 }
 
@@ -110,9 +115,8 @@ type LogRotate struct {
 }
 
 type Args26 struct {
-	Net         Net         `json:"net"`
-	Security    Security    `json:"security"`
-	Replication Replication `json:"replication"`
+	Net      Net      `json:"net"`
+	Security Security `json:"security"`
 }
 
 type Net struct {
