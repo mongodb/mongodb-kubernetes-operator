@@ -1,11 +1,11 @@
 ignore:
   - "*.md"
-  -
+
 variables:
-#  - &go_options
-#    GO111MODULE: "on"
-#    GOFLAGS: "-mod=vendor"
-#    GOROOT: "/opt/golang/go1.13"
+  - &go_options
+    GO111MODULE: "on"
+    GOFLAGS: "-mod=vendor"
+    GOROOT: "/opt/golang/go1.13"
   - &go_bin
       "/opt/golang/go1.13/bin"
 
@@ -53,6 +53,7 @@ functions:
         binary: scripts/ci/run_e2e_tests.sh
         env:
           KUBECONFIG: ${workdir}/kube_config
+          <<: *go_options
 
   generate_k8s:
     - command: subprocess.exec
