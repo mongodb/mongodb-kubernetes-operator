@@ -161,6 +161,16 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 				MinOsVersion: "7.0",
 				Modules:      make([]string, 0),
 			},
+			{
+				Architecture: "amd64",
+				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
+				Platform:     "linux",
+				Url:          "/linux/mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz",
+				Flavor:       "ubuntu",
+				MaxOsVersion: "17.04",
+				MinOsVersion: "16.04",
+				Modules:      make([]string, 0),
+			},
 		},
 		Name: "4.0.6",
 	}
@@ -199,17 +209,19 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"-skipMongoStart",
 	}
 	agentContainer := corev1.Container{
-		Name:      agentName,
-		Image:     os.Getenv(agentImageEnvVariable),
-		Resources: resourcerequirements.Defaults(),
-		Command:   agentCommand,
+		Name:            agentName,
+		Image:           os.Getenv(agentImageEnvVariable),
+		ImagePullPolicy: corev1.PullAlways,
+		Resources:       resourcerequirements.Defaults(),
+		Command:         agentCommand,
 	}
 
-	mongoDbCommand := []string{
-		"/bin/sh",
-		"-c",
-		`while [ ! -f /data/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /data/mongodb-automation.conf`,
-	}
+	// mongoDbCommand := []string{
+	// 	"/bin/sh",
+	// 	"-c",
+	// 	`while [ ! -f /var/lib/automation/config/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /var/lib/automation/config/mongodb-automation.conf`,
+	// }
+	mongoDbCommand := []string{"mongod"}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
@@ -240,6 +252,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 	}
 
+	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
 	v := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
 	vm := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", "")
 
@@ -253,7 +266,36 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeMount(agentName, vm).
 		AddVolumeMount(mongodbName, vm).
 		AddVolume(v).
+		AddVolumeMount(agentName, dataVolume).
+		AddVolumeMount(mongodbName, dataVolume).
+		AddVolumeClaimTemplates(dataVolumeClaim).
 		Build()
+}
+
+func buildDataVolumeClaim() (corev1.VolumeMount, corev1.PersistentVolumeClaim) {
+	dataVolume := statefulset.CreateVolumeMount("data-volume", "/data", "")
+	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "data-volume",
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: buildDefaultStorageRequirements(),
+			},
+		},
+	}}
+
+	return dataVolume, dataVolumeClaim
+}
+
+// buildDefaultStorageRequirements returns a corev1.ResourceList definition for storage requirements.
+// This is used by the StatefulSet PersistentVolumeClaimTemplate.
+func buildDefaultStorageRequirements() corev1.ResourceList {
+	g10, _ := resource.ParseQuantity("10G")
+	res := corev1.ResourceList{}
+	res[corev1.ResourceStorage] = g10
+	return res
 }
 
 func getDomain(service, namespace, clusterName string) string {
