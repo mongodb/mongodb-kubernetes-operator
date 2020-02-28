@@ -16,7 +16,7 @@ spec:
       containers:
         - name: mongodb-kubernetes-operator
           # Replace this with the built image name
-          image: quay.io/chatton/test
+          image: quay.io/chatton/mongodb-kubernetes-operator
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
@@ -31,5 +31,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
-            - name: quay.io/chatton/test2 # The MongoDB Agent the operator will deploy to manage MongoDB deployments
-              value: REPLACE_IMAGE
+            - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
+              value: quay.io/chatton/mongodb-agent

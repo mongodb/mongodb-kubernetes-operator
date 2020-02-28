@@ -65,6 +65,16 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/generate_k8.sh
 
+  deploy_operator:
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/deploy_operator.sh
+        env:
+          KUBECONFIG: ${workdir}/kube_config
 
   setup_kubernetes_environment:
     - command: subprocess.exec
@@ -113,6 +123,7 @@ tasks:
       - func: setup_kubernetes_environment
       - func: setup_operator_sdk
       - func: generate_k8s
+      - func: deploy_operator
       - func: run_test_locally
 
 buildvariants:
