@@ -84,7 +84,7 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Net: Net{
 				Port: 27017,
 			},
-			Storage: ArgsStorage{
+			Storage: Storage{
 				DBPath: DefaultMongoDBDataDir,
 			},
 		},
@@ -95,7 +95,7 @@ type Replication struct {
 	ReplicaSetName string `json:"replSetName"`
 }
 
-type ArgsStorage struct {
+type Storage struct {
 	DBPath string `json:"dbPath"`
 }
 
@@ -113,9 +113,9 @@ type LogRotate struct {
 }
 
 type Args26 struct {
-	Net      Net         `json:"net"`
-	Security Security    `json:"security"`
-	Storage  ArgsStorage `json:"storage"`
+	Net      Net      `json:"net"`
+	Security Security `json:"security"`
+	Storage  Storage  `json:"storage"`
 }
 
 type Net struct {

@@ -133,7 +133,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -147,6 +147,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 
 // buildVersion406 returns a compatible version.
 func buildVersion406() automationconfig.MongoDbVersionConfig {
+	// TODO: For now we only have 2 versions, that match the versions used for testing.
 	return automationconfig.MongoDbVersionConfig{
 		Builds: []automationconfig.BuildConfig{
 			{
@@ -245,6 +246,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetLabels(labels).
 		SetMatchLabels(labels)
 
+	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
 	// There will be three volumes mounted:
 	// 1) monogdb-config: This is where the automation-mongod.conf file will be written. This is backed
@@ -293,21 +295,12 @@ func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim)
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
-				Requests: buildDefaultStorageRequirements(),
+				Requests: resourcerequirements.BuildDefaultStorageRequirements(),
 			},
 		},
 	}}
 
 	return dataVolume, dataVolumeClaim
-}
-
-// buildDefaultStorageRequirements returns a corev1.ResourceList definition for storage requirements.
-// This is used by the StatefulSet PersistentVolumeClaimTemplate.
-func buildDefaultStorageRequirements() corev1.ResourceList {
-	g10, _ := resource.ParseQuantity("10G")
-	res := corev1.ResourceList{}
-	res[corev1.ResourceStorage] = g10
-	return res
 }
 
 func getDomain(service, namespace, clusterName string) string {
