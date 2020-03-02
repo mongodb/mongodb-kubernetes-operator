@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 )
 
 // download.go uses the following environment variables:
 //   URL: The url of the file to download
-//   BINDIR: The directory which the newly downloaded file will be placed
+//   DIR: The directory which the newly downloaded file will be placed
 //   FILENAME: The name the file should have after being downloaded
-//   PERMISSIONS: The file permissions of the newly downloaded file
 
 func main() {
 	if err := downloadFile(mustMakeOptions()); err != nil {
@@ -22,30 +20,25 @@ func main() {
 }
 
 type downloadOptions struct {
-	url, fileName, bindir string
-	perms                 os.FileMode
+	url, fileName, dir string
+	perms              os.FileMode
 }
 
 func mustMakeOptions() downloadOptions {
-	perms := os.Getenv("PERMISSIONS")
-	intPerms, err := strconv.Atoi(perms)
-	if err != nil {
-		panic(err)
-	}
 	return downloadOptions{
 		url:      os.Getenv("URL"),
 		fileName: os.Getenv("FILENAME"),
-		perms:    os.FileMode(intPerms),
-		bindir:   os.Getenv("BINDIR"),
+		perms:    os.FileMode(755),
+		dir:      os.Getenv("DIR"),
 	}
 }
 
 func downloadFile(opts downloadOptions) error {
 	fmt.Printf("Using download options: %+v\n", opts)
-	fullPath := path.Join(opts.bindir, opts.fileName)
+	fullPath := path.Join(opts.dir, opts.fileName)
 	fmt.Printf("full path to directory: %s\n", fullPath)
-	if err := os.MkdirAll(opts.bindir, opts.perms); err != nil {
-		return fmt.Errorf("error making directory %s with permissions %d: %s", opts.bindir, opts.perms, err)
+	if err := os.MkdirAll(opts.dir, opts.perms); err != nil {
+		return fmt.Errorf("error making directory %s with permissions %d: %s", opts.dir, opts.perms, err)
 	}
 	if err := fetchFile(fullPath, opts.url); err != nil {
 		return fmt.Errorf("error fetching file: %s", err)

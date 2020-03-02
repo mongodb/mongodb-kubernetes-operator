@@ -28,6 +28,7 @@ import (
 const (
 	AutomationConfigKey   = "automation-config"
 	agentName             = "mongodb-agent"
+	mongodbName           = "mongod"
 	agentImageEnvVariable = "AGENT_IMAGE"
 )
 
@@ -156,12 +157,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		Build(), nil
 }
 
-// buildStatefulSet takes a MongoDB resource and converts it into
-// the corresponding stateful set
-func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
-	labels := map[string]string{
-		"dummy": "label",
-	}
+func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentContainer := corev1.Container{
 		Name:      agentName,
 		Image:     os.Getenv(agentImageEnvVariable),
@@ -169,14 +165,32 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
 	}
 
+	mongodbContainer := corev1.Container{
+		Name:      mongodbName,
+		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
+		Resources: resourcerequirements.Defaults(),
+	}
+	return []corev1.Container{agentContainer, mongodbContainer}, nil
+}
+
+// buildStatefulSet takes a MongoDB resource and converts it into
+// the corresponding stateful set
+func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
+	labels := map[string]string{
+		"dummy": "label",
+	}
+
+	containers, err := buildContainers(mdb)
+	if err != nil {
+		return appsv1.StatefulSet{}, fmt.Errorf("error creating containers for %s/%s: %s", mdb.Namespace, mdb.Name, err)
+	}
+
 	podSpecTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				agentContainer,
-			},
+			Containers: containers,
 		},
 	}
 

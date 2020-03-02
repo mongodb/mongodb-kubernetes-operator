@@ -39,8 +39,7 @@ functions:
         env:
           URL: https://github.com/operator-framework/operator-sdk/releases/download/v0.15.1/operator-sdk-v0.15.1-x86_64-linux-gnu
           FILENAME: operator-sdk
-          PERMISSIONS: "755"
-          BINDIR: ${workdir}/bin
+          DIR: ${workdir}/bin
 
   run_test_locally:
     - command: subprocess.exec
@@ -65,17 +64,6 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/generate_k8.sh
 
-  deploy_operator:
-    - command: subprocess.exec
-      type: setup
-      params:
-        add_to_path:
-          - ${workdir}/bin
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/deploy_operator.sh
-        env:
-          KUBECONFIG: ${workdir}/kube_config
-
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup
@@ -85,8 +73,7 @@ functions:
         env:
           URL: https://storage.googleapis.com/kubernetes-release/release/v1.15.4/bin/linux/amd64/kubectl
           FILENAME: kubectl
-          PERMISSIONS: "755"
-          BINDIR: ${workdir}/bin
+          DIR: ${workdir}/bin
 
     - command: subprocess.exec
       type: setup
@@ -95,17 +82,28 @@ functions:
         command: go run download.go
         env:
           URL: https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64
-          PERMISSIONS: "755"
           FILENAME: kind
-          BINDIR: ${workdir}/bin
+          DIR: ${workdir}/bin
 
     - command: subprocess.exec
       type: setup
       params:
         add_to_path:
           - ${workdir}/bin
+          - *go_bin
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/create_kind_cluster.sh
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+
+  deploy_operator:
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/deploy_operator.sh
         env:
           KUBECONFIG: ${workdir}/kube_config
 
@@ -131,7 +129,6 @@ buildvariants:
     display_name: go_unit_tests
     run_on:
       - ubuntu1604-build
-    stepback: false
     tasks:
       - name: unit_tests
 
@@ -139,6 +136,5 @@ buildvariants:
     display_name: e2e_tests
     run_on:
       - ubuntu1604-build
-    stepback: false
     tasks:
       - name: e2e_test
