@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 )
 
 // download.go uses the following environment variables:
 //   URL: The url of the file to download
 //   BINDIR: The directory which the newly downloaded file will be placed
 //   FILENAME: The name the file should have after being downloaded
-//   PERMISSIONS: The file permissions of the newly downloaded file
 
 func main() {
 	if err := downloadFile(mustMakeOptions()); err != nil {
@@ -27,15 +25,10 @@ type downloadOptions struct {
 }
 
 func mustMakeOptions() downloadOptions {
-	perms := os.Getenv("PERMISSIONS")
-	intPerms, err := strconv.Atoi(perms)
-	if err != nil {
-		panic(err)
-	}
 	return downloadOptions{
 		url:      os.Getenv("URL"),
 		fileName: os.Getenv("FILENAME"),
-		perms:    os.FileMode(intPerms),
+		perms:    os.FileMode(755),
 		bindir:   os.Getenv("BINDIR"),
 	}
 }

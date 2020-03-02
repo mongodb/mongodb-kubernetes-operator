@@ -30,7 +30,6 @@ functions:
         env:
           URL: https://github.com/operator-framework/operator-sdk/releases/download/v0.15.1/operator-sdk-v0.15.1-x86_64-linux-gnu
           FILENAME: operator-sdk
-          PERMISSIONS: "755"
           BINDIR: ${workdir}/bin
 
   generate_k8s:
@@ -51,7 +50,6 @@ functions:
         env:
           URL: https://storage.googleapis.com/kubernetes-release/release/v1.15.4/bin/linux/amd64/kubectl
           FILENAME: kubectl
-          PERMISSIONS: "755"
           BINDIR: ${workdir}/bin
 
     - command: subprocess.exec
@@ -61,7 +59,6 @@ functions:
         command: go run download.go
         env:
           URL: https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64
-          PERMISSIONS: "755"
           FILENAME: kind
           BINDIR: ${workdir}/bin
 
@@ -94,7 +91,6 @@ buildvariants:
     display_name: go_unit_tests
     run_on:
       - archlinux-test
-    stepback: false
     tasks:
       - name: unit_tests
 
@@ -102,6 +98,5 @@ buildvariants:
     display_name: e2e_tests
     run_on:
       - ubuntu1604-build
-    stepback: false
     tasks:
       - name: e2e_test
