@@ -15,6 +15,9 @@ require (
 	sigs.k8s.io/controller-runtime v0.5.0
 )
 
+// TODO: These replace statements need to be completely removed. These exist as the operator-sdk currently requires
+// them. Once they are fully removed, we should only include "require" statements in go.mod
+
 // Pinned to kubernetes-1.16.2
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
