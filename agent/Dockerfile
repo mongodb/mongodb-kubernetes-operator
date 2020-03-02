@@ -15,8 +15,10 @@ RUN mkdir -p agent \
     && mkdir -p /var/lib/automation/config \
     && chmod -R +r /var/lib/automation/config
 
+# TODO: this mongo client is used for testing purposes and should be removed in the future
 RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz && \
     tar xfz mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz && \
-    mv mongodb-linux-x86_64-ubuntu1604-4.0.6/bin/* /usr/bin
+    mv mongodb-linux-x86_64-ubuntu1604-4.0.6/bin/mongo /usr/bin && \
+    rm -rf mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz mongodb-linux-x86_64-ubuntu1604-4.0.6
 
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
