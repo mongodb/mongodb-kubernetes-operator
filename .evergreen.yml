@@ -25,12 +25,12 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        add_to_path:
-          - ${workdir}/bin
-        working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - workdir
-        binary: scripts/ci/setup_operator_sdk.sh
+        working_dir: mongodb-kubernetes-operator/scripts/ci
+        command: go run download.go
+        env:
+          URL: https://github.com/operator-framework/operator-sdk/releases/download/v0.15.1/operator-sdk-v0.15.1-x86_64-linux-gnu
+          FILENAME: operator-sdk
+          BINDIR: ${workdir}/bin
 
   generate_k8s:
     - command: subprocess.exec
@@ -41,6 +41,37 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/generate_k8.sh
 
+  setup_kubernetes_environment:
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator/scripts/ci
+        command: go run download.go
+        env:
+          URL: https://storage.googleapis.com/kubernetes-release/release/v1.15.4/bin/linux/amd64/kubectl
+          FILENAME: kubectl
+          BINDIR: ${workdir}/bin
+
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator/scripts/ci
+        command: go run download.go
+        env:
+          URL: https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64
+          FILENAME: kind
+          BINDIR: ${workdir}/bin
+
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/create_kind_cluster.sh
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+
 tasks:
   - name: unit_tests
     commands:
@@ -49,11 +80,23 @@ tasks:
       - func: generate_k8s
       - func: go_test
 
+  - name: e2e_test
+    commands:
+      - func: clone
+      - func: setup_kubernetes_environment
+        # deploy operator and run test
+
 buildvariants:
   - name: go_unit_tests
     display_name: go_unit_tests
     run_on:
       - archlinux-test
-    stepback: false
     tasks:
       - name: unit_tests
+
+  - name: e2e_tests
+    display_name: e2e_tests
+    run_on:
+      - ubuntu1604-build
+    tasks:
+      - name: e2e_test
