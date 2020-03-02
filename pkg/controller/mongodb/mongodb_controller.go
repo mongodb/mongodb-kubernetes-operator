@@ -186,6 +186,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		Build(), nil
 }
 
+// buildContainers has some docs.
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentCommand := []string{
 		"agent/mongodb-agent",
@@ -236,28 +237,55 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 	}
 
-	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
-	v := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
-	vm := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", "")
-
-	return statefulset.NewBuilder().
+	builder := statefulset.NewBuilder().
 		SetPodTemplateSpec(podSpecTemplate).
 		SetNamespace(mdb.Namespace).
 		SetName(mdb.Name).
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
-		SetMatchLabels(labels).
-		AddVolumeMount(agentName, vm).
-		AddVolumeMount(mongodbName, vm).
-		AddVolume(v).
-		AddVolumeMount(agentName, dataVolume).
+		SetMatchLabels(labels)
+
+	// The design of the multi-container and the different volumes mounted to them is as follows:
+	// There will be three volumes mounted:
+	// 1) monogdb-config: This is where the automation-mongod.conf file will be written. This is backed
+	// by an EmptyDir
+	//    - R/w from the agent container
+	//    - R from the mongod container
+	// 2) automation-config: This is where the ConfigMap with the automation config will be written
+	//    - R from the agent container
+	//    - Not mounted on the DB container
+	// 3) data-volume: Where the mongodb data directory will be
+	//    - R/w from the mongod container
+	//    - Not mounted on the agent container
+	// Mount a writtable VolumeMount in /data on the database container.
+	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
+	builder.
 		AddVolumeMount(mongodbName, dataVolume).
-		AddVolumeClaimTemplates(dataVolumeClaim).
-		Build()
+		AddVolumeClaimTemplates(dataVolumeClaim)
+
+	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
+	mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
+	// the agent writes the configuration file in /data
+	agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
+	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
+	mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
+	builder.
+		AddVolume(mongoDbConfigVolume).
+		AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
+		AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
+
+	// the automation config is only mounted, as read only, on the agent container
+	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
+	automationConfigVolumeMount := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", statefulset.WithReadOnly(true))
+	builder.
+		AddVolume(automationConfigVolume).
+		AddVolumeMount(agentName, automationConfigVolumeMount)
+
+	return builder.Build()
 }
 
 func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
-	dataVolume := statefulset.CreateVolumeMount("data-volume", "/data", "")
+	dataVolume := statefulset.CreateVolumeMount("data-volume", "/data")
 	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "data-volume",
