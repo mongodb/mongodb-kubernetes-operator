@@ -11,6 +11,7 @@ import (
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -103,7 +104,18 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// TODO: Create the service for the MDB resource
+	svc := service.Builder().
+		SetName(mdb.Name + "-svc").
+		SetNamespace(mdb.Namespace).
+		SetLabels(map[string]string{"dummy": "label"}).
+		SetPublishNotReadyAddresses(true).
+		SetServiceType(corev1.ServiceTypeClusterIP).
+		SetPort(27017).
+		Build()
+
+	if err = r.client.CreateOrUpdate(&svc); err != nil {
+		log.Warnf("The service already exists... moving forward: %s", err)
+	}
 
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
@@ -192,6 +204,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"agent/mongodb-agent",
 		"-cluster=/var/lib/automation/config/automation-config",
 		"-skipMongoStart",
+		"-noDownload",
 	}
 	agentContainer := corev1.Container{
 		Name:            agentName,
@@ -201,12 +214,14 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		Command:         agentCommand,
 	}
 
-	// mongoDbCommand := []string{
-	// 	"/bin/sh",
-	// 	"-c",
-	// 	`while [ ! -f /var/lib/automation/config/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /var/lib/automation/config/mongodb-automation.conf`,
-	// }
-	mongoDbCommand := []string{"mongod"}
+	mongoDbCommand := []string{
+		"/bin/sh",
+		"-c",
+		`mkdir -p /var/lib/mongodb-mms-automation/mongod-4.0.6/bin && \
+cp /usr/bin/mongo* /var/lib/mongodb-mms-automation/mongod-4.0.6/bin && \
+while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; mongod -f /data/automation-mongod.conf --logpath /var/log/mongod.log`,
+		//while true; do if [ ! -f /data/automation-mongod.conf ]; then mongod --bind_ip_all --dbpath /data; else if [ ! -f /data/mongod.lock ]; then mongod -f /data/automation-mongod.conf --logpath /var/log/mongod.log; fi ; sleep 10; fi; done`,
+	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
@@ -243,7 +258,8 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetName(mdb.Name).
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
-		SetMatchLabels(labels)
+		SetMatchLabels(labels).
+		SetServiceName(mdb.Name + "-svc")
 
 	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
@@ -262,18 +278,25 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
 	builder.
 		AddVolumeMount(mongodbName, dataVolume).
+		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
 
-	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
-	mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
-	// the agent writes the configuration file in /data
-	agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
-	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
-	mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
+	automationData, automationDataClaim := buildAutomationVolumeClaim()
 	builder.
-		AddVolume(mongoDbConfigVolume).
-		AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
-		AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
+		AddVolumeMount(mongodbName, automationData).
+		AddVolumeMount(agentName, automationData).
+		AddVolumeClaimTemplates(automationDataClaim)
+
+	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
+	// mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
+	// the agent writes the configuration file in /data
+	// agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
+	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
+	// mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
+	// builder.
+	// 	AddVolume(mongoDbConfigVolume).
+	// 	AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
+	// 	AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
 
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
@@ -290,6 +313,23 @@ func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim)
 	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "data-volume",
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: resourcerequirements.BuildDefaultStorageRequirements(),
+			},
+		},
+	}}
+
+	return dataVolume, dataVolumeClaim
+}
+
+func buildAutomationVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
+	dataVolume := statefulset.CreateVolumeMount("automation-data", "/var/lib/mongodb-mms-automation")
+	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "automation-data",
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

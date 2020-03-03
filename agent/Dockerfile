@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
-        curl \
+        curl libcurl3 \
         && apt-get upgrade -y -qq \
         && apt-get dist-upgrade -y -qq \
         && rm -rf /var/lib/apt/lists/*

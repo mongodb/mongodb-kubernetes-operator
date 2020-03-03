@@ -16,7 +16,7 @@ spec:
       containers:
         - name: mongodb-kubernetes-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: 268558157000.dkr.ecr.us-east-1.amazonaws.com/rodrigo/community:master
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
@@ -32,4 +32,4 @@ spec:
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
-              value: REPLACE_IMAGE
+              value: 268558157000.dkr.ecr.us-east-1.amazonaws.com/rodrigo/mongodb-agent:master
