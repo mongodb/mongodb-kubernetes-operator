@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: operator-sdk-test
+  name: operator-sdk-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operator-sdk-test
+  template:
+    metadata:
+      labels:
+        app: operator-sdk-test
+    spec:
+      serviceAccountName: mongodb-kubernetes-operator
+      containers:
+        - image: quay.io/chatton/operator-sdk-test
+          name: operator-sdk-test
+          volumeMounts:
+            - name: kube-config-volume
+              mountPath: /etc/config
+      volumes:
+        - name: kube-config-volume
+          configMap:
+            name: kube-config

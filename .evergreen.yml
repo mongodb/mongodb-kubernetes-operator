@@ -1,15 +1,6 @@
 ignore:
   - "*.md"
 
-variables:
-  - &go_options
-    GO111MODULE: "on"
-    GOFLAGS: "-mod=vendor"
-    GOROOT: "/opt/golang/go1.13"
-  - &go_bin
-      "/opt/golang/go1.13/bin"
-
-
 functions:
   clone:
     - command: subprocess.exec
@@ -41,29 +32,6 @@ functions:
           FILENAME: operator-sdk
           DIR: ${workdir}/bin
 
-  run_test_locally:
-    - command: subprocess.exec
-      type: test
-      params:
-        add_to_path:
-          - ${workdir}/bin
-          - *go_bin
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/run_e2e_tests.sh
-        env:
-          KUBECONFIG: ${workdir}/kube_config
-          <<: *go_options
-
-  generate_k8s:
-    - command: subprocess.exec
-      type: setup
-      params:
-        add_to_path:
-          - ${workdir}/bin
-          - *go_bin
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/generate_k8.sh
-
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup
@@ -90,7 +58,6 @@ functions:
       params:
         add_to_path:
           - ${workdir}/bin
-          - *go_bin
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/create_kind_cluster.sh
         env:
@@ -104,6 +71,19 @@ functions:
           - ${workdir}/bin
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/deploy_operator.sh
+        include_expansions_in_env:
+          - revision
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+
+  run_e2e_test:
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/run_test.sh
         include_expansions_in_env:
           - revision
         env:
@@ -132,9 +112,7 @@ tasks:
       - func: build_and_push_operator
       - func: setup_kubernetes_environment
       - func: deploy_operator
-      #      - func: setup_operator_sdk
-      #      - func: generate_k8s
-#      - func: run_test_locally
+      - func: run_e2e_test
 
 buildvariants:
   - name: go_unit_tests

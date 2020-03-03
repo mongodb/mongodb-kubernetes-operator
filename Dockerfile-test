@@ -1,0 +1,16 @@
+FROM golang
+
+ENV OEPRATOR_SDK_VERISON v0.15.2
+ENV GO111MODULE=on
+ENV GOFLAGS="-mod=vendor"
+ENV GOPATH ""
+
+RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OEPRATOR_SDK_VERISON}/operator-sdk-${OEPRATOR_SDK_VERISON}-x86_64-linux-gnu \
+    && mv operator-sdk-v0.15.2-x86_64-linux-gnu /bin/operator-sdk \
+    && chmod +x /bin/operator-sdk
+
+ADD . .
+
+RUN go mod vendor && /bin/operator-sdk generate k8s
+
+CMD ["/bin/operator-sdk", "test", "local",  "./test/e2e",  "--namespace", "default", "--verbose", "--kubeconfig", "/etc/config/kubeconfig" ]
