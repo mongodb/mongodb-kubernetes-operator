@@ -21,14 +21,24 @@ functions:
       params:
         directory: mongodb-kubernetes-operator
 
+#  go_test:
+#    - command: subprocess.exec
+#      type: test
+#      params:
+#        add_to_path:
+#          - ${workdir}/bin
+#        working_dir: mongodb-kubernetes-operator
+#        command: "go test ./..."
+#        env:
+#          <<: *go_options
   go_test:
     - command: subprocess.exec
       type: test
       params:
-        add_to_path:
-          - ${workdir}/bin
+        include_expansions_in_env:
+          - revision
         working_dir: mongodb-kubernetes-operator
-        command: "go test ./..."
+        binary: scripts/ci/run_unit_tests.sh
 
   setup_operator_sdk:
     - command: subprocess.exec
@@ -104,25 +114,41 @@ functions:
           - ${workdir}/bin
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/deploy_operator.sh
+        include_expansions_in_env:
+          - revision
         env:
           KUBECONFIG: ${workdir}/kube_config
+
+  build_and_push_operator:
+    - command: subprocess.exec
+      type: setup
+      params:
+        add_to_path:
+          - ${workdir}/bin
+        include_expansions_in_env:
+          - revision
+          - quay_user_name
+          - quay_password
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/build_and_push_operator.sh
 
 tasks:
   - name: unit_tests
     commands:
       - func: clone
-      - func: setup_operator_sdk
-      - func: generate_k8s
+#      - func: setup_operator_sdk
+#      - func: generate_k8s
       - func: go_test
 
   - name: e2e_test
     commands:
       - func: clone
       - func: setup_kubernetes_environment
-      - func: setup_operator_sdk
-      - func: generate_k8s
+      - func: build_and_push_operator
       - func: deploy_operator
-      - func: run_test_locally
+      #      - func: setup_operator_sdk
+      #      - func: generate_k8s
+#      - func: run_test_locally
 
 buildvariants:
   - name: go_unit_tests

@@ -12,7 +12,7 @@ require (
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v12.0.0+incompatible
-	sigs.k8s.io/controller-runtime v0.5.0
+	sigs.k8s.io/controller-runtime v0.4.0
 )
 
 // TODO: These replace statements need to be completely removed. These exist as the operator-sdk currently requires
