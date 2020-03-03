@@ -1,8 +1,8 @@
-# MongoDB Kubernetes Operator #
+# MongoDB Community Kubernetes Operator #
 
 <img align="left" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-This is a Kubernetes Operator (https://coreos.com/operators/) which deploys MongoDB into Kubernetes clusters.
+This is a Kubernetes Operator (https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
 
 This codebase is currently _pre-alpha_, and is not ready for use.
 
