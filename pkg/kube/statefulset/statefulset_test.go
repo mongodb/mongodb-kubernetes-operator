@@ -173,3 +173,33 @@ func TestBuildStatefulSet_SortedEnvVariables(t *testing.T) {
 	}
 	assert.Equal(t, expectedVars, sts.Spec.Template.Spec.Containers[0].Env)
 }
+
+// The following test functions mainly test that the functional options implementation is sane.
+func TestCreateVolumeMountReadOnly(t *testing.T) {
+	mount := CreateVolumeMount("this-volume-mount", "my-path")
+	assert.False(t, mount.ReadOnly)
+
+	// false is the default
+	mount = CreateVolumeMount("this-volume-mount", "my-path", WithReadOnly(false))
+	assert.False(t, mount.ReadOnly)
+
+	mount = CreateVolumeMount("this-volume-mount", "/my-path", WithReadOnly(true))
+	assert.True(t, mount.ReadOnly)
+}
+
+func TestCreateVolumeMountWithSubPath(t *testing.T) {
+	mount := CreateVolumeMount("this-volume-mount", "my-path")
+	assert.Equal(t, mount.SubPath, "")
+
+	mount = CreateVolumeMount("this-volume-mount", "my-path", WithSubPath(""))
+	assert.Equal(t, mount.SubPath, "")
+
+	mount = CreateVolumeMount("this-volume-mount", "my-path", WithSubPath("some-path"))
+	assert.Equal(t, mount.SubPath, "some-path")
+}
+
+func TestCreateVolumeMountWithMultipleOptions(t *testing.T) {
+	mount := CreateVolumeMount("this-volume-mount", "my-path", WithSubPath("our-subpath"), WithReadOnly(true))
+	assert.Equal(t, mount.SubPath, "our-subpath")
+	assert.True(t, mount.ReadOnly)
+}

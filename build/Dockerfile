@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM ubuntu:16.04
 
 ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
     USER_UID=1001 \
