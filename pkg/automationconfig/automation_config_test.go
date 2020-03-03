@@ -20,7 +20,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 
 	assert.Len(t, ac.Processes, 3)
 	assert.Equal(t, "1", ac.Version)
-	assert.Equal(t, true, false)
+
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)

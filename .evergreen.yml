@@ -21,16 +21,6 @@ functions:
       params:
         directory: mongodb-kubernetes-operator
 
-#  go_test:
-#    - command: subprocess.exec
-#      type: test
-#      params:
-#        add_to_path:
-#          - ${workdir}/bin
-#        working_dir: mongodb-kubernetes-operator
-#        command: "go test ./..."
-#        env:
-#          <<: *go_options
   go_test:
     - command: subprocess.exec
       type: test
@@ -123,8 +113,6 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        add_to_path:
-          - ${workdir}/bin
         include_expansions_in_env:
           - revision
           - quay_user_name
@@ -136,15 +124,13 @@ tasks:
   - name: unit_tests
     commands:
       - func: clone
-#      - func: setup_operator_sdk
-#      - func: generate_k8s
       - func: go_test
 
   - name: e2e_test
     commands:
       - func: clone
-      - func: setup_kubernetes_environment
       - func: build_and_push_operator
+      - func: setup_kubernetes_environment
       - func: deploy_operator
       #      - func: setup_operator_sdk
       #      - func: generate_k8s

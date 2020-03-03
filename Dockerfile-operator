@@ -1,0 +1,33 @@
+FROM golang AS builder
+
+ENV OEPRATOR_SDK_VERISON v0.15.2
+ENV GO111MODULE=on
+ENV GOFLAGS="-mod=vendor"
+ENV GOPATH ""
+
+RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OEPRATOR_SDK_VERISON}/operator-sdk-${OEPRATOR_SDK_VERISON}-x86_64-linux-gnu \
+    && mv operator-sdk-v0.15.2-x86_64-linux-gnu /bin/operator-sdk \
+    && chmod +x /bin/operator-sdk
+
+ADD . .
+
+RUN go mod vendor && /bin/operator-sdk generate k8s
+
+# TODO: This build takes longer than it needs to and can still be optimized
+RUN go build -o build/_output/bin/mongodb-kubernetes-operator -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
+    USER_UID=1001 \
+    USER_NAME=mongodb-kubernetes-operator
+
+# install operator binary
+COPY --from=builder /go/build/_output/bin/mongodb-kubernetes-operator ${OPERATOR}
+
+COPY --from=builder /go/build/bin /usr/local/bin
+RUN  /usr/local/bin/user_setup
+
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+
+USER ${USER_UID}
