@@ -2,9 +2,10 @@ package automationconfig
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBuildAutomationConfig(t *testing.T) {
@@ -19,7 +20,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 
 	assert.Len(t, ac.Processes, 3)
 	assert.Equal(t, "1", ac.Version)
-
+	assert.Equal(t, true, false)
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
