@@ -5,12 +5,12 @@ go 1.13
 require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/operator-framework/operator-sdk v0.15.1
-	github.com/spf13/cast v1.3.1
+	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
+	k8s.io/api v0.16.0
+	k8s.io/apimachinery v0.16.0
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.4.0
 )
