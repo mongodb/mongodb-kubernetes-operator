@@ -22,7 +22,7 @@ ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
     USER_UID=1001 \
     USER_NAME=mongodb-kubernetes-operator
 
-# install operator binary
+# copy the operator binary
 COPY --from=builder /go/build/_output/bin/mongodb-kubernetes-operator ${OPERATOR}
 
 COPY --from=builder /go/build/bin /usr/local/bin
