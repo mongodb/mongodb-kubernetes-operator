@@ -204,7 +204,6 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"agent/mongodb-agent",
 		"-cluster=/var/lib/automation/config/automation-config",
 		"-skipMongoStart",
-		"-noDownload",
 	}
 	agentContainer := corev1.Container{
 		Name:            agentName,
@@ -217,10 +216,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		`mkdir -p /var/lib/mongodb-mms-automation/mongod-4.0.6/bin && \
-cp /usr/bin/mongo* /var/lib/mongodb-mms-automation/mongod-4.0.6/bin && \
-while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; mongod -f /data/automation-mongod.conf --logpath /var/log/mongod.log`,
-		//while true; do if [ ! -f /data/automation-mongod.conf ]; then mongod --bind_ip_all --dbpath /data; else if [ ! -f /data/mongod.lock ]; then mongod -f /data/automation-mongod.conf --logpath /var/log/mongod.log; fi ; sleep 10; fi; done`,
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ;  sed -i 's|fork: "true"|fork: "false"|g' /data/automation-mongod.conf ; cat /data/automation-mongod.conf && mongod -f /data/automation-mongod.conf`,
 	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,

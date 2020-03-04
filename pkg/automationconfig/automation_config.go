@@ -52,15 +52,16 @@ type MongoDBUser struct {
 }
 
 type Process struct {
-	Name              string      `json:"name"`
-	HostName          string      `json:"hostname"`
-	Args26            Args26      `json:"args2_6"`
-	Replication       Replication `json:"replication"`
-	ProcessType       ProcessType `json:"processType"`
-	Version           string      `json:"version"`
-	AuthSchemaVersion int         `json:"authSchemaVersion"`
-	SystemLog         SystemLog   `json:"systemLog"`
-	WiredTiger        WiredTiger  `json:"wiredTiger"`
+	Name                        string      `json:"name"`
+	HostName                    string      `json:"hostname"`
+	Args26                      Args26      `json:"args2_6"`
+	Replication                 Replication `json:"replication"`
+	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType `json:"processType"`
+	Version                     string      `json:"version"`
+	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	SystemLog                   SystemLog   `json:"systemLog"`
+	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
 type SystemLog struct {
@@ -70,11 +71,12 @@ type SystemLog struct {
 
 func newProcess(name, hostName, version, replSetName string) Process {
 	return Process{
-		Name:        name,
-		HostName:    hostName,
-		Replication: Replication{ReplicaSetName: replSetName},
-		ProcessType: Mongod,
-		Version:     version,
+		Name:                        name,
+		HostName:                    hostName,
+		Replication:                 Replication{ReplicaSetName: replSetName},
+		FeatureCompatibilityVersion: "4.0",
+		ProcessType:                 Mongod,
+		Version:                     version,
 		SystemLog: SystemLog{
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
