@@ -1,12 +1,12 @@
 FROM golang
 
-ENV OEPRATOR_SDK_VERSION v0.15.2
+ENV OPERATOR_SDK_VERSION v0.15.2
 ENV GO111MODULE=on
 ENV GOFLAGS="-mod=vendor"
 ENV GOPATH ""
 
-RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OEPRATOR_SDK_VERSION}/operator-sdk-${OEPRATOR_SDK_VERSION}-x86_64-linux-gnu \
-    && mv operator-sdk-${OEPRATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
+RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
+    && mv operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
     && chmod +x /bin/operator-sdk
 
 ADD . .
