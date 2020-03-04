@@ -53,3 +53,13 @@ func buildResourceList(cpu, memory string) (corev1.ResourceList, error) {
 		resourceMemory: memoryQuantity,
 	}, nil
 }
+
+// buildDefaultStorageRequirements returns a corev1.ResourceList definition for storage requirements.
+// This is used by the StatefulSet PersistentVolumeClaimTemplate.
+// TODO: Allow to change these values.
+func BuildDefaultStorageRequirements() corev1.ResourceList {
+	g10, _ := resource.ParseQuantity("10G")
+	res := corev1.ResourceList{}
+	res[corev1.ResourceStorage] = g10
+	return res
+}

@@ -132,7 +132,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, mdb.Name)
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -140,7 +140,36 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		AddVersion(buildVersion406()).
 		Build()
+}
+
+// buildVersion406 returns a compatible version.
+func buildVersion406() automationconfig.MongoDbVersionConfig {
+	// TODO: For now we only have 2 versions, that match the versions used for testing.
+	return automationconfig.MongoDbVersionConfig{
+		Builds: []automationconfig.BuildConfig{
+			{
+				Architecture: "amd64",
+				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
+				Platform:     "linux",
+				Url:          "/linux/mongodb-linux-x86_64-rhel62-4.0.6.tgz",
+				Flavor:       "rhel",
+				MaxOsVersion: "8.0",
+				MinOsVersion: "7.0",
+			},
+			{
+				Architecture: "amd64",
+				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
+				Platform:     "linux",
+				Url:          "/linux/mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz",
+				Flavor:       "ubuntu",
+				MaxOsVersion: "17.04",
+				MinOsVersion: "16.04",
+			},
+		},
+		Name: "4.0.6",
+	}
 }
 
 func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
@@ -157,17 +186,31 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		Build(), nil
 }
 
+// buildContainers has some docs.
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
+	agentCommand := []string{
+		"agent/mongodb-agent",
+		"-cluster=/var/lib/automation/config/automation-config",
+		"-skipMongoStart",
+	}
 	agentContainer := corev1.Container{
-		Name:      agentName,
-		Image:     os.Getenv(agentImageEnvVariable),
-		Resources: resourcerequirements.Defaults(),
-		Command:   []string{"agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"},
+		Name:            agentName,
+		Image:           os.Getenv(agentImageEnvVariable),
+		ImagePullPolicy: corev1.PullAlways,
+		Resources:       resourcerequirements.Defaults(),
+		Command:         agentCommand,
 	}
 
+	// mongoDbCommand := []string{
+	// 	"/bin/sh",
+	// 	"-c",
+	// 	`while [ ! -f /var/lib/automation/config/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /var/lib/automation/config/mongodb-automation.conf`,
+	// }
+	mongoDbCommand := []string{"mongod"}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
+		Command:   mongoDbCommand,
 		Resources: resourcerequirements.Defaults(),
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
@@ -194,14 +237,69 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 	}
 
-	return statefulset.NewBuilder().
+	builder := statefulset.NewBuilder().
 		SetPodTemplateSpec(podSpecTemplate).
 		SetNamespace(mdb.Namespace).
 		SetName(mdb.Name).
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
-		SetMatchLabels(labels).
-		Build()
+		SetMatchLabels(labels)
+
+	// TODO: Add this section to architecture document.
+	// The design of the multi-container and the different volumes mounted to them is as follows:
+	// There will be three volumes mounted:
+	// 1) monogdb-config: This is where the automation-mongod.conf file will be written. This is backed
+	// by an EmptyDir
+	//    - R/w from the agent container
+	//    - R from the mongod container
+	// 2) automation-config: This is where the ConfigMap with the automation config will be written
+	//    - R from the agent container
+	//    - Not mounted on the DB container
+	// 3) data-volume: Where the mongodb data directory will be
+	//    - R/w from the mongod container
+	//    - Not mounted on the agent container
+	// Mount a writtable VolumeMount in /data on the database container.
+	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
+	builder.
+		AddVolumeMount(mongodbName, dataVolume).
+		AddVolumeClaimTemplates(dataVolumeClaim)
+
+	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
+	mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
+	// the agent writes the configuration file in /data
+	agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
+	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
+	mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
+	builder.
+		AddVolume(mongoDbConfigVolume).
+		AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
+		AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
+
+	// the automation config is only mounted, as read only, on the agent container
+	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
+	automationConfigVolumeMount := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", statefulset.WithReadOnly(true))
+	builder.
+		AddVolume(automationConfigVolume).
+		AddVolumeMount(agentName, automationConfigVolumeMount)
+
+	return builder.Build()
+}
+
+func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
+	dataVolume := statefulset.CreateVolumeMount("data-volume", "/data")
+	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "data-volume",
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: resourcerequirements.BuildDefaultStorageRequirements(),
+			},
+		},
+	}}
+
+	return dataVolume, dataVolumeClaim
 }
 
 func getDomain(service, namespace, clusterName string) string {

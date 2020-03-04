@@ -56,7 +56,6 @@ type Process struct {
 	HostName          string      `json:"hostname"`
 	Args26            Args26      `json:"args2_6"`
 	Replication       Replication `json:"replication"`
-	Storage           Storage     `json:"storage"`
 	ProcessType       ProcessType `json:"processType"`
 	Version           string      `json:"version"`
 	AuthSchemaVersion int         `json:"authSchemaVersion"`
@@ -71,17 +70,23 @@ type SystemLog struct {
 
 func newProcess(name, hostName, version, replSetName string) Process {
 	return Process{
-		Name:     name,
-		HostName: hostName,
-		Storage: Storage{
-			DBPath: DefaultMongoDBDataDir,
-		},
+		Name:        name,
+		HostName:    hostName,
 		Replication: Replication{ReplicaSetName: replSetName},
 		ProcessType: Mongod,
 		Version:     version,
 		SystemLog: SystemLog{
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+		},
+		AuthSchemaVersion: 5,
+		Args26: Args26{
+			Net: Net{
+				Port: 27017,
+			},
+			Storage: Storage{
+				DBPath: DefaultMongoDBDataDir,
+			},
 		},
 	}
 }
@@ -91,8 +96,7 @@ type Replication struct {
 }
 
 type Storage struct {
-	DBPath     string     `json:"dbPath"`
-	WiredTiger WiredTiger `json:"wiredTiger"`
+	DBPath string `json:"dbPath"`
 }
 
 type WiredTiger struct {
@@ -108,10 +112,18 @@ type LogRotate struct {
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 }
 
-type Security struct {
+type Args26 struct {
+	Net      Net      `json:"net"`
+	Security Security `json:"security"`
+	Storage  Storage  `json:"storage"`
 }
 
-type Args26 struct {
+type Net struct {
+	Port int `json:"port"`
+}
+
+type Security struct {
+	ClusterAuthMode string `json:"clusterAuthMode,omitempty"`
 }
 
 type ReplicaSet struct {
@@ -121,14 +133,14 @@ type ReplicaSet struct {
 }
 
 type ReplicaSetMember struct {
-	Id          string `json:"_id"`
+	Id          int    `json:"_id"`
 	Host        string `json:"host"`
 	Priority    int    `json:"priority"`
 	ArbiterOnly bool   `json:"arbiterOnly"`
 	Votes       int    `json:"votes"`
 }
 
-func newReplicaSetMember(p Process, id string) ReplicaSetMember {
+func newReplicaSetMember(p Process, id int) ReplicaSetMember {
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
@@ -139,8 +151,32 @@ func newReplicaSetMember(p Process, id string) ReplicaSetMember {
 }
 
 type AutomationConfig struct {
-	Version     string       `json:"version"`
+	Version     int          `json:"version"`
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
+
+	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
+	Options  Options                `json:"options"`
+}
+
+type Options struct {
+	DownloadBase string `json:"downloadBase"`
+}
+
+type BuildConfig struct {
+	Platform     string   `json:"platform"`
+	Url          string   `json:"url"`
+	GitVersion   string   `json:"gitVersion"`
+	Architecture string   `json:"architecture"`
+	Flavor       string   `json:"flavor"`
+	MinOsVersion string   `json:"minOsVersion"`
+	MaxOsVersion string   `json:"maxOsVersion"`
+	Modules      []string `json:"modules"`
+	// Note, that we are not including all "windows" parameters like "Win2008plus" as such distros won't be used
+}
+
+type MongoDbVersionConfig struct {
+	Name   string        `json:"name"`
+	Builds []BuildConfig `json:"builds"`
 }

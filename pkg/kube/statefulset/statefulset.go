@@ -35,14 +35,38 @@ func CreateVolumeFromSecret(name, sourceName string) corev1.Volume {
 	}
 }
 
-// CreateVolumeMount convenience function to build a VolumeMount.
-func CreateVolumeMount(name, path, subpath string) corev1.VolumeMount {
-	volumeMount := corev1.VolumeMount{
+func CreateVolumeFromEmptyDir(name string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			// No options EmptyDir means default storage medium and size.
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+}
+
+// CreateVolumeMount returns a corev1.VolumeMount with options.
+func CreateVolumeMount(name, path string, options ...func(*corev1.VolumeMount)) corev1.VolumeMount {
+	volumeMount := &corev1.VolumeMount{
 		Name:      name,
 		MountPath: path,
 	}
-	if subpath != "" {
-		volumeMount.SubPath = subpath
+	for _, option := range options {
+		option(volumeMount)
 	}
-	return volumeMount
+	return *volumeMount
+}
+
+// WithSubPath sets the SubPath for this VolumeMount
+func WithSubPath(subPath string) func(*corev1.VolumeMount) {
+	return func(v *corev1.VolumeMount) {
+		v.SubPath = subPath
+	}
+}
+
+// WithReadOnly sets the ReadOnly attribute of this VolumeMount
+func WithReadOnly(readonly bool) func(*corev1.VolumeMount) {
+	return func(v *corev1.VolumeMount) {
+		v.ReadOnly = readonly
+	}
 }

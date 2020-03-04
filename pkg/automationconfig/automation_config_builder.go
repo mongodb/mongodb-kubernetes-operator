@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
 )
 
 type Topology string
@@ -14,19 +13,23 @@ const (
 type Builder struct {
 	processes      []Process
 	replicaSets    []ReplicaSet
-	version        string
+	version        int
 	auth           Auth
 	members        int
 	domain         string
 	name           string
 	topology       Topology
 	mongodbVersion string
+
+	// MongoDB installable versions
+	versions []MongoDbVersionConfig
 }
 
 func NewBuilder() *Builder {
 	return &Builder{
 		processes:   []Process{},
 		replicaSets: []ReplicaSet{},
+		versions:    []MongoDbVersionConfig{},
 	}
 }
 
@@ -50,13 +53,23 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
+func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
+	for idx, _ := range version.Builds {
+		if version.Builds[idx].Modules == nil {
+			version.Builds[idx].Modules = make([]string, 0)
+		}
+	}
+	b.versions = append(b.versions, version)
+	return b
+}
+
 func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	b.mongodbVersion = version
 	return b
 }
 
 func (b *Builder) SetAutomationConfigVersion(version int) *Builder {
-	b.version = cast.ToString(version)
+	b.version = version
 	return b
 }
 
@@ -71,7 +84,7 @@ func (b *Builder) Build() AutomationConfig {
 	for i, h := range hostnames {
 		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name)
 		processes[i] = process
-		members[i] = newReplicaSetMember(process, cast.ToString(i))
+		members[i] = newReplicaSetMember(process, i)
 	}
 
 	return AutomationConfig{
@@ -84,7 +97,9 @@ func (b *Builder) Build() AutomationConfig {
 				ProtocolVersion: "1",
 			},
 		},
-		Auth: DisabledAuth(),
+		Versions: b.versions,
+		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Auth:     DisabledAuth(),
 	}
 }
 
