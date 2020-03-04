@@ -9,4 +9,9 @@ rm ${temp}
 
 kubectl apply -f test/replica_set_test.yaml
 
-while [[ $(kubectl get pods -l app=operator-sdk-test -o 'jsonpath={..status.conditions[?(@.type=="Completed")].status}') != "True" ]]; do echo "waiting for tests to complete..." && sleep 1; done
+kubectl wait --for=condition=ready deployment -l app=operator-sdk-test --timeout=300s
+echo "Tests have started running!"
+
+kubectl logs -f -l app=operator-sdk-test
+
+echo "Tests have completed running!"
