@@ -1,27 +1,25 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
+  name: my-replica-set-test
   labels:
     app: operator-sdk-test
-  name: operator-sdk-test
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: operator-sdk-test
   template:
     metadata:
       labels:
         app: operator-sdk-test
     spec:
-      serviceAccountName: mongodb-kubernetes-operator
       containers:
         - image: quay.io/chatton/operator-sdk-test
+          imagePullPolicy: Always
           name: operator-sdk-test
           volumeMounts:
-            - name: kube-config-volume
-              mountPath: /etc/config
+            - mountPath: /etc/config
+              name: kube-config-volume
+      restartPolicy: Never
+      serviceAccount: mongodb-kubernetes-operator
       volumes:
-        - name: kube-config-volume
-          configMap:
+        - configMap:
             name: kube-config
+          name: kube-config-volume

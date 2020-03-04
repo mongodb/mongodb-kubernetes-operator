@@ -15,13 +15,13 @@ rm ${temp}
 kubectl apply -f test/replica_set_test.yaml
 
 echo "Waiting for test application to be deployed"
-kubectl wait --for=condition=ready deployment -l app=operator-sdk-test --timeout=500s
-echo "Tests have started running!"
+kubectl wait --for=condition=Ready pod -l app=operator-sdk-test --timeout=500s
+echo "Test pod is ready to begin"
 
 # The test will have fully finished when tailing logs finishes
 kubectl logs -f -l app=operator-sdk-test
 
 result="$(kubectl get pod -l app=operator-sdk-test -o jsonpath='{ .items[0].status.phase }')"
-if [[ ${result} = "Completed" ]]; then
+if [[ ${result} != "Succeeded" ]]; then
   exit 1
 fi
