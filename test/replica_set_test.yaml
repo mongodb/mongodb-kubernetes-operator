@@ -1,25 +1,47 @@
-apiVersion: batch/v1
-kind: Job
+#apiVersion: batch/v1
+#kind: Job
+#metadata:
+#  name: my-replica-set-test
+#  labels:
+#    app: operator-sdk-test
+#spec:
+#  template:
+#    metadata:
+#      labels:
+#        app: operator-sdk-test
+#    spec:
+#      containers:
+#        - image: quay.io/chatton/operator-sdk-test
+#          imagePullPolicy: Always
+#          name: operator-sdk-test
+#          volumeMounts:
+#            - mountPath: /etc/config
+#              name: kube-config-volume
+#      restartPolicy: Never
+#      serviceAccount: mongodb-kubernetes-operator
+#      volumes:
+#        - configMap:
+#            name: kube-config
+#          name: kube-config-volume
+#
+
+apiVersion: v1
+kind: Pod
 metadata:
   name: my-replica-set-test
   labels:
     app: operator-sdk-test
 spec:
-  template:
-    metadata:
-      labels:
-        app: operator-sdk-test
-    spec:
-      containers:
-        - image: quay.io/chatton/operator-sdk-test
-          imagePullPolicy: Always
-          name: operator-sdk-test
-          volumeMounts:
-            - mountPath: /etc/config
-              name: kube-config-volume
-      restartPolicy: Never
-      serviceAccount: mongodb-kubernetes-operator
-      volumes:
-        - configMap:
-            name: kube-config
+  containers:
+    - image: quay.io/chatton/operator-sdk-test
+      imagePullPolicy: Always
+      name: operator-sdk-test
+      volumeMounts:
+        - mountPath: /etc/config
           name: kube-config-volume
+  restartPolicy: Never
+  serviceAccount: mongodb-kubernetes-operator
+  volumes:
+    - configMap:
+        name: kube-config
+      name: kube-config-volume
