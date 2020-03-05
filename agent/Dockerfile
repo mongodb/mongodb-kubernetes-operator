@@ -7,7 +7,7 @@ ARG agent_version=10.12.0.6191
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
-        curl libcurl3 \
+        curl \
         && apt-get upgrade -y -qq \
         && apt-get dist-upgrade -y -qq \
         && rm -rf /var/lib/apt/lists/*

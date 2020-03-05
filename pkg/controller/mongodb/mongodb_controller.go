@@ -153,9 +153,9 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 // future implementations and Service Discovery mechanisms we might implement.
 func buildService(mdb mdbv1.MongoDB) corev1.Service {
 	label := make(map[string]string)
-	label["app"] = mdb.Name + "-svc"
+	label["app"] = mdb.ServiceName()
 	return service.Builder().
-		SetName(mdb.Name + "-svc").
+		SetName(mdb.ServiceName()).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
 		SetServiceType(corev1.ServiceTypeClusterIP).
@@ -240,7 +240,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 // the corresponding stateful set
 func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	labels := map[string]string{
-		"app": mdb.Name + "-svc",
+		"app": mdb.ServiceName(),
 	}
 
 	containers, err := buildContainers(mdb)
@@ -264,45 +264,20 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
 		SetMatchLabels(labels).
-		SetServiceName(mdb.Name + "-svc")
+		SetServiceName(mdb.ServiceName())
 
 	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
-	// There will be three volumes mounted:
+	// There will be two volumes mounted:
 	// 1. "data-volume": Access to /data for both agent and mongod. Shared data is required because
 	//    agent writes automation-mongod.conf file in it and reads certain lock files from there.
-	// 2. "automation-data": This is /var/lib/mongodb-mms-automation directory where the mongod binaries
-	//    should exist. TODO: remove mongod container access to this volume.
-	// 3. "automation-config": This is /var/lib/automation/config that holds the automation config
+	// 2. "automation-config": This is /var/lib/automation/config that holds the automation config
 	//    mounted from a ConfigMap. This is only required in the Agent container.
 	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
 	builder.
 		AddVolumeMount(mongodbName, dataVolume).
 		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
-
-	automationData, automationDataClaim := buildAutomationVolumeClaim()
-	builder.
-		AddVolumeMount(mongodbName, automationData).
-		AddVolumeMount(agentName, automationData).
-		AddVolumeClaimTemplates(automationDataClaim)
-
-	//
-	// TODO: The following was the original idea for the /data mount, but then we realized that
-	// the mount needs to be shared, because the agent expects to read lock files, written by
-	// mongod. If I can figure out a way of setting those properties to another directory (not the
-	// /data), we can come back to this design.
-	//
-	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
-	// mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
-	// the agent writes the configuration file in /data
-	// agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
-	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
-	// mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
-	// builder.
-	// 	AddVolume(mongoDbConfigVolume).
-	// 	AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
-	// 	AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
 
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
@@ -319,23 +294,6 @@ func buildDataVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim)
 	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "data-volume",
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			Resources: corev1.ResourceRequirements{
-				Requests: resourcerequirements.BuildDefaultStorageRequirements(),
-			},
-		},
-	}}
-
-	return dataVolume, dataVolumeClaim
-}
-
-func buildAutomationVolumeClaim() (corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
-	dataVolume := statefulset.CreateVolumeMount("automation-data", "/var/lib/mongodb-mms-automation")
-	dataVolumeClaim := []corev1.PersistentVolumeClaim{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "automation-data",
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
