@@ -5,11 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +33,7 @@ func newTestMongoDB() mdbv1.MongoDB {
 		Spec: mdbv1.MongoDBSpec{
 			Members: 3,
 			Type:    "ReplicaSet",
-			Version: "4.2.0",
+			Version: "4.0.6",
 		},
 	}
 }
@@ -58,9 +62,26 @@ func TestReplicaSet(t *testing.T) {
 		t.Log("The ConfigMap contained the automation config")
 
 		err = waitForStatefulSetToBeReady(t, mdb.Name, time.Second*5, time.Minute*5)
-		assert.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		t.Logf("StatefulSet %s/%s successfully created!", mdb.Namespace, mdb.Name)
+
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Logf("Created mongo client!")
+
+		collection := mongoClient.Database("testing").Collection("numbers")
+		res, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("inserted ID: %+v", res.InsertedID)
 	})
 }
 

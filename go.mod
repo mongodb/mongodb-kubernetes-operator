@@ -7,6 +7,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.15.1
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stretchr/testify v1.4.0
+	go.mongodb.org/mongo-driver v1.3.1
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
 	k8s.io/api v0.16.0
