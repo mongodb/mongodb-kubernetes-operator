@@ -6,7 +6,7 @@ metadata:
     app: operator-sdk-test
 spec:
   containers:
-    - image: quay.io/chatton/operator-sdk-test #TODO: provide image built during that test run
+    - image: E2E_TEST_IMAGE
       imagePullPolicy: Always
       name: operator-sdk-test
       volumeMounts:

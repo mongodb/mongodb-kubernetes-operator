@@ -83,13 +83,13 @@ functions:
         add_to_path:
           - ${workdir}/bin
         working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/run_test.sh
         include_expansions_in_env:
           - revision
+        binary: scripts/ci/run_test.sh
         env:
           KUBECONFIG: ${workdir}/kube_config
 
-  build_and_push_operator:
+  build_and_push_image:
     - command: subprocess.exec
       type: setup
       params:
@@ -97,8 +97,10 @@ functions:
           - revision
           - quay_user_name
           - quay_password
+          - image
+          - dockerfile
         working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/build_and_push_operator.sh
+        binary: scripts/ci/build_and_push_image.sh
 
 tasks:
   - name: unit_tests
@@ -109,9 +111,16 @@ tasks:
   - name: e2e_test
     commands:
       - func: clone
-      - func: build_and_push_operator
+      - func: build_and_push_image
+        vars:
+         dockerfile: docker/Dockerfile.operator
+         image: quay.io/mongodb/community-operator-dev:${revision}
       - func: setup_kubernetes_environment
       - func: deploy_operator
+      - func: build_and_push_image
+        vars:
+         dockerfile: docker/Dockerfile.e2e
+         image: quay.io/mongodb/community-operator-e2e:${revision}
       - func: run_e2e_test
 
 buildvariants:
