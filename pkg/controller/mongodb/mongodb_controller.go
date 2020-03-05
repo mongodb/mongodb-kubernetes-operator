@@ -11,6 +11,7 @@ import (
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -97,13 +98,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// TODO: Read current automation config version from config map
-
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		log.Warnf("failed creating config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
-	// TODO: Create the service for the MDB resource
+	svc := buildService(mdb)
+	if err = r.client.CreateOrUpdate(&svc); err != nil {
+		log.Warnf("The service already exists... moving forward: %s", err)
+	}
 
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
@@ -141,6 +144,23 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetAutomationConfigVersion(1). // TODO: Correctly set the version
 		AddVersion(buildVersion406()).
+		Build()
+}
+
+// buildService creates a Service that will be used for the Replica Set StatefulSet
+// that allows all the members of the STS to see each other.
+// TODO: Make sure this Service is as minimal as posible, to not interfere with
+// future implementations and Service Discovery mechanisms we might implement.
+func buildService(mdb mdbv1.MongoDB) corev1.Service {
+	label := make(map[string]string)
+	label["app"] = mdb.ServiceName()
+	return service.Builder().
+		SetName(mdb.ServiceName()).
+		SetNamespace(mdb.Namespace).
+		SetSelector(label).
+		SetServiceType(corev1.ServiceTypeClusterIP).
+		SetClusterIP("None").
+		SetPort(27017).
 		Build()
 }
 
@@ -192,6 +212,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"agent/mongodb-agent",
 		"-cluster=/var/lib/automation/config/automation-config",
 		"-skipMongoStart",
+		"-noDaemonize",
 	}
 	agentContainer := corev1.Container{
 		Name:            agentName,
@@ -201,12 +222,11 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		Command:         agentCommand,
 	}
 
-	// mongoDbCommand := []string{
-	// 	"/bin/sh",
-	// 	"-c",
-	// 	`while [ ! -f /var/lib/automation/config/mongodb-automation.conf ]; do echo "[$(date)] waiting" ; sleep 10; done; mongod -f /var/lib/automation/config/mongodb-automation.conf`,
-	// }
-	mongoDbCommand := []string{"mongod"}
+	mongoDbCommand := []string{
+		"/bin/sh",
+		"-c",
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf`,
+	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
@@ -220,7 +240,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 // the corresponding stateful set
 func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	labels := map[string]string{
-		"dummy": "label",
+		"app": mdb.ServiceName(),
 	}
 
 	containers, err := buildContainers(mdb)
@@ -243,37 +263,21 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetName(mdb.Name).
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
-		SetMatchLabels(labels)
+		SetMatchLabels(labels).
+		SetServiceName(mdb.ServiceName())
 
 	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
-	// There will be three volumes mounted:
-	// 1) monogdb-config: This is where the automation-mongod.conf file will be written. This is backed
-	// by an EmptyDir
-	//    - R/w from the agent container
-	//    - R from the mongod container
-	// 2) automation-config: This is where the ConfigMap with the automation config will be written
-	//    - R from the agent container
-	//    - Not mounted on the DB container
-	// 3) data-volume: Where the mongodb data directory will be
-	//    - R/w from the mongod container
-	//    - Not mounted on the agent container
-	// Mount a writtable VolumeMount in /data on the database container.
+	// There will be two volumes mounted:
+	// 1. "data-volume": Access to /data for both agent and mongod. Shared data is required because
+	//    agent writes automation-mongod.conf file in it and reads certain lock files from there.
+	// 2. "automation-config": This is /var/lib/automation/config that holds the automation config
+	//    mounted from a ConfigMap. This is only required in the Agent container.
 	dataVolume, dataVolumeClaim := buildDataVolumeClaim()
 	builder.
 		AddVolumeMount(mongodbName, dataVolume).
+		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
-
-	// Where to write the mongodb configuration file as seen from the agent, and the mongodb.
-	mongoDbConfigVolume := statefulset.CreateVolumeFromEmptyDir("mongodb-config")
-	// the agent writes the configuration file in /data
-	agentMongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/data")
-	// the server reads the configuration file in /var/lib/automation/mongodb/mongodb-automation.conf
-	mongoDbConfigVolumeMount := statefulset.CreateVolumeMount("mongodb-config", "/var/lib/automation/mongodb", statefulset.WithReadOnly(true))
-	builder.
-		AddVolume(mongoDbConfigVolume).
-		AddVolumeMount(agentName, agentMongoDbConfigVolumeMount).
-		AddVolumeMount(mongodbName, mongoDbConfigVolumeMount)
 
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
