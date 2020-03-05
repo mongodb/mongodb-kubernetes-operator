@@ -1,7 +1,9 @@
 FROM ubuntu:16.04
 
-# https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/patches/5e5546822a60ed501f8c473d/automation-agent/dev/mongodb-mms-automation-agent-10.12.0.6178-1.rhel7_x86_64.tar.gz
-# ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/patches/5e5ecdd12fbabe2b8b2e9125/automation-agent/dev/mongodb-mms-automation-agent-10.12.0.6189-1.rhel7_x86_64.tar.gz
+# https://jira.mongodb.org/browse/CLOUDP-58488
+# Adds -noDaemonize option
+ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/patches/5e600292d6d80a561311da80/automation-agent/dev/mongodb-mms-automation-agent-10.12.0.6191-1.rhel7_x86_64.tar.gz
+ARG agent_version=10.12.0.6191
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
@@ -11,9 +13,9 @@ RUN apt-get -qq update \
         && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p agent \
-    && curl https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/patches/5e5ecdd12fbabe2b8b2e9125/automation-agent/dev/mongodb-mms-automation-agent-10.12.0.6189-1.rhel7_x86_64.tar.gz -o agent/mongodb-agent.tar.gz \
+    && curl $agent_image -o agent/mongodb-agent.tar.gz \
     && tar xfz agent/mongodb-agent.tar.gz \
-    && mv mongodb-mms-automation-agent-10.12.0.6189-1.rhel7_x86_64/mongodb-mms-automation-agent agent/mongodb-agent \
+    && mv mongodb-mms-automation-agent-$agent_version-1.rhel7_x86_64/mongodb-mms-automation-agent agent/mongodb-agent \
     && chmod +x agent/mongodb-agent \
     && mkdir -p /var/lib/automation/config \
     && chmod -R +r /var/lib/automation/config
