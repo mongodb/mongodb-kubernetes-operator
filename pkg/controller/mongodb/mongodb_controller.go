@@ -157,12 +157,9 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 	return service.Builder().
 		SetName(mdb.Name + "-svc").
 		SetNamespace(mdb.Namespace).
-		SetLabels(label).
 		SetSelector(label).
-		SetPublishNotReadyAddresses(true).
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
-		SetPortName("mongodb").
 		SetPort(27017).
 		Build()
 }
@@ -228,7 +225,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; cat /data/automation-mongod.conf && mongod -f /data/automation-mongod.conf ; sleep infinity`,
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf`,
 	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
