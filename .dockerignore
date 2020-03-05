@@ -1,2 +1,8 @@
+.github
+.idea
+agent
+build/_output
+zz_*
+scripts
 vendor/
 .git/

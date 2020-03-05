@@ -2,12 +2,14 @@ package client
 
 import (
 	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -94,5 +96,15 @@ func (m *MockedManager) GetRESTMapper() meta.RESTMapper {
 }
 
 func (m *MockedManager) GetWebhookServer() *webhook.Server {
+	return nil
+}
+
+// AddHealthzCheck allows you to add Healthz checker
+func (m *MockedManager) AddHealthzCheck(name string, check healthz.Checker) error {
+	return nil
+}
+
+// AddReadyzCheck allows you to add Readyz checker
+func (m *MockedManager) AddReadyzCheck(name string, check healthz.Checker) error {
 	return nil
 }

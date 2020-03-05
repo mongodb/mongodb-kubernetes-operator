@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	automationConfigKey   = "automation-config"
+	AutomationConfigKey   = "automation-config"
 	agentName             = "mongodb-agent"
 	mongodbName           = "mongod"
 	agentImageEnvVariable = "AGENT_IMAGE"
@@ -202,7 +202,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 	return configmap.Builder().
 		SetName(mdb.ConfigMapName()).
 		SetNamespace(mdb.Namespace).
-		SetField(automationConfigKey, string(acBytes)).
+		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
 }
 

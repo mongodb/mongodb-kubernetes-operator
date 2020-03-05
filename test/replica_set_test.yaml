@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-replica-set-test
+  labels:
+    app: operator-sdk-test
+spec:
+  containers:
+    - image: quay.io/chatton/operator-sdk-test #TODO: provide image built during that test run
+      imagePullPolicy: Always
+      name: operator-sdk-test
+      volumeMounts:
+        - mountPath: /etc/config
+          name: kube-config-volume
+  restartPolicy: Never
+  serviceAccount: mongodb-kubernetes-operator
+  volumes:
+    - configMap:
+        name: kube-config
+      name: kube-config-volume
