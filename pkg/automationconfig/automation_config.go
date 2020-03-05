@@ -55,7 +55,6 @@ type Process struct {
 	Name                        string      `json:"name"`
 	HostName                    string      `json:"hostname"`
 	Args26                      Args26      `json:"args2_6"`
-	Replication                 Replication `json:"replication"`
 	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
@@ -73,7 +72,6 @@ func newProcess(name, hostName, version, replSetName string) Process {
 	return Process{
 		Name:                        name,
 		HostName:                    hostName,
-		Replication:                 Replication{ReplicaSetName: replSetName},
 		FeatureCompatibilityVersion: "4.0",
 		ProcessType:                 Mongod,
 		Version:                     version,
@@ -89,6 +87,7 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Storage: Storage{
 				DBPath: DefaultMongoDBDataDir,
 			},
+			Replication: Replication{ReplicaSetName: replSetName},
 		},
 	}
 }
@@ -115,9 +114,10 @@ type LogRotate struct {
 }
 
 type Args26 struct {
-	Net      Net      `json:"net"`
-	Security Security `json:"security"`
-	Storage  Storage  `json:"storage"`
+	Net         Net         `json:"net"`
+	Security    Security    `json:"security"`
+	Storage     Storage     `json:"storage"`
+	Replication Replication `json:"replication"`
 }
 
 type Net struct {

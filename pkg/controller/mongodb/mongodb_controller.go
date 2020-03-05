@@ -216,7 +216,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ;  sed -i 's|fork: "true"|fork: "false"|g' /data/automation-mongod.conf ; cat /data/automation-mongod.conf && mongod -f /data/automation-mongod.conf`,
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ;  sed -i 's|fork: "true"|fork: "false"|g' /data/automation-mongod.conf ; cat /data/automation-mongod.conf && mongod -f /data/automation-mongod.conf ; sleep infinity`,
 	}
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
