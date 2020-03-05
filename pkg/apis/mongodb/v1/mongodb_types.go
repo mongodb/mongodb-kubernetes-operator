@@ -2,6 +2,8 @@ package v1
 
 import (
 	"fmt"
+	"strings"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +41,16 @@ type MongoDB struct {
 
 	Spec   MongoDBSpec   `json:"spec,omitempty"`
 	Status MongoDBStatus `json:"status,omitempty"`
+}
+
+// MongoURI returns a mongo uri which can be used to connect to this deployment
+func (m MongoDB) MongoURI() string {
+	members := make([]string, m.Spec.Members)
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	for i := 0; i < m.Spec.Members; i++ {
+		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+	}
+	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
 }
 
 // ServiceName returns the name of the Service that should be created for
