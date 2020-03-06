@@ -10,7 +10,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/scripts/ci/e2e/crds"
+	"github.com/mongodb/mongodb-kubernetes-operator/cmd/runner/crds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -63,12 +63,14 @@ func runCmd(f flags) error {
 	if err != nil {
 		return fmt.Errorf("error retreiving kubernetes config: %v", err)
 	}
+	fmt.Println("created config!")
 
 	c, err := client.New(config, client.Options{})
 
 	if err != nil {
 		return fmt.Errorf("error creating kubernetes client %v", err)
 	}
+	fmt.Println("created client!")
 
 	if err := crds.EnsureCreation(config, f.deployDir); err != nil {
 		return fmt.Errorf("error ensuring CRDs: %v", err)
