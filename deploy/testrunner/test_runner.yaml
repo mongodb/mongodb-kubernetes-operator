@@ -9,20 +9,11 @@ spec:
     - image: quay.io/chatton/test
       imagePullPolicy: Always
       name: test-runner
-      volumeMounts:
-        - mountPath: /etc/config
-          name: kube-config-volume
       command:
         - ./runner
-        - --kubeconfig
-        - /etc/config/kubeconfig
-        - --namespace
-        - default
         - --operatorImage
         - quay.io/chatton/mongodb-kubernetes-operator
+        - --testImage
+        - quay.io/chatton/e2e
   restartPolicy: Never
-  serviceAccount: mongodb-kubernetes-operator
-  volumes:
-    - configMap:
-        name: kube-config
-      name: kube-config-volume
+  serviceAccount: test-runner
