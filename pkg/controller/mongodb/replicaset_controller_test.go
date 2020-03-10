@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"os"
+	"reflect"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -68,6 +69,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, agentName, agentContainer.Name)
 	assert.Equal(t, os.Getenv(agentImageEnvVariable), agentContainer.Image)
+	assert.True(t, reflect.DeepEqual(defaultReadinessProbe(), agentContainer.ReadinessProbe))
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, mongodbName, mongodbContainer.Name)

@@ -27,10 +27,12 @@ import (
 )
 
 const (
-	AutomationConfigKey   = "automation-config"
-	agentName             = "mongodb-agent"
-	mongodbName           = "mongod"
-	agentImageEnvVariable = "AGENT_IMAGE"
+	AutomationConfigKey       = "automation-config"
+	agentName                 = "mongodb-agent"
+	mongodbName               = "mongod"
+	agentImageEnvVariable     = "AGENT_IMAGE"
+	readinessProbePath        = "/agent/readinessprobe"
+	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -213,6 +215,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"-cluster=/var/lib/automation/config/automation-config",
 		"-skipMongoStart",
 		"-noDaemonize",
+		fmt.Sprintf("-healthCheckFilePath=%s", agentHealthStatusFilePath),
 	}
 	agentContainer := corev1.Container{
 		Name:            agentName,
@@ -220,6 +223,7 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       resourcerequirements.Defaults(),
 		Command:         agentCommand,
+		ReadinessProbe:  defaultReadinessProbe(),
 	}
 
 	mongoDbCommand := []string{
@@ -234,6 +238,19 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		Resources: resourcerequirements.Defaults(),
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
+}
+
+func defaultReadinessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{Command: []string{readinessProbePath}},
+		},
+		// Setting the failure threshold to quite big value as the agent may spend some time to reach the goal
+		FailureThreshold: 240,
+		// The agent may be not on time to write the status file right after the container is created - we need to wait
+		// for some time
+		InitialDelaySeconds: 5,
+	}
 }
 
 // buildStatefulSet takes a MongoDB resource and converts it into
