@@ -7,24 +7,32 @@ import (
 	"io"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	typedCorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// TailLogs will follow the logs of the provided pod to the given io.Writer until the pod has
-// been terminated or has completed.
-func TailLogs(pod corev1.Pod, writer io.Writer, corev1Interface typedCorev1.CoreV1Interface) error {
+type Streamer interface {
+	Stream() (io.ReadCloser, error)
+}
 
-	// CoreV1Interface is required as the newer k8sclient.Client has no mechanism for accessing
-	// pod logs currently.
-	podLogs, err := corev1Interface.
+// CoreV1FollowStreamer returns a Streamer that will stream the logs to
+// the given pod
+func CoreV1FollowStreamer(pod corev1.Pod, corev1Interface typedCorev1.CoreV1Interface) Streamer {
+	return corev1Interface.
 		Pods(pod.Namespace).
 		GetLogs(pod.Name, &corev1.PodLogOptions{
 			Follow: true,
-		}).Stream()
+		})
+}
+
+// GetLogs will follow the logs of the provided pod to the given io.Writer until the pod has
+// been terminated or has completed.
+func GetLogs(writer io.Writer, streamer Streamer) error {
+	podLogs, err := streamer.Stream()
 
 	if err != nil {
 		return fmt.Errorf("error in opening stream: %v", err)
@@ -46,11 +54,25 @@ func TailLogs(pod corev1.Pod, writer io.Writer, corev1Interface typedCorev1.Core
 	return nil
 }
 
+type Poller interface {
+	Poll(interval, timeout time.Duration, condition wait.ConditionFunc) error
+}
+
+type waitPoller struct{}
+
+func (p waitPoller) Poll(interval, timeout time.Duration, condition wait.ConditionFunc) error {
+	return wait.Poll(interval, timeout, condition)
+}
+
 // WaitForPhase waits for a pdo with the given namespacedName to exist, checking every interval with and using
 // the provided timeout. The pod itself is returned and any error that occurred.
-func WaitForPhase(c k8sClient.Client, namespacedName types.NamespacedName, interval, timeout time.Duration, podPhase corev1.PodPhase) (corev1.Pod, error) {
+func WaitForPhase(c client.Client, namespacedName types.NamespacedName, interval, timeout time.Duration, podPhase corev1.PodPhase) (corev1.Pod, error) {
+	return waitForPhase(c, namespacedName, interval, timeout, podPhase, waitPoller{})
+}
+
+func waitForPhase(c client.Client, namespacedName types.NamespacedName, interval, timeout time.Duration, podPhase corev1.PodPhase, poller Poller) (corev1.Pod, error) {
 	pod := corev1.Pod{}
-	err := wait.Poll(interval, timeout, func() (done bool, err error) {
+	err := poller.Poll(interval, timeout, func() (done bool, err error) {
 		if err := c.Get(context.TODO(), namespacedName, &pod); err != nil {
 			return false, err
 		}

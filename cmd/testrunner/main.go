@@ -10,6 +10,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
 	"k8s.io/client-go/kubernetes"
 
@@ -23,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
 
@@ -62,10 +64,12 @@ func runCmd(f flags) error {
 		return fmt.Errorf("error retreiving kubernetes config: %v", err)
 	}
 
-	c, err := client.New(config, client.Options{})
+	k8s, err := k8sClient.New(config, k8sClient.Options{})
 	if err != nil {
 		return fmt.Errorf("error creating kubernetes client %v", err)
 	}
+
+	c := client.NewClient(k8s)
 
 	if err := ensureNamespace(f.namespace, c); err != nil {
 		return fmt.Errorf("error ensuring namespace: %v", err)
@@ -117,7 +121,7 @@ func tailPodLogs(config *rest.Config, testPod corev1.Pod) error {
 		return fmt.Errorf("error getting clientset: %v", err)
 	}
 
-	if err := pod.TailLogs(testPod, os.Stdout, clientset.CoreV1()); err != nil {
+	if err := pod.GetLogs(os.Stdout, pod.CoreV1FollowStreamer(testPod, clientset.CoreV1())); err != nil {
 		return fmt.Errorf("error tailing logs: %+v", err)
 	}
 	return nil
