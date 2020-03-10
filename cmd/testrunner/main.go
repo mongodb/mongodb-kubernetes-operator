@@ -1,16 +1,18 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
 	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
+	"os"
 	"path"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/cmd/runner/crds"
+	"github.com/mongodb/mongodb-kubernetes-operator/cmd/testrunner/crds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -19,8 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -87,30 +87,43 @@ func runCmd(f flags) error {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 
-	pod := corev1.Pod{}
-	err = wait.Poll(time.Second*5, time.Minute, func() (done bool, err error) {
-		if err := c.Get(context.TODO(), types.NamespacedName{Name: "my-replica-set-test", Namespace: "default"}, &pod); err != nil {
-			return false, err
-		}
-		return true, nil
-	})
-
+	testPod, err := pod.WaitForExistence(c, types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}, time.Second*5, time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for test pod to be created: %v", err)
 	}
 
-	if err := tailPodLogs(pod); err != nil {
-		return fmt.Errorf("error tailing logs: %+v", err)
+	if err := tailPodLogs(config, testPod); err != nil {
+		return err
 	}
 
-	if err := c.Get(context.TODO(), types.NamespacedName{Name: "my-replica-set-test", Namespace: "default"}, &pod); err != nil {
-		return fmt.Errorf("error getting pod: %+v", err)
-	}
-
-	if pod.Status.Phase != corev1.PodSucceeded {
-		return fmt.Errorf("test pod was not successful, spec.Phase=%s", pod.Status.Phase)
+	if err := testPodPassed(c, types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}); err != nil {
+		return err
 	}
 	fmt.Println("Test passed!")
+
+	return nil
+}
+
+func testPodPassed(c client.Client, nsName types.NamespacedName) error {
+	testPod := corev1.Pod{}
+	if err := c.Get(context.TODO(), nsName, &testPod); err != nil {
+		return fmt.Errorf("error getting pod: %+v", err)
+	}
+	if testPod.Status.Phase != corev1.PodSucceeded {
+		return fmt.Errorf("test pod was not successful, spec.Phase=%s", testPod.Status.Phase)
+	}
+	return nil
+}
+
+func tailPodLogs(config *rest.Config, testPod corev1.Pod) error {
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("error getting clientset: %v", err)
+	}
+
+	if err := pod.TailLogs(testPod, os.Stdout, clientset.CoreV1()); err != nil {
+		return fmt.Errorf("error tailing logs: %+v", err)
+	}
 	return nil
 }
 
@@ -218,39 +231,6 @@ func buildOperatorDeployment(yamlFilePath string, f flags, c client.Client) erro
 	dep.Spec.Template.Spec.Containers[0].Image = f.operatorImage
 
 	return createOrUpdate(c, &dep)
-}
-
-func tailPodLogs(pod corev1.Pod) error {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return fmt.Errorf("error in getting config")
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return fmt.Errorf("error in getting access to K8S")
-	}
-	podLogs, err := clientset.CoreV1().
-		Pods(pod.Namespace).
-		GetLogs(pod.Name, &corev1.PodLogOptions{
-			Follow: true,
-		}).Stream()
-
-	if err != nil {
-		return fmt.Errorf("error in opening stream: %v", err)
-	}
-
-	defer podLogs.Close()
-
-	sc := bufio.NewScanner(podLogs)
-	for sc.Scan() {
-		fmt.Println(sc.Text())
-	}
-
-	if sc.Err() != nil {
-		return fmt.Errorf("error from scanner: %+v", sc.Err())
-	}
-	return nil
 }
 
 func buildTestPod(yamlFilePath string, f flags, c client.Client) error {

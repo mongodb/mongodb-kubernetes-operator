@@ -16,7 +16,7 @@ ADD . .
 
 RUN go mod vendor && /bin/operator-sdk generate k8s
 
-RUN go build cmd/runner/main.go
+RUN go build cmd/testrunner/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
