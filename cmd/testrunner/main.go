@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes"
 	"os"
 	"path"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/cmd/testrunner/crds"
 	appsv1 "k8s.io/api/apps/v1"
@@ -87,31 +88,26 @@ func runCmd(f flags) error {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 
-	testPod, err := pod.WaitForExistence(c, types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}, time.Second*5, time.Minute)
+	// TODO: configurable
+	nsName := types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}
+
+	fmt.Println("Waiting for pod to be ready...")
+	testPod, err := pod.WaitForPhase(c, nsName, time.Second*5, time.Minute*5, corev1.PodRunning)
 	if err != nil {
 		return fmt.Errorf("error waiting for test pod to be created: %v", err)
 	}
 
+	fmt.Println("Tailing pod logs...")
 	if err := tailPodLogs(config, testPod); err != nil {
 		return err
 	}
 
-	if err := testPodPassed(c, types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}); err != nil {
-		return err
+	_, err = pod.WaitForPhase(c, nsName, time.Second*5, time.Minute, corev1.PodSucceeded)
+	if err != nil {
+		return fmt.Errorf("error waiting for test to finish: %v", err)
 	}
+
 	fmt.Println("Test passed!")
-
-	return nil
-}
-
-func testPodPassed(c client.Client, nsName types.NamespacedName) error {
-	testPod := corev1.Pod{}
-	if err := c.Get(context.TODO(), nsName, &testPod); err != nil {
-		return fmt.Errorf("error getting pod: %+v", err)
-	}
-	if testPod.Status.Phase != corev1.PodSucceeded {
-		return fmt.Errorf("test pod was not successful, spec.Phase=%s", testPod.Status.Phase)
-	}
 	return nil
 }
 
@@ -244,6 +240,13 @@ func buildTestPod(yamlFilePath string, f flags, c client.Client) error {
 	}
 	testPod.Namespace = f.namespace
 	testPod.Spec.Containers[0].Image = f.testImage
+	//if err := c.Create(context.TODO(), &testPod); err != nil {
+	//	if apierrors.IsAlreadyExists(err) {
+	//		fmt.Println("Ignoring ISALREADYEXISTS err")
+	//		return nil
+	//	}
+	//}
+	//return nil
 	return createOrUpdate(c, &testPod)
 }
 

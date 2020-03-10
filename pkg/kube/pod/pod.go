@@ -34,7 +34,7 @@ func TailLogs(pod corev1.Pod, writer io.Writer, corev1Interface typedCorev1.Core
 
 	sc := bufio.NewScanner(podLogs)
 	for sc.Scan() {
-		if _, err := fmt.Fprint(writer, sc.Text()); err != nil {
+		if _, err := fmt.Fprintln(writer, sc.Text()); err != nil {
 			return err
 		}
 	}
@@ -46,15 +46,15 @@ func TailLogs(pod corev1.Pod, writer io.Writer, corev1Interface typedCorev1.Core
 	return nil
 }
 
-// WaitForExistence waits for a pdo with the given namespacedName to exist, checking every interval with and using
+// WaitForPhase waits for a pdo with the given namespacedName to exist, checking every interval with and using
 // the provided timeout. The pod itself is returned and any error that occurred.
-func WaitForExistence(c k8sClient.Client, namespacedName types.NamespacedName, interval, timeout time.Duration) (corev1.Pod, error) {
+func WaitForPhase(c k8sClient.Client, namespacedName types.NamespacedName, interval, timeout time.Duration, podPhase corev1.PodPhase) (corev1.Pod, error) {
 	pod := corev1.Pod{}
 	err := wait.Poll(interval, timeout, func() (done bool, err error) {
 		if err := c.Get(context.TODO(), namespacedName, &pod); err != nil {
 			return false, err
 		}
-		return true, nil
+		return pod.Status.Phase == podPhase, nil
 	})
 	return pod, err
 }
