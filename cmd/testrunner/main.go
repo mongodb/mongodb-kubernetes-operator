@@ -84,7 +84,7 @@ func runCmd(f flags) error {
 	fmt.Println("Successfully deployed the operator")
 
 	testToRun := "test/replica_set_test.yaml" // TODO: this should be configurable
-	if err := buildTestPod(testToRun, f, c); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage)); err != nil {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 
@@ -144,110 +144,93 @@ func ensureNamespace(ns string, client client.Client) error {
 }
 
 func deployOperator(f flags, c client.Client) error {
-	if err := buildOperatorRole(path.Join(f.deployDir, "role.yaml"), f.namespace, c); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(f.namespace)); err != nil {
 		return fmt.Errorf("error building operator role: %v", err)
 	}
 	fmt.Println("Successfully created the operator Role")
-	if err := buildOperatorServiceAccount(path.Join(f.deployDir, "service_account.yaml"), f.namespace, c); err != nil {
+
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(f.namespace)); err != nil {
 		return fmt.Errorf("error building operator service account: %v", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
-	if err := buildOperatorRoleBinding(path.Join(f.deployDir, "role_binding.yaml"), f.namespace, c); err != nil {
+
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(f.namespace)); err != nil {
 		return fmt.Errorf("error building operator role binding: %v", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildOperatorDeployment(path.Join(f.deployDir, "operator.yaml"), f, c); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"), &appsv1.Deployment{}, withNamespace(f.namespace), withOperatorImage(f.operatorImage)); err != nil {
 		return fmt.Errorf("error building operator deployment: %v", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
 }
 
-func buildOperatorRoleBinding(yamlFilePath, namespace string, c client.Client) error {
-	data, err := ioutil.ReadFile(yamlFilePath)
-	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
+// withNamespace returns a function which will assign the namespace
+// of the underlying type to the value specified. We can
+// add new types here as required.
+func withNamespace(ns string) func(runtime.Object) {
+	return func(obj runtime.Object) {
+		switch v := obj.(type) {
+		case *rbacv1.Role:
+			v.Namespace = ns
+		case *corev1.ServiceAccount:
+			v.Namespace = ns
+		case *rbacv1.RoleBinding:
+			v.Namespace = ns
+		case *corev1.Pod:
+			v.Namespace = ns
+		}
 	}
-	roleBinding := rbacv1.RoleBinding{}
-	if err := marshalRuntimeObjectFromYAMLBytes(data, &roleBinding); err != nil {
-		return fmt.Errorf("error converting yaml bytes to role binding: %v", err)
-	}
-	roleBinding.Namespace = namespace
-
-	return createOrUpdate(c, &roleBinding)
 }
 
-func buildOperatorServiceAccount(yamlFilePath, namespace string, c client.Client) error {
+// withTestImage assumes that the type being created is a corev1.Pod
+// and will have no effect when used with other types
+func withTestImage(image string) func(obj runtime.Object) {
+	return func(obj runtime.Object) {
+		if testPod, ok := obj.(*corev1.Pod); ok {
+			testPod.Spec.Containers[0].Image = image
+		}
+	}
+}
+
+// withOperatorImage assumes that the underlying type is an appsv1.Deployment
+// which has the operator container as the first container. There will be
+// no effect when used with a non-deployment type
+func withOperatorImage(image string) func(runtime.Object) {
+	return func(obj runtime.Object) {
+		if dep, ok := obj.(*appsv1.Deployment); ok {
+			dep.Spec.Template.Spec.Containers[0].Image = image
+		}
+	}
+}
+
+// buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
+// provided will be applied before creation.
+func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return fmt.Errorf("error reading file: %v", err)
 	}
-	serviceAccount := corev1.ServiceAccount{}
-	if err := marshalRuntimeObjectFromYAMLBytes(data, &serviceAccount); err != nil {
+
+	if err := marshalRuntimeObjectFromYAMLBytes(data, obj); err != nil {
 		return fmt.Errorf("error converting yaml bytes to service account: %v", err)
 	}
 
-	serviceAccount.Namespace = namespace
+	for _, opt := range options {
+		opt(obj)
+	}
 
-	return createOrUpdate(c, &serviceAccount)
+	return createOrUpdate(c, obj)
 }
 
+// marshalRuntimeObjectFromYAMLBytes accepts the bytes of a yaml resource
+// and unmarshals them into the provided runtime Object
 func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	jsonBytes, err := yaml.YAMLToJSON(bytes)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(jsonBytes, &obj)
-}
-
-func buildOperatorRole(yamlFilePath, namespace string, c client.Client) error {
-	data, err := ioutil.ReadFile(yamlFilePath)
-	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
-	}
-	role := rbacv1.Role{}
-	if err := marshalRuntimeObjectFromYAMLBytes(data, &role); err != nil {
-		return fmt.Errorf("error converting yaml bytes to role: %v", err)
-	}
-	role.Namespace = namespace
-
-	return createOrUpdate(c, &role)
-}
-
-func buildOperatorDeployment(yamlFilePath string, f flags, c client.Client) error {
-	data, err := ioutil.ReadFile(yamlFilePath)
-	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
-	}
-	dep := appsv1.Deployment{}
-	if err := marshalRuntimeObjectFromYAMLBytes(data, &dep); err != nil {
-		return fmt.Errorf("error converting yaml bytes to deployment: %v", err)
-	}
-	dep.Namespace = f.namespace
-	dep.Spec.Template.Spec.Containers[0].Image = f.operatorImage
-
-	return createOrUpdate(c, &dep)
-}
-
-func buildTestPod(yamlFilePath string, f flags, c client.Client) error {
-	data, err := ioutil.ReadFile(yamlFilePath)
-	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
-	}
-	testPod := corev1.Pod{}
-	if err := marshalRuntimeObjectFromYAMLBytes(data, &testPod); err != nil {
-		return fmt.Errorf("error converting yaml bytes to pod: %v", err)
-	}
-	testPod.Namespace = f.namespace
-	testPod.Spec.Containers[0].Image = f.testImage
-	//if err := c.Create(context.TODO(), &testPod); err != nil {
-	//	if apierrors.IsAlreadyExists(err) {
-	//		fmt.Println("Ignoring ISALREADYEXISTS err")
-	//		return nil
-	//	}
-	//}
-	//return nil
-	return createOrUpdate(c, &testPod)
 }
 
 func createOrUpdate(c client.Client, obj runtime.Object) error {

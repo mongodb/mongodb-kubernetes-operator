@@ -13,6 +13,10 @@ kubectl create cm kube-config --from-literal=kubeconfig="${contents}"
 rm ${temp}
 
 
+# create roles and service account required for the test runner
+kubectl apply -f deploy/testrunner
+
+# start the test runner pod
 kubectl run test-runner --generator=run-pod/v1 \
   --restart=Never \
   --image=quay.io/chatton/test-runner \
