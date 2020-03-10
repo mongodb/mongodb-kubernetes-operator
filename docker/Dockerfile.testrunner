@@ -20,9 +20,7 @@ RUN go build cmd/testrunner/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
-# copy the operator binary
+# copy the testrunner binary
 COPY --from=builder /go/main runner
-
-ADD . .
 
 CMD ["./runner"]
