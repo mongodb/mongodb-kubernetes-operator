@@ -85,6 +85,7 @@ functions:
         working_dir: mongodb-kubernetes-operator
         include_expansions_in_env:
           - version_id
+          - test
         binary: scripts/ci/run_test.sh
         env:
           KUBECONFIG: ${workdir}/kube_config
@@ -108,7 +109,7 @@ tasks:
       - func: clone
       - func: go_test
 
-  - name: e2e_test
+  - name: e2e_test_replica_set
     commands:
       - func: clone
       - func: build_and_push_image
@@ -122,6 +123,26 @@ tasks:
          dockerfile: docker/Dockerfile.e2e
          image: quay.io/mongodb/community-operator-e2e:${version_id}
       - func: run_e2e_test
+        vars:
+          test: replica_set
+
+  - name: e2e_test_replica_set_readiness_probe
+    commands:
+      - func: clone
+      - func: build_and_push_image
+        vars:
+          dockerfile: docker/Dockerfile.operator
+          image: quay.io/mongodb/community-operator-dev:${version_id}
+      - func: setup_kubernetes_environment
+      - func: deploy_operator
+      - func: build_and_push_image
+        vars:
+          dockerfile: docker/Dockerfile.e2e
+          image: quay.io/mongodb/community-operator-e2e:${version_id}
+      - func: run_e2e_test
+        vars:
+          test: replica_set_readiness_probe
+
 
 buildvariants:
   - name: go_unit_tests
@@ -136,4 +157,5 @@ buildvariants:
     run_on:
       - ubuntu1604-build
     tasks:
-      - name: e2e_test
+      - name: e2e_test_replica_set
+      - name: e2e_test_replica_set_readiness_probe
