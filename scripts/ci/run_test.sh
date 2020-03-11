@@ -12,16 +12,16 @@ contents="$(cat ${temp})"
 kubectl create cm kube-config --from-literal=kubeconfig="${contents}"
 rm ${temp}
 
-
 # create roles and service account required for the test runner
 kubectl apply -f deploy/testrunner
 
 # start the test runner pod
 kubectl run test-runner --generator=run-pod/v1 \
   --restart=Never \
+  --image-pull-policy=Always \
   --image=quay.io/chatton/test-runner \
   --serviceaccount=test-runner \
-  --command -- ./runner  --operatorImage quay.io/mongodb/community-operator-dev:${version_id} --testImage quay.io/mongodb/community-operator-e2e:${version_id}
+  --command -- ./runner  --operatorImage quay.io/mongodb/community-operator-dev:${version_id} --testImage quay.io/mongodb/community-operator-e2e:${version_id} --test=${test}
 
 
 echo "Test pod is ready to begin"

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-replica-set-test
+  name: operator-sdk-test
   labels:
     app: operator-sdk-test
 spec:

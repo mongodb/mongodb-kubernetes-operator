@@ -220,13 +220,15 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		"-healthCheckFilePath=" + agentHealthStatusFilePath,
 		"-serveStatusPort=5000",
 	}
+
+	readinessProbe := defaultReadinessProbe()
 	agentContainer := corev1.Container{
 		Name:            agentName,
 		Image:           os.Getenv(agentImageEnvVariable),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       resourcerequirements.Defaults(),
 		Command:         agentCommand,
-		ReadinessProbe:  defaultReadinessProbe(),
+		ReadinessProbe:  &readinessProbe,
 	}
 
 	mongoDbCommand := []string{
@@ -243,8 +245,8 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
 }
 
-func defaultReadinessProbe() *corev1.Probe {
-	return &corev1.Probe{
+func defaultReadinessProbe() corev1.Probe {
+	return corev1.Probe{
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{Command: []string{readinessProbePath}},
 		},

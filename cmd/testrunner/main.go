@@ -34,14 +34,16 @@ type flags struct {
 	namespace     string
 	operatorImage string
 	testImage     string
+	test          string
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, testImage *string
+	var namespace, deployDir, operatorImage, testImage, test *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
+	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
 	flag.Parse()
 
 	return flags{
@@ -49,6 +51,7 @@ func parseFlags() flags {
 		namespace:     *namespace,
 		operatorImage: *operatorImage,
 		testImage:     *testImage,
+		test:          *test,
 	}
 }
 
@@ -87,13 +90,12 @@ func runCmd(f flags) error {
 	}
 	fmt.Println("Successfully deployed the operator")
 
-	testToRun := "test/replica_set_test.yaml" // TODO: this should be configurable
-	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage)); err != nil {
+	testToRun := "test/operator-sdk-test.yaml"
+	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test)); err != nil {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 
-	// TODO: configurable
-	nsName := types.NamespacedName{Name: "my-replica-set-test", Namespace: f.namespace}
+	nsName := types.NamespacedName{Name: "operator-sdk-test", Namespace: f.namespace}
 
 	fmt.Println("Waiting for pod to be ready...")
 	testPod, err := pod.WaitForPhase(c, nsName, time.Second*5, time.Minute*5, corev1.PodRunning)
@@ -183,6 +185,8 @@ func withNamespace(ns string) func(runtime.Object) {
 			v.Namespace = ns
 		case *corev1.Pod:
 			v.Namespace = ns
+		case *appsv1.Deployment:
+			v.Namespace = ns
 		}
 	}
 }
@@ -204,6 +208,26 @@ func withOperatorImage(image string) func(runtime.Object) {
 	return func(obj runtime.Object) {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			dep.Spec.Template.Spec.Containers[0].Image = image
+		}
+	}
+}
+
+// withTest configures the test Pod to launch with the correct
+// command which will target the given test
+func withTest(test string) func(obj runtime.Object) {
+	return func(obj runtime.Object) {
+		if testPod, ok := obj.(*corev1.Pod); ok {
+			testPod.Spec.Containers[0].Command = []string{
+				"/bin/operator-sdk",
+				"test",
+				"local",
+				fmt.Sprintf("./test/e2e/%s", test),
+				"--namespace",
+				testPod.Namespace,
+				"--verbose",
+				"--kubeconfig",
+				"/etc/config/kubeconfig",
+			}
 		}
 	}
 }
