@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -30,7 +32,7 @@ func BasicFunctionality(mdb mdbv1.MongoDB) func(t *testing.T) {
 
 		t.Log("The ConfigMap contained the automation config")
 
-		err = e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*5, time.Minute*5)
+		err = e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +62,7 @@ func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
 
 		t.Logf("pod %s/%s deleted", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 
-		err := e2eutil.WaitForStatefulSetToNotBeReady(t, mdb.Name, time.Second*5, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToNotBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,8 +82,17 @@ func BasicConnectivity(mdb mdbv1.MongoDB) func(t *testing.T) {
 
 		t.Logf("Created mongo client!")
 
-		collection := mongoClient.Database("testing").Collection("numbers")
-		res, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+		var res *mongo.InsertOneResult
+		err = wait.Poll(time.Second*5, time.Minute*1, func() (done bool, err error) {
+			collection := mongoClient.Database("testing").Collection("numbers")
+			res, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+			if err != nil {
+				t.Logf("error inserting document: %+v", err)
+				return false, err
+			}
+			return true, nil
+		})
+
 		if err != nil {
 			t.Fatal(err)
 		}

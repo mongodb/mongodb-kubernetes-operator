@@ -31,8 +31,9 @@ const (
 	agentName                 = "mongodb-agent"
 	mongodbName               = "mongod"
 	agentImageEnvVariable     = "AGENT_IMAGE"
-	readinessProbePath        = "/agent/readinessprobe"
+	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
 	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
+	clusterFilePath           = "/var/lib/automation/config/automation-config"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -212,18 +213,21 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentCommand := []string{
 		"agent/mongodb-agent",
-		"-cluster=/var/lib/automation/config/automation-config",
+		"-cluster=" + clusterFilePath,
 		"-skipMongoStart",
 		"-noDaemonize",
-		fmt.Sprintf("-healthCheckFilePath=%s", agentHealthStatusFilePath),
+		"-healthCheckFilePath=" + agentHealthStatusFilePath,
+		"-serveStatusPort=5000",
 	}
+
+	readinessProbe := defaultReadinessProbe()
 	agentContainer := corev1.Container{
 		Name:            agentName,
 		Image:           os.Getenv(agentImageEnvVariable),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       resourcerequirements.Defaults(),
 		Command:         agentCommand,
-		ReadinessProbe:  defaultReadinessProbe(),
+		ReadinessProbe:  &readinessProbe,
 	}
 
 	mongoDbCommand := []string{
@@ -240,8 +244,8 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
 }
 
-func defaultReadinessProbe() *corev1.Probe {
-	return &corev1.Probe{
+func defaultReadinessProbe() corev1.Probe {
+	return corev1.Probe{
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{Command: []string{readinessProbePath}},
 		},
