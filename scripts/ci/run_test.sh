@@ -12,8 +12,8 @@ contents="$(cat ${temp})"
 kubectl create cm kube-config --from-literal=kubeconfig="${contents}"
 rm ${temp}
 
-sed -i "s|E2E_TEST_IMAGE|quay.io/mongodb/community-operator-e2e:${version_id}|g" test/replica_set_test.yaml
-kubectl apply -f test/replica_set_test.yaml
+sed -i "s|E2E_TEST_IMAGE|quay.io/mongodb/community-operator-e2e:${version_id}|g" test/operator-sdk-test.yaml
+kubectl apply -f test/operator-sdk-test.yaml
 
 echo "Waiting for test application to be deployed"
 kubectl wait --for=condition=Ready pod -l app=operator-sdk-test --timeout=500s
