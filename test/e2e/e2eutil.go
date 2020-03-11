@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	appsv1 "k8s.io/api/apps/v1"
@@ -85,4 +88,18 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 		}
 		return true, nil
 	})
+}
+
+func NewTestMongoDB() mdbv1.MongoDB {
+	return mdbv1.MongoDB{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-mongodb",
+			Namespace: f.Global.Namespace,
+		},
+		Spec: mdbv1.MongoDBSpec{
+			Members: 3,
+			Type:    "ReplicaSet",
+			Version: "4.0.6",
+		},
+	}
 }
