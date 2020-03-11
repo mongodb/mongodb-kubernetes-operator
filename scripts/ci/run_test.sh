@@ -12,17 +12,25 @@ contents="$(cat ${temp})"
 kubectl create cm kube-config --from-literal=kubeconfig="${contents}"
 rm ${temp}
 
-sed -i "s|E2E_TEST_IMAGE|quay.io/mongodb/community-operator-e2e:${version_id}|g" test/operator-sdk-test.yaml
-kubectl apply -f test/operator-sdk-test.yaml
+# create roles and service account required for the test runner
+kubectl apply -f deploy/testrunner
 
-echo "Waiting for test application to be deployed"
-kubectl wait --for=condition=Ready pod -l app=operator-sdk-test --timeout=500s
+# start the test runner pod
+kubectl run test-runner --generator=run-pod/v1 \
+  --restart=Never \
+  --image-pull-policy=Always \
+  --image=quay.io/chatton/test-runner \
+  --serviceaccount=test-runner \
+  --command -- ./runner  --operatorImage quay.io/mongodb/community-operator-dev:${version_id} --testImage quay.io/mongodb/community-operator-e2e:${version_id} --test=${test}
+
+
 echo "Test pod is ready to begin"
+kubectl wait --for=condition=Ready pod -l run=test-runner --timeout=600s
 
 # The test will have fully finished when tailing logs finishes
-kubectl logs -f -l app=operator-sdk-test
+kubectl logs -f -l run=test-runner
 
-result="$(kubectl get pod -l app=operator-sdk-test -o jsonpath='{ .items[0].status.phase }')"
+result="$(kubectl get pod -l run=test-runner -o jsonpath='{ .items[0].status.phase }')"
 if [[ ${result} != "Succeeded" ]]; then
   exit 1
 fi

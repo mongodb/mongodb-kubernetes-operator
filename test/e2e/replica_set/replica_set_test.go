@@ -39,6 +39,6 @@ func TestReplicaSet(t *testing.T) {
 
 	mdb := newTestMongoDB()
 	t.Run("Create MongoDB Resource", mongodbtests.CreateResource(mdb, ctx))
-	t.Run("Perform Sanity Checks", mongodbtests.Sanity(mdb))
+	t.Run("Perform BasicFunctionality Checks", mongodbtests.BasicFunctionality(mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(mdb))
 }

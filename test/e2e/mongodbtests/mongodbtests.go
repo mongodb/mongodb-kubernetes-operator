@@ -18,9 +18,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Sanity returns a function which performs the basic sanity check
+// BasicFunctionality returns a function which performs the basic sanity check
 // ensuring that all basic functionality works for a given MongoDB resource
-func Sanity(mdb mdbv1.MongoDB) func(t *testing.T) {
+func BasicFunctionality(mdb mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
 		assert.NoError(t, err)
