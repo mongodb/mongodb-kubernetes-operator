@@ -1,0 +1,25 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: test-runner
+subjects:
+- kind: ServiceAccount
+  name: test-runner
+roleRef:
+  kind: Role
+  name: test-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: test-runner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: test-runner
+subjects:
+  - kind: ServiceAccount
+    name: test-runner
+    namespace: default

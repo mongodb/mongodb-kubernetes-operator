@@ -11,9 +11,11 @@ require (
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
 	k8s.io/api v0.16.0
+	k8s.io/apiextensions-apiserver v1.18.0-beta.1
 	k8s.io/apimachinery v0.16.0
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/yaml v1.1.0
 )
 
 // TODO: These replace statements need to be completely removed. These exist as the operator-sdk currently requires

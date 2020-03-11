@@ -1,0 +1,26 @@
+FROM golang AS builder
+
+ENV OPERATOR_SDK_VERSION v0.15.2
+ENV GO111MODULE=on
+ENV GOFLAGS="-mod=vendor"
+ENV GOPATH ""
+
+RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
+    && mv operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
+    && chmod +x /bin/operator-sdk
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+ADD . .
+
+RUN go mod vendor && /bin/operator-sdk generate k8s
+
+RUN go build cmd/testrunner/main.go
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+# copy the testrunner binary
+COPY --from=builder /go/main runner
+
+CMD ["./runner"]
