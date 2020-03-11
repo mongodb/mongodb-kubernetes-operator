@@ -65,12 +65,6 @@ func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
 		}
 
 		t.Logf("pod %s/%s deleted", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
-
-		err := e2eutil.WaitForStatefulSetToNotBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("StatefulSet %s/%s is no longer ready!", mdb.Namespace, mdb.Name)
 	}
 }
 
