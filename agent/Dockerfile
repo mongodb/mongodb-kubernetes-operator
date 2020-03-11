@@ -26,7 +26,7 @@ RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-
     mv mongodb-linux-x86_64-ubuntu1604-4.0.6/bin/mongo /usr/bin && \
     rm -rf mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz mongodb-linux-x86_64-ubuntu1604-4.0.6
 
-RUN  mkdir -p /var/log/mongodb-mms-automation \
-    && chmod +rw -R /var/log/mongodb-mms-automation
+RUN mkdir -p /var/log/mongodb-mms-automation/ \
+    && chmod -R +wr /var/log/mongodb-mms-automation/
 
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
