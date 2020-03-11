@@ -270,24 +270,14 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		return appsv1.StatefulSet{}, fmt.Errorf("error creating containers for %s/%s: %s", mdb.Namespace, mdb.Name, err)
 	}
 
+	probeImage := os.Getenv("PROBE_IMAGE")
+
 	initContainers := []corev1.Container{
 		{
 			Name:  "readinessprobe",
-			Image: "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+			Image: probeImage,
 			Command: []string{
-				"curl", "https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe", "-o", "/probe/readinessprobe",
-			},
-			VolumeMounts: []corev1.VolumeMount{{
-				ReadOnly:  false,
-				Name:      "probe",
-				MountPath: "/probe",
-			}},
-		},
-		{
-			Name:  "chmod",
-			Image: "registry.access.redhat.com/ubi8/ubi-minimal:latest",
-			Command: []string{
-				"chmod", "+x", "/probe/readinessprobe",
+				"cp", "readinessprobe", "/probe/readinessprobe",
 			},
 			VolumeMounts: []corev1.VolumeMount{{
 				ReadOnly:  false,
