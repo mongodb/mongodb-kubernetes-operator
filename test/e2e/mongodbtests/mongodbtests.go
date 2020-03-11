@@ -20,9 +20,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// BasicFunctionality returns a function which performs the basic sanity check
-// ensuring that all basic functionality works for a given MongoDB resource
-func BasicFunctionality(mdb mdbv1.MongoDB) func(t *testing.T) {
+// StatefulSetIsReady ensures that the underlying stateful set
+// reaches the running state
+func StatefulSetIsReady(mdb mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
+func AutomationConfigConfigMapExists(mdb mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
 		assert.NoError(t, err)
@@ -31,12 +41,6 @@ func BasicFunctionality(mdb mdbv1.MongoDB) func(t *testing.T) {
 		assert.Contains(t, cm.Data, mongodb.AutomationConfigKey)
 
 		t.Log("The ConfigMap contained the automation config")
-
-		err = e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
 	}
 }
 

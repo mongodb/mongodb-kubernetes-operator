@@ -1,6 +1,7 @@
 package replica_set_readiness_probe
 
 import (
+	"math/rand"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -24,9 +25,10 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 
 	mdb := e2eutil.NewTestMongoDB()
 	t.Run("Create MongoDB Resource", mongodbtests.CreateResource(mdb, ctx))
-	t.Run("Perform BasicFunctionality Checks", mongodbtests.BasicFunctionality(mdb))
+	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(mdb))
+	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(mdb))
-	t.Run("Delete Pod", mongodbtests.DeletePod(mdb, 0))
-	t.Run("Test Replica Set Recovers", mongodbtests.BasicFunctionality(mdb))
+	t.Run("Delete Random Pod", mongodbtests.DeletePod(mdb, rand.Intn(mdb.Spec.Members-1)))
+	t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(mdb))
 	t.Run("Test Recovered Replica Set Connectivity", mongodbtests.BasicConnectivity(mdb))
 }

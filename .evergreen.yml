@@ -65,7 +65,7 @@ functions:
 
   run_e2e_test:
     - command: subprocess.exec
-      type: setup
+      type: test
       params:
         add_to_path:
           - ${workdir}/bin

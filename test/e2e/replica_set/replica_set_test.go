@@ -24,6 +24,7 @@ func TestReplicaSet(t *testing.T) {
 
 	mdb := e2eutil.NewTestMongoDB()
 	t.Run("Create MongoDB Resource", mongodbtests.CreateResource(mdb, ctx))
-	t.Run("Perform Basic Functionality Checks", mongodbtests.BasicFunctionality(mdb))
+	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(mdb))
+	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(mdb))
 }

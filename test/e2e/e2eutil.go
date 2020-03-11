@@ -49,18 +49,18 @@ func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Durat
 // waitForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
 func WaitForStatefulSetToBeReady(t *testing.T, stsName string, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSet(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+	return waitForStatefulSetCondition(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return *sts.Spec.Replicas == sts.Status.ReadyReplicas
 	})
 }
 
 func WaitForStatefulSetToNotBeReady(t *testing.T, stsName string, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSet(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+	return waitForStatefulSetCondition(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return *sts.Spec.Replicas != sts.Status.ReadyReplicas
 	})
 }
 
-func waitForStatefulSet(t *testing.T, stsName string, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
+func waitForStatefulSetCondition(t *testing.T, stsName string, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := WaitForStatefulSetToExist(stsName, retryInterval, timeout)
 	if err != nil {
 		return fmt.Errorf("error waiting for stateful set to be created: %s", err)
