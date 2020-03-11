@@ -15,7 +15,6 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          # Replace this with the built image name
           image: quay.io/chatton/mongodb-kubernetes-operator
           command:
           - mongodb-kubernetes-operator
@@ -33,3 +32,4 @@ spec:
               value: "mongodb-kubernetes-operator"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
               value: quay.io/chatton/mongodb-agent
+

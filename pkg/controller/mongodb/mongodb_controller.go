@@ -31,8 +31,10 @@ const (
 	agentName                 = "mongodb-agent"
 	mongodbName               = "mongod"
 	agentImageEnvVariable     = "AGENT_IMAGE"
-	readinessProbePath        = "/agent/readinessprobe"
+	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
+	probeMountDirectory       = "/var/lib/mongodb-mms-automation/probes"
 	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
+	clusterFilePath           = "/var/lib/automation/config/automation-config"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -212,10 +214,11 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentCommand := []string{
 		"agent/mongodb-agent",
-		"-cluster=/var/lib/automation/config/automation-config",
+		"-cluster=" + clusterFilePath,
 		"-skipMongoStart",
 		"-noDaemonize",
-		fmt.Sprintf("-healthCheckFilePath=%s", agentHealthStatusFilePath),
+		"-healthCheckFilePath=" + agentHealthStatusFilePath,
+		"-serveStatusPort=5000",
 	}
 	agentContainer := corev1.Container{
 		Name:            agentName,
@@ -265,12 +268,40 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		return appsv1.StatefulSet{}, fmt.Errorf("error creating containers for %s/%s: %s", mdb.Namespace, mdb.Name, err)
 	}
 
+	initContainers := []corev1.Container{
+		{
+			Name:  "readinessprobe",
+			Image: "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+			Command: []string{
+				"curl", "https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe", "-o", "/probe/readinessprobe",
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				ReadOnly:  false,
+				Name:      "probe",
+				MountPath: "/probe",
+			}},
+		},
+		{
+			Name:  "chmod",
+			Image: "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+			Command: []string{
+				"chmod", "+x", "/probe/readinessprobe",
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				ReadOnly:  false,
+				Name:      "probe",
+				MountPath: "/probe",
+			}},
+		},
+	}
+
 	podSpecTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers: containers,
+			Containers:     containers,
+			InitContainers: initContainers,
 		},
 	}
 
@@ -295,13 +326,18 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeMount(mongodbName, dataVolume).
 		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
-
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
 	automationConfigVolumeMount := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", statefulset.WithReadOnly(true))
 	builder.
 		AddVolume(automationConfigVolume).
 		AddVolumeMount(agentName, automationConfigVolumeMount)
+
+	builder.AddVolumeAndMount(agentName, statefulset.VolumeMountData{
+		Name:      "probe",
+		MountPath: probeMountDirectory,
+		Volume:    statefulset.CreateVolumeFromEmptyDir("probe"),
+	})
 
 	return builder.Build()
 }
