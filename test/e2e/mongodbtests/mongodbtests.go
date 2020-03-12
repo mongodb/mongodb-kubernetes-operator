@@ -111,11 +111,54 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) 
 
 // IsReachableDuring makes sure that the MongoDB deployment is reachable between each stage
 // of the test
-func IsReachableDuring(mdb *mdbv1.MongoDB, testFuncs ...func(*testing.T)) func(*testing.T) {
+//func IsReachableDuring(mdb *mdbv1.MongoDB, testFuncs ...func(*testing.T)) func(*testing.T) {
+//	return func(t *testing.T) {
+//		for _, tf := range testFuncs {
+//			BasicConnectivity(mdb)(t)
+//			tf(t)
+//		}
+//	}
+//}
+
+//func IsReachableDuring(mdb *mdbv1.MongoDB, testFuncs ...func(*testing.T)) func(*testing.T) {
+//	return func(t *testing.T) {
+//		quit := make(chan struct{})
+//		go func() {
+//			for {
+//				select {
+//				case <-quit:
+//					return
+//				default:
+//					BasicConnectivity(mdb)(t)
+//					time.Sleep(time.Second * 10)
+//				}
+//			}
+//		}()
+//
+//		for _, tf := range testFuncs {
+//			tf(t)
+//		}
+//
+//		close(quit)
+//	}
+//}
+
+func IsReachableDuring(mdb *mdbv1.MongoDB, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
-		for _, tf := range testFuncs {
-			BasicConnectivity(mdb)(t)
-			tf(t)
-		}
+		quit := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-quit:
+					return
+				default:
+					BasicConnectivity(mdb)(t)
+					time.Sleep(time.Second * 10)
+				}
+			}
+		}()
+
+		testFunc()
+		close(quit)
 	}
 }
