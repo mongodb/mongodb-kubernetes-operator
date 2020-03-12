@@ -64,7 +64,7 @@ func allCrds(deployDir string) ([]string, error) {
 	crdDir := path.Join(deployDir, "crds")
 	var crdFilePaths []string
 	err := filepath.Walk(crdDir, func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(info.Name(), "_crd.yaml") {
+		if info != nil && strings.HasSuffix(info.Name(), "_crd.yaml") {
 			fmt.Printf("Found CRD: %s\n", info.Name())
 			crdFilePaths = append(crdFilePaths, path)
 		}

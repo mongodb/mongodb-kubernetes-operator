@@ -23,4 +23,8 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 # copy the testrunner binary
 COPY --from=builder /go/main runner
 
+# add yaml files required by the test runner
+ADD deploy/ deploy/
+ADD test/ test/
+
 CMD ["./runner"]

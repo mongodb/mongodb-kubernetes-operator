@@ -26,4 +26,11 @@ RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-
     mv mongodb-linux-x86_64-ubuntu1604-4.0.6/bin/mongo /usr/bin && \
     rm -rf mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz mongodb-linux-x86_64-ubuntu1604-4.0.6
 
+
+RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
+    && curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe -o /var/lib/mongodb-mms-automation/probes/readinessprobe \
+    && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe \
+    && mkdir -p /var/log/mongodb-mms-automation/ \
+    && chmod -R +wr /var/log/mongodb-mms-automation/
+
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]

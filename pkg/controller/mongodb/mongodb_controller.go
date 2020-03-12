@@ -27,10 +27,13 @@ import (
 )
 
 const (
-	AutomationConfigKey   = "automation-config"
-	agentName             = "mongodb-agent"
-	mongodbName           = "mongod"
-	agentImageEnvVariable = "AGENT_IMAGE"
+	AutomationConfigKey       = "automation-config"
+	agentName                 = "mongodb-agent"
+	mongodbName               = "mongod"
+	agentImageEnvVariable     = "AGENT_IMAGE"
+	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
+	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
+	clusterFilePath           = "/var/lib/automation/config/automation-config"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -210,16 +213,21 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 	agentCommand := []string{
 		"agent/mongodb-agent",
-		"-cluster=/var/lib/automation/config/automation-config",
+		"-cluster=" + clusterFilePath,
 		"-skipMongoStart",
 		"-noDaemonize",
+		"-healthCheckFilePath=" + agentHealthStatusFilePath,
+		"-serveStatusPort=5000",
 	}
+
+	readinessProbe := defaultReadinessProbe()
 	agentContainer := corev1.Container{
 		Name:            agentName,
 		Image:           os.Getenv(agentImageEnvVariable),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       resourcerequirements.Defaults(),
 		Command:         agentCommand,
+		ReadinessProbe:  &readinessProbe,
 	}
 
 	mongoDbCommand := []string{
@@ -234,6 +242,19 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		Resources: resourcerequirements.Defaults(),
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}, nil
+}
+
+func defaultReadinessProbe() corev1.Probe {
+	return corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{Command: []string{readinessProbePath}},
+		},
+		// Setting the failure threshold to quite big value as the agent may spend some time to reach the goal
+		FailureThreshold: 240,
+		// The agent may be not on time to write the status file right after the container is created - we need to wait
+		// for some time
+		InitialDelaySeconds: 5,
+	}
 }
 
 // buildStatefulSet takes a MongoDB resource and converts it into
