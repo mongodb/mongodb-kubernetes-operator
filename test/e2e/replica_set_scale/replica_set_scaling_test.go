@@ -1,7 +1,6 @@
 package replica_set_readiness_probe
 
 import (
-	"math/rand"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -14,7 +13,7 @@ func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
 
-func TestReplicaSetReadinessProbeScaling(t *testing.T) {
+func TestReplicaSetScale(t *testing.T) {
 	ctx := f.NewTestCtx(t)
 	defer ctx.Cleanup()
 
@@ -28,7 +27,17 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
-	t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
-	t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("Test Recovered Replica Set Connectivity", mongodbtests.BasicConnectivity(&mdb))
+
+	//t.Run("", mongodbtests.IsReachableDuring(&mdb,
+	//	mongodbtests.Scale(&mdb, 5, ctx),
+	//	mongodbtests.StatefulSetIsReady(&mdb),
+	//))
+
+	t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5, ctx))
+	t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+	t.Run("Test Basic Connectivity After Scaling Up", mongodbtests.BasicConnectivity(&mdb))
+
+	t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3, ctx))
+	t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+	t.Run("Test Basic Connectivity After Scaling Down", mongodbtests.BasicConnectivity(&mdb))
 }

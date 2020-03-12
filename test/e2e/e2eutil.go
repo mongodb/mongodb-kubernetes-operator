@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -32,6 +34,17 @@ func CreateRuntimeObject(obj runtime.Object, ctx *f.TestCtx) error {
 	return f.Global.Client.Create(context.TODO(), obj, &f.CleanupOptions{TestContext: ctx})
 }
 
+func CreateOrUpdateMongoDB(mdb *mdbv1.MongoDB, ctx *f.TestCtx) error {
+	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &mdbv1.MongoDB{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx})
+		}
+		return err
+	}
+	return f.Global.Client.Update(context.TODO(), mdb)
+}
+
 // waitForConfigMapToExist waits until a ConfigMap of the given name exists
 // using the provided retryInterval and timeout
 func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (corev1.ConfigMap, error) {
@@ -48,31 +61,25 @@ func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Durat
 
 // waitForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func WaitForStatefulSetToBeReady(t *testing.T, stsName string, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		return *sts.Spec.Replicas == sts.Status.ReadyReplicas
+func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+		return sts.Status.ReadyReplicas == int32(mdb.Spec.Members)
 	})
 }
 
-func WaitForStatefulSetToNotBeReady(t *testing.T, stsName string, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, stsName, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		return *sts.Spec.Replicas != sts.Status.ReadyReplicas
-	})
-}
-
-func waitForStatefulSetCondition(t *testing.T, stsName string, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
-	_, err := WaitForStatefulSetToExist(stsName, retryInterval, timeout)
+func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
+	_, err := WaitForStatefulSetToExist(mdb.Name, retryInterval, timeout)
 	if err != nil {
 		return fmt.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: f.Global.Namespace}, &sts)
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.Namespace}, &sts)
 		if err != nil {
 			return false, err
 		}
-		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d\n", stsName, *sts.Spec.Replicas, sts.Status.ReadyReplicas)
+		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d\n", mdb.Name, mdb.Spec.Members, sts.Status.ReadyReplicas)
 		ready := condition(sts)
 		return ready, nil
 	})

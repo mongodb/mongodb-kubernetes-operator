@@ -22,9 +22,9 @@ import (
 
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
-func StatefulSetIsReady(mdb mdbv1.MongoDB) func(t *testing.T) {
+func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +32,7 @@ func StatefulSetIsReady(mdb mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func AutomationConfigConfigMapExists(mdb mdbv1.MongoDB) func(t *testing.T) {
+func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
 		assert.NoError(t, err)
@@ -44,15 +44,16 @@ func AutomationConfigConfigMapExists(mdb mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func CreateResource(mdb mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
+func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.CreateRuntimeObject(&mdb, ctx)
-		assert.NoError(t, err)
+		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+			t.Fatal(err)
+		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
 	}
 }
 
-func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
+func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -70,7 +71,7 @@ func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
 
 // BasicConnectivity performs a check by initializing a mongo client
 // and inserting a document into the MongoDB resource
-func BasicConnectivity(mdb mdbv1.MongoDB) func(t *testing.T) {
+func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
@@ -95,5 +96,26 @@ func BasicConnectivity(mdb mdbv1.MongoDB) func(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("inserted ID: %+v", res.InsertedID)
+	}
+}
+
+func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
+	return func(t *testing.T) {
+		mdb.Spec.Members = newMembers
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, mdb.Spec.Members)
+		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// IsReachableDuring makes sure that the MongoDB deployment is reachable between each stage
+// of the test
+func IsReachableDuring(mdb *mdbv1.MongoDB, testFuncs ...func(*testing.T)) func(*testing.T) {
+	return func(t *testing.T) {
+		for _, tf := range testFuncs {
+			BasicConnectivity(mdb)(t)
+			tf(t)
+		}
 	}
 }
