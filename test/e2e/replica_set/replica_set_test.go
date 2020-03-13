@@ -27,4 +27,10 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+		mdbv1.MongoDBStatus{
+			MongoURI: mdb.MongoURI(),
+			Members:  3,
+			Phase:    mdbv1.Running,
+		}))
 }

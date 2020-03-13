@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -123,6 +125,23 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		log.Infof("Error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
+
+	set := appsv1.StatefulSet{}
+	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*5, time.Second*30, &set, func() bool {
+		return statefulset.IsReady(set)
+	})
+
+	if timedOut {
+		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
+		return reconcile.Result{}, nil
+	}
+
+	if err != nil {
+		log.Errorf("error polling for statefulset: %+v", err)
+		return reconcile.Result{}, err
+	}
+
+	log.Infof("Stateful Set reached ready state!")
 
 	if err := r.updateStatusSuccess(&mdb); err != nil {
 		log.Infof("Error updating the status of the MongoDB resource: %+v", err)
