@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"go.uber.org/zap"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -47,9 +45,7 @@ func (c client) WaitForCondition(nsName types.NamespacedName, interval, duration
 // CreateOrUpdate will either Create the runtime.Object if it doesn't exist, or Update it
 // if it does
 func (c client) CreateOrUpdate(obj runtime.Object) error {
-	zap.S().Infof("CreateOrUpdate obj: %+v", obj)
 	objCopy := obj.DeepCopyObject()
-	zap.S().Infof("CreateOrUpdate objCopy: %+v", objCopy)
 	err := c.Get(context.TODO(), namespacedNameFromObject(obj), objCopy)
 	if err != nil {
 		if errors.IsNotFound(err) {
