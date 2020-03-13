@@ -11,8 +11,14 @@ import (
 
 type Type string
 
-var (
+const (
 	ReplicaSet Type = "ReplicaSet"
+)
+
+type Phase string
+
+const (
+	Running Phase = "Running"
 )
 
 // MongoDBSpec defines the desired state of MongoDB
@@ -28,6 +34,9 @@ type MongoDBSpec struct {
 
 // MongoDBStatus defines the observed state of MongoDB
 type MongoDBStatus struct {
+	MongoURI string `json:"mongoUri"`
+	Members  int    `json:"members"`
+	Phase    Phase  `json:"phase"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -41,6 +50,12 @@ type MongoDB struct {
 
 	Spec   MongoDBSpec   `json:"spec,omitempty"`
 	Status MongoDBStatus `json:"status,omitempty"`
+}
+
+func (m *MongoDB) UpdateSuccess() {
+	m.Status.MongoURI = m.MongoURI()
+	m.Status.Members = m.Spec.Members
+	m.Status.Phase = Running
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

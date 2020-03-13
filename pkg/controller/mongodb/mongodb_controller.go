@@ -108,22 +108,35 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	svc := buildService(mdb)
 	if err = r.client.CreateOrUpdate(&svc); err != nil {
-		log.Warnf("The service already exists... moving forward: %s", err)
+		log.Infof("The service already exists... moving forward: %s", err)
 	}
 
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
-		log.Warnf("error building StatefulSet: %s", err)
+		log.Infof("Error building StatefulSet: %s", err)
 		return reconcile.Result{}, nil
 	}
 
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		log.Warnf("error creating/updating StatefulSet: %s", err)
+		log.Infof("Error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
+	}
+
+	if err := r.updateStatusSuccess(&mdb); err != nil {
+		log.Infof("Error updating the status of the MongoDB resource: %+v", err)
+		return reconcile.Result{}, nil
 	}
 
 	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
+}
+
+func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
+	mdb.UpdateSuccess()
+	if err := r.client.Status().Update(context.TODO(), mdb); err != nil {
+		return fmt.Errorf("error updating status: %+v", err)
+	}
+	return nil
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
