@@ -31,7 +31,6 @@ func TestReplicaSetScale(t *testing.T) {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5, ctx))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3, ctx))
-			t.Run("Test Basic Connectivity After Scaling Down", mongodbtests.BasicConnectivity(&mdb))
 		},
 	))
 }

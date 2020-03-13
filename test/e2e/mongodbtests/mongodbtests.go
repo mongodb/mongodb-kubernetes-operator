@@ -44,6 +44,7 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// CreateOrUpdateResource creates the MongoDB resource if it doesn't exist, or updates it otherwise
 func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
 		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
@@ -53,6 +54,7 @@ func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T)
 	}
 }
 
+// DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
 func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := corev1.Pod{
@@ -75,7 +77,7 @@ func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		_, err := IsReachable(mdb)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 		t.Logf("successfully connected to MongoDB deployment")
 	}
@@ -84,17 +86,17 @@ func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // IsReachable performs a check by initializing a mongo client
 // and inserting a document into the MongoDB resource
 func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return false, err
 	}
-	var res *mongo.InsertOneResult
-	err = wait.Poll(time.Second*5, time.Minute*1, func() (done bool, err error) {
+
+	err = wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
 		collection := mongoClient.Database("testing").Collection("numbers")
-		res, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil {
-			return false, err
+			return false, nil
 		}
 		return true, nil
 	})
@@ -106,6 +108,7 @@ func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
 	return true, nil
 }
 
+// Scale update the MongoDB with a new number of members and updates the resource
 func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
 		mdb.Spec.Members = newMembers
@@ -122,6 +125,9 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) 
 func IsReachableDuring(mdb *mdbv1.MongoDB, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
 		quit := make(chan struct{})
+		// start a go routine that will periodically perform a basic
+		// connectivity check on the provided mongodb.
+		// after all the test functions have been run, the go routine is cancelled.
 		go func() {
 			for {
 				select {
@@ -130,7 +136,7 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, testFunc func()) func(*testing.T) {
 				default:
 					_, err := IsReachable(mdb)
 					if err != nil {
-						t.Fatal(err)
+						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
 					}
 					time.Sleep(time.Second * 10)
 				}
