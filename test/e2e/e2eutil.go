@@ -8,13 +8,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -28,10 +27,6 @@ func RegisterTypesWithFramework(newTypes ...runtime.Object) error {
 		}
 	}
 	return nil
-}
-
-func CreateRuntimeObject(obj runtime.Object, ctx *f.TestCtx) error {
-	return f.Global.Client.Create(context.TODO(), obj, &f.CleanupOptions{TestContext: ctx})
 }
 
 func CreateOrUpdateMongoDB(mdb *mdbv1.MongoDB, ctx *f.TestCtx) error {
