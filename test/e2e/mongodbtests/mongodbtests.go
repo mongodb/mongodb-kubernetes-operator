@@ -122,27 +122,30 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) 
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableDuring(mdb *mdbv1.MongoDB, testFunc func()) func(*testing.T) {
+func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
-		quit := make(chan struct{})
-		// start a go routine that will periodically perform a basic
-		// connectivity check on the provided mongodb.
-		// after all the test functions have been run, the go routine is cancelled.
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+
+		// start a go routine which will periodically check basic MongoDB connectivity
+		// one all the test functions have been executed, the go routine will stop
 		go func() {
 			for {
 				select {
-				case <-quit:
+				case <-ctx.Done():
+					t.Logf("context cancelled, no longer checking connectivity")
 					return
-				default:
+				case <-time.After(interval):
 					_, err := IsReachable(mdb)
+
 					if err != nil {
 						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
+					} else {
+						t.Logf("Successfully connected to %s", mdb.Name)
 					}
-					time.Sleep(time.Second * 10)
 				}
 			}
 		}()
 		testFunc()
-		close(quit)
 	}
 }

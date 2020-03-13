@@ -2,6 +2,7 @@ package replica_set_readiness_probe
 
 import (
 	"testing"
+	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -26,7 +27,7 @@ func TestReplicaSetScale(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateOrUpdateResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb,
+	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5, ctx))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))

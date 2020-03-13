@@ -31,6 +31,7 @@ const (
 	agentName                 = "mongodb-agent"
 	mongodbName               = "mongod"
 	agentImageEnvVariable     = "AGENT_IMAGE"
+	probeImageEnvVariable     = "PROBE_IMAGE"
 	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
 	probeMountDirectory       = "/var/lib/mongodb-mms-automation/probes"
 	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
@@ -210,7 +211,8 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 		Build(), nil
 }
 
-// buildContainers has some docs.
+// buildContainers constructs the mongodb-agent container as well as the
+// mongod container.
 func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	agentCommand := []string{
 		"agent/mongodb-agent",
@@ -288,7 +290,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 		Spec: corev1.PodSpec{
 			Containers:     buildContainers(mdb),
-			InitContainers: buildInitContainers(os.Getenv("PROBE_IMAGE")),
+			InitContainers: buildInitContainers(os.Getenv(probeImageEnvVariable)),
 		},
 	}
 
