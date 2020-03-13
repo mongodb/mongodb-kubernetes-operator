@@ -91,7 +91,7 @@ func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *test
 		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
 			t.Fatal(fmt.Errorf("error getting MongoDB resource: %+v", err))
 		}
-		assert.Equal(t, mdb.Status, expectedStatus)
+		assert.Equal(t, expectedStatus, mdb.Status)
 	}
 }
 

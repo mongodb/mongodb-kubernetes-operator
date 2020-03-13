@@ -133,7 +133,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if timedOut {
 		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
-		return reconcile.Result{}, nil
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	if err != nil {
