@@ -46,10 +46,10 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-// CreateOrUpdateResource creates the MongoDB resource if it doesn't exist, or updates it otherwise
-func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
+// CreateMongoDBResource creates the MongoDB resource
+func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
-		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+		if err := f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx}); err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
@@ -121,11 +121,13 @@ func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
 }
 
 // Scale update the MongoDB with a new number of members and updates the resource
-func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
+func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
-		mdb.Spec.Members = newMembers
-		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, mdb.Spec.Members)
-		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			mdb.Spec.Members = newMembers
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
 	}

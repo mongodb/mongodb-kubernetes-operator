@@ -29,15 +29,28 @@ func RegisterTypesWithFramework(newTypes ...runtime.Object) error {
 	return nil
 }
 
-func CreateOrUpdateMongoDB(mdb *mdbv1.MongoDB, ctx *f.TestCtx) error {
-	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &mdbv1.MongoDB{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx})
+// UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
+// and retries when there are conflicts
+func UpdateMongoDBResource(original *mdbv1.MongoDB, updateFunc func(*mdbv1.MongoDB)) error {
+	for i := 0; i < 3; i++ {
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
+		if err != nil {
+			return err
+		}
+
+		updateFunc(original)
+
+		err = f.Global.Client.Update(context.TODO(), original)
+		if err == nil {
+			return nil
+		}
+
+		if errors.IsConflict(err) {
+			continue
 		}
 		return err
 	}
-	return f.Global.Client.Update(context.TODO(), mdb)
+	return fmt.Errorf("the resource is experiencing some intensive concurrent modifications")
 }
 
 // waitForConfigMapToExist waits until a ConfigMap of the given name exists
