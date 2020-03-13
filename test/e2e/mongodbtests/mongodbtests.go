@@ -88,11 +88,10 @@ func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // Status compares the given status to the actual status of the MongoDB resource
 func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *testing.T) {
 	return func(t *testing.T) {
-		mdbCopy := mdb.DeepCopyObject().(*mdbv1.MongoDB)
-		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbCopy); err != nil {
+		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
 			t.Fatal(fmt.Errorf("error getting MongoDB resource: %+v", err))
 		}
-		assert.Equal(t, mdbCopy.Status, expectedStatus)
+		assert.Equal(t, mdb.Status, expectedStatus)
 	}
 }
 
