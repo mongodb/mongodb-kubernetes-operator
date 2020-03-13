@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller"
 	"go.uber.org/zap"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -25,15 +26,24 @@ func configureLogger() (*zap.Logger, error) {
 	return logger, err
 }
 
+func hasRequiredVariables(logger *zap.Logger, envVariables ...string) bool {
+	allPresent := true
+	for _, envVariable := range envVariables {
+		if _, envSpecified := os.LookupEnv(envVariable); !envSpecified {
+			logger.Error(fmt.Sprintf("required environment variable %s not found", envVariable))
+			allPresent = false
+		}
+	}
+	return allPresent
+}
+
 func main() {
 	log, err := configureLogger()
 	if err != nil {
 		os.Exit(1)
 	}
 
-	// TODO: implement mechanism to specify required/optional environment variables
-	if _, agentImageSpecified := os.LookupEnv("AGENT_IMAGE"); !agentImageSpecified {
-		log.Error("required environment variable AGENT_IMAGE not found")
+	if !hasRequiredVariables(log, "AGENT_IMAGE", "PROBE_IMAGE") {
 		os.Exit(1)
 	}
 

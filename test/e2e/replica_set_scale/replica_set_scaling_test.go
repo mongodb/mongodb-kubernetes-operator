@@ -1,7 +1,6 @@
 package replica_set_readiness_probe
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 
@@ -15,7 +14,7 @@ func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
 
-func TestReplicaSetReadinessProbeScaling(t *testing.T) {
+func TestReplicaSetScale(t *testing.T) {
 	ctx := f.NewTestCtx(t)
 	defer ctx.Cleanup()
 
@@ -30,8 +29,9 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
-			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
-			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
+			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5, ctx))
+			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3, ctx))
 		},
 	))
 }

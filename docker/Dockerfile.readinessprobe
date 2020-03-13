@@ -1,0 +1,4 @@
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+RUN curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe -o readinessprobe \
+    && chmod +x readinessprobe
