@@ -211,7 +211,7 @@ func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error)
 }
 
 // buildContainers has some docs.
-func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
+func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	agentCommand := []string{
 		"agent/mongodb-agent",
 		"-cluster=" + clusterFilePath,
@@ -242,7 +242,24 @@ func buildContainers(mdb mdbv1.MongoDB) ([]corev1.Container, error) {
 		Command:   mongoDbCommand,
 		Resources: resourcerequirements.Defaults(),
 	}
-	return []corev1.Container{agentContainer, mongodbContainer}, nil
+	return []corev1.Container{agentContainer, mongodbContainer}
+}
+
+func buildInitContainers(probeImage string) []corev1.Container {
+	return []corev1.Container{
+		{
+			Name:  "readinessprobe",
+			Image: probeImage,
+			Command: []string{
+				"cp", "readinessprobe", "/probe/readinessprobe",
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				ReadOnly:  false,
+				Name:      "probe",
+				MountPath: "/probe",
+			}},
+		},
+	}
 }
 
 func defaultReadinessProbe() corev1.Probe {
@@ -265,35 +282,13 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		"app": mdb.ServiceName(),
 	}
 
-	containers, err := buildContainers(mdb)
-	if err != nil {
-		return appsv1.StatefulSet{}, fmt.Errorf("error creating containers for %s/%s: %s", mdb.Namespace, mdb.Name, err)
-	}
-
-	probeImage := os.Getenv("PROBE_IMAGE")
-
-	initContainers := []corev1.Container{
-		{
-			Name:  "readinessprobe",
-			Image: probeImage,
-			Command: []string{
-				"cp", "readinessprobe", "/probe/readinessprobe",
-			},
-			VolumeMounts: []corev1.VolumeMount{{
-				ReadOnly:  false,
-				Name:      "probe",
-				MountPath: "/probe",
-			}},
-		},
-	}
-
 	podSpecTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers:     containers,
-			InitContainers: initContainers,
+			Containers:     buildContainers(mdb),
+			InitContainers: buildInitContainers(os.Getenv("PROBE_IMAGE")),
 		},
 	}
 
