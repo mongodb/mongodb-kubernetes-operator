@@ -128,7 +128,7 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 		defer cancelFunc()
 
 		// start a go routine which will periodically check basic MongoDB connectivity
-		// one all the test functions have been executed, the go routine will stop
+		// once all the test functions have been executed, the go routine will be cancelled
 		go func() {
 			for {
 				select {
