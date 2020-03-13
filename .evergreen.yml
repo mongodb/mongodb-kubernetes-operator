@@ -132,6 +132,13 @@ tasks:
         vars:
           test: replica_set_readiness_probe
 
+  - name: e2e_test_replica_set_scale
+    commands:
+      - func: clone
+      - func: setup_kubernetes_environment
+      - func: run_e2e_test
+        vars:
+          test: replica_set_scale
 
 buildvariants:
   - name: go_unit_tests
@@ -153,6 +160,7 @@ buildvariants:
     tasks:
       - name: e2e_test_replica_set
       - name: e2e_test_replica_set_readiness_probe
+      - name: e2e_test_replica_set_scale
 
   - name: init_test_run
     display_name: init_test_run

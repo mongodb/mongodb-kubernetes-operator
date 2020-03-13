@@ -69,34 +69,41 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// BasicConnectivity performs a check by initializing a mongo client
-// and inserting a document into the MongoDB resource
+// BasicConnectivity returns a test function which performs
+// a basic MongoDB connectivity test
 func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		_, err := IsReachable(mdb)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		t.Logf("Created mongo client!")
-
-		var res *mongo.InsertOneResult
-		err = wait.Poll(time.Second*5, time.Minute*1, func() (done bool, err error) {
-			collection := mongoClient.Database("testing").Collection("numbers")
-			res, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-			if err != nil {
-				t.Logf("error inserting document: %+v", err)
-				return false, err
-			}
-			return true, nil
-		})
-
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("inserted ID: %+v", res.InsertedID)
+		t.Logf("successfully connected to MongoDB deployment")
 	}
+}
+
+// IsReachable performs a check by initializing a mongo client
+// and inserting a document into the MongoDB resource
+func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	if err != nil {
+		return false, err
+	}
+	var res *mongo.InsertOneResult
+	err = wait.Poll(time.Second*5, time.Minute*1, func() (done bool, err error) {
+		collection := mongoClient.Database("testing").Collection("numbers")
+		res, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
@@ -121,12 +128,14 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, testFunc func()) func(*testing.T) {
 				case <-quit:
 					return
 				default:
-					BasicConnectivity(mdb)(t)
+					_, err := IsReachable(mdb)
+					if err != nil {
+						t.Fatal(err)
+					}
 					time.Sleep(time.Second * 10)
 				}
 			}
 		}()
-
 		testFunc()
 		close(quit)
 	}

@@ -27,8 +27,11 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateOrUpdateResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
-	t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
-	t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("Test Recovered Replica Set Connectivity", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb,
+		func() {
+			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
+			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
+		},
+	))
+
 }
