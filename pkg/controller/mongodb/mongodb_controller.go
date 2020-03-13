@@ -110,9 +110,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	if err := r.ensureService(mdb); err != nil {
-		log.Infof("Error ensuring Service: %+v", err)
-		return reconcile.Result{}, err
+	svc := buildService(mdb)
+	if err = r.client.CreateOrUpdate(&svc); err != nil {
+		log.Warnf("The service already exists... moving forward: %s", err)
 	}
 
 	sts, err := buildStatefulSet(mdb)
@@ -153,34 +153,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
-}
-
-// ensureService will either create a new Service, or take the required
-// fields from the existing service and send those.
-func (r ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
-	var svc corev1.Service
-	var err error
-	if svc, err = r.getMergedService(mdb); err != nil {
-		return fmt.Errorf("error merging services: %+v", err)
-	}
-
-	if err = r.client.CreateOrUpdate(&svc); err != nil {
-		return fmt.Errorf("error creating or updating service: %+v", err)
-	}
-	return nil
-}
-
-// getMergedService returns a new service which has merged fields from the existing service
-// which are required to not get errors from the api server.
-// e.g. invalid: metadata.resourceVersion: Invalid value: ""
-func (r ReplicaSetReconciler) getMergedService(mdb mdbv1.MongoDB) (corev1.Service, error) {
-	desired := buildService(mdb)
-	existingService := corev1.Service{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &existingService)
-	if err != nil && !errors.IsNotFound(err) {
-		return corev1.Service{}, err
-	}
-	return service.Merge(desired, existingService), nil
 }
 
 func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
