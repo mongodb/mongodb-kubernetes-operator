@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -77,22 +75,6 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, mongodbName, mongodbContainer.Name)
 	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
-
-	volumes := sts.Spec.Template.Spec.Volumes
-	assert.Len(t, volumes, 2)
-
-	probeVolume := volumes[1]
-	assert.True(t, reflect.DeepEqual(probeVolume, statefulset.CreateVolumeFromEmptyDir("probe")))
-
-	initContainers := sts.Spec.Template.Spec.InitContainers
-	assert.Len(t, initContainers, 1)
-
-	initContainer := initContainers[0]
-	assert.Equal(t, "readinessprobe", initContainer.Name)
-	assert.Len(t, initContainer.VolumeMounts, 1)
-	vm := initContainer.VolumeMounts[0]
-	assert.Equal(t, "probe", vm.Name)
-	assert.Equal(t, "/probe", vm.MountPath)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
 }

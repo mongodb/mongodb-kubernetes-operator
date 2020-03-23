@@ -247,23 +247,6 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	return []corev1.Container{agentContainer, mongodbContainer}
 }
 
-func buildInitContainers(probeImage string) []corev1.Container {
-	return []corev1.Container{
-		{
-			Name:  "readinessprobe",
-			Image: probeImage,
-			Command: []string{
-				"cp", "readinessprobe", "/probe/readinessprobe",
-			},
-			VolumeMounts: []corev1.VolumeMount{{
-				ReadOnly:  false,
-				Name:      "probe",
-				MountPath: "/probe",
-			}},
-		},
-	}
-}
-
 func defaultReadinessProbe() corev1.Probe {
 	return corev1.Probe{
 		Handler: corev1.Handler{
@@ -289,8 +272,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers:     buildContainers(mdb),
-			InitContainers: buildInitContainers(os.Getenv(probeImageEnvVariable)),
+			Containers: buildContainers(mdb),
 		},
 	}
 
@@ -321,12 +303,6 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	builder.
 		AddVolume(automationConfigVolume).
 		AddVolumeMount(agentName, automationConfigVolumeMount)
-
-	builder.AddVolumeAndMount(agentName, statefulset.VolumeMountData{
-		Name:      "probe",
-		MountPath: probeMountDirectory,
-		Volume:    statefulset.CreateVolumeFromEmptyDir("probe"),
-	})
 
 	return builder.Build()
 }
