@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !hasRequiredVariables(log, "AGENT_IMAGE", "PROBE_IMAGE") {
+	if !hasRequiredVariables(log, "AGENT_IMAGE") {
 		os.Exit(1)
 	}
 

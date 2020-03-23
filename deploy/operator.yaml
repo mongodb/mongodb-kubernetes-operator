@@ -32,4 +32,3 @@ spec:
               value: "mongodb-kubernetes-operator"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
               value: quay.io/chatton/mongodb-agent
-
