@@ -68,8 +68,8 @@ type SystemLog struct {
 	Path        string `json:"path"`
 }
 
-func newProcess(name, hostName, version, replSetName string) Process {
-	return Process{
+func newProcess(name, hostName, version, replSetName string, opts ...func(process *Process)) Process {
+	p := Process{
 		Name:                        name,
 		HostName:                    hostName,
 		FeatureCompatibilityVersion: "4.0",
@@ -90,6 +90,12 @@ func newProcess(name, hostName, version, replSetName string) Process {
 			Replication: Replication{ReplicaSetName: replSetName},
 		},
 	}
+
+	for _, opt := range opts {
+		opt(&p)
+	}
+
+	return p
 }
 
 type Replication struct {
