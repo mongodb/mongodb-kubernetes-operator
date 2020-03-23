@@ -149,13 +149,25 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 
 func TestVersionManifest_BuildsForVersion(t *testing.T) {
 	vm := VersionManifest{
-		Updated:  0,
-		Versions: []MongoDbVersionConfig{defaultMongoDbVersion("4.2.0")},
+		Updated: 0,
+		Versions: []MongoDbVersionConfig{
+			defaultMongoDbVersion("4.2.0"),
+			defaultMongoDbVersion("4.2.3"),
+			defaultMongoDbVersion("4.2.4"),
+		},
 	}
 
 	version := vm.BuildsForVersion("4.2.0")
 	assert.Len(t, version.Builds, 1)
 	assert.Equal(t, defaultMongoDbVersion("4.2.0"), version)
+
+	version = vm.BuildsForVersion("4.2.3")
+	assert.Len(t, version.Builds, 1)
+	assert.Equal(t, defaultMongoDbVersion("4.2.3"), version)
+
+	version = vm.BuildsForVersion("4.2.4")
+	assert.Len(t, version.Builds, 1)
+	assert.Equal(t, defaultMongoDbVersion("4.2.4"), version)
 
 	version = vm.BuildsForVersion("4.2.1")
 	assert.Empty(t, version.Builds)
