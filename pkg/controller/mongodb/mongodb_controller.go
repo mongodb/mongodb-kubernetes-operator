@@ -31,9 +31,7 @@ const (
 	agentName                 = "mongodb-agent"
 	mongodbName               = "mongod"
 	agentImageEnvVariable     = "AGENT_IMAGE"
-	probeImageEnvVariable     = "PROBE_IMAGE"
 	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
-	probeMountDirectory       = "/var/lib/mongodb-mms-automation/probes"
 	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
 	clusterFilePath           = "/var/lib/automation/config/automation-config"
 )
