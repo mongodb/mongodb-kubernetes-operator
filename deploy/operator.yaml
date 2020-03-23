@@ -30,8 +30,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
-            - name: PROBE_IMAGE
-              value: "quay.io/chatton/readiness"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
               value: quay.io/chatton/mongodb-agent
-

@@ -114,10 +114,7 @@ tasks:
   - name: unit_tests
     commands:
       - func: clone
-      - func: build_and_push_image
-        vars:
-          dockerfile: docker/Dockerfile.operator
-          image: quay.io/mongodb/community-operator-dev:${version_id}
+      - func: go_test
 
   - name: e2e_test_replica_set
     commands:
