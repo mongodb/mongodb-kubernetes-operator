@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"path"
-	"strings"
 )
 
 type ProcessType string
@@ -173,7 +172,7 @@ type VersionManifest struct {
 func (v VersionManifest) BuildsForVersion(version string) MongoDbVersionConfig {
 	var builds []BuildConfig
 	for _, versionConfig := range v.Versions {
-		if versionConfig.Name != version || strings.HasSuffix(version, "-ent") {
+		if versionConfig.Name != version {
 			continue
 		}
 		builds = versionConfig.Builds
