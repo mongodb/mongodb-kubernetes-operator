@@ -32,6 +32,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		SetMongoDBVersion("4.2.0").
 		SetAutomationConfigVersion(1).
 		SetMembers(3).
+		SetFCV("4.0").
 		Build()
 
 	assert.Len(t, ac.Processes, 3)
@@ -44,6 +45,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, "my-rs", p.Args26.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
 
 	assert.Len(t, ac.ReplicaSets, 1)

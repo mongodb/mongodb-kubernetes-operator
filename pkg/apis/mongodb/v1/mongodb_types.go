@@ -28,7 +28,7 @@ type MongoDBSpec struct {
 	// FeatureCompatibilityVersion configures the feature compatibility version that will
 	// be set for the deployment
 	// +optional
-	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion"`
+	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 }
 
 // MongoDBStatus defines the observed state of MongoDB
@@ -75,13 +75,9 @@ func (m MongoDB) GetFCV() string {
 	if versionToSplit == "" {
 		versionToSplit = m.Spec.Version
 	}
-	//if m.Spec.FeatureCompatibilityVersion == nil || *m.Spec.FeatureCompatibilityVersion == "" {
-	//	versionToSplit = m.Spec.Version
-	//} else {
-	//	versionToSplit = *m.Spec.FeatureCompatibilityVersion
-	//}
+	minorIndex := 1
 	parts := strings.Split(versionToSplit, ".")
-	return strings.Join(parts[:1], ".")
+	return strings.Join(parts[:minorIndex+1], ".")
 }
 
 // TODO: build the correct statefulset - this is a dummy implementation
