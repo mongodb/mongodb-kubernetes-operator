@@ -41,13 +41,21 @@ const (
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, newReconciler(mgr, readVersionManifestFromDisk))
 }
 
+// ManifestProvider is a function which returns the VersionManifest which
+// contains the list of all available MongoDB versions
+type ManifestProvider func() (automationconfig.VersionManifest, error)
+
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
-	return &ReplicaSetReconciler{client: mdbClient.NewClient(mgrClient), scheme: mgr.GetScheme()}
+	return &ReplicaSetReconciler{
+		client:           mdbClient.NewClient(mgrClient),
+		scheme:           mgr.GetScheme(),
+		manifestProvider: manifestProvider,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -73,8 +81,9 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client mdbClient.Client
-	scheme *runtime.Scheme
+	client           mdbClient.Client
+	scheme           *runtime.Scheme
+	manifestProvider func() (automationconfig.VersionManifest, error)
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -129,7 +138,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := buildAutomationConfigConfigMap(mdb)
+	cm, err := r.buildAutomationConfigConfigMap(mdb)
 	if err != nil {
 		return err
 	}
@@ -185,8 +194,8 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
-	manifest, err := readVersionManifestFromDisk()
+func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}

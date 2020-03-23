@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -34,12 +36,34 @@ func newTestReplicaSet() mdbv1.MongoDB {
 	}
 }
 
+func mockManifestProvider(version string) func() (automationconfig.VersionManifest, error) {
+	return func() (automationconfig.VersionManifest, error) {
+		return automationconfig.VersionManifest{
+			Updated: 0,
+			Versions: []automationconfig.MongoDbVersionConfig{
+				{
+					Name: version,
+					Builds: []automationconfig.BuildConfig{{
+						Platform:     "platform",
+						Url:          "url",
+						GitVersion:   "gitVersion",
+						Architecture: "arch",
+						Flavor:       "flavor",
+						MinOsVersion: "0",
+						MaxOsVersion: "10",
+						Modules:      []string{},
+					}},
+				}},
+		}, nil
+	}
+}
+
 func TestKubernetesResources_AreCreated(t *testing.T) {
 	// TODO: Create builder/yaml fixture of some type to construct MDB objects for unit tests
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := newReconciler(mgr)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -56,7 +80,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
-	r := newReconciler(mgr)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
