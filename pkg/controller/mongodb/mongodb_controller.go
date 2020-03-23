@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -31,6 +32,7 @@ const (
 	agentName                 = "mongodb-agent"
 	mongodbName               = "mongod"
 	agentImageEnvVariable     = "AGENT_IMAGE"
+	versionManifestFilePath   = "/usr/local/version_manifest.json"
 	readinessProbePath        = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
 	agentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
 	clusterFilePath           = "/var/lib/automation/config/automation-config"
@@ -39,13 +41,21 @@ const (
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, newReconciler(mgr, readVersionManifestFromDisk))
 }
 
+// ManifestProvider is a function which returns the VersionManifest which
+// contains the list of all available MongoDB versions
+type ManifestProvider func() (automationconfig.VersionManifest, error)
+
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
-	return &ReplicaSetReconciler{client: mdbClient.NewClient(mgrClient), scheme: mgr.GetScheme()}
+	return &ReplicaSetReconciler{
+		client:           mdbClient.NewClient(mgrClient),
+		scheme:           mgr.GetScheme(),
+		manifestProvider: manifestProvider,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -71,8 +81,9 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client mdbClient.Client
-	scheme *runtime.Scheme
+	client           mdbClient.Client
+	scheme           *runtime.Scheme
+	manifestProvider func() (automationconfig.VersionManifest, error)
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -102,7 +113,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		log.Warnf("failed creating config map: %s", err)
+		log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -127,7 +138,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := buildAutomationConfigConfigMap(mdb)
+	cm, err := r.buildAutomationConfigConfigMap(mdb)
 	if err != nil {
 		return err
 	}
@@ -137,7 +148,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return nil
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig) automationconfig.AutomationConfig {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
@@ -146,9 +157,25 @@ func buildAutomationConfig(mdb mdbv1.MongoDB) automationconfig.AutomationConfig 
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetAutomationConfigVersion(1). // TODO: Correctly set the version
-		AddVersion(buildVersion406()).
 		SetFCV(mdb.GetFCV()).
+		AddVersion(mdbVersionConfig).
 		Build()
+}
+
+func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
+	bytes, err := ioutil.ReadFile(versionManifestFilePath)
+	if err != nil {
+		return automationconfig.VersionManifest{}, err
+	}
+	return versionManifestFromBytes(bytes)
+}
+
+func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, error) {
+	versionManifest := automationconfig.VersionManifest{}
+	if err := json.Unmarshal(bytes, &versionManifest); err != nil {
+		return automationconfig.VersionManifest{}, err
+	}
+	return versionManifest, nil
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -168,36 +195,12 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-// buildVersion406 returns a compatible version.
-func buildVersion406() automationconfig.MongoDbVersionConfig {
-	// TODO: For now we only have 2 versions, that match the versions used for testing.
-	return automationconfig.MongoDbVersionConfig{
-		Builds: []automationconfig.BuildConfig{
-			{
-				Architecture: "amd64",
-				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
-				Platform:     "linux",
-				Url:          "/linux/mongodb-linux-x86_64-rhel62-4.0.6.tgz",
-				Flavor:       "rhel",
-				MaxOsVersion: "8.0",
-				MinOsVersion: "7.0",
-			},
-			{
-				Architecture: "amd64",
-				GitVersion:   "caa42a1f75a56c7643d0b68d3880444375ec42e3",
-				Platform:     "linux",
-				Url:          "/linux/mongodb-linux-x86_64-ubuntu1604-4.0.6.tgz",
-				Flavor:       "ubuntu",
-				MaxOsVersion: "17.04",
-				MinOsVersion: "16.04",
-			},
-		},
-		Name: "4.0.6",
+func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+	manifest, err := r.manifestProvider()
+	if err != nil {
+		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
-}
-
-func buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
-	ac := buildAutomationConfig(mdb)
+	ac := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version))
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
 		return corev1.ConfigMap{}, err

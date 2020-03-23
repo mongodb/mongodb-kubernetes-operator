@@ -168,6 +168,28 @@ type AutomationConfig struct {
 	Options  Options                `json:"options"`
 }
 
+type VersionManifest struct {
+	Updated  int                    `json:"updated"`
+	Versions []MongoDbVersionConfig `json:"versions"`
+}
+
+// BuildsForVersion returns the MongoDbVersionConfig containing all of the version informatioon
+// for the given mongodb version provided
+func (v VersionManifest) BuildsForVersion(version string) MongoDbVersionConfig {
+	var builds []BuildConfig
+	for _, versionConfig := range v.Versions {
+		if versionConfig.Name != version {
+			continue
+		}
+		builds = versionConfig.Builds
+		break
+	}
+	return MongoDbVersionConfig{
+		Name:   version,
+		Builds: builds,
+	}
+}
+
 type Options struct {
 	DownloadBase string `json:"downloadBase"`
 }
