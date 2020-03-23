@@ -75,24 +75,23 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 // a basic MongoDB connectivity test
 func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		_, err := IsReachable(mdb)
-		if err != nil {
+		if err := Connect(mdb); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 		t.Logf("successfully connected to MongoDB deployment")
 	}
 }
 
-// IsReachable performs a check by initializing a mongo client
+// Connect performs a connectivity check by initializing a mongo client
 // and inserting a document into the MongoDB resource
-func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
+func Connect(mdb *mdbv1.MongoDB) error {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	err = wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
+	return wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
 		collection := mongoClient.Database("testing").Collection("numbers")
 		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil {
@@ -100,12 +99,6 @@ func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
 		}
 		return true, nil
 	})
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 // Scale update the MongoDB with a new number of members and updates the resource
@@ -136,9 +129,7 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 					t.Logf("context cancelled, no longer checking connectivity")
 					return
 				case <-time.After(interval):
-					_, err := IsReachable(mdb)
-
-					if err != nil {
+					if err := Connect(mdb); err != nil {
 						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
 					} else {
 						t.Logf("Successfully connected to %s", mdb.Name)
