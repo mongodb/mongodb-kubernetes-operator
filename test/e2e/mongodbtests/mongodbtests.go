@@ -93,31 +93,6 @@ func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *test
 	}
 }
 
-// IsReachable performs a check by initializing a mongo client
-// and inserting a document into the MongoDB resource
-func IsReachable(mdb *mdbv1.MongoDB) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
-	if err != nil {
-		return false, err
-	}
-
-	err = wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
-		collection := mongoClient.Database("testing").Collection("numbers")
-		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // Scale update the MongoDB with a new number of members and updates the resource
 func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
