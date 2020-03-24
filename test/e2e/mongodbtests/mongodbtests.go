@@ -22,9 +22,9 @@ import (
 
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
-func StatefulSetIsReady(mdb mdbv1.MongoDB) func(t *testing.T) {
+func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb.Name, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +32,7 @@ func StatefulSetIsReady(mdb mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func AutomationConfigConfigMapExists(mdb mdbv1.MongoDB) func(t *testing.T) {
+func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
 		assert.NoError(t, err)
@@ -44,15 +44,18 @@ func AutomationConfigConfigMapExists(mdb mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func CreateResource(mdb mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
+// CreateOrUpdateResource creates the MongoDB resource if it doesn't exist, or updates it otherwise
+func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.CreateRuntimeObject(&mdb, ctx)
-		assert.NoError(t, err)
+		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+			t.Fatal(err)
+		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
 	}
 }
 
-func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
+// DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
+func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -68,32 +71,72 @@ func DeletePod(mdb mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// BasicConnectivity performs a check by initializing a mongo client
-// and inserting a document into the MongoDB resource
-func BasicConnectivity(mdb mdbv1.MongoDB) func(t *testing.T) {
+// BasicConnectivity returns a test function which performs
+// a basic MongoDB connectivity test
+func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		if err := Connect(mdb); err != nil {
+			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
+		}
+		t.Logf("successfully connected to MongoDB deployment")
+	}
+}
+
+// Connect performs a connectivity check by initializing a mongo client
+// and inserting a document into the MongoDB resource
+func Connect(mdb *mdbv1.MongoDB) error {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	if err != nil {
+		return err
+	}
+
+	return wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
+		collection := mongoClient.Database("testing").Collection("numbers")
+		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// Scale update the MongoDB with a new number of members and updates the resource
+func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
+	return func(t *testing.T) {
+		mdb.Spec.Members = newMembers
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, mdb.Spec.Members)
+		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
 
-		t.Logf("Created mongo client!")
+// IsReachableDuring periodically tests connectivity to the provided MongoDB resource
+// during execution of the provided functions. This function can be used to ensure
+// The MongoDB is up throughout the test.
+func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+	return func(t *testing.T) {
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-		var res *mongo.InsertOneResult
-		err = wait.Poll(time.Second*5, time.Minute*1, func() (done bool, err error) {
-			collection := mongoClient.Database("testing").Collection("numbers")
-			res, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-			if err != nil {
-				t.Logf("error inserting document: %+v", err)
-				return false, err
+		// start a go routine which will periodically check basic MongoDB connectivity
+		// once all the test functions have been executed, the go routine will be cancelled
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					t.Logf("context cancelled, no longer checking connectivity")
+					return
+				case <-time.After(interval):
+					if err := Connect(mdb); err != nil {
+						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
+					} else {
+						t.Logf("Successfully connected to %s", mdb.Name)
+					}
+				}
 			}
-			return true, nil
-		})
-
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("inserted ID: %+v", res.InsertedID)
+		}()
+		testFunc()
 	}
 }

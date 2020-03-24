@@ -15,7 +15,6 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          # Replace this with the built image name
           image: quay.io/chatton/mongodb-kubernetes-operator
           command:
           - mongodb-kubernetes-operator
