@@ -31,6 +31,10 @@ spec:
         spec:
           description: MongoDBSpec defines the desired state of MongoDB
           properties:
+            featureCompatibilityVersion:
+              description: FeatureCompatibilityVersion configures the feature compatibility
+                version that will be set for the deployment
+              type: string
             members:
               description: Members is the number of members in the replica set
               type: integer

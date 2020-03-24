@@ -32,6 +32,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		SetMongoDBVersion("4.2.0").
 		SetAutomationConfigVersion(1).
 		SetMembers(3).
+		SetFCV("4.0").
 		Build()
 
 	assert.Len(t, ac.Processes, 3)
@@ -44,6 +45,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, "my-rs", p.Args26.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
 
 	assert.Len(t, ac.ReplicaSets, 1)
@@ -145,4 +147,30 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 	assert.Equal(t, ac.Processes[0].Args26.Net.Port, 27017)
 	assert.Equal(t, ac.Processes[1].Args26.Net.Port, 27017)
 	assert.Equal(t, ac.Processes[2].Args26.Net.Port, 27017)
+}
+
+func TestVersionManifest_BuildsForVersion(t *testing.T) {
+	vm := VersionManifest{
+		Updated: 0,
+		Versions: []MongoDbVersionConfig{
+			defaultMongoDbVersion("4.2.0"),
+			defaultMongoDbVersion("4.2.3"),
+			defaultMongoDbVersion("4.2.4"),
+		},
+	}
+
+	version := vm.BuildsForVersion("4.2.0")
+	assert.Len(t, version.Builds, 1)
+	assert.Equal(t, defaultMongoDbVersion("4.2.0"), version)
+
+	version = vm.BuildsForVersion("4.2.3")
+	assert.Len(t, version.Builds, 1)
+	assert.Equal(t, defaultMongoDbVersion("4.2.3"), version)
+
+	version = vm.BuildsForVersion("4.2.4")
+	assert.Len(t, version.Builds, 1)
+	assert.Equal(t, defaultMongoDbVersion("4.2.4"), version)
+
+	version = vm.BuildsForVersion("4.2.1")
+	assert.Empty(t, version.Builds)
 }
