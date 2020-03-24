@@ -99,9 +99,10 @@ func NewTestMongoDB() mdbv1.MongoDB {
 			Namespace: f.Global.Namespace,
 		},
 		Spec: mdbv1.MongoDBSpec{
-			Members: 3,
-			Type:    "ReplicaSet",
-			Version: "4.0.6",
+			Members:                     3,
+			Type:                        "ReplicaSet",
+			Version:                     "4.0.6",
+			FeatureCompatibilityVersion: "4.0",
 		},
 	}
 }

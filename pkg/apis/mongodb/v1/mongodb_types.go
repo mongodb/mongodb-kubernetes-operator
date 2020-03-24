@@ -22,6 +22,11 @@ type MongoDBSpec struct {
 	Type Type `json:"type"`
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version"`
+
+	// FeatureCompatibilityVersion configures the feature compatibility version that will
+	// be set for the deployment
+	// +optional
+	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 }
 
 // MongoDBStatus defines the observed state of MongoDB
@@ -53,12 +58,24 @@ func (m MongoDB) MongoURI() string {
 
 // ServiceName returns the name of the Service that should be created for
 // this resource
-func (m *MongoDB) ServiceName() string {
+func (m MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m *MongoDB) ConfigMapName() string {
+func (m MongoDB) ConfigMapName() string {
 	return m.Name + "-config"
+}
+
+// GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.
+// It uses the major and minor version for whichever version of MongoDB is configured.
+func (m MongoDB) GetFCV() string {
+	versionToSplit := m.Spec.FeatureCompatibilityVersion
+	if versionToSplit == "" {
+		versionToSplit = m.Spec.Version
+	}
+	minorIndex := 1
+	parts := strings.Split(versionToSplit, ".")
+	return strings.Join(parts[:minorIndex+1], ".")
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

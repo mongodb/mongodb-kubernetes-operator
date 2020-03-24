@@ -157,6 +157,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		Build()
 }

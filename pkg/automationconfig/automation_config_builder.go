@@ -18,6 +18,7 @@ type Builder struct {
 	members        int
 	domain         string
 	name           string
+	fcv            string
 	topology       Topology
 	mongodbVersion string
 
@@ -53,6 +54,11 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
+func (b *Builder) SetFCV(fcv string) *Builder {
+	b.fcv = fcv
+	return b
+}
+
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 	for idx, _ := range version.Builds {
 		if version.Builds[idx].Modules == nil {
@@ -82,7 +88,7 @@ func (b *Builder) Build() AutomationConfig {
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
-		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name)
+		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, withFCV(b.fcv))
 		processes[i] = process
 		members[i] = newReplicaSetMember(process, i)
 	}
@@ -105,4 +111,11 @@ func (b *Builder) Build() AutomationConfig {
 
 func toHostName(name string, index int) string {
 	return fmt.Sprintf("%s-%d", name, index)
+}
+
+// Process functional options
+func withFCV(fcv string) func(*Process) {
+	return func(process *Process) {
+		process.FeatureCompatibilityVersion = fcv
+	}
 }
