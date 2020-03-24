@@ -2,10 +2,13 @@ package client
 
 import (
 	"context"
+	"reflect"
+	"time"
+
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -55,8 +58,21 @@ func (m *mockedClient) Create(_ context.Context, obj runtime.Object, _ ...k8sCli
 		return alreadyExistsError()
 	}
 
+	switch v := obj.(type) {
+	case *appsv1.StatefulSet:
+		onStatefulsetUpdate(v)
+	}
+
 	relevantMap[objKey] = obj
 	return nil
+}
+
+func onStatefulsetUpdate(set *appsv1.StatefulSet) {
+	time.Sleep(time.Second * 1)
+	go func() {
+		set.Status.UpdatedReplicas = *set.Spec.Replicas
+		set.Status.ReadyReplicas = *set.Spec.Replicas
+	}()
 }
 
 func (m *mockedClient) List(_ context.Context, _ runtime.Object, _ ...k8sClient.ListOption) error {
@@ -86,5 +102,5 @@ func (m *mockedClient) DeleteAllOf(_ context.Context, _ runtime.Object, _ ...k8s
 }
 
 func (m *mockedClient) Status() k8sClient.StatusWriter {
-	return nil
+	return m
 }

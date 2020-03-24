@@ -83,9 +83,10 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client           mdbClient.Client
-	scheme           *runtime.Scheme
-	manifestProvider func() (automationconfig.VersionManifest, error)
+	client             mdbClient.Client
+	scheme             *runtime.Scheme
+	manifestProvider   func() (automationconfig.VersionManifest, error)
+	isStatefulSetReady func(appsv1.StatefulSet) bool
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -139,7 +140,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	log.Infof("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
-	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*5, time.Second*30, &set, func() bool {
+	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*3, time.Second*30, &set, func() bool {
 		return statefulset.IsReady(set)
 	})
 
