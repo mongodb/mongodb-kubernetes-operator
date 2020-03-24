@@ -67,6 +67,7 @@ func (m *mockedClient) Create(_ context.Context, obj runtime.Object, _ ...k8sCli
 	return nil
 }
 
+// onStatefulsetUpdate configures the statefulset to be in the running state.
 func onStatefulsetUpdate(set *appsv1.StatefulSet) {
 	time.Sleep(time.Second * 1)
 	go func() {

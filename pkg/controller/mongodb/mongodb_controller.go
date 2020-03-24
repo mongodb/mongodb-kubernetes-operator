@@ -83,10 +83,9 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client             mdbClient.Client
-	scheme             *runtime.Scheme
-	manifestProvider   func() (automationconfig.VersionManifest, error)
-	isStatefulSetReady func(appsv1.StatefulSet) bool
+	client           mdbClient.Client
+	scheme           *runtime.Scheme
+	manifestProvider func() (automationconfig.VersionManifest, error)
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read

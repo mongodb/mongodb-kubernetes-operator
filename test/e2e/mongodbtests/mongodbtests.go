@@ -80,7 +80,6 @@ func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 		if err := Connect(mdb); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
-		t.Logf("successfully connected to MongoDB deployment")
 	}
 }
 
