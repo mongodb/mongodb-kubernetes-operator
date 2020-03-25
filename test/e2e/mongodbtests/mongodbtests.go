@@ -115,7 +115,7 @@ func Connect(mdb *mdbv1.MongoDB) error {
 		return err
 	}
 
-	return wait.Poll(time.Second*1, time.Second*15, func() (done bool, err error) {
+	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
 		collection := mongoClient.Database("testing").Collection("numbers")
 		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil {
