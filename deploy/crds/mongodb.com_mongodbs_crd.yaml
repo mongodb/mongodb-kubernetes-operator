@@ -58,10 +58,13 @@ spec:
               type: string
             phase:
               type: string
+            version:
+              type: string
           required:
           - members
           - mongoUri
           - phase
+          - version
           type: object
       type: object
   version: v1

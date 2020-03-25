@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -23,6 +24,7 @@ type Client interface {
 	k8sClient.Client
 	CreateOrUpdate(obj runtime.Object) error
 	WaitForCondition(nsName types.NamespacedName, interval, duration time.Duration, obj runtime.Object, condition func() bool) (bool, error)
+	UpdateLatest(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error
 }
 
 type client struct {
@@ -54,6 +56,31 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 		return err
 	}
 	return c.Update(context.TODO(), obj)
+}
+
+// UpdateLatest fetches the resource with the given NamespacedName, and applies the given
+// updateFunc to the most recent version of the resource.
+// the updateFunc is intended to accept an anonymous function which captures "obj" in the outer scope.
+func (c client) UpdateLatest(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error {
+	for i := 0; i < 3; i++ {
+		err := c.Get(context.TODO(), nsName, obj)
+		if err != nil {
+			return err
+		}
+
+		// apply the function on the most recent version of the resource
+		updateFunc()
+
+		err = c.Update(context.TODO(), obj)
+		if err == nil {
+			return nil
+		}
+		if errors.IsConflict(err) {
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("the resource is experiencing some intensive concurrent modifications")
 }
 
 func namespacedNameFromObject(obj runtime.Object) types.NamespacedName {

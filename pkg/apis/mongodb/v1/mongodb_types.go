@@ -40,6 +40,7 @@ type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Members  int    `json:"members"`
 	Phase    Phase  `json:"phase"`
+	Version  string `json:"version"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -59,6 +60,11 @@ func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
 	m.Status.Members = m.Spec.Members
 	m.Status.Phase = Running
+	m.Status.Version = m.Spec.Version
+}
+
+func (m MongoDB) ChangingVersion() bool {
+	return (m.Spec.Version != m.Status.Version) && m.Status.Version != ""
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
