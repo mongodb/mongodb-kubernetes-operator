@@ -60,6 +60,27 @@ func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration
 	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm)
 }
 
+// WaitForMongoDBToReachPhase waits until the given MongoDB resource reaches the expected phase
+func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDB, phase mdbv1.Phase, retryInterval, timeout time.Duration) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDB) bool {
+		t.Logf("current phase: %s, waiting for phase: %s", db.Status.Phase, phase)
+		return db.Status.Phase == phase
+	})
+}
+
+// waitForMongoDBCondition polls and waits for a given condition to be true
+func waitForMongoDBCondition(mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDB) bool) error {
+	mdbNew := mdbv1.MongoDB{}
+	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.Namespace}, &mdbNew)
+		if err != nil {
+			return false, err
+		}
+		ready := condition(mdbNew)
+		return ready, nil
+	})
+}
+
 // waitForStatefulSetToExist waits until a StatefulSet of the given name exists
 // using the provided retryInterval and timeout
 func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Duration) (appsv1.StatefulSet, error) {

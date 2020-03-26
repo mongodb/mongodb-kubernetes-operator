@@ -34,16 +34,16 @@ func TestReplicaSetScale(t *testing.T) {
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
-					Members:  5,
 					Phase:    mdbv1.Running,
+					Version:  mdb.Spec.Version,
 				}))
 			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
 			t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
-					Members:  3,
 					Phase:    mdbv1.Running,
+					Version:  mdb.Spec.Version,
 				}))
 		},
 	))

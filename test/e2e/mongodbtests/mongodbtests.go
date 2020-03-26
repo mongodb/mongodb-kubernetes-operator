@@ -34,6 +34,17 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
+func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("MongoDB %s/%s is Running!", mdb.Namespace, mdb.Name)
+	}
+}
+
 func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
@@ -98,7 +109,7 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
-			mdb.Spec.Members = newMembers
+			db.Spec.Members = newMembers
 		})
 		if err != nil {
 			t.Fatal(err)

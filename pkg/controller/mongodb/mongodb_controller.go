@@ -168,7 +168,7 @@ func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
 	if mdb.ChangingVersion() {
 		sts := &appsv1.StatefulSet{}
-		err := r.client.UpdateLatest(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, sts, func() {
+		err := r.client.GetAndUpdate(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, sts, func() {
 			sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 		})
 
