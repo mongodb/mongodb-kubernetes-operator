@@ -52,14 +52,11 @@ spec:
         status:
           description: MongoDBStatus defines the observed state of MongoDB
           properties:
-            members:
-              type: integer
             mongoUri:
               type: string
             phase:
               type: string
           required:
-          - members
           - mongoUri
           - phase
           type: object

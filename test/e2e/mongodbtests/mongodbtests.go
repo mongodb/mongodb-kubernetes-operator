@@ -98,7 +98,7 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
-			mdb.Spec.Members = newMembers
+			db.Spec.Members = newMembers
 		})
 		if err != nil {
 			t.Fatal(err)

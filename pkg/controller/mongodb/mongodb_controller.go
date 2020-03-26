@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -139,18 +138,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
-	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*3, time.Second*30, &set, func() bool {
-		return statefulset.IsReady(set)
-	})
-
-	if timedOut {
-		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
-		return reconcile.Result{Requeue: true}, nil
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
+		log.Infof("Error getting StatefulSet: %s", err)
+		return reconcile.Result{}, err
 	}
 
-	if err != nil {
-		log.Errorf("error polling for statefulset: %+v", err)
-		return reconcile.Result{}, err
+	if !statefulset.IsReady(set) {
+		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	log.Infof("Stateful Set reached ready state!")

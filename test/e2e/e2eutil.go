@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -32,25 +30,14 @@ func RegisterTypesWithFramework(newTypes ...runtime.Object) error {
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
 func UpdateMongoDBResource(original *mdbv1.MongoDB, updateFunc func(*mdbv1.MongoDB)) error {
-	for i := 0; i < 3; i++ {
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
-		if err != nil {
-			return err
-		}
-
-		updateFunc(original)
-
-		err = f.Global.Client.Update(context.TODO(), original)
-		if err == nil {
-			return nil
-		}
-
-		if errors.IsConflict(err) {
-			continue
-		}
+	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
+	if err != nil {
 		return err
 	}
-	return fmt.Errorf("the resource is experiencing some intensive concurrent modifications")
+
+	updateFunc(original)
+
+	return f.Global.Client.Update(context.TODO(), original)
 }
 
 // waitForConfigMapToExist waits until a ConfigMap of the given name exists
