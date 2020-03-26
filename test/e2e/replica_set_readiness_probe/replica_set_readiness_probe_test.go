@@ -35,7 +35,6 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
-					Members:  3,
 					Phase:    mdbv1.Running,
 				}))
 		},
