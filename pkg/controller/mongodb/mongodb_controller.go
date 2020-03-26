@@ -151,7 +151,7 @@ func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
-	r.log.Infof("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
+	r.log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
 	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*3, time.Second*30, &set, func() bool {
 		return statefulset.IsReady(set)

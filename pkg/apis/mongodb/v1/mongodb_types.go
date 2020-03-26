@@ -38,7 +38,6 @@ type MongoDBSpec struct {
 // MongoDBStatus defines the observed state of MongoDB
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
-	Members  int    `json:"members"`
 	Phase    Phase  `json:"phase"`
 	Version  string `json:"version"`
 }
@@ -58,7 +57,6 @@ type MongoDB struct {
 
 func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
-	m.Status.Members = m.Spec.Members
 	m.Status.Phase = Running
 	m.Status.Version = m.Spec.Version
 }
