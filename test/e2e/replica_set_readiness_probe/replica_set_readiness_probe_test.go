@@ -32,6 +32,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 		func() {
 			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
 			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
+			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
