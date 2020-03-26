@@ -137,7 +137,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		log.Infof("StatefulSet successfully Created/Updated")
 	}
 
-	log.Infof("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
+	log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
 	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*3, time.Second*30, &set, func() bool {
 		return statefulset.IsReady(set)
