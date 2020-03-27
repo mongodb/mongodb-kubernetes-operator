@@ -128,12 +128,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		r.log.Infof("The service already exists... moving forward: %s", err)
 	}
 
-	// TODO: refactor this to use reconciliationResult or similar
+	// TODO: refactor this to use reconciliationStatus or similar
 	if err, retryAfter := r.configureStatefulSet(mdb); err != nil {
-		r.log.Infof("Error configuring StatefulSet: %+v", err)
 		if retryAfter > 0 {
+			r.log.Infof("StatefulSet is not ready yet: %+v", err)
 			return reconcile.Result{RequeueAfter: retryAfter}, nil
 		}
+		r.log.Infof("Error configuring StatefulSet: %+v", err)
 		return reconcile.Result{}, err
 	}
 
