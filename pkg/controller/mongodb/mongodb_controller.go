@@ -116,6 +116,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
