@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
 
@@ -153,16 +152,12 @@ func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
 
 	r.log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
-	timedOut, err := r.client.WaitForCondition(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, time.Second*3, time.Second*30, &set, func() bool {
-		return statefulset.IsReady(set)
-	})
-
-	if timedOut {
-		return fmt.Errorf("stateful Set has not yet reached the ready state, requeuing reconciliation")
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
+		return fmt.Errorf("rrror getting StatefulSet: %s", err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("error polling for StatefulSet: %+v", err)
+	if !statefulset.IsReady(set) {
+		return fmt.Errorf("stateful Set has not yet reached the ready state, requeuing reconciliation")
 	}
 
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
