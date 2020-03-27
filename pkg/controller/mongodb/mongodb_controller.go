@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
 
@@ -118,17 +119,21 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		r.log.Warnf("error creating automation config config map: %s", err)
+		r.log.Infof("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	svc := buildService(mdb)
 	if err = r.client.CreateOrUpdate(&svc); err != nil {
-		r.log.Warnf("The service already exists... moving forward: %s", err)
+		r.log.Infof("The service already exists... moving forward: %s", err)
 	}
 
-	if err := r.configureStatefulSet(mdb); err != nil {
+	// TODO: refactor this to use reconciliationResult or similar
+	if err, retryAfter := r.configureStatefulSet(mdb); err != nil {
 		r.log.Infof("Error configuring StatefulSet: %+v", err)
+		if retryAfter > 0 {
+			return reconcile.Result{RequeueAfter: retryAfter}, nil
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -141,23 +146,23 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	return reconcile.Result{}, nil
 }
 
-func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) (error, time.Duration) {
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
-		return fmt.Errorf("error building StatefulSet: %s", err)
+		return fmt.Errorf("error building StatefulSet: %s", err), 0
 	}
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
+		return fmt.Errorf("error creating/updating StatefulSet: %s", err), 0
 	}
 
 	r.log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
-		return fmt.Errorf("error getting StatefulSet: %s", err)
+		return fmt.Errorf("error getting StatefulSet: %s", err), 0
 	}
 
 	if !statefulset.IsReady(set) {
-		return fmt.Errorf("stateful Set has not yet reached the ready state, requeuing reconciliation")
+		return fmt.Errorf("stateful Set has not yet reached the ready state, requeuing reconciliation"), time.Second * 10
 	}
 
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
@@ -168,10 +173,10 @@ func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
 		})
 
 		if err != nil {
-			return fmt.Errorf("error restting StatefulSet UpdateStrategyType: %+v", err)
+			return fmt.Errorf("error restting StatefulSet UpdateStrategyType: %+v", err), 0
 		}
 	}
-	return nil
+	return nil, 0
 }
 
 // updateStatusSuccess should be called after a successful reconciliation
