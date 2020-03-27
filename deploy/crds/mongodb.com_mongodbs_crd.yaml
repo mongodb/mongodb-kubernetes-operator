@@ -56,12 +56,9 @@ spec:
               type: string
             phase:
               type: string
-            version:
-              type: string
           required:
           - mongoUri
           - phase
-          - version
           type: object
       type: object
   version: v1
