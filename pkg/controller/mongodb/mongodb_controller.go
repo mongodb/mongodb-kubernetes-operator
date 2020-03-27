@@ -153,7 +153,7 @@ func (r *ReplicaSetReconciler) configureStatefulSet(mdb mdbv1.MongoDB) error {
 	r.log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
-		return fmt.Errorf("rrror getting StatefulSet: %s", err)
+		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
 	if !statefulset.IsReady(set) {
