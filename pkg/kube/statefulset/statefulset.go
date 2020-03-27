@@ -1,6 +1,7 @@
 package statefulset
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -69,4 +70,11 @@ func WithReadOnly(readonly bool) func(*corev1.VolumeMount) {
 	return func(v *corev1.VolumeMount) {
 		v.ReadOnly = readonly
 	}
+}
+
+func IsReady(sts appsv1.StatefulSet) bool {
+	replicas := *sts.Spec.Replicas
+	allUpdated := replicas == sts.Status.UpdatedReplicas
+	allReady := replicas == sts.Status.ReadyReplicas
+	return allUpdated && allReady
 }

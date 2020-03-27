@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -29,15 +27,17 @@ func RegisterTypesWithFramework(newTypes ...runtime.Object) error {
 	return nil
 }
 
-func CreateOrUpdateMongoDB(mdb *mdbv1.MongoDB, ctx *f.TestCtx) error {
-	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &mdbv1.MongoDB{})
+// UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
+// and retries when there are conflicts
+func UpdateMongoDBResource(original *mdbv1.MongoDB, updateFunc func(*mdbv1.MongoDB)) error {
+	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx})
-		}
 		return err
 	}
-	return f.Global.Client.Update(context.TODO(), mdb)
+
+	updateFunc(original)
+
+	return f.Global.Client.Update(context.TODO(), original)
 }
 
 // waitForConfigMapToExist waits until a ConfigMap of the given name exists
@@ -45,6 +45,27 @@ func CreateOrUpdateMongoDB(mdb *mdbv1.MongoDB, ctx *f.TestCtx) error {
 func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{}
 	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm)
+}
+
+// WaitForMongoDBToReachPhase waits until the given MongoDB resource reaches the expected phase
+func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDB, phase mdbv1.Phase, retryInterval, timeout time.Duration) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDB) bool {
+		t.Logf("current phase: %s, waiting for phase: %s", db.Status.Phase, phase)
+		return db.Status.Phase == phase
+	})
+}
+
+// waitForMongoDBCondition polls and waits for a given condition to be true
+func waitForMongoDBCondition(mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDB) bool) error {
+	mdbNew := mdbv1.MongoDB{}
+	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.Namespace}, &mdbNew)
+		if err != nil {
+			return false, err
+		}
+		ready := condition(mdbNew)
+		return ready, nil
+	})
 }
 
 // waitForStatefulSetToExist waits until a StatefulSet of the given name exists

@@ -25,13 +25,19 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	}
 
 	mdb := e2eutil.NewTestMongoDB()
-	t.Run("Create MongoDB Resource", mongodbtests.CreateOrUpdateResource(&mdb, ctx))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
 			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
+			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+				mdbv1.MongoDBStatus{
+					MongoURI: mdb.MongoURI(),
+					Phase:    mdbv1.Running,
+				}))
 		},
 	))
 }

@@ -51,6 +51,14 @@ spec:
           type: object
         status:
           description: MongoDBStatus defines the observed state of MongoDB
+          properties:
+            mongoUri:
+              type: string
+            phase:
+              type: string
+          required:
+          - mongoUri
+          - phase
           type: object
       type: object
   version: v1

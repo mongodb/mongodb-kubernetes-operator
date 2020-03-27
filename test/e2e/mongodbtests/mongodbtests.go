@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -32,6 +34,17 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
+func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("MongoDB %s/%s is Running!", mdb.Namespace, mdb.Name)
+	}
+}
+
 func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
@@ -44,10 +57,10 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-// CreateOrUpdateResource creates the MongoDB resource if it doesn't exist, or updates it otherwise
-func CreateOrUpdateResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
+// CreateMongoDBResource creates the MongoDB resource
+func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
-		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
+		if err := f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx}); err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
@@ -78,7 +91,29 @@ func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 		if err := Connect(mdb); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
-		t.Logf("successfully connected to MongoDB deployment")
+	}
+}
+
+// Status compares the given status to the actual status of the MongoDB resource
+func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *testing.T) {
+	return func(t *testing.T) {
+		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
+			t.Fatal(fmt.Errorf("error getting MongoDB resource: %+v", err))
+		}
+		assert.Equal(t, expectedStatus, mdb.Status)
+	}
+}
+
+// Scale update the MongoDB with a new number of members and updates the resource
+func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -91,7 +126,7 @@ func Connect(mdb *mdbv1.MongoDB) error {
 		return err
 	}
 
-	return wait.Poll(time.Second*5, time.Minute*2, func() (done bool, err error) {
+	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
 		collection := mongoClient.Database("testing").Collection("numbers")
 		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil {
@@ -99,17 +134,6 @@ func Connect(mdb *mdbv1.MongoDB) error {
 		}
 		return true, nil
 	})
-}
-
-// Scale update the MongoDB with a new number of members and updates the resource
-func Scale(mdb *mdbv1.MongoDB, newMembers int, ctx *f.TestCtx) func(*testing.T) {
-	return func(t *testing.T) {
-		mdb.Spec.Members = newMembers
-		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, mdb.Spec.Members)
-		if err := e2eutil.CreateOrUpdateMongoDB(mdb, ctx); err != nil {
-			t.Fatal(err)
-		}
-	}
 }
 
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource

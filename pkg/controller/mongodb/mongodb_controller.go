@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -124,17 +126,46 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
-		log.Warnf("error building StatefulSet: %s", err)
+		log.Infof("Error building StatefulSet: %s", err)
 		return reconcile.Result{}, nil
 	}
 
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		log.Warnf("error creating/updating StatefulSet: %s", err)
+		log.Infof("Error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
+	} else {
+		log.Infof("StatefulSet successfully Created/Updated")
+	}
+
+	log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
+	set := appsv1.StatefulSet{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
+		log.Infof("Error getting StatefulSet: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	if !statefulset.IsReady(set) {
+		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
+		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
+	}
+
+	log.Infof("Stateful Set reached ready state!")
+
+	if err := r.updateStatusSuccess(&mdb); err != nil {
+		log.Infof("Error updating the status of the MongoDB resource: %+v", err)
+		return reconcile.Result{}, nil
 	}
 
 	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
+}
+
+func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
+	mdb.UpdateSuccess()
+	if err := r.client.Status().Update(context.TODO(), mdb); err != nil {
+		return fmt.Errorf("error updating status: %+v", err)
+	}
+	return nil
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
