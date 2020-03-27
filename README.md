@@ -16,3 +16,10 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 The source code of this Operator is available under the Apache v2 license.
 
 The MongoDB Agent binary in the agent/ directory may be used under the "Free for Commercial Use" license found in agent/LICENSE.
+
+
+## Contributing
+
+Please file issues before filing PRs. For PRs to be accepted, contributors must sign our [CLA](https://www.mongodb.com/legal/contributor-agreement).
+
+Reviewers, please ensure that the CLA has been signed by referring to [the contributors tool](https://contributors.corp.mongodb.com/) (internal link).

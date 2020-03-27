@@ -40,6 +40,9 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 	return c.Update(context.TODO(), obj)
 }
 
+// GetAndUpdate fetches the most recent version of the runtime.Object with the provided
+// nsName and applies the update function. The update function should update "obj" from
+// an outer scope
 func (c client) GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error {
 	err := c.Get(context.TODO(), nsName, obj)
 	if err != nil {
