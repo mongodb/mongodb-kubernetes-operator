@@ -153,7 +153,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err := r.updateStatusSuccess(&mdb); err != nil {
 		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 
 	r.log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
@@ -192,7 +192,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
-	r.log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
+	r.log.Debugf("Waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
@@ -205,6 +205,9 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
 	mdb := mdbv1.MongoDB{}
 	return r.client.GetAndUpdate(nsName, &mdb, func() {
+		if mdb.Annotations == nil {
+			mdb.Annotations = map[string]string{}
+		}
 		mdb.Annotations[key] = val
 	})
 }
@@ -213,8 +216,12 @@ func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, va
 // the resource's status is updated to reflect to the state, and any other cleanup
 // operators should be performed here
 func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
-	mdb.UpdateSuccess()
-	if err := r.client.Status().Update(context.TODO(), mdb); err != nil {
+	newMdb := &mdbv1.MongoDB{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, newMdb); err != nil {
+		return fmt.Errorf("error getting resource: %+v", err)
+	}
+	newMdb.UpdateSuccess()
+	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
 		return fmt.Errorf("error updating status: %+v", err)
 	}
 	return nil
