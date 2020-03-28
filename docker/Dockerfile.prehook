@@ -1,0 +1,17 @@
+FROM golang AS builder
+
+ENV GO111MODULE=on
+ENV GOFLAGS="-mod=vendor"
+ENV GOPATH ""
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+ADD . .
+
+RUN go mod vendor && \
+    go build -o build/_output/pre-hook -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/prestop
+
+FROM busybox
+
+COPY --from=builder /go/build/_output/pre-hook /pre-hook

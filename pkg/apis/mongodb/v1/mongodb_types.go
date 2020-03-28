@@ -19,6 +19,12 @@ const (
 	Running Phase = "Running"
 )
 
+const (
+	// LastVersionAnnotationKey should indicate which version of MongoDB was last
+	// configured
+	LastVersionAnnotationKey = "lastVersion"
+)
+
 // MongoDBSpec defines the desired state of MongoDB
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
@@ -39,7 +45,6 @@ type MongoDBSpec struct {
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
-	Version  string `json:"version"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -58,11 +63,13 @@ type MongoDB struct {
 func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
 	m.Status.Phase = Running
-	m.Status.Version = m.Spec.Version
 }
 
 func (m MongoDB) ChangingVersion() bool {
-	return (m.Spec.Version != m.Status.Version) && m.Status.Version != ""
+	if lastVersion, ok := m.Annotations[LastVersionAnnotationKey]; ok {
+		return (m.Spec.Version != lastVersion) && lastVersion != ""
+	}
+	return false
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

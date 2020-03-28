@@ -32,6 +32,5 @@ func TestReplicaSet(t *testing.T) {
 		mdbv1.MongoDBStatus{
 			MongoURI: mdb.MongoURI(),
 			Phase:    mdbv1.Running,
-			Version:  mdb.Spec.Version,
 		}))
 }
