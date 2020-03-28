@@ -151,6 +151,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	if err := r.updateStatusSuccess(&mdb); err != nil {
+		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
+		return reconcile.Result{}, nil
+	}
+
 	r.log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
 }
