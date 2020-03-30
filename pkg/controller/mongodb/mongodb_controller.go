@@ -120,7 +120,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		r.log.Infof("error creating automation config config map: %s", err)
+		r.log.Infof("Error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -135,7 +135,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if ready, err := r.isStatefulSetReady(mdb); err != nil {
-		r.log.Infof("error checking StatefulSet status: %+v", err)
+		r.log.Infof("Error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
 	} else if !ready {
 		r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
@@ -143,7 +143,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Infof("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Infof("Error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -351,15 +351,16 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	return []corev1.Container{agentContainer, mongodbContainer}
 }
 
-func buildInitContainers(preHookImage string, volumeMount corev1.VolumeMount) []corev1.Container {
+func buildInitContainers(preHookImage string, volumeMounts []corev1.VolumeMount) []corev1.Container {
 	return []corev1.Container{
 		{
 			Name:  "mongod-prehook",
 			Image: preHookImage,
 			Command: []string{
-				"cp", "/pre-hook", "/hooks/pre-hook",
+				"cp", "/pre-stop-hook", "/hooks/pre-stop",
 			},
-			VolumeMounts: []corev1.VolumeMount{volumeMount},
+			VolumeMounts:    volumeMounts,
+			ImagePullPolicy: corev1.PullAlways,
 		},
 	}
 }
@@ -394,6 +395,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	}
 
 	hooksVolumeMount := statefulset.CreateVolumeMount("hooks", "/hooks", statefulset.WithReadOnly(false))
+
 	preHookImage := os.Getenv("PRE_STOP_HOOK_IMAGE")
 
 	podSpecTemplate := corev1.PodTemplateSpec{
@@ -403,7 +405,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		Spec: corev1.PodSpec{
 			ServiceAccountName: operatorServiceAccountName,
 			Containers:         buildContainers(mdb),
-			InitContainers:     buildInitContainers(preHookImage, hooksVolumeMount),
+			InitContainers:     buildInitContainers(preHookImage, []corev1.VolumeMount{hooksVolumeMount}),
 		},
 	}
 
@@ -430,11 +432,19 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
 	// the automation config is only mounted, as read only, on the agent container
-	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", "example-mongodb-config")
+	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", statefulset.WithReadOnly(true))
 	builder.
 		AddVolume(automationConfigVolume).
-		AddVolumeMount(agentName, automationConfigVolumeMount)
+		AddVolumeMount(agentName, automationConfigVolumeMount).
+		AddVolumeMount(mongodbName, automationConfigVolumeMount)
+
+	// share the agent-health-status.json file in both containers
+	healthStatusVolumeMount := statefulset.CreateVolumeMount("healthstatus", "/var/log/mongodb-mms-automation")
+	healthStatusVolume := statefulset.CreateVolumeFromEmptyDir("healthstatus")
+	builder.AddVolume(healthStatusVolume).
+		AddVolumeMount(agentName, healthStatusVolumeMount).
+		AddVolumeMount(mongodbName, healthStatusVolumeMount)
 
 	// Configure an empty volume on the mongod container into which the initContainer will copy over the pre-stop hook
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")

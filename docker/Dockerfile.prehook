@@ -10,8 +10,8 @@ RUN go mod download
 ADD . .
 
 RUN go mod vendor && \
-    go build -o build/_output/pre-hook -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/prestop
+    go build -o build/_output/pre-stop-hook -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/prestop
 
 FROM busybox
 
-COPY --from=builder /go/build/_output/pre-hook /pre-hook
+COPY --from=builder /go/build/_output/pre-stop-hook /pre-stop-hook
