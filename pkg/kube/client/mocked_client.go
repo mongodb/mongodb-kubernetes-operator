@@ -59,15 +59,15 @@ func (m *mockedClient) Create(_ context.Context, obj runtime.Object, _ ...k8sCli
 
 	switch v := obj.(type) {
 	case *appsv1.StatefulSet:
-		onStatefulsetUpdate(v)
+		makeStatefulSetReady(v)
 	}
 
 	relevantMap[objKey] = obj
 	return nil
 }
 
-// onStatefulsetUpdate configures the statefulset to be in the running state.
-func onStatefulsetUpdate(set *appsv1.StatefulSet) {
+// makeStatefulSetReady configures the statefulset to be in the running state.
+func makeStatefulSetReady(set *appsv1.StatefulSet) {
 	set.Status.UpdatedReplicas = *set.Spec.Replicas
 	set.Status.ReadyReplicas = *set.Spec.Replicas
 }
@@ -85,6 +85,10 @@ func (m *mockedClient) Update(_ context.Context, obj runtime.Object, _ ...k8sCli
 	objKey, err := k8sClient.ObjectKeyFromObject(obj)
 	if err != nil {
 		return err
+	}
+	switch v := obj.(type) {
+	case *appsv1.StatefulSet:
+		makeStatefulSetReady(v)
 	}
 	relevantMap[objKey] = obj
 	return nil

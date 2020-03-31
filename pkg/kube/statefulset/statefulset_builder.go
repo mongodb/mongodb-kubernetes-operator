@@ -24,6 +24,7 @@ type Builder struct {
 	readinessProbePerContainer map[string]*corev1.Probe
 	volumeClaimsTemplates      []corev1.PersistentVolumeClaim
 	volumeMountsPerContainer   map[string][]corev1.VolumeMount
+	updateStrategyType         appsv1.StatefulSetUpdateStrategyType
 }
 
 func (s *Builder) SetLabels(labels map[string]string) *Builder {
@@ -68,6 +69,11 @@ func (s *Builder) SetReadinessProbe(probe *corev1.Probe, containerName string) *
 
 func (s *Builder) SetPodTemplateSpec(podTemplateSpec corev1.PodTemplateSpec) *Builder {
 	s.podTemplateSpec = podTemplateSpec
+	return s
+}
+
+func (s *Builder) SetUpdateStrategy(updateStrategyType appsv1.StatefulSetUpdateStrategyType) *Builder {
+	s.updateStrategyType = updateStrategyType
 	return s
 }
 
@@ -198,6 +204,9 @@ func (s Builder) Build() (appsv1.StatefulSet, error) {
 			OwnerReferences: ownerReference,
 		},
 		Spec: appsv1.StatefulSetSpec{
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type: s.updateStrategyType,
+			},
 			ServiceName: s.serviceName,
 			Replicas:    &replicas,
 			Selector: &metav1.LabelSelector{

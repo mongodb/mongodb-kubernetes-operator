@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
@@ -57,6 +59,7 @@ func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) recon
 		client:           mdbClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
 		manifestProvider: manifestProvider,
+		log:              zap.S(),
 	}
 }
 
@@ -69,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource MongoDB
-	err = c.Watch(&source.Kind{Type: &mdbv1.MongoDB{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &mdbv1.MongoDB{}}, &handler.EnqueueRequestForObject{}, predicates.OnlyOnSpecChange())
 	if err != nil {
 		return err
 	}
@@ -86,6 +89,7 @@ type ReplicaSetReconciler struct {
 	client           mdbClient.Client
 	scheme           *runtime.Scheme
 	manifestProvider func() (automationconfig.VersionManifest, error)
+	log              *zap.SugaredLogger
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -94,8 +98,8 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log := zap.S().With("ReplicaSet", request.NamespacedName)
-	log.Info("Reconciling MongoDB")
+	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
+	r.log.Info("Reconciling MongoDB")
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
@@ -108,61 +112,116 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		log.Errorf("error reconciling MongoDB resource: %s", err)
+		r.log.Errorf("error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
 	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		log.Warnf("error creating automation config config map: %s", err)
+		r.log.Infof("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	svc := buildService(mdb)
 	if err = r.client.CreateOrUpdate(&svc); err != nil {
-		log.Warnf("The service already exists... moving forward: %s", err)
+		r.log.Infof("The service already exists... moving forward: %s", err)
 	}
 
-	sts, err := buildStatefulSet(mdb)
-	if err != nil {
-		log.Infof("Error building StatefulSet: %s", err)
-		return reconcile.Result{}, nil
-	}
-
-	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		log.Infof("Error creating/updating StatefulSet: %s", err)
-		return reconcile.Result{}, err
-	} else {
-		log.Infof("StatefulSet successfully Created/Updated")
-	}
-
-	log.Debugf("waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
-	set := appsv1.StatefulSet{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
-		log.Infof("Error getting StatefulSet: %s", err)
+	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+		r.log.Infof("Error creating/updating StatefulSet: %+v", err)
 		return reconcile.Result{}, err
 	}
 
-	if !statefulset.IsReady(set) {
-		log.Infof("Stateful Set has not yet reached the ready state, requeuing reconciliation")
+	if ready, err := r.isStatefulSetReady(mdb); err != nil {
+		r.log.Infof("error checking StatefulSet status: %+v", err)
+		return reconcile.Result{}, err
+	} else if !ready {
+		r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
 		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
-	log.Infof("Stateful Set reached ready state!")
-
-	if err := r.updateStatusSuccess(&mdb); err != nil {
-		log.Infof("Error updating the status of the MongoDB resource: %+v", err)
-		return reconcile.Result{}, nil
+	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
+		r.log.Infof("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		return reconcile.Result{}, err
 	}
 
-	log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
+	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.LastVersionAnnotationKey, mdb.Spec.Version); err != nil {
+		r.log.Infof("Error setting annotation: %+v", err)
+		return reconcile.Result{}, err
+	}
+
+	if err := r.updateStatusSuccess(&mdb); err != nil {
+		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
+		return reconcile.Result{}, err
+	}
+
+	r.log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
 }
 
+// resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
+// and does not keep using OnDelete
+func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
+	if !mdb.ChangingVersion() {
+		return nil
+	}
+	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
+	sts := &appsv1.StatefulSet{}
+	return r.client.GetAndUpdate(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, sts, func() {
+		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+	})
+}
+
+// isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
+// is currently in the ready state
+func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB) (bool, error) {
+	set := appsv1.StatefulSet{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
+		return false, fmt.Errorf("error getting StatefulSet: %s", err)
+	}
+	return statefulset.IsReady(set), nil
+}
+
+func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
+	sts, err := buildStatefulSet(mdb)
+	if err != nil {
+		return fmt.Errorf("error building StatefulSet: %s", err)
+	}
+	if err = r.client.CreateOrUpdate(&sts); err != nil {
+		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
+	}
+
+	r.log.Debugf("Waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
+	set := appsv1.StatefulSet{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
+		return fmt.Errorf("error getting StatefulSet: %s", err)
+	}
+	return nil
+}
+
+// setAnnotation updates the monogdb resource with the given namespaced name and sets the annotation
+// "key" with the provided value "val"
+func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
+	mdb := mdbv1.MongoDB{}
+	return r.client.GetAndUpdate(nsName, &mdb, func() {
+		if mdb.Annotations == nil {
+			mdb.Annotations = map[string]string{}
+		}
+		mdb.Annotations[key] = val
+	})
+}
+
+// updateStatusSuccess should be called after a successful reconciliation
+// the resource's status is updated to reflect to the state, and any other cleanup
+// operators should be performed here
 func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
-	mdb.UpdateSuccess()
-	if err := r.client.Status().Update(context.TODO(), mdb); err != nil {
+	newMdb := &mdbv1.MongoDB{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, newMdb); err != nil {
+		return fmt.Errorf("error getting resource: %+v", err)
+	}
+	newMdb.UpdateSuccess()
+	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
 		return fmt.Errorf("error updating status: %+v", err)
 	}
 	return nil
@@ -293,6 +352,15 @@ func defaultReadinessProbe() corev1.Probe {
 	}
 }
 
+// getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
+// should be configured with
+func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyType {
+	if !mdb.ChangingVersion() {
+		return appsv1.RollingUpdateStatefulSetStrategyType
+	}
+	return appsv1.OnDeleteStatefulSetStrategyType
+}
+
 // buildStatefulSet takes a MongoDB resource and converts it into
 // the corresponding stateful set
 func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
@@ -316,7 +384,8 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetReplicas(mdb.Spec.Members).
 		SetLabels(labels).
 		SetMatchLabels(labels).
-		SetServiceName(mdb.ServiceName())
+		SetServiceName(mdb.ServiceName()).
+		SetUpdateStrategy(getUpdateStrategyType(mdb))
 
 	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:

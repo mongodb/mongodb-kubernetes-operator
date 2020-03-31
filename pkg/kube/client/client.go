@@ -19,6 +19,7 @@ func NewClient(c k8sClient.Client) Client {
 type Client interface {
 	k8sClient.Client
 	CreateOrUpdate(obj runtime.Object) error
+	GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error
 }
 
 type client struct {
@@ -36,6 +37,19 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 		}
 		return err
 	}
+	return c.Update(context.TODO(), obj)
+}
+
+// GetAndUpdate fetches the most recent version of the runtime.Object with the provided
+// nsName and applies the update function. The update function should update "obj" from
+// an outer scope
+func (c client) GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error {
+	err := c.Get(context.TODO(), nsName, obj)
+	if err != nil {
+		return err
+	}
+	// apply the function on the most recent version of the resource
+	updateFunc()
 	return c.Update(context.TODO(), obj)
 }
 
