@@ -38,7 +38,7 @@ const (
 	agentImageEnvVariable      = "AGENT_IMAGE"
 	versionManifestFilePath    = "/usr/local/version_manifest.json"
 	readinessProbePath         = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
-	agentHealthStatusFilePath  = "/var/log/mongodb-mms-automation/agent-health-status.json"
+	agentHealthStatusFilePath  = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 	clusterFilePath            = "/var/lib/automation/config/automation-config"
 	operatorServiceAccountName = "mongodb-kubernetes-operator"
 )
@@ -134,6 +134,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	r.log.Debugf("Sleeping for 2 seconds...")
+	time.Sleep(time.Second * 2)
+
+	r.log.Debug("Waiting for StatefulSet to be ready.")
 	if ready, err := r.isStatefulSetReady(mdb); err != nil {
 		r.log.Infof("Error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
@@ -142,16 +146,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
+	r.log.Debug("Configuring StatefulSet UpdateStrategy.")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		r.log.Infof("Error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 
-	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.LastVersionAnnotationKey, mdb.Spec.Version); err != nil {
-		r.log.Infof("Error setting annotation: %+v", err)
-		return reconcile.Result{}, err
-	}
-
+	r.log.Debug("Updating MongoDB success status.")
 	if err := r.updateStatusSuccess(&mdb); err != nil {
 		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
 		return reconcile.Result{}, err
@@ -164,9 +165,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
 func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
-	if !mdb.ChangingVersion() {
-		return nil
-	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
 	sts := &appsv1.StatefulSet{}
 	return r.client.GetAndUpdate(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, sts, func() {
@@ -189,27 +187,40 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	if err != nil {
 		return fmt.Errorf("error building StatefulSet: %s", err)
 	}
-	if err = r.client.CreateOrUpdate(&sts); err != nil {
-		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
+
+	versionChangeInProgress := "false"
+	if sts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+		versionChangeInProgress = "true"
 	}
 
-	r.log.Debugf("Waiting for StatefulSet %s/%s to reach ready state", mdb.Namespace, mdb.Name)
-	set := appsv1.StatefulSet{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
-		return fmt.Errorf("error getting StatefulSet: %s", err)
+	r.log.Debugf("Configuring StatefulSet with the %s update strategy type", sts.Spec.UpdateStrategy.Type)
+	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.VersionChangeInProgress, versionChangeInProgress); err != nil {
+		return fmt.Errorf("error updating MongoDB annotations")
+	}
+
+	if err = r.client.CreateOrUpdate(&sts); err != nil {
+		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
 }
 
-// setAnnotation updates the monogdb resource with the given namespaced name and sets the annotation
-// "key" with the provided value "val"
-func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
+// setAnnotation merges the provided annotations with those of the given mongodb resource
+func (r ReplicaSetReconciler) mergeAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
 	mdb := mdbv1.MongoDB{}
 	return r.client.GetAndUpdate(nsName, &mdb, func() {
 		if mdb.Annotations == nil {
 			mdb.Annotations = map[string]string{}
 		}
-		mdb.Annotations[key] = val
+		for k, v := range annotations {
+			mdb.Annotations[k] = v
+		}
+	})
+}
+
+// setAnnotation updates the annotation of a single MongoDB resource of the given nsName
+func (r *ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
+	return r.mergeAnnotations(nsName, map[string]string{
+		key: val,
 	})
 }
 
@@ -225,6 +236,19 @@ func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) error {
 	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
 		return fmt.Errorf("error updating status: %+v", err)
 	}
+
+	// upon a successful reconciliation, we are no longer in the process of changing version
+	desiredAnnotations := map[string]string{
+		mdbv1.ReachedVersionAnnotationKey: mdb.Spec.Version,
+		mdbv1.VersionChangeInProgress:     "false",
+	}
+
+	r.log.Debugf("Updating MongoDB resource with the following annotations: %+v", desiredAnnotations)
+	if err := r.mergeAnnotations(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, desiredAnnotations); err != nil {
+		r.log.Infof("Error setting annotation: %+v", err)
+		return fmt.Errorf("error updating annotations: %+v", err)
+	}
+
 	return nil
 }
 
@@ -329,10 +353,9 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf`,
-	}
-	mongodbPreStopCommand := []string{
-		"/hooks/pre-stop",
+		// pre-stop hooks only get executed on termination of the pod, not a successful completion. We need to manually
+		// call the hook after the mongod command.
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf; /hooks/pre-stop;`,
 	}
 
 	mongodbContainer := corev1.Container{
@@ -340,18 +363,11 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
 		Command:   mongoDbCommand,
 		Resources: resourcerequirements.Defaults(),
-		Lifecycle: &corev1.Lifecycle{
-			PreStop: &corev1.Handler{
-				Exec: &corev1.ExecAction{
-					Command: mongodbPreStopCommand,
-				},
-			},
-		},
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}
 }
 
-func buildInitContainers(preHookImage string, volumeMounts []corev1.VolumeMount) []corev1.Container {
+func buildInitContainers(preHookImage string, volumeMount corev1.VolumeMount) []corev1.Container {
 	return []corev1.Container{
 		{
 			Name:  "mongod-prehook",
@@ -359,7 +375,7 @@ func buildInitContainers(preHookImage string, volumeMounts []corev1.VolumeMount)
 			Command: []string{
 				"cp", "/pre-stop-hook", "/hooks/pre-stop",
 			},
-			VolumeMounts:    volumeMounts,
+			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 			ImagePullPolicy: corev1.PullAlways,
 		},
 	}
@@ -381,10 +397,19 @@ func defaultReadinessProbe() corev1.Probe {
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
 // should be configured with
 func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyType {
-	if !mdb.ChangingVersion() {
-		return appsv1.RollingUpdateStatefulSetStrategyType
+	// if we have a reconciliation that has the spec updated and also already has the desired
+	// version annotation, we look for this flag to indicate we should continue using the OnDelete
+	// strategy type
+	if val, _ := mdb.Annotations[mdbv1.VersionChangeInProgress]; val == "true" {
+		return appsv1.OnDeleteStatefulSetStrategyType
 	}
-	return appsv1.OnDeleteStatefulSetStrategyType
+
+	if val, ok := mdb.Annotations[mdbv1.ReachedVersionAnnotationKey]; ok {
+		if mdb.Spec.Version != val && val != "" {
+			return appsv1.OnDeleteStatefulSetStrategyType
+		}
+	}
+	return appsv1.RollingUpdateStatefulSetStrategyType
 }
 
 // buildStatefulSet takes a MongoDB resource and converts it into
@@ -405,7 +430,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		Spec: corev1.PodSpec{
 			ServiceAccountName: operatorServiceAccountName,
 			Containers:         buildContainers(mdb),
-			InitContainers:     buildInitContainers(preHookImage, []corev1.VolumeMount{hooksVolumeMount}),
+			InitContainers:     buildInitContainers(preHookImage, hooksVolumeMount),
 		},
 	}
 
@@ -433,18 +458,17 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeClaimTemplates(dataVolumeClaim)
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
-	automationConfigVolumeMount := statefulset.CreateVolumeMount("automation-config", "/var/lib/automation/config", statefulset.WithReadOnly(true))
+	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 	builder.
 		AddVolume(automationConfigVolume).
 		AddVolumeMount(agentName, automationConfigVolumeMount).
 		AddVolumeMount(mongodbName, automationConfigVolumeMount)
 
 	// share the agent-health-status.json file in both containers
-	healthStatusVolumeMount := statefulset.CreateVolumeMount("healthstatus", "/var/log/mongodb-mms-automation")
 	healthStatusVolume := statefulset.CreateVolumeFromEmptyDir("healthstatus")
 	builder.AddVolume(healthStatusVolume).
-		AddVolumeMount(agentName, healthStatusVolumeMount).
-		AddVolumeMount(mongodbName, healthStatusVolumeMount)
+		AddVolumeMount(agentName, statefulset.CreateVolumeMount(healthStatusVolume.Name, "/var/log/mongodb-mms-automation/healthstatus")).
+		AddVolumeMount(mongodbName, statefulset.CreateVolumeMount(healthStatusVolume.Name, "/healthstatus"))
 
 	// Configure an empty volume on the mongod container into which the initContainer will copy over the pre-stop hook
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
