@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -93,6 +93,14 @@ type ReplicaSetReconciler struct {
 	log              *zap.SugaredLogger
 }
 
+func (r *ReplicaSetReconciler) logAndRequeue(reason string, causeErr error) (reconcile.Result, error) {
+	if causeErr != nil {
+		r.log.Infof("%s: %s", reason, causeErr)
+		return reconcile.Result{}, causeErr
+	}
+	return reconcile.Result{}, nil
+}
+
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
 // and what is in the MongoDB.Spec
 // Note:
@@ -120,8 +128,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		r.log.Infof("Error creating automation config config map: %s", err)
-		return reconcile.Result{}, err
+		return r.logAndRequeue("Error creating automation config config map", err)
 	}
 
 	svc := buildService(mdb)
@@ -129,36 +136,49 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		r.log.Infof("The service already exists... moving forward: %s", err)
 	}
 
-	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
-		r.log.Infof("Error creating/updating StatefulSet: %+v", err)
-		return reconcile.Result{}, err
+	desiredSts, err := buildStatefulSet(mdb)
+	if err != nil {
+		return r.logAndRequeue("Error building stateful set", err)
 	}
 
-	r.log.Debugf("Sleeping for 2 seconds...")
-	time.Sleep(time.Second * 2)
-
-	r.log.Debug("Waiting for StatefulSet to be ready.")
-	if ready, err := r.isStatefulSetReady(mdb); err != nil {
-		r.log.Infof("Error checking StatefulSet status: %+v", err)
-		return reconcile.Result{}, err
-	} else if !ready {
-		r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
-		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
+	// get the existing stateful set in order to see if we need to apply any changes
+	currentSts := appsv1.StatefulSet{}
+	err = client.IgnoreNotFound(r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &currentSts))
+	if err != nil {
+		return r.logAndRequeue("Error fetching existing StatefulSet", err)
 	}
+
+	// change only if needed
+	// how do we tell if it's needed?
+	// continue only if reflect.DeepEqual(mdb.BuildSts().Spec, spec)?
+	//if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+	//	r.log.Infof("Error creating/updating StatefulSet: %+v", err)
+	//	return reconcile.Result{}, err
+	//} else {
+	//	// retry -> 30 secs
+	//}
+
+	//r.log.Debug("Waiting for StatefulSet to be ready.")
+	//if ready, err := r.isStatefulSetReady(mdb); err != nil {
+	//	r.log.Infof("Error checking StatefulSet status: %+v", err)
+	//	return reconcile.Result{}, err
+	//} else if !ready {
+	//	r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
+	//	return reconcile.Result{RequeueAfter: time.Second * 10}, nil
+	//}
 
 	r.log.Debug("Configuring StatefulSet UpdateStrategy.")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Infof("Error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Infof("Error resetting StatefulSet UpdateStrategyType: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Updating MongoDB success status.")
 	if err := r.updateStatusSuccess(&mdb); err != nil {
-		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
-		return reconcile.Result{}, err
+		return r.logAndRequeue("Error updating the status of the MongoDB resource", err)
 	}
 
-	r.log.Info("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", mdb.Status)
 	return reconcile.Result{}, nil
 }
 
@@ -174,12 +194,12 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
 // is currently in the ready state
-func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB) (bool, error) {
+func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, expectedUpdateStrategy appsv1.StatefulSetUpdateStrategyType) (bool, error) {
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
 		return false, fmt.Errorf("error getting StatefulSet: %s", err)
 	}
-	return statefulset.IsReady(set), nil
+	return statefulset.IsReady(set) && set.Spec.UpdateStrategy.Type == expectedUpdateStrategy, nil
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
@@ -188,15 +208,15 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return fmt.Errorf("error building StatefulSet: %s", err)
 	}
 
-	versionChangeInProgress := "false"
-	if sts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-		versionChangeInProgress = "true"
-	}
+	//versionChangeInProgress := "false"
+	//if sts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+	//	versionChangeInProgress = "true"
+	//}
 
 	r.log.Debugf("Configuring StatefulSet with the %s update strategy type", sts.Spec.UpdateStrategy.Type)
-	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.VersionChangeInProgress, versionChangeInProgress); err != nil {
-		return fmt.Errorf("error updating MongoDB annotations")
-	}
+	//if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.VersionChangeInProgress, versionChangeInProgress); err != nil {
+	//	return fmt.Errorf("error updating MongoDB annotations")
+	//}
 
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
