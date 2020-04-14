@@ -16,6 +16,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.4.0
 	sigs.k8s.io/yaml v1.1.0
+	github.com/imdario/mergo v0.3.8
 )
 
 // TODO: These replace statements need to be completely removed. These exist as the operator-sdk currently requires
