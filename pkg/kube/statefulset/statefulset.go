@@ -1,6 +1,9 @@
 package statefulset
 
 import (
+	"reflect"
+
+	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -77,4 +80,15 @@ func IsReady(sts appsv1.StatefulSet) bool {
 	allUpdated := replicas == sts.Status.UpdatedReplicas
 	allReady := replicas == sts.Status.ReadyReplicas
 	return allUpdated && allReady
+}
+
+// HaveEqualSpec accepts a StatefulSet built, and the StatefulSet that existed already
+// in the API server. HaveEqualSpec returns true if all the changes made in the built StatefulSet
+// are different in any way from the StatefulSet that exists in the API server
+func HaveEqualSpec(builtSts appsv1.StatefulSet, existingSts appsv1.StatefulSet) (bool, error) {
+	stsToMerge := *existingSts.DeepCopyObject().(*appsv1.StatefulSet)
+	if err := mergo.Merge(&stsToMerge, builtSts, mergo.WithOverride); err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(stsToMerge.Spec, existingSts.Spec), nil
 }

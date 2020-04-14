@@ -146,7 +146,8 @@ func defaultStatefulSetBuilder() *Builder {
 		SetName(TestName).
 		SetNamespace(TestNamespace).
 		SetServiceName(fmt.Sprintf("%s-svc", TestName)).
-		SetLabels(map[string]string{})
+		SetLabels(map[string]string{}).
+		SetUpdateStrategy(appsv1.RollingUpdateStatefulSetStrategyType)
 }
 
 func podTemplateWithContainers(containers []corev1.Container) corev1.PodTemplateSpec {
@@ -202,4 +203,74 @@ func TestCreateVolumeMountWithMultipleOptions(t *testing.T) {
 	mount := CreateVolumeMount("this-volume-mount", "my-path", WithSubPath("our-subpath"), WithReadOnly(true))
 	assert.Equal(t, mount.SubPath, "our-subpath")
 	assert.True(t, mount.ReadOnly)
+}
+
+func TestHaveEqualSpec(t *testing.T) {
+	t.Run("Identical StatefulSet", func(t *testing.T) {
+		builtSts, _ := defaultStatefulSetBuilder().Build()
+		existingSts, _ := defaultStatefulSetBuilder().Build()
+		areEqual, err := HaveEqualSpec(builtSts, existingSts)
+		assert.NoError(t, err)
+		assert.True(t, areEqual, "When both stateful sets are identical, these should be considered equivalent")
+	})
+	t.Run("Built StatefulSet is different from existing StatefulSet", func(t *testing.T) {
+		builtSts, _ := defaultStatefulSetBuilder().SetUpdateStrategy(appsv1.OnDeleteStatefulSetStrategyType).Build()
+		existingSts, _ := defaultStatefulSetBuilder().Build()
+		areEqual, err := HaveEqualSpec(builtSts, existingSts)
+		assert.NoError(t, err)
+		assert.False(t, areEqual, "We have specified a field that is different from the existring StatefulSet, so these should be considered different")
+	})
+	t.Run("Existing StatefulSet has values we don't specify", func(t *testing.T) {
+		builtSts, _ := defaultStatefulSetBuilder().Build()
+		existingSts, _ := defaultStatefulSetBuilder().Build()
+		revHistoryList := int32(30)
+		existingSts.Spec.RevisionHistoryLimit = &revHistoryList
+
+		areEqual, err := HaveEqualSpec(builtSts, existingSts)
+		assert.NoError(t, err)
+		assert.True(t, areEqual, "Specs should be considered equal even though the existing StatefulSet has fields we are not interested in")
+	})
+
+	t.Run("Metadata differences", func(t *testing.T) {
+		builtSts, _ := defaultStatefulSetBuilder().SetName("different-name").Build()
+		existingSts, _ := defaultStatefulSetBuilder().Build()
+		areEqual, err := HaveEqualSpec(builtSts, existingSts)
+		assert.NoError(t, err)
+		assert.True(t, areEqual, "Metadata differences should not be considered, we are just looking at spec")
+	})
+
+	t.Run("Change to PodSpecTemplate", func(t *testing.T) {
+		builtSts, _ := defaultStatefulSetBuilder().Build()
+		existingSts, _ := defaultStatefulSetBuilder().Build()
+		t.Run("Same Container added", func(t *testing.T) {
+			builtSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1"}}
+			existingSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1"}}
+			areEqual, err := HaveEqualSpec(builtSts, existingSts)
+			assert.NoError(t, err)
+			assert.True(t, areEqual, "Having the same container should be equal")
+		})
+
+		t.Run("Existing StatefulSet has init containers", func(t *testing.T) {
+			builtSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1"}}
+			existingSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1"}}
+			existingSts.Spec.Template.Spec.InitContainers = []corev1.Container{{Name: "container-1-init"}}
+			areEqual, err := HaveEqualSpec(builtSts, existingSts)
+			assert.NoError(t, err)
+			assert.True(t, areEqual, "The existing StatefulSet has a field we have not touched in the spec (initContainers), this should be ignored in spec comparison")
+		})
+		t.Run("Different Container added", func(t *testing.T) {
+			builtSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-2"}}
+			existingSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-3"}}
+			areEqual, err := HaveEqualSpec(builtSts, existingSts)
+			assert.NoError(t, err)
+			assert.False(t, areEqual, "Metadata differences should not be considered, we are just looking at spec")
+		})
+		t.Run("Image Change", func(t *testing.T) {
+			builtSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1", Image: "image-1"}}
+			existingSts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "container-1", Image: "image-2"}}
+			areEqual, err := HaveEqualSpec(builtSts, existingSts)
+			assert.NoError(t, err)
+			assert.False(t, areEqual, "A single different field in an element in a list should result in the specs being different")
+		})
+	})
 }
