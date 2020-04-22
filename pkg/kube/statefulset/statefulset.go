@@ -82,9 +82,8 @@ func IsReady(sts appsv1.StatefulSet) bool {
 	return allUpdated && allReady
 }
 
-// HaveEqualSpec accepts a StatefulSet built, and the StatefulSet that existed already
-// in the API server. HaveEqualSpec returns true if all the changes made in the built StatefulSet
-// are different in any way from the StatefulSet that exists in the API server
+// HaveEqualSpec accepts a StatefulSet builtSts, and a second existingSts, and compares
+// the Spec of both inputs but only comparing the fields that were specified in builtSts
 func HaveEqualSpec(builtSts appsv1.StatefulSet, existingSts appsv1.StatefulSet) (bool, error) {
 	stsToMerge := *existingSts.DeepCopyObject().(*appsv1.StatefulSet)
 	if err := mergo.Merge(&stsToMerge, builtSts, mergo.WithOverride); err != nil {

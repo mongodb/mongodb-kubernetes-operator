@@ -218,7 +218,7 @@ func TestHaveEqualSpec(t *testing.T) {
 		existingSts, _ := defaultStatefulSetBuilder().Build()
 		areEqual, err := HaveEqualSpec(builtSts, existingSts)
 		assert.NoError(t, err)
-		assert.False(t, areEqual, "We have specified a field that is different from the existring StatefulSet, so these should be considered different")
+		assert.False(t, areEqual, "We have specified a field that is different from the existing StatefulSet, so these should be considered different")
 	})
 	t.Run("Existing StatefulSet has values we don't specify", func(t *testing.T) {
 		builtSts, _ := defaultStatefulSetBuilder().Build()
