@@ -33,4 +33,4 @@ spec:
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
               value: quay.io/chatton/mongodb-agent
             - name: PRE_STOP_HOOK_IMAGE
-              value: "quay.io/chatton/pre-stop-hook"
+              value: "busybox" # TODO: create the hook and image
