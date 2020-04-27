@@ -22,8 +22,7 @@ const (
 const (
 	// LastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	ReachedVersionAnnotationKey = "mongodb.com/mongodb.v1.lastReachedVersion"
-	VersionChangeInProgress     = "mongodb.com/mongodb.v1.versionChangeInProgress"
+	LastVersionAnnotationKey = "lastVersion"
 )
 
 // MongoDBSpec defines the desired state of MongoDB
@@ -64,6 +63,13 @@ type MongoDB struct {
 func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
 	m.Status.Phase = Running
+}
+
+func (m MongoDB) ChangingVersion() bool {
+	if lastVersion, ok := m.Annotations[LastVersionAnnotationKey]; ok {
+		return (m.Spec.Version != lastVersion) && lastVersion != ""
+	}
+	return false
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

@@ -93,7 +93,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, agentName, agentContainer.Name)
-	assert.Equal(t, os.Getenv(agentImageEnvVariable), agentContainer.Image)
+	assert.Equal(t, os.Getenv(agentImageEnv), agentContainer.Image)
 	expectedProbe := defaultReadinessProbe()
 	assert.True(t, reflect.DeepEqual(&expectedProbe, agentContainer.ReadinessProbe))
 
