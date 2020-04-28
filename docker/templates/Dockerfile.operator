@@ -10,10 +10,6 @@ RUN mkdir -p /content/ \
         && curl --fail --retry 3 -o /content/version_manifest.json "https://opsmanager.mongodb.com/static/version_manifest/${manifest_version}.json"
 {% endblock -%}
 
-{% block packages -%}
-RUN apk add --update curl
-{% endblock -%}
-
 {% block build_second_stage -%}
 FROM {{base_image}}
 

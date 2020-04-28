@@ -5,7 +5,7 @@ import argparse
 def operator_params():
     return {
         "builder": True,
-        "builder_image": "golang:alpine",
+        "builder_image": "golang",
         "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
     }
 
