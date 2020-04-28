@@ -1,5 +1,15 @@
 {% extends "Dockerfile.template" %}
 
+{% block build_binary -%}
+# TODO: This build takes longer than it needs to and can still be optimized
+RUN go build -o build/_output/bin/mongodb-kubernetes-operator -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
+
+ENV manifest_version=4.2
+RUN mkdir -p /content/ \
+        && chmod -R +r /content/ \
+        && curl --fail --retry 3 -o /content/version_manifest.json "https://opsmanager.mongodb.com/static/version_manifest/${manifest_version}.json"
+{% endblock -%}
+
 {% block packages -%}
 RUN apk add --update curl
 {% endblock -%}

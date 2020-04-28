@@ -26,11 +26,11 @@ def e2e_params():
 
 def unit_test_params():
     return {
-        "base_image": "golang:alpine",
+        "base_image": "golang",
     }
 
 
-def render(image_name: str):
+def render(image_name):
     param_dict = {
         "unittest": unit_test_params(),
         "e2e": e2e_params(),

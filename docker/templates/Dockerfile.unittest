@@ -1,9 +1,5 @@
 {% extends "Dockerfile.template" %}
 
-{% block packages -%}
-RUN apk add --update curl
-{% endblock -%}
-
 {% block command -%}
 CMD ["go", "test", "./pkg/..."]
 {% endblock -%}
