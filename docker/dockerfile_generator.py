@@ -13,14 +13,14 @@ def operator_params():
 def test_runner_params():
     return {
         "builder": True,
-        "builder_image": "golang:alpine",
+        "builder_image": "golang", # TODO: make this image smaller. There were errors using alpine
         "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
     }
 
 
 def e2e_params():
     return {
-        "base_image": "golang:alpine",
+        "base_image": "golang", # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
     }
 
 
