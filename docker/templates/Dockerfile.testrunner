@@ -1,0 +1,24 @@
+{% extends "Dockerfile.template" %}
+
+{% block packages -%}
+RUN apk add --update curl
+{% endblock -%}
+
+{% block build_binary -%}
+RUN go build cmd/testrunner/main.go
+{% endblock -%}
+
+{% block build_second_stage -%}
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+# copy the testrunner binary
+COPY --from=builder /go/main runner
+
+# add yaml files required by the test runner
+ADD deploy/ deploy/
+ADD test/ test/
+{% endblock -%}
+
+{% block command -%}
+CMD ["./runner"]
+{% endblock -%}

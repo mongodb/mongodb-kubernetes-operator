@@ -86,7 +86,7 @@ functions:
           - quay_user_name
           - quay_password
           - image
-          - dockerfile
+          - image_type
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
@@ -98,7 +98,7 @@ tasks:
       - func: clone
       - func: build_and_push_image
         vars:
-          dockerfile: docker/Dockerfile.operator
+          image_type: operator
           image: quay.io/mongodb/community-operator-dev:${version_id}
 
   - name: build_e2e_image
@@ -108,8 +108,8 @@ tasks:
       - func: clone
       - func: build_and_push_image
         vars:
-          dockerfile: docker/Dockerfile.e2e
           image: quay.io/mongodb/community-operator-e2e:${version_id}
+          image_type: e2e
 
   - name: unit_tests
     commands:

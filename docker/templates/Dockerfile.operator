@@ -1,0 +1,26 @@
+{% extends "Dockerfile.template" %}
+
+{% block packages -%}
+RUN apk add --update curl
+{% endblock -%}
+
+{% block build_second_stage -%}
+FROM {{base_image}}
+
+ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
+    USER_UID=1001 \
+    USER_NAME=mongodb-kubernetes-operator
+
+# copy the operator binary and version manifest
+COPY --from=builder /go/build/_output/bin/mongodb-kubernetes-operator ${OPERATOR}
+COPY --from=builder /go/build/bin /usr/local/bin
+COPY --from=builder /content/version_manifest.json /usr/local/version_manifest.json
+
+RUN  /usr/local/bin/user_setup
+
+USER ${USER_UID}
+{% endblock -%}
+
+{% block command -%}
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+{% endblock -%}

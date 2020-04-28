@@ -1,0 +1,5 @@
+{% extends "Dockerfile.template" %}
+
+{% block command -%}
+CMD ["/bin/operator-sdk", "test", "local",  "./test/e2e",  "--namespace", "default", "--verbose", "--kubeconfig", "/etc/config/kubeconfig" ]
+{% endblock -%}
