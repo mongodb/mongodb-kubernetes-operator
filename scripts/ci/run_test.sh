@@ -19,7 +19,7 @@ kubectl apply -f deploy/testrunner
 kubectl run test-runner --generator=run-pod/v1 \
   --restart=Never \
   --image-pull-policy=Always \
-  --image=quay.io/chatton/test-runner \
+  --image=quay.io/mongodb/community-operator-testrunner:${version_id} \
   --serviceaccount=test-runner \
   --command -- ./runner  --operatorImage quay.io/mongodb/community-operator-dev:${version_id} --testImage quay.io/mongodb/community-operator-e2e:${version_id} --test=${test}
 

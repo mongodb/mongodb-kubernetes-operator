@@ -1,21 +1,6 @@
-FROM golang AS builder
+{% extends "Dockerfile.template" %}
 
-ENV OPERATOR_SDK_VERSION v0.15.2
-ENV GO111MODULE=on
-ENV GOFLAGS="-mod=vendor"
-ENV GOPATH ""
-
-RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
-    && mv operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
-    && chmod +x /bin/operator-sdk
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-ADD . .
-
-RUN go mod vendor && /bin/operator-sdk generate k8s
-
+{% block build_binary -%}
 # TODO: This build takes longer than it needs to and can still be optimized
 RUN go build -o build/_output/bin/mongodb-kubernetes-operator -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
 
@@ -23,8 +8,10 @@ ENV manifest_version=4.2
 RUN mkdir -p /content/ \
         && chmod -R +r /content/ \
         && curl --fail --retry 3 -o /content/version_manifest.json "https://opsmanager.mongodb.com/static/version_manifest/${manifest_version}.json"
+{% endblock -%}
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+{% block build_second_stage -%}
+FROM {{base_image}}
 
 ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
     USER_UID=1001 \
@@ -37,6 +24,9 @@ COPY --from=builder /content/version_manifest.json /usr/local/version_manifest.j
 
 RUN  /usr/local/bin/user_setup
 
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
-
 USER ${USER_UID}
+{% endblock -%}
+
+{% block command -%}
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+{% endblock -%}

@@ -86,7 +86,7 @@ functions:
           - quay_user_name
           - quay_password
           - image
-          - dockerfile
+          - image_type
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
@@ -98,7 +98,7 @@ tasks:
       - func: clone
       - func: build_and_push_image
         vars:
-          dockerfile: docker/Dockerfile.operator
+          image_type: operator
           image: quay.io/mongodb/community-operator-dev:${version_id}
 
   - name: build_e2e_image
@@ -108,8 +108,18 @@ tasks:
       - func: clone
       - func: build_and_push_image
         vars:
-          dockerfile: docker/Dockerfile.e2e
           image: quay.io/mongodb/community-operator-e2e:${version_id}
+          image_type: e2e
+
+  - name: build_testrunner_image
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: build_and_push_image
+        vars:
+          image: quay.io/mongodb/community-operator-testrunner:${version_id}
+          image_type: testrunner
 
   - name: unit_tests
     commands:
@@ -157,6 +167,8 @@ buildvariants:
         variant: init_test_run
       - name: build_e2e_image
         variant: init_test_run
+      - name: build_testrunner_image
+        variant: init_test_run
     tasks:
       - name: e2e_test_replica_set
       - name: e2e_test_replica_set_readiness_probe
@@ -169,3 +181,4 @@ buildvariants:
     tasks:
       - name: build_operator_image
       - name: build_e2e_image
+      - name: build_testrunner_image
