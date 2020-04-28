@@ -2,7 +2,7 @@
 
 <img align="left" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-This is a Kubernetes Operator (https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
+This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
 
 This codebase is currently _pre-alpha_, and is not ready for use.
 
@@ -14,8 +14,9 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 
 Before you install the MongoDB Community Kubernetes Operator, you must:
 
-1. Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-2. Install [kind](https://kind.sigs.k8s.io/)
+1. Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
+2. Have a Kubernetes solution available to use.
+   If you need a Kubernetes solution, see the [Kubernetes documentation on picking the right solution](https://kubernetes.io/docs/setup). For testing, MongoDB recommends [Kind](https://kind.sigs.k8s.io/).
 3. Clone this repository.
    ```
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
@@ -23,7 +24,7 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
 
 ### Installing the MongoDB Community Kubernetes Operator
 
-The MongoDB Community Kubernetes Operator is a collection of [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
+The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
 To install the MongoDB Community Kubernetes Operator:
 
@@ -38,14 +39,13 @@ To install the MongoDB Community Kubernetes Operator:
       kubectl get crd/mongodb.mongodb.com
       ```
 3. Install the Operator.
-   a. Invoke the following `kubectl` command to install the Operator in the `default` namespace:
+   a. Invoke the following `kubectl` command to install the Operator in the specified namespace:
       ```
-      kubectl create -f deploy
+      kubectl create -f deploy --namespace <my-namespace>
       ```
-      To install the Operator in a different namespace, append the `--namespace <my-namespace>` option.
    b. Verify that the Operator installed successsfully:
       ```
-      kubectl get pods
+      kubectl get pods --namespace <my-namespace>
       ```
 
 ## Usage
@@ -58,11 +58,11 @@ To deploy your first replica set:
 
 1. Invoke the following `kubectl` command:
    ```
-   kubectl apply -f deploy/crds/mongodb.com_v1_mongodb_cr.yaml
+   kubectl apply -f deploy/crds/mongodb.com_v1_mongodb_cr.yaml --namespace <my-namespace>
    ```
 2. Verify that the MongoDB resource deployed:
    ```
-   kubectl get mongodb
+   kubectl get mongodb --namespace <my-namespace>
    ```
 
 ## Contributing
