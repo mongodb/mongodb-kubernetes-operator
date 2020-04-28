@@ -1,0 +1,36 @@
+{% if builder %}
+FROM {{builder_image}} AS builder
+
+{% else %}
+FROM {{base_image}}
+{% endif %}
+
+{% block packages -%}
+{% endblock -%}
+
+ENV OPERATOR_SDK_VERSION v0.15.2
+ENV GO111MODULE=on
+ENV GOFLAGS="-mod=vendor"
+ENV GOPATH ""
+
+RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
+    && mv operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
+    && chmod +x /bin/operator-sdk
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+ADD . .
+
+RUN go mod vendor && /bin/operator-sdk generate k8s
+
+# build the binary
+{% block build_binary -%}
+{% endblock -%}
+
+# build and second stage image if necessary
+{% block build_second_stage -%}
+{% endblock -%}
+
+{% block command -%}
+{% endblock -%}
