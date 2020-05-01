@@ -27,7 +27,6 @@ def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
-
 def _prepare_testrunner_environment():
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
@@ -55,7 +54,7 @@ def _prepare_testrunner_environment():
             _load_testrunner_cluster_role_binding()
         )
     )
-    
+
     print("Creating ServiceAccount")
     ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
@@ -114,6 +113,7 @@ def _get_testrunner_pod_body(test: str) -> Dict:
         },
     }
 
+
 def wait_for_pod_to_exist(corev1, name, namespace):
     print("Waiting for pod to be running")
     for i in range(10):
@@ -141,13 +141,15 @@ if __name__ == "__main__":
         dev_config.repo_url, f"{dev_config.repo_url}/test-runner", "."
     )
     build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
+
     _prepare_testrunner_environment()
-    print(f"Running test: {args.test}")
-    corev1 = client.CoreV1Api()
+
     pod = create_test_runner_pod(args.test)
     corev1 = client.CoreV1Api()
     wait_for_pod_to_exist(corev1, "test-runner", dev_config.namespace)
-    print("Tailing pod logs")
-    for line in corev1.read_namespaced_pod_log("test-runner", dev_config.namespace, follow=True, _preload_content=False).stream():
-        print(line.decode("utf-8").rstrip())
 
+    print(f"Running test: {args.test}")
+    for line in corev1.read_namespaced_pod_log(
+        "test-runner", dev_config.namespace, follow=True, _preload_content=False
+    ).stream():
+        print(line.decode("utf-8").rstrip())
