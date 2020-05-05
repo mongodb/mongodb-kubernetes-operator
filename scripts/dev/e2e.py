@@ -82,7 +82,7 @@ def _delete_testrunner_pod() -> None:
 def create_test_runner_pod(test: str):
     dev_config = load_config()
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body("replica_set")
+    pod_body = _get_testrunner_pod_body(test)
     return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
 
 
