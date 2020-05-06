@@ -4,6 +4,9 @@ import os
 
 
 def build_image(repo_url: str, tag: str, path):
+    """
+    build_image builds the image with the given tag
+    """
     client = docker.from_env()
     print(f"Building image: {tag}")
     client.images.build(tag=tag, path=path)
@@ -11,6 +14,10 @@ def build_image(repo_url: str, tag: str, path):
 
 
 def push_image(tag: str):
+    """
+    push_image pushes the given tag. It uses
+    the current docker environment
+    """
     client = docker.from_env()
     print(f"Pushing image: {tag}")
     for line in client.images.push(tag, stream=True):

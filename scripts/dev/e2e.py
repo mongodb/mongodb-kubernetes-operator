@@ -10,6 +10,8 @@ from kubernetes import client, config
 import argparse
 import time
 
+TEST_RUNNER_NAME = "test-runner"
+
 
 def _load_testrunner_service_account() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/service_account.yaml")
@@ -28,6 +30,10 @@ def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
 
 
 def _prepare_testrunner_environment():
+    """
+    _prepare_testrunner_environment ensures the ServiceAccount,
+    Role and ClusterRole and bindings are created for the test runner.
+    """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
     dev_config = load_config()
@@ -64,22 +70,36 @@ def _prepare_testrunner_environment():
 
 
 def build_and_push_testrunner(repo_url: str, tag: str, path: str):
+    """
+    build_and_push_testrunner builds and pushes the test runner
+    image.
+    """
     return build_and_push_image(repo_url, tag, path, "testrunner")
 
 
 def build_and_push_e2e(repo_url: str, tag: str, path: str):
+    """
+    build_and_push_e2e builds and pushes the e2e image.
+    """
     return build_and_push_image(repo_url, tag, path, "e2e")
 
 
 def _delete_testrunner_pod() -> None:
+    """
+    _delete_testrunner_pod deletes the test runner pod
+    if it already exists.
+    """
     dev_config = load_config()
     corev1 = client.CoreV1Api()
     ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod("test-runner", dev_config.namespace)
+        lambda: corev1.delete_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace)
     )
 
 
 def create_test_runner_pod(test: str):
+    """
+    create_test_runner_pod creates the pod which will run all of the tests.
+    """
     dev_config = load_config()
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
@@ -90,14 +110,14 @@ def _get_testrunner_pod_body(test: str) -> Dict:
     dev_config = load_config()
     return {
         "kind": "Pod",
-        "metadata": {"name": "test-runner", "namespace": dev_config.namespace,},
+        "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
         "spec": {
             "restartPolicy": "Never",
-            "serviceAccountName": "test-runner",
+            "serviceAccountName": TEST_RUNNER_NAME,
             "containers": [
                 {
-                    "name": "test-runner",
-                    "image": f"{dev_config.repo_url}/test-runner",
+                    "name": TEST_RUNNER_NAME,
+                    "image": f"{dev_config.repo_url}/{TEST_RUNNER_NAME}",
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
@@ -114,7 +134,7 @@ def _get_testrunner_pod_body(test: str) -> Dict:
     }
 
 
-def wait_for_pod_to_exist(corev1, name, namespace):
+def wait_for_pod_to_be_running(corev1, name, namespace):
     print("Waiting for pod to be running")
     for i in range(10):
         try:
@@ -133,12 +153,12 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+def main():
     args = parse_args()
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_testrunner(
-        dev_config.repo_url, f"{dev_config.repo_url}/test-runner", "."
+        dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
     )
     build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
 
@@ -146,10 +166,16 @@ if __name__ == "__main__":
 
     pod = create_test_runner_pod(args.test)
     corev1 = client.CoreV1Api()
-    wait_for_pod_to_exist(corev1, "test-runner", dev_config.namespace)
+    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
 
     print(f"Running test: {args.test}")
+
+    # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
-        "test-runner", dev_config.namespace, follow=True, _preload_content=False
+        TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
+
+
+if __name__ == "__main__":
+    main()

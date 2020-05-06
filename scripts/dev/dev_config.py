@@ -7,6 +7,10 @@ FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
 
 
 class DevConfig:
+    """
+    DevConfig is a wrapper around the developer configuration file
+    """
+
     def __init__(self, config):
         self._config = config
 

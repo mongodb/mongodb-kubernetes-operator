@@ -37,6 +37,9 @@ def load_yaml_from_file(path: str) -> Optional[Dict]:
 
 
 def _ensure_crds():
+    """
+    ensure_crds makes sure that all the required CRDs have been created
+    """
     crdv1 = client.ApiextensionsV1beta1Api()
     crd = _load_mongodb_crd()
 
@@ -72,10 +75,19 @@ def _ignore_error_codes(fn, codes):
 
 
 def ignore_if_already_exists(fn):
+    """
+    ignore_if_already_exists accepts a function and calls it,
+    ignoring an Kubernetes API conflict errors
+    """
+
     return _ignore_error_codes(fn, [409])
 
 
 def ignore_if_doesnt_exist(fn):
+    """
+    ignore_if_doesnt_exist accepts a function and calls it,
+    ignoring an Kubernetes API not found errors
+    """
     return _ignore_error_codes(fn, [404])
 
 
@@ -113,10 +125,14 @@ def deploy_operator():
     )
 
 
-if __name__ == "__main__":
+def main():
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
         dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", "."
     )
     deploy_operator()
+
+
+if __name__ == "__main__":
+    main()
