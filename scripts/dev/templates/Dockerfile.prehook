@@ -1,3 +1,4 @@
+# TODO: template this
 FROM golang AS builder
 
 ENV GO111MODULE=on

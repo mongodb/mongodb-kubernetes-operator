@@ -79,3 +79,4 @@ tags
 .idea
 vendor
 zz_generated*.go
+__pycache__

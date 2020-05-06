@@ -3,25 +3,38 @@ module github.com/mongodb/mongodb-kubernetes-operator
 go 1.13
 
 require (
+	github.com/Azure/go-autorest/autorest v0.9.7 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.8.3 // indirect
+	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/gobuffalo/envy v1.7.1 // indirect
+	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/operator-framework/operator-sdk v0.15.1
-	github.com/spf13/cast v1.3.1 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/imdario/mergo v0.3.9
+	github.com/json-iterator/go v1.1.9 // indirect
+	github.com/klauspost/compress v1.9.8 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
+	github.com/operator-framework/operator-sdk v0.16.0
+	github.com/prometheus/procfs v0.0.11 // indirect
+	github.com/rogpeppe/go-internal v1.5.2 // indirect
+	github.com/spf13/cobra v0.0.7 // indirect
 	github.com/stretchr/testify v1.4.0
-	go.mongodb.org/mongo-driver v1.3.1
-	go.uber.org/zap v1.13.0
-	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
-	k8s.io/api v0.16.0
-	k8s.io/apiextensions-apiserver v1.18.0-beta.1
-	k8s.io/apimachinery v0.16.0
+	go.mongodb.org/mongo-driver v1.3.2
+	go.uber.org/zap v1.14.1
+	google.golang.org/appengine v1.6.6 // indirect
+	k8s.io/api v0.0.0
+	k8s.io/apiextensions-apiserver v0.0.0
+	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kube-openapi v0.0.0-20200316234421-82d701f24f9d // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
-	sigs.k8s.io/yaml v1.1.0
-	github.com/imdario/mergo v0.3.8
+	sigs.k8s.io/yaml v1.2.0
 )
 
-// TODO: These replace statements need to be completely removed. These exist as the operator-sdk currently requires
-// them. Once they are fully removed, we should only include "require" statements in go.mod
+replace github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200309214505-aa6a9891b09c+incompatible // Required by Helm
 
+// Required by operator-sdk 0.16.0
 // Pinned to kubernetes-1.16.2
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
@@ -46,7 +59,3 @@ replace (
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
 )
-
-replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
-
-replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved

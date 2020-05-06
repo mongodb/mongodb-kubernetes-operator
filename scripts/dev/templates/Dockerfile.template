@@ -1,4 +1,12 @@
-FROM golang AS builder
+{% if builder %}
+FROM {{builder_image}} AS builder
+
+{% else %}
+FROM {{base_image}}
+{% endif %}
+
+{% block packages -%}
+{% endblock -%}
 
 ENV OPERATOR_SDK_VERSION v0.15.2
 ENV GO111MODULE=on
@@ -16,15 +24,13 @@ ADD . .
 
 RUN go mod vendor && /bin/operator-sdk generate k8s
 
-RUN go build cmd/testrunner/main.go
+# build the binary
+{% block build_binary -%}
+{% endblock -%}
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+# build and second stage image if necessary
+{% block build_second_stage -%}
+{% endblock -%}
 
-# copy the testrunner binary
-COPY --from=builder /go/main runner
-
-# add yaml files required by the test runner
-ADD deploy/ deploy/
-ADD test/ test/
-
-CMD ["./runner"]
+{% block command -%}
+{% endblock -%}

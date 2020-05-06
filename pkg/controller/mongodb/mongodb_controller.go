@@ -378,7 +378,7 @@ func buildInitContainers(volumeMount corev1.VolumeMount) []corev1.Container {
 			Name:  "mongod-prehook",
 			Image: os.Getenv("PRE_STOP_HOOK_IMAGE"),
 			Command: []string{ // TODO: copy the hook into the mongod container
-				"sleep", "infinity",
+				"cp", "pre-stop-hook", "/hooks/pre-stop-hook",
 			},
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 			ImagePullPolicy: corev1.PullAlways,

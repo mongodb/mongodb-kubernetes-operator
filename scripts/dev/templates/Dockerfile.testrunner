@@ -1,0 +1,20 @@
+{% extends "Dockerfile.template" %}
+
+{% block build_binary -%}
+RUN go build cmd/testrunner/main.go
+{% endblock -%}
+
+{% block build_second_stage -%}
+FROM {{base_image}}
+
+# copy the testrunner binary
+COPY --from=builder /go/main runner
+
+# add yaml files required by the test runner
+ADD deploy/ deploy/
+ADD test/ test/
+{% endblock -%}
+
+{% block command -%}
+CMD ["./runner"]
+{% endblock -%}
