@@ -35,6 +35,7 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	preStopHookImageEnv          = "PRE_STOP_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	preStopHookLogFilePathEnv    = "PRE_STOP_HOOK_LOG_PATH"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -45,6 +46,13 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 )
+
+func RequiredOperatorEnvVars() []string {
+	return []string{
+		agentImageEnv,
+		preStopHookImageEnv,
+	}
+}
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -342,11 +350,24 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 		"-c",
 		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf`,
 	}
+
 	mongodbContainer := corev1.Container{
 		Name:      mongodbName,
 		Image:     fmt.Sprintf("mongo:%s", mdb.Spec.Version),
 		Command:   mongoDbCommand,
 		Resources: resourcerequirements.Defaults(),
+		// the mongod container needs access to the agent health status file
+		// for the pre-stop hook
+		Env: []corev1.EnvVar{
+			{
+				Name:  agentHealthStatusFilePathEnv,
+				Value: "/healthstatus/agent-health-status.json",
+			},
+			{
+				Name:  preStopHookLogFilePathEnv,
+				Value: "/hooks/pre-stop-hook.log",
+			},
+		},
 	}
 	return []corev1.Container{agentContainer, mongodbContainer}
 }
@@ -394,7 +415,9 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		"app": mdb.ServiceName(),
 	}
 
-	hooksVolumeMount := statefulset.CreateVolumeMount("hooks", "/hooks", statefulset.WithReadOnly(false))
+	// Configure an empty volume on the mongod container into which the initContainer will copy over the pre-stop hook
+	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
+	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
 	podSpecTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -429,6 +452,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeMount(mongodbName, dataVolume).
 		AddVolumeMount(agentName, dataVolume).
 		AddVolumeClaimTemplates(dataVolumeClaim)
+
 	// the automation config is only mounted, as read only, on the agent container
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
@@ -445,8 +469,6 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		AddVolumeMount(agentName, statefulset.CreateVolumeMount(healthStatusVolume.Name, "/var/log/mongodb-mms-automation/healthstatus")).
 		AddVolumeMount(mongodbName, statefulset.CreateVolumeMount(healthStatusVolume.Name, "/healthstatus"))
 
-	// Configure an empty volume on the mongod container into which the initContainer will copy over the pre-stop hook
-	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	builder.AddVolume(hooksVolume).
 		AddVolumeMount(mongodbName, hooksVolumeMount)
 

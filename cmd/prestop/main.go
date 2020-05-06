@@ -20,7 +20,9 @@ import (
 var logger *zap.SugaredLogger
 
 const (
-	agentStatusFilePath = "AGENT_STATUS_FILEPATH"
+	agentStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	logFilePathEnv         = "PRE_STOP_HOOK_LOG_PATH"
+	defaultNamespace       = "default"
 )
 
 func getNamespace() (string, error) {
@@ -31,22 +33,22 @@ func getNamespace() (string, error) {
 	if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
 		return ns, nil
 	}
-	return "default", nil
+	return defaultNamespace, nil
 }
 
 // deletePod attempts to delete the pod this mongod is running in
 func deletePod() error {
 	thisPod, err := getThisPod()
 	if err != nil {
-		return fmt.Errorf("error getting this pod: %v", err)
+		return fmt.Errorf("error getting this pod: %s", err)
 	}
 	k8sClient, err := inClusterClient()
 	if err != nil {
-		return fmt.Errorf("error getting client: %v", err)
+		return fmt.Errorf("error getting client: %s", err)
 	}
 
 	if err := k8sClient.Delete(context.TODO(), &thisPod); err != nil {
-		return fmt.Errorf("error deleting pod: %v", err)
+		return fmt.Errorf("error deleting pod: %s", err)
 	}
 	return nil
 }
@@ -76,7 +78,7 @@ func prettyPrint(i interface{}) {
 // this would be the case if the agent is currently trying to upgrade the version
 // of mongodb.
 func shouldDeletePod() (bool, error) {
-	f, err := os.Open(os.Getenv(agentStatusFilePath))
+	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
 	if err != nil {
 		return false, fmt.Errorf("error opening file: %s", err)
 	}
@@ -94,32 +96,6 @@ func shouldDeletePod() (bool, error) {
 	}
 
 	return isWaitingToBeDeleted(status), nil
-}
-
-// agentRequiresPodDeletionToContinue determines if the agent is currently waiting
-// on the mongod pod to be restarted. In order to do this, we need to check the agent
-// status file and determine if the mongod has been stopped and if we are in the process
-// of a version change.
-func agentRequiresPodDeletionToContinue(h agenthealth.Health) bool {
-	for _, plan := range h.ProcessPlans {
-		if len(plan.Plans) == 0 {
-			return false
-		}
-		lastPlan := plan.Plans[len(plan.Plans)-1]
-		for _, m := range lastPlan.Moves {
-			if changingVersionMove := m.Move == "ChangeVersion"; !changingVersionMove {
-				continue
-			}
-			for _, s := range m.Steps {
-				successfullyStoppedMongod := s.Step == "Stop" && s.Completed != nil && s.Result == "success"
-				if successfullyStoppedMongod {
-					return true
-				}
-			}
-		}
-		return false
-	}
-	return true
 }
 
 // getThisPod returns an instance of corev1.Pod that points to the current pod
@@ -154,22 +130,34 @@ func readAgentHealthStatus(reader io.Reader) (agenthealth.Health, error) {
 	return h, err
 }
 
+func ensureEnvironmentVariables(requiredEnvVars ...string) error {
+	var missingEnvVars []string
+	for _, envVar := range requiredEnvVars {
+		if val := os.Getenv(envVar); val == "" {
+			missingEnvVars = append(missingEnvVars, envVar)
+		}
+	}
+	if len(missingEnvVars) > 0 {
+		return fmt.Errorf("missing envars: %s", strings.Join(missingEnvVars, ","))
+	}
+	return nil
+}
+
 func main() {
 	cfg := zap.NewDevelopmentConfig()
+	if err := ensureEnvironmentVariables(logFilePathEnv, agentStatusFilePathEnv); err != nil {
+		zap.S().Fatal("Not all required environment variables are present: %s", err)
+		os.Exit(1)
+	}
 	cfg.OutputPaths = []string{
-		"/hooks/pre-hook.log",
+		os.Getenv(logFilePathEnv),
 	}
 	log, err := cfg.Build()
 	if err != nil {
-		zap.S().Errorf("Error building logger config: %v", err)
+		zap.S().Errorf("Error building logger config: %s", err)
 		os.Exit(1)
 	}
 	logger = log.Sugar()
-
-	if filePath := os.Getenv(agentStatusFilePath); filePath == "" {
-		logger.Fatal("Environment variable: %s must be set!", agentStatusFilePath)
-		os.Exit(1)
-	}
 	shouldDelete, err := shouldDeletePod()
 	logger.Debugf("shouldDeletePod=%t", shouldDelete)
 	if err != nil {
