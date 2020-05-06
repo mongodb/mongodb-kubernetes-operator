@@ -13,6 +13,8 @@ if [ "${running}" != 'true' ]; then
     registry:2
 fi
 
+ip="$(docker inspect kind-registry -f {{.NetworkSettings.IPAddress}})"
+
 # create a cluster with the local registry enabled in containerd
 cat <<EOF | kind create cluster --kubeconfig ~/.kube/kind --config=-
 kind: Cluster
@@ -20,7 +22,7 @@ apiVersion: kind.x-k8s.io/v1alpha4
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
-    endpoint = ["http://${reg_name}:${reg_port}"]
+    endpoint = ["http://${ip}:${reg_port}"]
 EOF
 
 # create the configmap that has the KUBECONFIG which is mounted into the e2e test
