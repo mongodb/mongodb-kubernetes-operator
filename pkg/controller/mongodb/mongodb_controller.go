@@ -135,16 +135,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	r.log.Debug("Building service")
 	svc := buildService(mdb)
 	if err = r.client.CreateOrUpdate(&svc); err != nil {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 	}
 
+	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		r.log.Infof("Error creating/updating StatefulSet: %+v", err)
 		return reconcile.Result{}, err
 	}
 
+	r.log.Debug("Ensuring StatefulSet is ready")
 	if ready, err := r.isStatefulSetReady(mdb); err != nil {
 		r.log.Infof("error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
@@ -153,16 +156,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
+	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		r.log.Infof("error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 
+	r.log.Debug("Setting MongoDB Annotations")
 	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.LastVersionAnnotationKey, mdb.Spec.Version); err != nil {
 		r.log.Infof("Error setting annotation: %+v", err)
 		return reconcile.Result{}, err
 	}
 
+	r.log.Debug("Updating MongoDB Status")
 	if err := r.updateStatusSuccess(&mdb); err != nil {
 		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
 		return reconcile.Result{}, err
@@ -188,6 +194,7 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
 // is currently in the ready state
 func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB) (bool, error) {
+	time.Sleep(time.Second * 5)
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
 		return false, fmt.Errorf("error getting StatefulSet: %s", err)
@@ -348,7 +355,8 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf`,
+		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf; /hooks/pre-stop-hook`,
 	}
 
 	mongodbContainer := corev1.Container{
@@ -377,7 +385,7 @@ func buildInitContainers(volumeMount corev1.VolumeMount) []corev1.Container {
 		{
 			Name:  "mongod-prehook",
 			Image: os.Getenv("PRE_STOP_HOOK_IMAGE"),
-			Command: []string{ // TODO: copy the hook into the mongod container
+			Command: []string{
 				"cp", "pre-stop-hook", "/hooks/pre-stop-hook",
 			},
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},

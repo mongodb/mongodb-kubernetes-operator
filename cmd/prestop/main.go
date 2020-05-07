@@ -74,28 +74,33 @@ func prettyPrint(i interface{}) {
 	zap.S().Info(string(b))
 }
 
-// shouldDeletePod returns a boolean  value indicating if this pod should be deleted
+// shouldDeletePod returns a boolean value indicating if this pod should be deleted
 // this would be the case if the agent is currently trying to upgrade the version
 // of mongodb.
-func shouldDeletePod() (bool, error) {
+func shouldDeletePod(health agenthealth.Health) (bool, error) {
+	hostname := os.Getenv("HOSTNAME")
+	status, ok := health.ProcessPlans[hostname]
+	if !ok {
+		return false, fmt.Errorf("hostname %s was not in the process plans", hostname)
+	}
+	return isWaitingToBeDeleted(status), nil
+}
+
+// getAgentHealthStatus returns an instance of agenthealth.Health read
+// from the health file on disk
+func getAgentHealthStatus() (agenthealth.Health, error) {
 	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
 	if err != nil {
-		return false, fmt.Errorf("error opening file: %s", err)
+		return agenthealth.Health{}, fmt.Errorf("error opening file: %s", err)
 	}
 	defer f.Close()
 
 	h, err := readAgentHealthStatus(f)
-	prettyPrint(h)
 	if err != nil {
-		return false, fmt.Errorf("error reading agent health status: %s", err)
+		return agenthealth.Health{}, fmt.Errorf("error reading health status: %s", err)
 	}
-	hostname := os.Getenv("HOSTNAME")
-	status, ok := h.ProcessPlans[hostname]
-	if !ok {
-		return false, fmt.Errorf("hostname %s was not in the process plans", hostname)
-	}
+	return h, err
 
-	return isWaitingToBeDeleted(status), nil
 }
 
 // getThisPod returns an instance of corev1.Pod that points to the current pod
@@ -158,7 +163,12 @@ func main() {
 		os.Exit(1)
 	}
 	logger = log.Sugar()
-	shouldDelete, err := shouldDeletePod()
+	health, err := getAgentHealthStatus()
+	if err != nil {
+		logger.Errorf("Error getting the agent health file: %s", err)
+	}
+
+	shouldDelete, err := shouldDeletePod(health)
 	logger.Debugf("shouldDeletePod=%t", shouldDelete)
 	if err != nil {
 		logger.Errorf("Error in shouldDeletePod: %s", err)
@@ -175,7 +185,7 @@ func main() {
 	}
 }
 
-// agentRequiresPodDeletionToContinue determines if the agent is currently waiting
+// isWaitingToBeDeleted determines if the agent is currently waiting
 // on the mongod pod to be restarted. In order to do this, we need to check the agent
 // status file and determine if the mongod has been stopped and if we are in the process
 // of a version change.

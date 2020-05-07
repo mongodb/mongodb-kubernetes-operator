@@ -1,13 +1,9 @@
 from dockerutil import build_and_push_image
-from dockerfile_generator import render
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from dev_config import DevConfig, load_config
 from typing import Dict, Optional
 import yaml
-import io
-import os
-import time
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -22,12 +18,13 @@ def _load_operator_role_binding() -> Optional[Dict]:
     return load_yaml_from_file("deploy/role_binding.yaml")
 
 
-def _load_operator_deployment() -> Optional[Dict]:
-    return load_yaml_from_file("deploy/operator.yaml")
-
+def _load_operator_deployment(operator_image: str) -> Optional[Dict]:
+    operator = load_yaml_from_file("deploy/operator.yaml")
+    operator["spec"]["template"]["spec"]["containers"][0]["image"] = operator_image
+    return operator
 
 def _load_mongodb_crd() -> Optional[Dict]:
-    return load_yaml_from_file("deploy/crds/mongodb.com_mongodbs_crd.yaml")
+    return load_yaml_from_file("deploy/crds/mongodb.com_mongodb_crd.yaml")
 
 
 def load_yaml_from_file(path: str) -> Optional[Dict]:
@@ -44,7 +41,7 @@ def _ensure_crds():
     crd = _load_mongodb_crd()
 
     ignore_if_doesnt_exist(
-        lambda: crdv1.delete_custom_resource_definition("mongodbs.mongodb.com")
+        lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
@@ -120,7 +117,7 @@ def deploy_operator():
     )
     ignore_if_already_exists(
         lambda: appsv1.create_namespaced_deployment(
-            dev_config.namespace, _load_operator_deployment()
+            dev_config.namespace, _load_operator_deployment(f"{dev_config.repo_url}/mongodb-kubernetes-operator")
         )
     )
 
