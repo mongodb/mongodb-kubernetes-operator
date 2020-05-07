@@ -3,7 +3,7 @@ module github.com/mongodb/mongodb-kubernetes-operator
 go 1.13
 
 require (
-	github.com/Azure/go-autorest v14.0.1+incompatible
+	github.com/Azure/go-autorest v14.0.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/gobuffalo/envy v1.7.1 // indirect
