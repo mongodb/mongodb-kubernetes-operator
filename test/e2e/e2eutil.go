@@ -59,7 +59,7 @@ func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDB, phase mdbv1.Ph
 func waitForMongoDBCondition(mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDB) bool) error {
 	mdbNew := mdbv1.MongoDB{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.Namespace}, &mdbNew)
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.WatchNamespace}, &mdbNew)
 		if err != nil {
 			return false, err
 		}
@@ -91,7 +91,7 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 
 	sts := appsv1.StatefulSet{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.Namespace}, &sts)
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.WatchNamespace}, &sts)
 		if err != nil {
 			return false, err
 		}
@@ -105,7 +105,7 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj runtime.Object) error {
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: f.Global.Namespace}, obj)
+		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: f.Global.WatchNamespace}, obj)
 		if err != nil {
 			return false, client.IgnoreNotFound(err)
 		}
@@ -117,7 +117,7 @@ func NewTestMongoDB() mdbv1.MongoDB {
 	return mdbv1.MongoDB{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-mongodb",
-			Namespace: f.Global.Namespace,
+			Namespace: f.Global.WatchNamespace,
 		},
 		Spec: mdbv1.MongoDBSpec{
 			Members:                     3,
