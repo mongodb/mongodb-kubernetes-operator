@@ -71,6 +71,7 @@ func prettyPrint(i interface{}) {
 	if err != nil {
 		fmt.Println("error:", err)
 	}
+	fmt.Println(string(b))
 	zap.S().Info(string(b))
 }
 
@@ -149,6 +150,7 @@ func ensureEnvironmentVariables(requiredEnvVars ...string) error {
 }
 
 func main() {
+	fmt.Println("Calling pre-stop hook!")
 	cfg := zap.NewDevelopmentConfig()
 	if err := ensureEnvironmentVariables(logFilePathEnv, agentStatusFilePathEnv); err != nil {
 		zap.S().Fatal("Not all required environment variables are present: %s", err)
@@ -168,7 +170,9 @@ func main() {
 		logger.Errorf("Error getting the agent health file: %s", err)
 	}
 
+	prettyPrint(health)
 	shouldDelete, err := shouldDeletePod(health)
+	fmt.Println("shouldDeletePod=%t", shouldDelete)
 	logger.Debugf("shouldDeletePod=%t", shouldDelete)
 	if err != nil {
 		logger.Errorf("Error in shouldDeletePod: %s", err)
@@ -199,12 +203,28 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 			continue
 		}
 
+		/*
+		   {
+		           "step": "StartWithUpgrade",
+		           "started": "2020-05-07T12:30:17.5268296Z",
+		           "completed": "2020-05-07T12:30:46.0969031Z",
+		           "result": "success"
+		         }
+		*/
+
 		for _, s := range m.Steps {
 			isStopStep := s.Step == "Stop"
 			completedSuccessfully := s.Completed != nil && s.Result == "success"
 
 			// if we have stopped successfully, this means we are waiting for the mongod to be terminated
 			if isStopStep && completedSuccessfully {
+				//if i+1 >= len(m.Steps) {
+				//	return true
+				//}
+				//nextStep := m.Steps[i+1]
+				//if nextStep.Step == "StartWithUpgrade" && nextStep.Completed != nil && nextStep.Result == "success" {
+				//	return false
+				//}
 				return true
 			}
 		}

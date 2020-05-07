@@ -75,10 +75,9 @@ func WithReadOnly(readonly bool) func(*corev1.VolumeMount) {
 	}
 }
 
-func IsReady(sts appsv1.StatefulSet) bool {
-	replicas := *sts.Spec.Replicas
-	allUpdated := replicas == sts.Status.UpdatedReplicas
-	allReady := replicas == sts.Status.ReadyReplicas
+func IsReady(sts appsv1.StatefulSet, expectedReplicas int) bool {
+	allUpdated := int32(expectedReplicas) == sts.Status.UpdatedReplicas
+	allReady := int32(expectedReplicas) == sts.Status.ReadyReplicas
 	return allUpdated && allReady
 }
 

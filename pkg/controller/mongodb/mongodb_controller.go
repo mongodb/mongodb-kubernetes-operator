@@ -148,7 +148,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Ensuring StatefulSet is ready")
-	if ready, err := r.isStatefulSetReady(mdb); err != nil {
+	r.log.Debugf("StrategyType: %s", getUpdateStrategyType(mdb))
+	if ready, err := r.isStatefulSetReady(mdb, getUpdateStrategyType(mdb)); err != nil {
 		r.log.Infof("error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
 	} else if !ready {
@@ -193,13 +194,13 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
 // is currently in the ready state
-func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB) (bool, error) {
+func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, expectedUpdateStrategy appsv1.StatefulSetUpdateStrategyType) (bool, error) {
 	time.Sleep(time.Second * 5)
 	set := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set); err != nil {
 		return false, fmt.Errorf("error getting StatefulSet: %s", err)
 	}
-	return statefulset.IsReady(set), nil
+	return statefulset.IsReady(set, mdb.Spec.Members) && expectedUpdateStrategy == set.Spec.UpdateStrategy.Type, nil
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
@@ -356,7 +357,7 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 		"/bin/sh",
 		"-c",
 		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf; /hooks/pre-stop-hook`,
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf ;/hooks/pre-stop-hook; sleep infinity`,
 	}
 
 	mongodbContainer := corev1.Container{
