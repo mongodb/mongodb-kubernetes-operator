@@ -10,7 +10,6 @@ FROM {{base_image}}
 
 ENV OPERATOR_SDK_VERSION v0.15.2
 ENV GO111MODULE=on
-ENV GOFLAGS="-mod=vendor"
 ENV GOPATH ""
 
 RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
@@ -22,7 +21,7 @@ RUN go mod download
 
 ADD . .
 
-RUN go mod vendor && /bin/operator-sdk generate k8s
+RUN /bin/operator-sdk generate k8s
 
 # build the binary
 {% block build_binary -%}
