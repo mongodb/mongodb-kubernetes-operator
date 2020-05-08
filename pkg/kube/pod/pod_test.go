@@ -32,7 +32,7 @@ func (m mockPoller) Poll(interval, timeout time.Duration, condition wait.Conditi
 			return nil
 		}
 	}
-	return fmt.Errorf("timed out!")
+	return fmt.Errorf("timed out")
 }
 
 func TestWaitForPhase(t *testing.T) {
@@ -40,12 +40,25 @@ func TestWaitForPhase(t *testing.T) {
 	testPod := newPod(corev1.PodRunning)
 	err := mockedClient.Update(context.TODO(), &testPod)
 	assert.NoError(t, err)
-	_, err = waitForPhase(mockedClient, types.NamespacedName{Name: testPod.Name, Namespace: testPod.Namespace}, time.Second*5, time.Minute*5, corev1.PodRunning, mockPoller{})
+	_, err = waitForPhase(
+		mockedClient,
+		types.NamespacedName{Name: testPod.Name, Namespace: testPod.Namespace},
+		time.Second*5,
+		time.Minute*5,
+		corev1.PodRunning,
+		mockPoller{},
+	)
 	assert.NoError(t, err)
 
 	testPod = newPod(corev1.PodFailed)
-	err = mockedClient.Update(context.TODO(), &testPod)
-	_, err = waitForPhase(mockedClient, types.NamespacedName{Name: testPod.Name, Namespace: testPod.Namespace}, time.Second*5, time.Minute*5, corev1.PodRunning, mockPoller{})
+	_ = mockedClient.Update(context.TODO(), &testPod)
+	_, err = waitForPhase(mockedClient,
+		types.NamespacedName{Name: testPod.Name, Namespace: testPod.Namespace},
+		time.Second*5,
+		time.Minute*5,
+		corev1.PodRunning,
+		mockPoller{},
+	)
 	assert.Error(t, err)
 }
 

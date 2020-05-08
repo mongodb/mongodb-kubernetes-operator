@@ -1,13 +1,15 @@
-from dockerutil import build_and_push_image
-from dockerfile_generator import render
-from kubernetes import client, config
-from kubernetes.client.rest import ApiException
-from dev_config import DevConfig, load_config
-from typing import Dict, Optional
-import yaml
 import io
 import os
 import time
+from typing import Dict, Optional
+
+import yaml
+from kubernetes import client, config
+from kubernetes.client.rest import ApiException
+
+from dev_config import DevConfig, load_config
+from dockerfile_generator import render
+from dockerutil import build_and_push_image
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -27,7 +29,7 @@ def _load_operator_deployment() -> Optional[Dict]:
 
 
 def _load_mongodb_crd() -> Optional[Dict]:
-    return load_yaml_from_file("deploy/crds/mongodb.com_mongodbs_crd.yaml")
+    return load_yaml_from_file("deploy/crds/mongodb.com_mongodb_crd.yaml")
 
 
 def load_yaml_from_file(path: str) -> Optional[Dict]:
