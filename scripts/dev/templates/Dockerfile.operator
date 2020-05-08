@@ -2,7 +2,7 @@
 
 {% block build_binary -%}
 # TODO: This build takes longer than it needs to and can still be optimized
-RUN go build -o build/_output/bin/mongodb-kubernetes-operator -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
+RUN go build -o build/_output/bin/mongodb-kubernetes-operator github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
 
 ENV manifest_version=4.2
 RUN mkdir -p /content/ \

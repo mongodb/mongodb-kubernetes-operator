@@ -60,7 +60,7 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 }
 
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
-	for idx, _ := range version.Builds {
+	for idx := range version.Builds {
 		if version.Builds[idx].Modules == nil {
 			version.Builds[idx].Modules = make([]string, 0)
 		}

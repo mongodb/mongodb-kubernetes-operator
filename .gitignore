@@ -80,3 +80,4 @@ tags
 vendor
 zz_generated*.go
 __pycache__
+Dockerfile
