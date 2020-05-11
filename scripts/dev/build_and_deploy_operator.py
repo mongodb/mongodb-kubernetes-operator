@@ -1,9 +1,15 @@
-from dockerutil import build_and_push_image
+import io
+import os
+import time
+from typing import Dict, Optional
+
+import yaml
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+
 from dev_config import DevConfig, load_config
-from typing import Dict, Optional
-import yaml
+from dockerfile_generator import render
+from dockerutil import build_and_push_image
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -22,6 +28,7 @@ def _load_operator_deployment(operator_image: str) -> Optional[Dict]:
     operator = load_yaml_from_file("deploy/operator.yaml")
     operator["spec"]["template"]["spec"]["containers"][0]["image"] = operator_image
     return operator
+
 
 def _load_mongodb_crd() -> Optional[Dict]:
     return load_yaml_from_file("deploy/crds/mongodb.com_mongodb_crd.yaml")
@@ -117,7 +124,10 @@ def deploy_operator():
     )
     ignore_if_already_exists(
         lambda: appsv1.create_namespaced_deployment(
-            dev_config.namespace, _load_operator_deployment(f"{dev_config.repo_url}/mongodb-kubernetes-operator")
+            dev_config.namespace,
+            _load_operator_deployment(
+                f"{dev_config.repo_url}/mongodb-kubernetes-operator"
+            ),
         )
     )
 
