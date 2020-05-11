@@ -182,7 +182,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
 func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
-	if !mdb.ChangingVersion() {
+	if !mdb.IsChangingVersion() {
 		return nil
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
@@ -357,7 +357,15 @@ func buildContainers(mdb mdbv1.MongoDB) []corev1.Container {
 		"/bin/sh",
 		"-c",
 		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2;  mongod -f /data/automation-mongod.conf ;/hooks/pre-stop-hook; sleep infinity`,
+		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+# start mongod with this configuration
+mongod -f /data/automation-mongod.conf ;
+
+# start the pre-stop-hook to restart the Pod when needed
+# If the Pod does not require to be restarted, the pre-stop-hook will
+# exit(0) for Kubernetes to restart the container.
+/hooks/pre-stop-hook ;
+`,
 	}
 
 	mongodbContainer := corev1.Container{
@@ -411,7 +419,7 @@ func defaultReadinessProbe() corev1.Probe {
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
 // should be configured with
 func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyType {
-	if !mdb.ChangingVersion() {
+	if !mdb.IsChangingVersion() {
 		return appsv1.RollingUpdateStatefulSetStrategyType
 	}
 	return appsv1.OnDeleteStatefulSetStrategyType

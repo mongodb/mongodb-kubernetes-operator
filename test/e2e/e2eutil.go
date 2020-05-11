@@ -75,11 +75,27 @@ func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Durat
 	return sts, waitForRuntimeObjectToExist(stsName, retryInterval, timeout, &sts)
 }
 
+// WaitForStatefulSetToHaveRollingUpgradeRestartStrategy waits until all replicas of the StatefulSet with the given name
+// have reached the ready status
+func WaitForStatefulSetToHaveRollingUpgradeRestartStrategy(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+		return sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType
+	})
+}
+
 // waitForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
 func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return sts.Status.ReadyReplicas == int32(mdb.Spec.Members)
+	})
+}
+
+// waitForStatefulSetToBeUpdated waits until all replicas of the StatefulSet with the given name
+// are updated.
+func WaitForStatefulSetToBeUpdated(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+		return sts.Status.UpdatedReplicas == int32(mdb.Spec.Members)
 	})
 }
 

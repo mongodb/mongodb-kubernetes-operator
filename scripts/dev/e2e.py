@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+from kubernetes.client.rest import ApiException
 from build_and_deploy_operator import (
     ignore_if_doesnt_exist,
     ignore_if_already_exists,
@@ -167,8 +170,6 @@ def main():
     pod = create_test_runner_pod(args.test)
     corev1 = client.CoreV1Api()
     wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
-
-    print(f"Running test: {args.test}")
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(

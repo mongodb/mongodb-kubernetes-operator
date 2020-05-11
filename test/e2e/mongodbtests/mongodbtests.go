@@ -34,6 +34,30 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// StatefulSetIsUpdated ensures that all the Pods of the StatefulSet are
+// in "Updated" condition.
+func StatefulSetIsUpdated(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToBeUpdated(t, mdb, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is updated!", mdb.Namespace, mdb.Name)
+	}
+}
+
+// StatefulSetIsReady ensures that the underlying stateful set
+// reaches the running state
+func StatefulSetHasRollingUpgradeRestartStrategy(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToHaveRollingUpgradeRestartStrategy(t, mdb, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -110,6 +134,18 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func Upgrade(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Upgrading from: %s to %s", mdb.Spec.Version, newVersion)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			db.Spec.Version = newVersion
 		})
 		if err != nil {
 			t.Fatal(err)

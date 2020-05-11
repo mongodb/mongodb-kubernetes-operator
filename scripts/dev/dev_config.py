@@ -6,6 +6,10 @@ CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
 
 
+def get_config_path() -> str:
+    return os.getenv("COMMUNITY_CONFIG", FULL_CONFIG_PATH)
+
+
 class DevConfig:
     """
     DevConfig is a wrapper around the developer configuration file
@@ -24,10 +28,11 @@ class DevConfig:
 
 
 def load_config() -> Optional[DevConfig]:
-    with open(FULL_CONFIG_PATH, "r") as f:
+    config_file_path = get_config_path()
+    with open(config_file_path, "r") as f:
         return DevConfig(json.loads(f.read()))
 
     print(
-        f"No DevConfig found. Please ensure that the configuration file exists at '{FULL_CONFIG_PATH}'"
+        f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
     )
     return None

@@ -172,20 +172,27 @@ func main() {
 
 	prettyPrint(health)
 	shouldDelete, err := shouldDeletePod(health)
-	fmt.Println("shouldDeletePod=%t", shouldDelete)
+	fmt.Printf("shouldDeletePod=%t\n", shouldDelete)
 	logger.Debugf("shouldDeletePod=%t", shouldDelete)
 	if err != nil {
 		logger.Errorf("Error in shouldDeletePod: %s", err)
-		os.Exit(1)
 	}
 
-	if !shouldDelete {
-		os.Exit(0)
-	}
+	if shouldDelete {
+		if err := deletePod(); err != nil {
+			// We should not raise an error if the Pod could not be deleted. It can have even
+			// worst consequences: Pod being restarted with the same version, and the agent
+			// killing it immediately after.
+			logger.Errorf("Could not manually trigger restart of this Pod because of: %s", err)
+			logger.Errorf("Make sure the Pod is restarted in order for the upgrade process to continue")
+		}
 
-	if err := deletePod(); err != nil {
-		logger.Errorf("Error deleting pod: %s", err)
-		os.Exit(1)
+		// If the Pod needs to be killed, we'll wait until the Pod
+		// is killed by Kubernetes, bringing the new container image
+		// into play.
+		var quit = make(chan struct{})
+		logger.Info("A Pod killed itself, waiting...")
+		<-quit
 	}
 }
 
@@ -199,34 +206,25 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 	}
 	lastPlan := healthStatus.Plans[len(healthStatus.Plans)-1]
 	for _, m := range lastPlan.Moves {
-		if changingVersionMove := m.Move == "ChangeVersion"; !changingVersionMove {
-			continue
+
+		// The next conditions are based on observations on the outcome
+		// of the agent after they have stopped the mongo server.
+
+		if m.Move == "WaitFeatureCompatibilityVersionCorrect" {
+			// First condition observed. This is the Plan reported by the
+			// agent on the first MongoD stopped.
+			for _, s := range m.Steps {
+				if s.Step == "WaitFeatureCompatibilityVersionCorrect" &&
+					s.Result == "" {
+					return true
+				}
+			}
 		}
 
-		/*
-		   {
-		           "step": "StartWithUpgrade",
-		           "started": "2020-05-07T12:30:17.5268296Z",
-		           "completed": "2020-05-07T12:30:46.0969031Z",
-		           "result": "success"
-		         }
-		*/
-
-		for _, s := range m.Steps {
-			isStopStep := s.Step == "Stop"
-			completedSuccessfully := s.Completed != nil && s.Result == "success"
-
-			// if we have stopped successfully, this means we are waiting for the mongod to be terminated
-			if isStopStep && completedSuccessfully {
-				//if i+1 >= len(m.Steps) {
-				//	return true
-				//}
-				//nextStep := m.Steps[i+1]
-				//if nextStep.Step == "StartWithUpgrade" && nextStep.Completed != nil && nextStep.Result == "success" {
-				//	return false
-				//}
-				return true
-			}
+		if m.Move == "ChangeVersion" {
+			// This is the condition observed in the 2nd and 3rd Pods.
+			// The Move will be ChangeVersion
+			return true
 		}
 	}
 	return false
