@@ -75,11 +75,11 @@ func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Durat
 	return sts, waitForRuntimeObjectToExist(stsName, retryInterval, timeout, &sts)
 }
 
-// WaitForStatefulSetToHaveRollingUpgradeRestartStrategy waits until all replicas of the StatefulSet with the given name
+// WaitForStatefulSetToHaveUpdateStrategy waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func WaitForStatefulSetToHaveRollingUpgradeRestartStrategy(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, strategy appsv1.StatefulSetUpdateStrategyType, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		return sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType
+		return sts.Spec.UpdateStrategy.Type == strategy
 	})
 }
 

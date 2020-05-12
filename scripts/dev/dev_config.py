@@ -7,7 +7,7 @@ FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
 
 
 def get_config_path() -> str:
-    return os.getenv("COMMUNITY_CONFIG", FULL_CONFIG_PATH)
+    return os.getenv("MONGODB_COMMUNITY_CONFIG", FULL_CONFIG_PATH)
 
 
 class DevConfig:

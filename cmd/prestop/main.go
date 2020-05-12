@@ -170,9 +170,7 @@ func main() {
 		logger.Errorf("Error getting the agent health file: %s", err)
 	}
 
-	prettyPrint(health)
 	shouldDelete, err := shouldDeletePod(health)
-	fmt.Printf("shouldDeletePod=%t\n", shouldDelete)
 	logger.Debugf("shouldDeletePod=%t", shouldDelete)
 	if err != nil {
 		logger.Errorf("Error in shouldDeletePod: %s", err)
@@ -210,7 +208,8 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 		// The next conditions are based on observations on the outcome
 		// of the agent after they have stopped the mongo server.
 
-		if m.Move == "WaitFeatureCompatibilityVersionCorrect" {
+		switch m.Move {
+		case "WaitFeatureCompatibilityVersionCorrect":
 			// First condition observed. This is the Plan reported by the
 			// agent on the first MongoD stopped.
 			for _, s := range m.Steps {
@@ -219,11 +218,8 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 					return true
 				}
 			}
-		}
-
-		if m.Move == "ChangeVersion" {
+		case "ChangeVersion":
 			// This is the condition observed in the 2nd and 3rd Pods.
-			// The Move will be ChangeVersion
 			return true
 		}
 	}

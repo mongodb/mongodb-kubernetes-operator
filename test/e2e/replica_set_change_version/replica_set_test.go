@@ -8,15 +8,17 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
+
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
 
-func TestReplicaSetUpgrade(t *testing.T) {
+func TestReplicaSetUpgradeVersion(t *testing.T) {
 	ctx := f.NewTestCtx(t)
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 
 	// register our types with the testing framework
 	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
@@ -36,9 +38,10 @@ func TestReplicaSetUpgrade(t *testing.T) {
 		}))
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
-			t.Run("Test Version can be upgraded", mongodbtests.Upgrade(&mdb, "4.0.8"))
+			t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.0.8"))
+			t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsUpdated(&mdb))
 		},
 	))
-	t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasRollingUpgradeRestartStrategy(&mdb))
+	t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.RollingUpdateStatefulSetStrategyType))
 }

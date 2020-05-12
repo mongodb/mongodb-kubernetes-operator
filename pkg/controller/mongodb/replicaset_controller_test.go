@@ -136,30 +136,29 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 		"The StatefulSet should have be re-configured to use RollingUpdates after it reached the ready state")
 }
 
-//
-//func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
-//	t.Run("On No Version Change, Same Version", func(t *testing.T) {
-//		mdb := newTestReplicaSet()
-//		mdb.Spec.Version = "4.0.0"
-//		mdb.Annotations[mdbv1.ReachedVersionAnnotationKey] = "4.0.0"
-//		sts, err := buildStatefulSet(mdb)
-//		assert.NoError(t, err)
-//		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-//	})
-//	t.Run("On No Version Change, First Version", func(t *testing.T) {
-//		mdb := newTestReplicaSet()
-//		mdb.Spec.Version = "4.0.0"
-//		delete(mdb.Annotations, mdbv1.ReachedVersionAnnotationKey)
-//		sts, err := buildStatefulSet(mdb)
-//		assert.NoError(t, err)
-//		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-//	})
-//	t.Run("On Version Change", func(t *testing.T) {
-//		mdb := newTestReplicaSet()
-//		mdb.Spec.Version = "4.0.0"
-//		mdb.Annotations[mdbv1.ReachedVersionAnnotationKey] = "4.2.0"
-//		sts, err := buildStatefulSet(mdb)
-//		assert.NoError(t, err)
-//		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-//	})
-//}
+func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
+	t.Run("On No Version Change, Same Version", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Version = "4.0.0"
+		mdb.Annotations[mdbv1.LastVersionAnnotationKey] = "4.0.0"
+		sts, err := buildStatefulSet(mdb)
+		assert.NoError(t, err)
+		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
+	})
+	t.Run("On No Version Change, First Version", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Version = "4.0.0"
+		delete(mdb.Annotations, mdbv1.LastVersionAnnotationKey)
+		sts, err := buildStatefulSet(mdb)
+		assert.NoError(t, err)
+		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
+	})
+	t.Run("On Version Change", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Version = "4.0.0"
+		mdb.Annotations[mdbv1.LastVersionAnnotationKey] = "4.2.0"
+		sts, err := buildStatefulSet(mdb)
+		assert.NoError(t, err)
+		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
+	})
+}
