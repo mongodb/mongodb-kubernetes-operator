@@ -111,6 +111,16 @@ tasks:
           image: quay.io/mongodb/community-operator-e2e:${version_id}
           image_type: e2e
 
+  - name: build_prehook_image
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: build_and_push_image
+        vars:
+          image: quay.io/mongodb/community-operator-pre-stop-hook:${version_id}
+          image_type: prehook
+
   - name: build_testrunner_image
     priority: 60
     exec_timeout_secs: 600
@@ -175,6 +185,8 @@ buildvariants:
         variant: init_test_run
       - name: build_e2e_image
         variant: init_test_run
+      - name: build_prehook_image
+        variant: init_test_run
       - name: build_testrunner_image
         variant: init_test_run
     tasks:
@@ -191,3 +203,4 @@ buildvariants:
       - name: build_operator_image
       - name: build_e2e_image
       - name: build_testrunner_image
+      - name: build_prehook_image

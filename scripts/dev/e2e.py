@@ -87,6 +87,13 @@ def build_and_push_e2e(repo_url: str, tag: str, path: str):
     return build_and_push_image(repo_url, tag, path, "e2e")
 
 
+def build_and_push_prehook(repo_url: str, tag: str, path: str):
+    """
+    build_and_push_prehook builds and pushes the pre-stop-hook image.
+    """
+    return build_and_push_image(repo_url, tag, path, "prehook")
+
+
 def _delete_testrunner_pod() -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
@@ -126,6 +133,8 @@ def _get_testrunner_pod_body(test: str) -> Dict:
                         "./runner",
                         "--operatorImage",
                         f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+                        "--preHookImage",
+                        f"{dev_config.repo_url}/prehook",
                         "--testImage",
                         f"{dev_config.repo_url}/e2e",
                         f"--test={test}",
@@ -164,6 +173,7 @@ def main():
         dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
     )
     build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
+    build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/prehook", ".")
 
     _prepare_testrunner_environment()
 
