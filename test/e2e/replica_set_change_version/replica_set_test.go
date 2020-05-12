@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetUpgradeVersion(t *testing.T) {
-	ctx := f.NewTestCtx(t)
+	ctx := f.NewContext(t)
 	defer ctx.Cleanup()
 
 	// register our types with the testing framework
@@ -36,10 +36,22 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 			MongoURI: mdb.MongoURI(),
 			Phase:    mdbv1.Running,
 		}))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
+
+	// Upgrade version to 4.0.8
+	t.Run("MongoDB is reachable while version is upgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.0.8"))
-			t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
+			t.Run("StatefulSet has OnDelete update strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
+			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsUpdated(&mdb))
+		},
+	))
+	t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.RollingUpdateStatefulSetStrategyType))
+
+	// Downgrade version back to 4.0.6
+	t.Run("MongoDB is reachable while version is downgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
+		func() {
+			t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.0.6"))
+			t.Run("StatefulSet has OnDelete restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsUpdated(&mdb))
 		},
 	))

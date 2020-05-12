@@ -147,8 +147,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	r.log.Debug("Ensuring StatefulSet is ready")
-	r.log.Debugf("StrategyType: %s", getUpdateStrategyType(mdb))
+	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	if ready, err := r.isStatefulSetReady(mdb, getUpdateStrategyType(mdb)); err != nil {
 		r.log.Infof("error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err

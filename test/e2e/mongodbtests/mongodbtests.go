@@ -144,7 +144,7 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 
 func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 	return func(t *testing.T) {
-		t.Logf("Upgrading from: %s to %s", mdb.Spec.Version, newVersion)
+		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, newVersion)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Version = newVersion
 		})

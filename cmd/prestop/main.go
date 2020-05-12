@@ -72,7 +72,6 @@ func prettyPrint(i interface{}) {
 		fmt.Println("error:", err)
 	}
 	fmt.Println(string(b))
-	zap.S().Info(string(b))
 }
 
 // shouldDeletePod returns a boolean value indicating if this pod should be deleted
