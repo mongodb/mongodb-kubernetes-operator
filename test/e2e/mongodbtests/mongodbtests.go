@@ -18,6 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,6 +28,30 @@ import (
 func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
+// StatefulSetIsUpdated ensures that all the Pods of the StatefulSet are
+// in "Updated" condition.
+func StatefulSetIsUpdated(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToBeUpdated(t, mdb, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is updated!", mdb.Namespace, mdb.Name)
+	}
+}
+
+// StatefulSetHasUpdateStrategy verifies that the StatefulSet holding this MongoDB
+// resource has the correct Update Strategy
+func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDB, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToHaveUpdateStrategy(t, mdb, appsv1.RollingUpdateStatefulSetStrategyType, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,6 +135,18 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, newVersion)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			db.Spec.Version = newVersion
 		})
 		if err != nil {
 			t.Fatal(err)

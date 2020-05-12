@@ -1,6 +1,7 @@
 import docker
 from dockerfile_generator import render
 import os
+import json
 
 
 def build_image(repo_url: str, tag: str, path):
@@ -20,8 +21,27 @@ def push_image(tag: str):
     """
     client = docker.from_env()
     print(f"Pushing image: {tag}")
+    progress = ""
     for line in client.images.push(tag, stream=True):
-        print(line.decode("utf-8").rstrip())
+        print(push_image_formatted(line), end="")
+
+
+def push_image_formatted(line) -> str:
+    try:
+        line = json.loads(line.strip())
+    except ValueError:
+        return ""
+
+    to_skip = ("Preparing", "Waiting", "Layer already exists")
+    if "status" in line:
+        if line["status"] in to_skip:
+            return ""
+        if line["status"] == "Pushing":
+            current = int(line["progressDetail"]["current"])
+            total = int(line["progressDetail"]["total"])
+            return "Complete: {:.2f}\n".format(current / total)
+
+    return ""
 
 
 def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str):

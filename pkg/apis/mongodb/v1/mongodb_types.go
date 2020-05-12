@@ -65,7 +65,7 @@ func (m *MongoDB) UpdateSuccess() {
 	m.Status.Phase = Running
 }
 
-func (m MongoDB) ChangingVersion() bool {
+func (m MongoDB) IsChangingVersion() bool {
 	if lastVersion, ok := m.Annotations[LastVersionAnnotationKey]; ok {
 		return (m.Spec.Version != lastVersion) && lastVersion != ""
 	}

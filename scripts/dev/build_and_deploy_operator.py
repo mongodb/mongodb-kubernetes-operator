@@ -24,8 +24,10 @@ def _load_operator_role_binding() -> Optional[Dict]:
     return load_yaml_from_file("deploy/role_binding.yaml")
 
 
-def _load_operator_deployment() -> Optional[Dict]:
-    return load_yaml_from_file("deploy/operator.yaml")
+def _load_operator_deployment(operator_image: str) -> Optional[Dict]:
+    operator = load_yaml_from_file("deploy/operator.yaml")
+    operator["spec"]["template"]["spec"]["containers"][0]["image"] = operator_image
+    return operator
 
 
 def _load_mongodb_crd() -> Optional[Dict]:
@@ -46,7 +48,7 @@ def _ensure_crds():
     crd = _load_mongodb_crd()
 
     ignore_if_doesnt_exist(
-        lambda: crdv1.delete_custom_resource_definition("mongodbs.mongodb.com")
+        lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
@@ -122,7 +124,10 @@ def deploy_operator():
     )
     ignore_if_already_exists(
         lambda: appsv1.create_namespaced_deployment(
-            dev_config.namespace, _load_operator_deployment()
+            dev_config.namespace,
+            _load_operator_deployment(
+                f"{dev_config.repo_url}/mongodb-kubernetes-operator"
+            ),
         )
     )
 
