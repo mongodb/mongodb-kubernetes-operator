@@ -16,6 +16,7 @@ import (
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
@@ -79,6 +80,25 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 		assert.Contains(t, cm.Data, mongodb.AutomationConfigKey)
 
 		t.Log("The ConfigMap contained the automation config")
+	}
+}
+
+func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string) func(t *testing.T) {
+	return func(t *testing.T) {
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		assert.NoError(t, err)
+
+		database := mongoClient.Database("admin")
+		assert.NotNil(t, database)
+
+		runCommand := bson.D{primitive.E{Key: "getParameter", Value: 1}, primitive.E{Key: "featureCompatibilityVersion", Value: 1}}
+		var result bson.M
+		err = database.RunCommand(ctx, runCommand).Decode(&result)
+		assert.NoError(t, err)
+
+		expected := primitive.M(primitive.M{"version": "4.0"})
+		assert.Equal(t, expected, result["featureCompatibilityVersion"])
 	}
 }
 
@@ -147,6 +167,20 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, newVersion)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Version = newVersion
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ChangeVersionAndFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version, fcv string) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, version)
+		t.Logf("Changing fcv from: %s to %s", mdb.Spec.FeatureCompatibilityVersion, fcv)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			db.Spec.Version = version
+			db.Spec.FeatureCompatibilityVersion = fcv
 		})
 		if err != nil {
 			t.Fatal(err)

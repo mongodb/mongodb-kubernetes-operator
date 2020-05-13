@@ -136,6 +136,14 @@ tasks:
       - func: clone
       - func: go_test
 
+  - name: e2e_test_feature_compatibility_version
+    commands:
+      - func: clone
+      - func: setup_kubernetes_environment
+      - func: run_e2e_test
+        vars:
+          test: feature_compatibility_version
+
   - name: e2e_test_replica_set
     commands:
       - func: clone
@@ -194,6 +202,7 @@ buildvariants:
       - name: e2e_test_replica_set_readiness_probe
       - name: e2e_test_replica_set_scale
       - name: e2e_test_replica_set_change_version
+      - name: e2e_test_feature_compatibility_version
 
   - name: init_test_run
     display_name: init_test_run
