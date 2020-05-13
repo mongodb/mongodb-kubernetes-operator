@@ -135,10 +135,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	r.log.Debug("Building service")
+	r.log.Debug("Creating/Updating Service")
 	svc := buildService(mdb)
 	if err = r.client.CreateOrUpdate(&svc); err != nil {
-		r.log.Infof("The service already exists... moving forward: %s", err)
+		r.log.Infof("Error creating/updating Service: %+v", err)
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
