@@ -33,15 +33,17 @@ type flags struct {
 	deployDir     string
 	namespace     string
 	operatorImage string
+	preHookImage  string
 	testImage     string
 	test          string
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, testImage, test *string
+	var namespace, deployDir, operatorImage, preHookImage, testImage, test *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
+	preHookImage = flag.String("preHookImage", "quay.io/mongodb/community-operator-prehook:latest", "the prestophook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
 	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
 	flag.Parse()
@@ -50,6 +52,7 @@ func parseFlags() flags {
 		deployDir:     *deployDir,
 		namespace:     *namespace,
 		operatorImage: *operatorImage,
+		preHookImage:  *preHookImage,
 		testImage:     *testImage,
 		test:          *test,
 	}
@@ -164,7 +167,11 @@ func deployOperator(f flags, c client.Client) error {
 		return fmt.Errorf("error building operator role binding: %v", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"), &appsv1.Deployment{}, withNamespace(f.namespace), withOperatorImage(f.operatorImage)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"),
+		&appsv1.Deployment{},
+		withNamespace(f.namespace),
+		withOperatorImage(f.operatorImage),
+		withPreHookImage(f.preHookImage)); err != nil {
 		return fmt.Errorf("error building operator deployment: %v", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
@@ -197,6 +204,30 @@ func withTestImage(image string) func(obj runtime.Object) {
 	return func(obj runtime.Object) {
 		if testPod, ok := obj.(*corev1.Pod); ok {
 			testPod.Spec.Containers[0].Image = image
+		}
+	}
+}
+
+// withPreHookImage sets the value of the PRE_STOP_HOOK_IMAGE
+// EnvVar from first container to `image`. The EnvVar is updated
+// if it exists. Or appended if there is no EnvVar with this `Name`.
+func withPreHookImage(image string) func(runtime.Object) {
+	return func(obj runtime.Object) {
+		if dep, ok := obj.(*appsv1.Deployment); ok {
+			preHookEnv := corev1.EnvVar{
+				Name:  "PRE_STOP_HOOK_IMAGE",
+				Value: image,
+			}
+			found := false
+			for idx := range dep.Spec.Template.Spec.Containers[0].Env {
+				if dep.Spec.Template.Spec.Containers[0].Env[idx].Name == preHookEnv.Name {
+					dep.Spec.Template.Spec.Containers[0].Env[idx].Value = preHookEnv.Value
+					found = true
+				}
+			}
+			if !found {
+				dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, preHookEnv)
+			}
 		}
 	}
 }

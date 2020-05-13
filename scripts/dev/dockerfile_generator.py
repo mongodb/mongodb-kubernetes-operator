@@ -38,18 +38,11 @@ def render(image_name):
         "operator": operator_params(),
     }
 
-    if image_name not in param_dict:
-        raise ValueError(
-            "Image name: {} is invalid. Valid values are {}".format(
-                image_name, param_dict.keys()
-            )
-        )
+    render_values = param_dict.get(image_name, dict())
 
     env = jinja2.Environment()
     env.loader = jinja2.FileSystemLoader(searchpath="scripts/dev/templates")
-    return env.get_template("Dockerfile.{}".format(image_name)).render(
-        param_dict[image_name]
-    )
+    return env.get_template("Dockerfile.{}".format(image_name)).render(render_values)
 
 
 def parse_args():

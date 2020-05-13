@@ -7,10 +7,10 @@
 # See: https://github.com/operator-framework/operator-sdk/issues/2618
 KUBERNETES_SERVICE_HOST="$(kubectl get service kubernetes -o jsonpath='{.spec.clusterIP }')"
 temp=$(mktemp)
-cat ${KUBECONFIG} | sed "s/server: https.*/server: https:\/\/${KUBERNETES_SERVICE_HOST}/g" > ${temp}
-contents="$(cat ${temp})"
+cat "${KUBECONFIG}" | sed "s/server: https.*/server: https:\/\/${KUBERNETES_SERVICE_HOST}/g" > "${temp}"
+contents=$(<"${temp}")
 kubectl create cm kube-config --from-literal=kubeconfig="${contents}"
-rm ${temp}
+rm "${temp}"
 
 # create roles and service account required for the test runner
 kubectl apply -f deploy/testrunner
@@ -19,9 +19,13 @@ kubectl apply -f deploy/testrunner
 kubectl run test-runner --generator=run-pod/v1 \
   --restart=Never \
   --image-pull-policy=Always \
-  --image=quay.io/mongodb/community-operator-testrunner:${version_id} \
+  "--image=quay.io/mongodb/community-operator-testrunner:${version_id:?}" \
   --serviceaccount=test-runner \
-  --command -- ./runner  --operatorImage quay.io/mongodb/community-operator-dev:${version_id} --testImage quay.io/mongodb/community-operator-e2e:${version_id} --test=${test}
+  --command -- \
+  ./runner --operatorImage "quay.io/mongodb/community-operator-dev:${version_id}" \
+           --preHookImage "quay.io/mongodb/community-operator-pre-stop-hook:${version_id}" \
+           --testImage "quay.io/mongodb/community-operator-e2e:${version_id}" \
+           "--test=${test:?}"
 
 
 echo "Test pod is ready to begin"
