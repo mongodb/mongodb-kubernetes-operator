@@ -12,6 +12,8 @@ from dev_config import load_config
 from kubernetes import client, config
 import argparse
 import time
+import os
+import yaml
 
 TEST_RUNNER_NAME = "test-runner"
 
@@ -70,6 +72,27 @@ def _prepare_testrunner_environment():
             dev_config.namespace, _load_testrunner_service_account()
         )
     )
+
+
+def create_kube_config():
+    """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
+    as a ConfigMap."""
+    corev1 = client.CoreV1Api()
+    print("Creating kube-config ConfigMap")
+
+    svc = corev1.read_namespaced_service("kubernetes", "default")
+    kube_config = os.getenv("KUBECONFIG")
+    with open(kube_config) as fd:
+        kube_config = yaml.safe_load(fd.read())
+
+    kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
+    kube_config = yaml.safe_dump(kube_config)
+    data = {"kubeconfig": kube_config}
+    config_map = client.V1ConfigMap(
+        metadata=client.V1ObjectMeta(name="kube-config"), data=data
+    )
+
+    corev1.create_namespaced_config_map("default", config_map)
 
 
 def build_and_push_testrunner(repo_url: str, tag: str, path: str):
@@ -169,6 +192,7 @@ def main():
     args = parse_args()
     config.load_kube_config()
     dev_config = load_config()
+    create_kube_config()
     build_and_push_testrunner(
         dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
     )
