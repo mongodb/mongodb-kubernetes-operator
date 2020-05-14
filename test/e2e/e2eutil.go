@@ -129,10 +129,10 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 	})
 }
 
-func NewTestMongoDB() mdbv1.MongoDB {
+func NewTestMongoDB(name string) mdbv1.MongoDB {
 	return mdbv1.MongoDB{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-mongodb",
+			Name:      name,
 			Namespace: f.Global.OperatorNamespace,
 		},
 		Spec: mdbv1.MongoDBSpec{
