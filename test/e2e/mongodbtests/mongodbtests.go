@@ -3,6 +3,7 @@ package mongodbtests
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -83,8 +84,14 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string) func(t *testing.T) {
+// FeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
+// set to `version`. The FCV parameter is not signaled as a non Running state, for
+// this reason, this function checks the value of the parameter many times, based
+// on the value of `tries`.
+func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string, tries int) func(t *testing.T) {
 	return func(t *testing.T) {
+		assert.GreaterOrEqual(t, tries, 0)
+
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 		assert.NoError(t, err)
@@ -92,13 +99,24 @@ func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string) func(t *tes
 		database := mongoClient.Database("admin")
 		assert.NotNil(t, database)
 
-		runCommand := bson.D{primitive.E{Key: "getParameter", Value: 1}, primitive.E{Key: "featureCompatibilityVersion", Value: 1}}
-		var result bson.M
-		err = database.RunCommand(ctx, runCommand).Decode(&result)
-		assert.NoError(t, err)
+		found := false
+		for i := 0; i < tries; i++ {
+			runCommand := bson.D{primitive.E{Key: "getParameter", Value: 1}, primitive.E{Key: "featureCompatibilityVersion", Value: 1}}
+			var result bson.M
+			err = database.RunCommand(ctx, runCommand).Decode(&result)
+			assert.NoError(t, err)
 
-		expected := primitive.M{"version": version}
-		assert.Equal(t, expected, result["featureCompatibilityVersion"])
+			expected := primitive.M{"version": version}
+			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
+				found = true
+				break
+			}
+
+			// Give the MongoDB server a few seconds to reach the expected FCV.
+			time.Sleep(10)
+		}
+
+		assert.True(t, found)
 	}
 }
 
