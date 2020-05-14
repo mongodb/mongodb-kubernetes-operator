@@ -97,7 +97,7 @@ func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string) func(t *tes
 		err = database.RunCommand(ctx, runCommand).Decode(&result)
 		assert.NoError(t, err)
 
-		expected := primitive.M(primitive.M{"version": "4.0"})
+		expected := primitive.M{"version": version}
 		assert.Equal(t, expected, result["featureCompatibilityVersion"])
 	}
 }
@@ -109,6 +109,20 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) 
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
+	}
+}
+
+func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
+		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
+		t.Run("Test Status Was Updated", Status(mdb,
+			mdbv1.MongoDBStatus{
+				MongoURI: mdb.MongoURI(),
+				Phase:    mdbv1.Running,
+			}))
 	}
 }
 
