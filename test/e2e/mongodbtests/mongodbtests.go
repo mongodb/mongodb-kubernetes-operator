@@ -3,6 +3,7 @@ package mongodbtests
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
@@ -82,6 +84,44 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// HasFeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
+// set to `version`. The FCV parameter is not signaled as a non Running state, for
+// this reason, this function checks the value of the parameter many times, based
+// on the value of `tries`.
+func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
+	return func(t *testing.T) {
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		assert.NoError(t, err)
+
+		database := mongoClient.Database("admin")
+		assert.NotNil(t, database)
+
+		runCommand := bson.D{
+			primitive.E{Key: "getParameter", Value: 1},
+			primitive.E{Key: "featureCompatibilityVersion", Value: 1},
+		}
+		found := false
+		for !found && tries > 0 {
+			select {
+			case <-time.After(10 * time.Second):
+				var result bson.M
+				err = database.RunCommand(ctx, runCommand).Decode(&result)
+				assert.NoError(t, err)
+
+				expected := primitive.M{"version": fcv}
+				if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
+					found = true
+				}
+			}
+
+			tries -= 1
+		}
+
+		assert.True(t, found)
+	}
+}
+
 // CreateMongoDBResource creates the MongoDB resource
 func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
@@ -89,6 +129,20 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) 
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
+	}
+}
+
+func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
+		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
+		t.Run("Test Status Was Updated", Status(mdb,
+			mdbv1.MongoDBStatus{
+				MongoURI: mdb.MongoURI(),
+				Phase:    mdbv1.Running,
+			}))
 	}
 }
 
