@@ -22,7 +22,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mdb := e2eutil.NewTestMongoDB()
+	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 

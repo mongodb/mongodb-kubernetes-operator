@@ -22,7 +22,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mdb := e2eutil.NewTestMongoDB("example-mongodb")
+	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
