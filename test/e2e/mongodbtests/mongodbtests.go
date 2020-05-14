@@ -84,14 +84,12 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-// FeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
+// HasFeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
 // set to `version`. The FCV parameter is not signaled as a non Running state, for
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
-func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string, tries int) func(t *testing.T) {
+func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
 	return func(t *testing.T) {
-		assert.GreaterOrEqual(t, tries, 0)
-
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 		assert.NoError(t, err)
@@ -99,21 +97,25 @@ func FeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version string, tries int) 
 		database := mongoClient.Database("admin")
 		assert.NotNil(t, database)
 
+		runCommand := bson.D{
+			primitive.E{Key: "getParameter", Value: 1},
+			primitive.E{Key: "featureCompatibilityVersion", Value: 1},
+		}
 		found := false
-		for i := 0; i < tries; i++ {
-			runCommand := bson.D{primitive.E{Key: "getParameter", Value: 1}, primitive.E{Key: "featureCompatibilityVersion", Value: 1}}
-			var result bson.M
-			err = database.RunCommand(ctx, runCommand).Decode(&result)
-			assert.NoError(t, err)
+		for !found && tries > 0 {
+			select {
+			case <-time.After(10 * time.Second):
+				var result bson.M
+				err = database.RunCommand(ctx, runCommand).Decode(&result)
+				assert.NoError(t, err)
 
-			expected := primitive.M{"version": version}
-			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-				found = true
-				break
+				expected := primitive.M{"version": fcv}
+				if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
+					found = true
+				}
 			}
 
-			// Give the MongoDB server a few seconds to reach the expected FCV.
-			time.Sleep(10)
+			tries -= 1
 		}
 
 		assert.True(t, found)
@@ -199,20 +201,6 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, newVersion)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Version = newVersion
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func ChangeVersionAndFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, version, fcv string) func(*testing.T) {
-	return func(t *testing.T) {
-		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, version)
-		t.Logf("Changing fcv from: %s to %s", mdb.Spec.FeatureCompatibilityVersion, fcv)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
-			db.Spec.Version = version
-			db.Spec.FeatureCompatibilityVersion = fcv
 		})
 		if err != nil {
 			t.Fatal(err)
