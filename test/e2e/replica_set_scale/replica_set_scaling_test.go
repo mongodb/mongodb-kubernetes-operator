@@ -15,15 +15,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetScale(t *testing.T) {
-	ctx := f.NewTestCtx(t)
+	ctx := f.NewContext(t)
 	defer ctx.Cleanup()
-
-	// register our types with the testing framework
 	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}
 
-	mdb := e2eutil.NewTestMongoDB()
+	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
