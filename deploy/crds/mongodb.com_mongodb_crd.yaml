@@ -12,6 +12,15 @@ spec:
     - mdb
     singular: mongodb
   scope: Namespaced
+  additionalPrinterColumns:
+    - name: Phase
+      type: string
+      description: Current state of the MongoDB deployment
+      JSONPath: .status.phase
+    - name: Version
+      type: string
+      description: Version of MongoDB server
+      JSONPath: .spec.version
   subresources:
     status: {}
   validation:
