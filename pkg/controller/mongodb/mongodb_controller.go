@@ -136,9 +136,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Creating/Updating Service")
-	svc := buildService(mdb)
-	if err = r.client.CreateOrUpdate(&svc); err != nil {
+	if err := r.createOrUpdateService(mdb); err != nil {
 		r.log.Infof("Error creating/updating Service: %+v", err)
+		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
@@ -218,6 +218,21 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 	return nil
+}
+
+func (r *ReplicaSetReconciler) createOrUpdateService(mdb mdbv1.MongoDB) error {
+	svc := buildService(mdb)
+	currentSvc := corev1.Service{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, &currentSvc); err == nil {
+		// For the particular case of the Service we need to provide the resourceVersion when updating the object.
+		// From the docs (https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata)
+		// > "This value MUST be treated as opaque by clients and passed unmodified back to the server"
+		svc.ResourceVersion = currentSvc.ResourceVersion
+	} else if !errors.IsNotFound(err) {
+		return err
+	}
+
+	return r.client.CreateOrUpdate(&svc)
 }
 
 // setAnnotation updates the monogdb resource with the given namespaced name and sets the annotation
