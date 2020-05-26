@@ -10,7 +10,7 @@ adopted a strategy that makes it easier for everyone to contribute.
 
 This strategy is based on using
 [`operator-sdk`](https://github.com/operator-framework/operator-sdk) for running
-the test, and making the test-runner itself to run as a Kubernetes Pod. This
+the tests, and making the test-runner itself run as a Kubernetes Pod. This
 makes it easier to run the tests in environments with access to a Kubernetes
 cluster with no go toolchain installed locally, making it easier to reproduce
 our local working environments in CI/CD systems.
