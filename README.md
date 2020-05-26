@@ -30,6 +30,7 @@ To install the MongoDB Community Kubernetes Operator:
 
 1. Change to the directory in which you cloned the repository.
 2. Install the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
+
    a. Invoke the following `kubectl` command:
       ```
       kubectl create -f deploy/crds/mongodb.com_mongodb_crd.yaml
@@ -39,6 +40,7 @@ To install the MongoDB Community Kubernetes Operator:
       kubectl get crd/mongodb.mongodb.com
       ```
 3. Install the Operator.
+
    a. Invoke the following `kubectl` command to install the Operator in the specified namespace:
       ```
       kubectl create -f deploy --namespace <my-namespace>
@@ -66,6 +68,9 @@ To deploy your first replica set:
    ```
 
 ## Contributing
+
+Please get familiar with the architecture.md document and then go ahead and read
+the [contributing guide](contributing.md) guide.
 
 Please file issues before filing PRs. For PRs to be accepted, contributors must sign our [CLA](https://www.mongodb.com/legal/contributor-agreement).
 
