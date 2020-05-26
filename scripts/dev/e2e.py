@@ -2,6 +2,8 @@
 
 from kubernetes.client.rest import ApiException
 from build_and_deploy_operator import (
+    build_and_push_operator,
+    deploy_operator,
     ignore_if_doesnt_exist,
     ignore_if_already_exists,
     load_yaml_from_file,
@@ -12,6 +14,8 @@ from dev_config import load_config
 from kubernetes import client, config
 import argparse
 import time
+import os
+import yaml
 
 TEST_RUNNER_NAME = "test-runner"
 
@@ -69,6 +73,29 @@ def _prepare_testrunner_environment():
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_testrunner_service_account()
         )
+    )
+
+
+def create_kube_config():
+    """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
+    as a ConfigMap."""
+    corev1 = client.CoreV1Api()
+    print("Creating kube-config ConfigMap")
+
+    svc = corev1.read_namespaced_service("kubernetes", "default")
+    kube_config = os.getenv("KUBECONFIG")
+    with open(kube_config) as fd:
+        kube_config = yaml.safe_load(fd.read())
+
+    kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
+    kube_config = yaml.safe_dump(kube_config)
+    data = {"kubeconfig": kube_config}
+    config_map = client.V1ConfigMap(
+        metadata=client.V1ObjectMeta(name="kube-config"), data=data
+    )
+
+    ignore_if_already_exists(
+        lambda: corev1.create_namespaced_config_map("default", config_map)
     )
 
 
@@ -161,7 +188,13 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("test", help="Name of the test to run")
+    parser.add_argument("--test", help="Name of the test to run")
+    parser.add_argument(
+        "--skip-operator-install",
+        help="Do not install the Operator, assumes one is installed already",
+        type=bool,
+        default=False,
+    )
     return parser.parse_args()
 
 
@@ -169,6 +202,16 @@ def main():
     args = parse_args()
     config.load_kube_config()
     dev_config = load_config()
+    create_kube_config()
+
+    if not args.skip_operator_install:
+        build_and_push_operator(
+            dev_config.repo_url,
+            f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+            ".",
+        )
+        deploy_operator()
+
     build_and_push_testrunner(
         dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
     )

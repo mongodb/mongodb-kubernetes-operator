@@ -23,7 +23,7 @@ def push_image(tag: str):
     print(f"Pushing image: {tag}")
     progress = ""
     for line in client.images.push(tag, stream=True):
-        print(push_image_formatted(line), end="")
+        print("\r" + push_image_formatted(line), end="", flush=True)
 
 
 def push_image_formatted(line) -> str:
@@ -37,9 +37,15 @@ def push_image_formatted(line) -> str:
         if line["status"] in to_skip:
             return ""
         if line["status"] == "Pushing":
-            current = int(line["progressDetail"]["current"])
-            total = int(line["progressDetail"]["total"])
-            return "Complete: {:.2f}\n".format(current / total)
+            try:
+                current = int(line["progressDetail"]["current"])
+                total = int(line["progressDetail"]["total"])
+            except KeyError:
+                return ""
+            progress = current / total
+            if progress > 1.0:
+                progress == 1.0
+            return "Complete: {:.1%}\n".format(progress)
 
     return ""
 
