@@ -91,24 +91,6 @@ go test ./pkg/...
 
 # Running E2E Tests
 
-## Building and running the operator
-
-This is a two step process, start by building the image for the operator:
-
-```
-python scripts/dev/build_and_deploy_operator.py
-```
-
-This process might take a few minutes to complete (subsequent runs will take
-less time). After it finishes, you will have a running operator in your
-configured namespace:
-
-```sh
-kubectl get pods
-NAME                                           READY   STATUS             RESTARTS   AGE
-mongodb-kubernetes-operator-64b68d4dff-t9cwb   1/1     Running            0          7m22s
-```
-
 ## Running an E2E test
 
 We have built a simple mechanism to run E2E tests on your cluster using a runner
@@ -133,7 +115,7 @@ The tests should run individually using the runner like this:
 ```sh
 # python scripts/dev/e2e.py <test-name>
 # for example
-python scripts/dev/e2e.py replica_set
+python scripts/dev/e2e.py --test replica_set
 ```
 
 This will run the `replica_set` E2E test which is a simple test that installs a
@@ -150,7 +132,7 @@ Adding a new test is as easy as to create a new directory in `test/e2e` with the
 new E2E test, and to run them:
 
 ```sh
-python scripts/dev/e2e.py <new-test>
+python scripts/dev/e2e.py --test <new-test>
 ```
 
 # Before Committing your code
