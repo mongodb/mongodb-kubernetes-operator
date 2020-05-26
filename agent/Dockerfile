@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
-ARG agent_image=https://s3.amazonaws.com/mongodb-mms-build-agent/releases/prod/mongodb-mms-automation-agent-10.14.3.6344-1.linux_x86_64.tar.gz
-ARG agent_version=10.14.3.6344-1
+ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.13.0.6199-1.rhel7_x86_64.tar.gz
+ARG agent_version=10.13.0.6199-1
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
@@ -13,7 +13,7 @@ RUN apt-get -qq update \
 RUN mkdir -p agent \
     && curl --fail --retry 3 --silent $agent_image -o agent/mongodb-agent.tar.gz \
     && tar xfz agent/mongodb-agent.tar.gz \
-    && mv mongodb-mms-automation-agent-$agent_version.linux_x86_64/mongodb-mms-automation-agent agent/mongodb-agent \
+    && mv mongodb-mms-automation-agent-$agent_version.rhel7_x86_64/mongodb-mms-automation-agent agent/mongodb-agent \
     && chmod +x agent/mongodb-agent \
     && mkdir -p /var/lib/automation/config \
     && chmod -R +r /var/lib/automation/config
