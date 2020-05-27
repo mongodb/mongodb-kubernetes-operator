@@ -56,8 +56,10 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB) func(t *testing.T) {
 				Version: mdbv1.SchemeGroupVersion.Version,
 				Kind:    mdb.Kind,
 			})
-		if ownerReference.APIVersion != ownerReferenceMdb.APIVersion || ownerReference.Kind != "MongoDB" || ownerReference.Name != ownerReferenceMdb.Name || ownerReference.UID != ownerReferenceMdb.UID {
-			//	t.Fatal(fmt.Errorf("StatefulSet has wrong OwnerReference: \n APIVersion - %s vs %s\nKind: %s vs %s\nName:%s vs %s\nUID: %s vs %s", ownerReferenceMdb.APIVersion, ownerReference.APIVersion, ownerReferenceMdb.Kind, ownerReference.Kind, ownerReferenceMdb.Name, ownerReference.Name, ownerReferenceMdb.UID, ownerReference.UID))
+		if ownerReference.APIVersion != ownerReferenceMdb.APIVersion ||
+			ownerReference.Kind != "MongoDB" ||
+			ownerReference.Name != ownerReferenceMdb.Name ||
+			ownerReference.UID != ownerReferenceMdb.UID {
 			t.Fatal(fmt.Errorf("StatefulSet has wrong OwnerReference: %s", ownerReference))
 		}
 
