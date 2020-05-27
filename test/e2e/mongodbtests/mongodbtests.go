@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // StatefulSetIsReady ensures that the underlying stateful set
@@ -39,10 +40,27 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 
 func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToHaveOwnerReference(t, mdb, time.Second*15, time.Minute*5)
+		sts := appsv1.StatefulSet{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal(fmt.Errorf("%s", err))
 		}
+		if len(sts.GetOwnerReferences()) == 0 {
+			t.Fatal(fmt.Errorf("StaefulSet has no OwnerReferences"))
+		}
+
+		ownerReference := sts.GetOwnerReferences()[0]
+		ownerReferenceMdb :=
+			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
+				Group:   mdbv1.SchemeGroupVersion.Group,
+				Version: mdbv1.SchemeGroupVersion.Version,
+				Kind:    mdb.Kind,
+			})
+		if ownerReference.APIVersion != ownerReferenceMdb.APIVersion || ownerReference.Kind != "MongoDB" || ownerReference.Name != ownerReferenceMdb.Name || ownerReference.UID != ownerReferenceMdb.UID {
+			//	t.Fatal(fmt.Errorf("StatefulSet has wrong OwnerReference: \n APIVersion - %s vs %s\nKind: %s vs %s\nName:%s vs %s\nUID: %s vs %s", ownerReferenceMdb.APIVersion, ownerReference.APIVersion, ownerReferenceMdb.Kind, ownerReference.Kind, ownerReferenceMdb.Name, ownerReference.Name, ownerReferenceMdb.UID, ownerReference.UID))
+			t.Fatal(fmt.Errorf("StatefulSet has wrong OwnerReference: %s", ownerReference))
+		}
+
 		t.Logf("StatefulSet %s/%s has the correct owner reference!", mdb.Namespace, mdb.Name)
 	}
 }

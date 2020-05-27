@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -97,19 +96,6 @@ func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 func WaitForStatefulSetToBeUpdated(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return sts.Status.UpdatedReplicas == int32(mdb.Spec.Members)
-	})
-}
-
-func WaitForStatefulSetToHaveOwnerReference(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		ownerReference :=
-			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
-				Group:   mdbv1.SchemeGroupVersion.Group,
-				Version: mdbv1.SchemeGroupVersion.Version,
-				Kind:    mdb.Kind,
-			})
-
-		return len(sts.GetOwnerReferences()) > 0 && *sts.GetOwnerReferences()[0].Controller == *ownerReference.Controller
 	})
 }
 
