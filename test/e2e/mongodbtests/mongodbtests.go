@@ -45,25 +45,25 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB) func(t *testing.T) {
 		if err != nil {
 			t.Fatal(fmt.Errorf("%s", err))
 		}
-		if len(sts.GetOwnerReferences()) == 0 {
-			t.Fatal(fmt.Errorf("StaefulSet has no OwnerReferences"))
-		}
 
-		ownerReference := sts.GetOwnerReferences()[0]
 		ownerReferenceMdb :=
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
 				Group:   mdbv1.SchemeGroupVersion.Group,
 				Version: mdbv1.SchemeGroupVersion.Version,
 				Kind:    mdb.Kind,
 			})
-		if ownerReference.APIVersion != ownerReferenceMdb.APIVersion ||
-			ownerReference.Kind != "MongoDB" ||
-			ownerReference.Name != ownerReferenceMdb.Name ||
-			ownerReference.UID != ownerReferenceMdb.UID {
-			t.Fatal(fmt.Errorf("StatefulSet has wrong OwnerReference: %s", ownerReference))
+
+		for _, ownerReference := range sts.GetOwnerReferences() {
+			if ownerReference.APIVersion == ownerReferenceMdb.APIVersion &&
+				ownerReference.Kind == "MongoDB" &&
+				ownerReference.Name == ownerReferenceMdb.Name &&
+				ownerReference.UID == ownerReferenceMdb.UID {
+				t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
+				return
+			}
 		}
 
-		t.Logf("StatefulSet %s/%s has the correct owner reference!", mdb.Namespace, mdb.Name)
+		t.Fatal(fmt.Errorf("StatefulSet has not a correct OwnerReference"))
 	}
 }
 
