@@ -37,6 +37,16 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToHaveOwnerReference(t, mdb, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s has the correct owner reference!", mdb.Namespace, mdb.Name)
+	}
+}
+
 // StatefulSetIsUpdated ensures that all the Pods of the StatefulSet are
 // in "Updated" condition.
 func StatefulSetIsUpdated(mdb *mdbv1.MongoDB) func(t *testing.T) {
