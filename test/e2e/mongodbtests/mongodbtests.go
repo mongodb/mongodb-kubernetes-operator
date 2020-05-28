@@ -38,26 +38,19 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
 		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
 		if err != nil {
-			t.Fatal(fmt.Errorf("%s", err))
+			t.Fatal(err)
 		}
 
-		ownerReferenceMdb :=
-			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
-				Group:   mdbv1.SchemeGroupVersion.Group,
-				Version: mdbv1.SchemeGroupVersion.Version,
-				Kind:    mdb.Kind,
-			})
-
 		for _, ownerReference := range sts.GetOwnerReferences() {
-			if ownerReference.APIVersion == ownerReferenceMdb.APIVersion &&
+			if ownerReference.APIVersion == expectedOwnerReference.APIVersion &&
 				ownerReference.Kind == "MongoDB" &&
-				ownerReference.Name == ownerReferenceMdb.Name &&
-				ownerReference.UID == ownerReferenceMdb.UID {
+				ownerReference.Name == expectedOwnerReference.Name &&
+				ownerReference.UID == expectedOwnerReference.UID {
 				t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
 				return
 			}
@@ -167,6 +160,12 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
+			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
+				Group:   mdbv1.SchemeGroupVersion.Group,
+				Version: mdbv1.SchemeGroupVersion.Version,
+				Kind:    mdb.Kind,
+			})))
 		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
