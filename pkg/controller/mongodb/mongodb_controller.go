@@ -449,7 +449,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		},
 	}
 
-	ownerReference := []metav1.OwnerReference{
+	ownerReferences := []metav1.OwnerReference{
 		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
 			Group:   mdbv1.SchemeGroupVersion.Group,
 			Version: mdbv1.SchemeGroupVersion.Version,
@@ -466,7 +466,7 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetMatchLabels(labels).
 		SetServiceName(mdb.ServiceName()).
 		SetUpdateStrategy(getUpdateStrategyType(mdb)).
-		SetOwnerReference(ownerReference)
+		SetOwnerReference(ownerReferences)
 
 	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
