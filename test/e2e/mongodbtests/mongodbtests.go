@@ -45,16 +45,14 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference met
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		for _, ownerReference := range sts.GetOwnerReferences() {
-			if ownerReference.APIVersion == expectedOwnerReference.APIVersion &&
-				ownerReference.Kind == "MongoDB" &&
-				ownerReference.Name == expectedOwnerReference.Name &&
-				ownerReference.UID == expectedOwnerReference.UID {
-				t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
-				return
-			}
+		ownerReferences := sts.GetOwnerReferences()
+		if len(ownerReferences) == 0 {
+			t.Fatal(fmt.Errorf("StatefulSet doesn't have OwnerReferences"))
 		}
+		assert.Equal(t, expectedOwnerReference.APIVersion, ownerReferences[0].APIVersion)
+		assert.Equal(t, "MongoDB", ownerReferences[0].Kind)
+		assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
+		assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 
 		t.Fatal(fmt.Errorf("StatefulSet has not a correct OwnerReference"))
 	}
