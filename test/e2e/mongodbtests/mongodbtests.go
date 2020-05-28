@@ -54,7 +54,7 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference met
 		assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
 		assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 
-		t.Fatal(fmt.Errorf("StatefulSet has not a correct OwnerReference"))
+		t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
 	}
 }
 
