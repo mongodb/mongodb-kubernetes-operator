@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // StatefulSetIsReady ensures that the underlying stateful set
@@ -34,6 +35,26 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
+func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+	return func(t *testing.T) {
+		sts := appsv1.StatefulSet{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ownerReferences := sts.GetOwnerReferences()
+
+		assert.Len(t, ownerReferences, 1, "StatefulSet doesn't have OwnerReferences")
+
+		assert.Equal(t, expectedOwnerReference.APIVersion, ownerReferences[0].APIVersion)
+		assert.Equal(t, "MongoDB", ownerReferences[0].Kind)
+		assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
+		assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
+
+		t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
 	}
 }
 
@@ -137,6 +158,12 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
+			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
+				Group:   mdbv1.SchemeGroupVersion.Group,
+				Version: mdbv1.SchemeGroupVersion.Version,
+				Kind:    mdb.Kind,
+			})))
 		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
