@@ -1,6 +1,6 @@
 # MongoDB Community Kubernetes Operator #
 
-<img align="left" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
+<img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
 This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
 
@@ -8,7 +8,20 @@ This codebase is currently _pre-alpha_, and is not ready for use.
 
 If you are a MongoDB Enterprise customer, or need Enterprise features such as Backup, you can use the [MongoDB Enterprise Operator for Kubernetes](https://github.com/mongodb/mongodb-enterprise-kubernetes).
 
-## Installation
+## Table of Contents
+
+- [Install the Operator](#install-the-operator)
+  - [Prerequisites](#prerequisites)
+  - [Procedure](#procedure)
+- [Upgrade the Operator](#upgrade-the-operator)
+- [Deploy & Configure MongoDB Resources](#deploy-and-configure-a-mongodb-resource)
+  - [Deploy a Replica Set](#deploy-a-replica-set)
+  - [Upgrade MongoDB Version & FCV](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
+- [Contribute](#contribute)
+- [License](#license)
+
+
+## Install the Operator
 
 ### Prerequisites
 
@@ -22,7 +35,7 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
    ```
 
-### Installing the MongoDB Community Kubernetes Operator
+### Procedure
 
 The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
@@ -50,11 +63,23 @@ To install the MongoDB Community Kubernetes Operator:
       kubectl get pods --namespace <my-namespace>
       ```
 
-## Usage
+
+## Upgrade the Operator
+
+To upgrade the MongoDB Community Kubernetes Operator:
+
+1. Change to the directory in which you cloned the repository.
+2. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
+   ```
+   kubectl apply -f deploy/crds/mongodb.com_mongodb_crd.yaml --namespace <my-namespace>
+   ```
+
+
+## Deploy and Configure a MongoDB Resource
 
 The `/deploy/crds` directory contains example MongoDB resources that you can modify and deploy.
 
-### Deploying a MongoDB Resource
+### Deploy a Replica Set
 
 To deploy your first replica set:
 
@@ -67,14 +92,67 @@ To deploy your first replica set:
    kubectl get mongodb --namespace <my-namespace>
    ```
 
-## Contributing
+### Upgrade your MongoDB Resource Version and Feature Compatibility Version
+
+You can upgrade the major, minor, and/or feature compatibility versions of your MongoDB resource. These settings are configured in your resource definition YAML file.
+
+- To upgrade your resource's major and/or minor versions, set the `spec.version` setting to the desired MongoDB version.
+
+- To modify your resource's [feature compatibility version](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
+
+If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
+
+#### Example
+
+Consider the following example MongoDB resource definition:
+
+```yaml
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.0.6"
+```
+To upgrade this resource from `4.0.6` to `4.2.7`:
+
+1. Edit the resource definition.
+
+   a. Update `spec.version` to `4.2.7`.
+
+   b. Update `spec.featureCompatibilityVersion` to `4.0`.
+
+   ```yaml
+   apiVersion: mongodb.com/v1
+   kind: MongoDB
+   metadata:
+     name: example-mongodb
+   spec:
+     members: 3
+     type: ReplicaSet
+     version: "4.2.7"
+     featureCompatibilityVersion: "4.0"
+   ```
+
+   **NOTE:** Setting `featureCompatibilityVersion` to `4.0` disables [4.2 features incompatible with MongoDB 4.0](https://docs.mongodb.com/manual/release-notes/4.2-compatibility/#compatibility-enabled).
+
+2. Reapply the configuration to Kubernetes:
+   ```
+   kubectl apply -f <example>.yaml --namespace <my-namespace>
+   ```
+
+
+## Contribute
 
 Please get familiar with the architecture.md document and then go ahead and read
-the [contributing guide](contributing.md) guide.
+the [contributing guide](contributing.md).
 
 Please file issues before filing PRs. For PRs to be accepted, contributors must sign our [CLA](https://www.mongodb.com/legal/contributor-agreement).
 
 Reviewers, please ensure that the CLA has been signed by referring to [the contributors tool](https://contributors.corp.mongodb.com/) (internal link).
+
 
 ## License
 
