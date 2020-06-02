@@ -3,6 +3,15 @@ kind: CustomResourceDefinition
 metadata:
   name: mongodb.mongodb.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: Current state of the MongoDB deployment
+    name: Phase
+    type: string
+  - JSONPath: .status.version
+    description: Version of MongoDB server
+    name: Version
+    type: string
   group: mongodb.com
   names:
     kind: MongoDB
@@ -12,15 +21,6 @@ spec:
     - mdb
     singular: mongodb
   scope: Namespaced
-  additionalPrinterColumns:
-    - name: Phase
-      type: string
-      description: Current state of the MongoDB deployment
-      JSONPath: .status.phase
-    - name: Version
-      type: string
-      description: Version of MongoDB server
-      JSONPath: .spec.version
   subresources:
     status: {}
   validation:
