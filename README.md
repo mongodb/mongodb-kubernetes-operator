@@ -17,6 +17,7 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 - [Deploy & Configure MongoDB Resources](#deploy-and-configure-a-mongodb-resource)
   - [Deploy a Replica Set](#deploy-a-replica-set)
   - [Upgrade MongoDB Version & FCV](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
+- [Supported Features](#supported-features)
 - [Contribute](#contribute)
 - [License](#license)
 
