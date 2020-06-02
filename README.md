@@ -143,6 +143,22 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 
+## Supported Features
+
+The MongoDB Community Kubernetes Operator supports the following features:
+
+- MongoDB Topology: [replica sets](https://docs.mongodb.com/manual/replication/)
+- Upgrading and downgrading MongoDB server version
+- Scaling replica sets up and down
+- Reading from and writing to the replica set while scaling, upgrading, and downgrading. These operations are done in an "always up" manner.
+- Reporting of MongoDB server state via the MongoDB resource `status` field
+- Use of any of the available [Docker MongoDB images](https://hub.docker.com/_/mongo/)
+- Clients inside the Kubernetes cluster can connect to the replica set (no external connectivity)
+
+### Planned Features
+- TLS support for client/server communication
+- Server internal authentication via keyfile
+- Creating users with SCRAM-SHA authentication
 
 ## Contribute
 
