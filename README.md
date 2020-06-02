@@ -152,7 +152,7 @@ The MongoDB Community Kubernetes Operator supports the following features:
 - Upgrading and downgrading MongoDB server version
 - Scaling replica sets up and down
 - Reading from and writing to the replica set while scaling, upgrading, and downgrading. These operations are done in an "always up" manner.
-- Reporting of MongoDB server state via the MongoDB resource `status` field
+- Reporting of MongoDB server state via the [MongoDB resource](/deploy/crds/mongodb.com_mongodb_crd.yaml) `status` field
 - Use of any of the available [Docker MongoDB images](https://hub.docker.com/_/mongo/)
 - Clients inside the Kubernetes cluster can connect to the replica set (no external connectivity)
 
