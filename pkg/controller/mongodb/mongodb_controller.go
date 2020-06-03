@@ -137,7 +137,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Ensuring the service esists")
-	if err = r.ensureService(mdb); err != nil {
+	if err := r.ensureService(mdb); err != nil {
 		r.log.Infof("Error ensuring the service exists: %s", err)
 		return reconcile.Result{}, err
 	}
@@ -210,6 +210,7 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 	err := r.client.Create(context.TODO(), &svc)
 	if err != nil && errors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
+		return nil
 	}
 	return err
 }
