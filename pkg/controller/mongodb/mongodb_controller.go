@@ -136,9 +136,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	r.log.Debug("Building service")
-	if err = r.createOrUpdateService(mdb); err != nil {
-		r.log.Infof("The service already exists... moving forward: %s", err)
+	r.log.Debug("Building and creating service")
+	if err = r.createService(mdb); err != nil {
+		if errors.IsAlreadyExists(err) {
+			r.log.Infof("The service already exists... moving forward: %s", err)
+		} else {
+			return reconcile.Result{}, err
+		}
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
@@ -204,18 +208,14 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, expectedUpd
 	return statefulset.IsReady(set, mdb.Spec.Members) && expectedUpdateStrategy == set.Spec.UpdateStrategy.Type, nil
 }
 
-func (r *ReplicaSetReconciler) createOrUpdateService(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) createService(mdb mdbv1.MongoDB) error {
 	svc := buildService(mdb)
-	svc.ResourceVersion = corev1.Service{}.ResourceVersion
-	svcCopy := svc.DeepCopy()
+	svcCopy := svc.DeepCopyObject()
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, svcCopy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return r.client.Create(context.TODO(), &svc)
-		}
-		return err
+	if err != nil && errors.IsNotFound(err) {
+		return r.client.Create(context.TODO(), &svc)
 	}
-	return r.client.Update(context.TODO(), &svc)
+	return err
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
