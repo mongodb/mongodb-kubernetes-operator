@@ -21,7 +21,6 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 - [Contribute](#contribute)
 - [License](#license)
 
-
 ## Install the Operator
 
 ### Prerequisites
@@ -64,7 +63,6 @@ To install the MongoDB Community Kubernetes Operator:
       kubectl get pods --namespace <my-namespace>
       ```
 
-
 ## Upgrade the Operator
 
 To upgrade the MongoDB Community Kubernetes Operator:
@@ -74,7 +72,6 @@ To upgrade the MongoDB Community Kubernetes Operator:
    ```
    kubectl apply -f deploy/crds/mongodb.com_mongodb_crd.yaml
    ```
-
 
 ## Deploy and Configure a MongoDB Resource
 
@@ -163,13 +160,14 @@ The MongoDB Community Kubernetes Operator supports the following features:
 
 ## Contribute
 
-Please get familiar with the architecture.md document and then go ahead and read
-the [contributing guide](contributing.md).
+Before you contribute to the MongoDB Community Kubernetes Operator, please read:
+
+- [MongoDB Community Kubernetes Operator Architecture](architecture.md)
+- [Contributing to MongoDB Community Kubernetes Operator](contributing.md)
 
 Please file issues before filing PRs. For PRs to be accepted, contributors must sign our [CLA](https://www.mongodb.com/legal/contributor-agreement).
 
 Reviewers, please ensure that the CLA has been signed by referring to [the contributors tool](https://contributors.corp.mongodb.com/) (internal link).
-
 
 ## License
 
