@@ -52,6 +52,8 @@ type MongoDBStatus struct {
 // MongoDB is the Schema for the mongodbs API
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=mongodb,scope=Namespaced,shortName=mdb
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDB deployment"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDB server"
 type MongoDB struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

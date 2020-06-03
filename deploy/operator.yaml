@@ -15,7 +15,7 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          image: quay.io/chatton/mongodb-kubernetes-operator
+          image: quay.io/mongodb/mongodb-kubernetes-operator
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
@@ -31,6 +31,6 @@ spec:
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
-              value: quay.io/chatton/mongodb-agent
+              value: quay.io/mongodb/mongodb-agent:10.13.0.6199-1
             - name: PRE_STOP_HOOK_IMAGE
-              value: quay.io/mongodb/community-operator-pre-stop-hook
+              value: quay.io/mongodb/mongodb-kubernetes-operator-pre-stop-hook:1.0.0

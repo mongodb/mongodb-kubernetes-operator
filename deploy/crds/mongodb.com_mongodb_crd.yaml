@@ -3,6 +3,15 @@ kind: CustomResourceDefinition
 metadata:
   name: mongodb.mongodb.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: Current state of the MongoDB deployment
+    name: Phase
+    type: string
+  - JSONPath: .status.version
+    description: Version of MongoDB server
+    name: Version
+    type: string
   group: mongodb.com
   names:
     kind: MongoDB
