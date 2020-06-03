@@ -218,7 +218,6 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
 	sts, err := buildStatefulSet(mdb)
 	if err != nil {
-
 		return fmt.Errorf("error building StatefulSet: %s", err)
 	}
 	if err = r.client.CreateOrUpdate(&sts); err != nil {
