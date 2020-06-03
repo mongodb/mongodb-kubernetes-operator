@@ -136,7 +136,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	r.log.Debug("Ensuring the service esists")
+	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
 		r.log.Infof("Error ensuring the service exists: %s", err)
 		return reconcile.Result{}, err
