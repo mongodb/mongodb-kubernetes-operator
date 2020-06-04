@@ -171,7 +171,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Updating MongoDB Status")
-	newStatus, err := r.updateStatusSuccess(&mdb)
+	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
 		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
 		return reconcile.Result{}, err
@@ -245,10 +245,10 @@ func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, va
 	})
 }
 
-// updateStatusSuccess should be called after a successful reconciliation
+// updateAndReturnStatusSuccess should be called after a successful reconciliation
 // the resource's status is updated to reflect to the state, and any other cleanup
 // operators should be performed here
-func (r ReplicaSetReconciler) updateStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
+func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
 	newMdb := &mdbv1.MongoDB{}
 	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, newMdb); err != nil {
 		return mdbv1.MongoDBStatus{}, fmt.Errorf("error getting resource: %+v", err)
