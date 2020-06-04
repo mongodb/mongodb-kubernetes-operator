@@ -13,23 +13,25 @@ The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](http
 You create and update MongoDB resources by defining a MongoDB resource definition. When you apply the MongoDB resource definition to your Kubernetes environment, the Operator:
 
 1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://docs.mongodb.com/manual/replication/) member. 
-2. Creates two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod: 
-   - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary.
-   - A container for the Automation Agent. 
-3. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod. 
-4. Initiates the Automation Agent, which in turn creates the database configuration and launches the `mongod` process according to your MongoDB resource definition.
+1. Creates two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
 
-<!-- Waiting for diagram from Louis
+   - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. </br>
+     `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
+
+   - A container for the Automation Agent. </br>
+     The Automation Agent handles configuring, stopping, and restarting the `mongod` process. The Automation Agent periodically polls the `mongod` to determine status and can deploy changes as needed. 
+1. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod. 
+1. Initiates the Automation Agent, which in turn creates the database configuration and launches the `mongod` process according to your MongoDB resource definition.
+
+<!--
 <img src="" alt="Architecure diagram of the MongoDB Community Kubernetes Operator">
 -->
 
-While the Operator handles startup of the StatefulSet, the Automation Agent handles configuring, stopping, and restarting the `mongod` process. The Automation Agent periodically polls the `mongod` to determine status and can deploy changes as needed. 
+This architecture maximizes use of the Automation Agent while integrating naturally with Kubernetes to produce a number of benefits.
 
-This architecure maximizes use of the Automation Agent while integrating naturally with Kubernetes to produce a number of benefits.
-
-- Architecture is based on containers and not binaries, so you can:
+- MongoDB containers are not tied to the Operator or the Agent, so you can:
   - Run any MongoDB container.
-  - Use your preferred Linux distrobution inside the container.
+  - Use your preferred Linux distribution inside the container.
   - Update operating system packages on your own schedule.
 - Containers are immutable and have a single responsibility or process, so you can:
   - Describe and understand each container.
@@ -46,16 +48,27 @@ The MongoDB Community Kubernetes Operator uses the Automation Agent to efficient
 
 When you update the MongoDB version in your resource definition and reapply it to your Kubernetes environment, the Operator initiates a rolling upgrade:
 
-1. The Operator updates the [image](https://kubernetes.io/docs/concepts/containers/images/) specification to the new version of MongoDB and writes a new Automation Agent configuration ConfigMap to each pod.
-2. The Automation Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://docs.mongodb.com/manual/reference/method/db.shutdownServer/#db.shutdownServer).
-3. A pre-stop hook on the database container checks the state of the Automation Agent. If the Automation Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
-4. The Kubernetes Controller downloads the target version of MongoDB from its default docker registry and restarts the pod with the target version of `mongod` in the database container.
-5. The Automation Agent starts. It checks the target version of the new `mongod`, then generates the configuration file for the `mongod` process.
-6. The `mongod` process receives the configuration file from the Automation Agent and starts.
-7. The Automation Agent reaches goal state.
-8. The Automation Agent chooses the next pod to upgrade and repeats the process until all pods are upgraded.
+1. The Operator changes the StatefulSet [update strategy](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies) from `RollingUpdate` to `OnDelete`.
 
-<!-- Waiting for diagram from Louis
+1. The Operator updates the [image](https://kubernetes.io/docs/concepts/containers/images/) specification to the new version of MongoDB and writes a new Automation Agent configuration ConfigMap to each pod.
+
+1. The Automation Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://docs.mongodb.com/manual/reference/method/db.shutdownServer/#db.shutdownServer).
+
+1. A pre-stop hook on the database container checks the state of the Automation Agent. If the Automation Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
+
+1. The Kubernetes Controller downloads the target version of MongoDB from its default docker registry and restarts the pod with the target version of `mongod` in the database container.
+
+1. The Automation Agent starts. It checks the target version of the new `mongod`, then generates the configuration file for the `mongod` process.
+
+1. The `mongod` process receives the configuration file from the Automation Agent and starts.
+
+1. The Automation Agent reaches goal state.
+
+1. The Automation Agent chooses the next pod to upgrade and repeats the process until all pods are upgraded.
+
+1. The Operator changes the StatefulSet update strategy from `OnDelete` back to `RollingUpdate`.
+
+<!--
 <img src="" alt="Rolling upgrade flow diagram for the MongoDB Community Kubernetes Operator">
 -->
 
