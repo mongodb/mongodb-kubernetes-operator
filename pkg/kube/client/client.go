@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,11 +34,19 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 	err := c.Get(context.TODO(), namespacedNameFromObject(obj), objCopy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return c.Create(context.TODO(), obj)
+			err = c.Create(context.TODO(), obj)
+			if err != nil {
+				return fmt.Errorf("Error creating the object: %s", err)
+			}
+			return err
 		}
-		return err
+		return fmt.Errorf("Error getting the object: %s", err)
 	}
-	return c.Update(context.TODO(), obj)
+	err = c.Update(context.TODO(), obj)
+	if err != nil {
+		return fmt.Errorf("Error updating the object: %s", err)
+	}
+	return err
 }
 
 // GetAndUpdate fetches the most recent version of the runtime.Object with the provided

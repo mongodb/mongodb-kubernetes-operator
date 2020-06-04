@@ -162,3 +162,24 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
 }
+
+func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	svc := corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
+	assert.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017})
+
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+}
