@@ -4,10 +4,13 @@ from kubernetes.client.rest import ApiException
 from build_and_deploy_operator import (
     build_and_push_operator,
     deploy_operator,
-    ignore_if_doesnt_exist,
-    ignore_if_already_exists,
     load_yaml_from_file,
 )  # TODO: put these function somewhere else
+from k8sutil import (
+    wait_for_k8s_api_condition,
+    ignore_if_doesnt_exist,
+    ignore_if_already_exists,
+)
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
 from dev_config import load_config
@@ -137,9 +140,16 @@ def create_test_runner_pod(test: str):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
+    
     dev_config = load_config()
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
+
+    if not wait_for_k8s_api_condition(
+            lambda: corev1.list_namespaced_pod(dev_config.namespace, field_selector="metadata.name=="+TEST_RUNNER_NAME),
+            lambda pod_list : len(pod_list.items)==0, timeout=5, sleep_time=0.1):
+
+        raise Exception("Execution timed out while waiting for the existing pod to be deleted")
     return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
 
 
@@ -171,19 +181,6 @@ def _get_testrunner_pod_body(test: str) -> Dict:
             ],
         },
     }
-
-
-def wait_for_pod_to_be_running(corev1, name, namespace):
-    print("Waiting for pod to be running")
-    for i in range(10):
-        try:
-            pod = corev1.read_namespaced_pod(name, namespace)
-            if pod.status.phase == "Running":
-                return True
-        except ApiException as e:
-            pass
-        time.sleep(5)
-    raise Exception("Pod never got into Running state!")
 
 
 def parse_args():
@@ -222,7 +219,11 @@ def main():
 
     pod = create_test_runner_pod(args.test)
     corev1 = client.CoreV1Api()
-    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
+
+    print("Waiting for pod to be running")
+    if not wait_for_k8s_api_condition(lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace), lambda pod : pod.status.phase=="Running", sleep_time=5, timeout=50):
+        raise Exception("Pod never got into Running state!")
+   
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(

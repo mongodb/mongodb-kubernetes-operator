@@ -1,40 +1,16 @@
 import io
 import os
-import time
 from typing import Dict, Optional
 
 import yaml
 from kubernetes import client, config
-from kubernetes.client.rest import ApiException
 
 from dev_config import DevConfig, load_config
 from dockerfile_generator import render
 from dockerutil import build_and_push_image
 
+from k8sutil import wait_for_k8s_api_condition,ignore_if_already_exists, ignore_if_doesnt_exist
 
-# time to sleep between retries
-SLEEP_TIME = 2
-# no timeout (loop forever)
-INFINITY = -1
-
-def _current_milliseconds():
-    return int(round(time.time() * 1000))
-
-def _wait_for_condition(fn, **kwargs) -> bool:
-    sleep_time = kwargs.get("sleep_time", SLEEP_TIME)
-    timeout = kwargs.get("timeout", INFINITY)
-
-    start_time = _current_milliseconds()
-    end = start_time + (timeout * 1000)
-    callable_name = fn.__name__
-
-    while _current_milliseconds() < end or timeout <= 0:
-        if fn() == True:
-            return True
-
-        time.sleep(sleep_time)
-
-    return False
 
 def _load_operator_service_account() -> Optional[Dict]:
     return load_yaml_from_file("deploy/service_account.yaml")
@@ -74,7 +50,8 @@ def _ensure_crds() -> bool:
         lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
-    if not _wait_for_condition(lambda: len(crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com").items) == 0, timeout=5, sleep_time=0.1):
+    # Make sure that the CRD has being deleted before trying to create it again
+    if not wait_for_k8s_api_condition(lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"), lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.1):
         print("Execution timed out while waiting for the CRD to be deleted")
         return False
 
@@ -97,31 +74,6 @@ def build_and_push_operator(repo_url: str, tag: str, path: str):
     and pushes it to the target repo
     """
     return build_and_push_image(repo_url, tag, path, "operator")
-
-
-def _ignore_error_codes(fn, codes):
-    try:
-        fn()
-    except ApiException as e:
-        if e.status not in codes:
-            raise
-
-
-def ignore_if_already_exists(fn):
-    """
-    ignore_if_already_exists accepts a function and calls it,
-    ignoring an Kubernetes API conflict errors
-    """
-
-    return _ignore_error_codes(fn, [409])
-
-
-def ignore_if_doesnt_exist(fn):
-    """
-    ignore_if_doesnt_exist accepts a function and calls it,
-    ignoring an Kubernetes API not found errors
-    """
-    return _ignore_error_codes(fn, [404])
 
 
 def deploy_operator():
