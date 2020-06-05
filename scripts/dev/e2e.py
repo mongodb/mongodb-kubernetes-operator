@@ -140,7 +140,6 @@ def create_test_runner_pod(test: str):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
-    
     dev_config = load_config()
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
@@ -221,9 +220,11 @@ def main():
     corev1 = client.CoreV1Api()
 
     print("Waiting for pod to be running")
-    if not wait_for_k8s_api_condition(lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace), lambda pod : pod.status.phase=="Running", sleep_time=5, timeout=50):
+    if not wait_for_k8s_api_condition(
+            lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
+            lambda pod : pod.status.phase=="Running",
+            sleep_time=5, timeout=50, exceptions_to_ignore=ApiException):
         raise Exception("Pod never got into Running state!")
-   
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(

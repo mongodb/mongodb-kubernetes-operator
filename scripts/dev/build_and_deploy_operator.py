@@ -51,7 +51,9 @@ def _ensure_crds() -> bool:
     )
 
     # Make sure that the CRD has being deleted before trying to create it again
-    if not wait_for_k8s_api_condition(lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"), lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.1):
+    if not wait_for_k8s_api_condition(
+            lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"),
+            lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.1):
         print("Execution timed out while waiting for the CRD to be deleted")
         return False
 

@@ -10,13 +10,26 @@ INFINITY = -1
 def _current_milliseconds():
     return int(round(time.time() * 1000))
 
-def wait_for_k8s_api_condition(fn, condition, codes_to_ignore=[],sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
+def wait_for_k8s_api_condition(fn, condition, exceptions_to_ignore=[], codes_to_ignore=[],sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
+    """
+    wait_for_k8s_api_condition accepts a function fn and a function condition,
+    it periodically calls the function fn and then applies the condition function on the result
+    until it returns True or we reach timeout
+
+    Exceptions raised by the call to fn are ignored if contained in exceptions_to_ignore
+    If ApiException is not ignored, if raised by the call to fn codes in codes_to_ignore are ignored
+    """
     start_time = _current_milliseconds()
     end = start_time + (timeout * 1000)
 
+
     while _current_milliseconds() < end or timeout <= 0:
-        res =  _ignore_error_codes(fn,codes_to_ignore)
-        if condition(res) == True:
+        res = None
+        try:
+            res =  _ignore_error_codes(fn,codes_to_ignore)
+        except exceptions_to_ignore:
+            pass
+        if res is not None and condition(res) == True:
             return True
 
         time.sleep(sleep_time)
