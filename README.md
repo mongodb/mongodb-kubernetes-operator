@@ -75,7 +75,7 @@ To upgrade the MongoDB Community Kubernetes Operator:
 
 ## Deploy and Configure a MongoDB Resource
 
-The `/deploy/crds` directory contains example MongoDB resources that you can modify and deploy.
+The [`/deploy/crds`](deploy/crds) directory contains example MongoDB resources that you can modify and deploy.
 
 ### Deploy a Replica Set
 
