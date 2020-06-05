@@ -10,9 +10,9 @@ INFINITY = -1
 def _current_milliseconds():
     return int(round(time.time() * 1000))
 
-def wait_for_k8s_api_condition(fn, condition, exceptions_to_ignore=[], codes_to_ignore=[],sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
+def wait_for_condition(fn, condition, exceptions_to_ignore=[], codes_to_ignore=[],sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
     """
-    wait_for_k8s_api_condition accepts a function fn and a function condition,
+    wait_for_condition accepts a function fn and a function condition,
     it periodically calls the function fn and then applies the condition function on the result
     until it returns True or we reach timeout
 

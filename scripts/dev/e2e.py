@@ -7,7 +7,7 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )  # TODO: put these function somewhere else
 from k8sutil import (
-    wait_for_k8s_api_condition,
+    wait_for_condition,
     ignore_if_doesnt_exist,
     ignore_if_already_exists,
 )
@@ -144,7 +144,7 @@ def create_test_runner_pod(test: str):
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
 
-    if not wait_for_k8s_api_condition(
+    if not wait_for_condition(
             lambda: corev1.list_namespaced_pod(dev_config.namespace, field_selector="metadata.name=="+TEST_RUNNER_NAME),
             lambda pod_list : len(pod_list.items)==0, timeout=5, sleep_time=0.1):
 
@@ -220,7 +220,7 @@ def main():
     corev1 = client.CoreV1Api()
 
     print("Waiting for pod to be running")
-    if not wait_for_k8s_api_condition(
+    if not wait_for_condition(
             lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
             lambda pod : pod.status.phase=="Running",
             sleep_time=5, timeout=50, exceptions_to_ignore=ApiException):

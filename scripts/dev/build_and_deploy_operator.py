@@ -9,7 +9,7 @@ from dev_config import DevConfig, load_config
 from dockerfile_generator import render
 from dockerutil import build_and_push_image
 
-from k8sutil import wait_for_k8s_api_condition,ignore_if_already_exists, ignore_if_doesnt_exist
+from k8sutil import wait_for_condition,ignore_if_already_exists, ignore_if_doesnt_exist
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -51,7 +51,7 @@ def _ensure_crds() -> bool:
     )
 
     # Make sure that the CRD has being deleted before trying to create it again
-    if not wait_for_k8s_api_condition(
+    if not wait_for_condition(
             lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"),
             lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.1):
         print("Execution timed out while waiting for the CRD to be deleted")
