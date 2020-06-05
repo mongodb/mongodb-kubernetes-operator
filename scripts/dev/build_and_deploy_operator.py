@@ -12,6 +12,30 @@ from dockerfile_generator import render
 from dockerutil import build_and_push_image
 
 
+# time to sleep between retries
+SLEEP_TIME = 2
+# no timeout (loop forever)
+INFINITY = -1
+
+def _current_milliseconds():
+    return int(round(time.time() * 1000))
+
+def _wait_for_condition(fn, **kwargs) -> bool:
+    sleep_time = kwargs.get("sleep_time", SLEEP_TIME)
+    timeout = kwargs.get("timeout", INFINITY)
+
+    start_time = _current_milliseconds()
+    end = start_time + (timeout * 1000)
+    callable_name = fn.__name__
+
+    while _current_milliseconds() < end or timeout <= 0:
+        if fn() == True:
+            return True
+
+        time.sleep(sleep_time)
+
+    return False
+
 def _load_operator_service_account() -> Optional[Dict]:
     return load_yaml_from_file("deploy/service_account.yaml")
 
@@ -39,8 +63,7 @@ def load_yaml_from_file(path: str) -> Optional[Dict]:
         return yaml.full_load(f.read())
     return None
 
-
-def _ensure_crds():
+def _ensure_crds() -> bool:
     """
     ensure_crds makes sure that all the required CRDs have been created
     """
@@ -51,6 +74,11 @@ def _ensure_crds():
         lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
+    if not _wait_for_condition(lambda: len(crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com").items) == 0, timeout=5, sleep_time=0.1):
+        print("Execution timed out while waiting for the CRD to be deleted")
+        return False
+
+
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
     # ValueError("Invalid value for `conditions`, must not be `None`")
     # but the crd is still successfully created
@@ -60,6 +88,7 @@ def _ensure_crds():
         pass
 
     print("Ensured CRDs")
+    return True
 
 
 def build_and_push_operator(repo_url: str, tag: str, path: str):
@@ -105,7 +134,8 @@ def deploy_operator():
     rbacv1 = client.RbacAuthorizationV1Api()
 
     dev_config = load_config()
-    _ensure_crds()
+    if not _ensure_crds():
+        return
 
     ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role(
