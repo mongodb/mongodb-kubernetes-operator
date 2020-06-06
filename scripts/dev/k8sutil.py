@@ -7,10 +7,19 @@ SLEEP_TIME = 2
 # no timeout (loop forever)
 INFINITY = -1
 
+
 def _current_milliseconds() -> int:
     return int(round(time.time() * 1000))
 
-def wait_for_condition(fn, condition, exceptions_to_ignore=None, codes_to_ignore=None,sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
+
+def wait_for_condition(
+    fn,
+    condition,
+    exceptions_to_ignore=None,
+    codes_to_ignore=None,
+    sleep_time=SLEEP_TIME,
+    timeout=INFINITY,
+) -> bool:
     """
     wait_for_condition accepts a function fn and a function condition,
     it periodically calls the function fn and then applies the condition function on the result
@@ -25,7 +34,7 @@ def wait_for_condition(fn, condition, exceptions_to_ignore=None, codes_to_ignore
     while _current_milliseconds() < end or timeout <= 0:
         res = None
         try:
-            res =  _ignore_error_codes(fn,codes_to_ignore)
+            res = _ignore_error_codes(fn, codes_to_ignore)
         except exceptions_to_ignore:
             pass
         if res is not None and condition(res) == True:
@@ -59,4 +68,3 @@ def ignore_if_doesnt_exist(fn):
     ignoring an Kubernetes API not found errors
     """
     return _ignore_error_codes(fn, [404])
-

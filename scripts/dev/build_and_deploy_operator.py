@@ -9,7 +9,7 @@ from dev_config import DevConfig, load_config
 from dockerfile_generator import render
 from dockerutil import build_and_push_image
 
-from k8sutil import wait_for_condition,ignore_if_already_exists, ignore_if_doesnt_exist
+from k8sutil import wait_for_condition, ignore_if_already_exists, ignore_if_doesnt_exist
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -39,6 +39,7 @@ def load_yaml_from_file(path: str) -> Optional[Dict]:
         return yaml.full_load(f.read())
     return None
 
+
 def _ensure_crds():
     """
     ensure_crds makes sure that all the required CRDs have been created
@@ -52,10 +53,14 @@ def _ensure_crds():
 
     # Make sure that the CRD has being deleted before trying to create it again
     if not wait_for_condition(
-            lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"),
-            lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.5):
+        lambda: crdv1.list_custom_resource_definition(
+            field_selector="metadata.name==mongodb.mongodb.com"
+        ),
+        lambda crd_list: len(crd_list.items) == 0,
+        timeout=5,
+        sleep_time=0.5,
+    ):
         raise Exception("Execution timed out while waiting for the CRD to be deleted")
-
 
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
     # ValueError("Invalid value for `conditions`, must not be `None`")
@@ -87,7 +92,7 @@ def deploy_operator():
 
     dev_config = load_config()
     _ensure_crds()
-    
+
     ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role(
             dev_config.namespace, _load_operator_role()

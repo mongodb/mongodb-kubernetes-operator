@@ -145,19 +145,30 @@ def create_test_runner_pod(test: str):
     pod_body = _get_testrunner_pod_body(test)
 
     if not wait_for_condition(
-            lambda: corev1.list_namespaced_pod(dev_config.namespace, field_selector="metadata.name=="+TEST_RUNNER_NAME),
-            lambda pod_list : len(pod_list.items)==0, timeout=10, sleep_time=0.5):
+        lambda: corev1.list_namespaced_pod(
+            dev_config.namespace, field_selector="metadata.name==" + TEST_RUNNER_NAME
+        ),
+        lambda pod_list: len(pod_list.items) == 0,
+        timeout=10,
+        sleep_time=0.5,
+    ):
 
-        raise Exception("Execution timed out while waiting for the existing pod to be deleted")
+        raise Exception(
+            "Execution timed out while waiting for the existing pod to be deleted"
+        )
 
     return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
+
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
     print("Waiting for pod to be running")
     if not wait_for_condition(
-            lambda: corev1.read_namespaced_pod(name,namespace),
-            lambda pod : pod.status.phase=="Running",
-            sleep_time=5, timeout=50, exceptions_to_ignore=ApiException):
+        lambda: corev1.read_namespaced_pod(name, namespace),
+        lambda pod: pod.status.phase == "Running",
+        sleep_time=5,
+        timeout=50,
+        exceptions_to_ignore=ApiException,
+    ):
         raise Exception("Pod never got into Running state!")
 
 
