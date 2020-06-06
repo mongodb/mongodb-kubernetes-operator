@@ -39,7 +39,7 @@ def load_yaml_from_file(path: str) -> Optional[Dict]:
         return yaml.full_load(f.read())
     return None
 
-def _ensure_crds() -> bool:
+def _ensure_crds():
     """
     ensure_crds makes sure that all the required CRDs have been created
     """
@@ -53,9 +53,8 @@ def _ensure_crds() -> bool:
     # Make sure that the CRD has being deleted before trying to create it again
     if not wait_for_condition(
             lambda: crdv1.list_custom_resource_definition(field_selector = "metadata.name==mongodb.mongodb.com"),
-            lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.1):
-        print("Execution timed out while waiting for the CRD to be deleted")
-        return False
+            lambda crd_list : len(crd_list.items)==0, timeout=5, sleep_time=0.5):
+        raise Exception("Execution timed out while waiting for the CRD to be deleted")
 
 
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
@@ -67,7 +66,6 @@ def _ensure_crds() -> bool:
         pass
 
     print("Ensured CRDs")
-    return True
 
 
 def build_and_push_operator(repo_url: str, tag: str, path: str):
@@ -88,9 +86,8 @@ def deploy_operator():
     rbacv1 = client.RbacAuthorizationV1Api()
 
     dev_config = load_config()
-    if not _ensure_crds():
-        return
-
+    _ensure_crds()
+    
     ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role(
             dev_config.namespace, _load_operator_role()

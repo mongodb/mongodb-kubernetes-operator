@@ -7,10 +7,10 @@ SLEEP_TIME = 2
 # no timeout (loop forever)
 INFINITY = -1
 
-def _current_milliseconds():
+def _current_milliseconds() -> int:
     return int(round(time.time() * 1000))
 
-def wait_for_condition(fn, condition, exceptions_to_ignore=[], codes_to_ignore=[],sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
+def wait_for_condition(fn, condition, exceptions_to_ignore=None, codes_to_ignore=None,sleep_time=SLEEP_TIME, timeout=INFINITY) -> bool:
     """
     wait_for_condition accepts a function fn and a function condition,
     it periodically calls the function fn and then applies the condition function on the result
@@ -21,7 +21,6 @@ def wait_for_condition(fn, condition, exceptions_to_ignore=[], codes_to_ignore=[
     """
     start_time = _current_milliseconds()
     end = start_time + (timeout * 1000)
-
 
     while _current_milliseconds() < end or timeout <= 0:
         res = None
