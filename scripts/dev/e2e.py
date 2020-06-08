@@ -6,11 +6,7 @@ from build_and_deploy_operator import (
     deploy_operator,
     load_yaml_from_file,
 )
-from k8sutil import (
-    wait_for_condition,
-    ignore_if_doesnt_exist,
-    ignore_if_already_exists,
-)
+import k8s_conditions
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
 from dev_config import load_config
@@ -51,28 +47,28 @@ def _prepare_testrunner_environment():
     _delete_testrunner_pod()
 
     print("Creating Role")
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role(
             dev_config.namespace, _load_testrunner_role()
         )
     )
 
     print("Creating Role Binding")
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role_binding(
             dev_config.namespace, _load_testrunner_role_binding()
         )
     )
 
     print("Creating Cluster Role Binding")
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_cluster_role_binding(
             _load_testrunner_cluster_role_binding()
         )
     )
 
     print("Creating ServiceAccount")
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_testrunner_service_account()
         )
@@ -97,7 +93,7 @@ def create_kube_config():
         metadata=client.V1ObjectMeta(name="kube-config"), data=data
     )
 
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_config_map("default", config_map)
     )
 
@@ -131,7 +127,7 @@ def _delete_testrunner_pod() -> None:
     """
     dev_config = load_config()
     corev1 = client.CoreV1Api()
-    ignore_if_doesnt_exist(
+    k8s_conditions.ignore_if_doesnt_exist(
         lambda: corev1.delete_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace)
     )
 
@@ -144,7 +140,7 @@ def create_test_runner_pod(test: str):
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
 
-    if not wait_for_condition(
+    if not k8s_conditions.wait_for_condition(
         lambda: corev1.list_namespaced_pod(
             dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}"
         ),
@@ -162,7 +158,7 @@ def create_test_runner_pod(test: str):
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
     print("Waiting for pod to be running")
-    if not wait_for_condition(
+    if not k8s_conditions.wait_for_condition(
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
