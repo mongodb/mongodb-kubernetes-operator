@@ -9,7 +9,7 @@ from dev_config import DevConfig, load_config
 from dockerfile_generator import render
 from dockerutil import build_and_push_image
 
-from k8sutil import wait_for_condition, ignore_if_already_exists, ignore_if_doesnt_exist
+import k8s_conditions
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -47,12 +47,12 @@ def _ensure_crds():
     crdv1 = client.ApiextensionsV1beta1Api()
     crd = _load_mongodb_crd()
 
-    ignore_if_doesnt_exist(
+    k8s_conditions.ignore_if_doesnt_exist(
         lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
     # Make sure that the CRD has being deleted before trying to create it again
-    if not wait_for_condition(
+    if not k8s_conditions.wait(
         lambda: crdv1.list_custom_resource_definition(
             field_selector="metadata.name==mongodb.mongodb.com"
         ),
@@ -93,22 +93,22 @@ def deploy_operator():
     dev_config = load_config()
     _ensure_crds()
 
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role(
             dev_config.namespace, _load_operator_role()
         )
     )
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role_binding(
             dev_config.namespace, _load_operator_role_binding()
         )
     )
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_operator_service_account()
         )
     )
-    ignore_if_already_exists(
+    k8s_conditions.ignore_if_already_exists(
         lambda: appsv1.create_namespaced_deployment(
             dev_config.namespace,
             _load_operator_deployment(
