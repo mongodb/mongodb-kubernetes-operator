@@ -146,7 +146,7 @@ def create_test_runner_pod(test: str):
 
     if not wait_for_condition(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector="metadata.name==" + TEST_RUNNER_NAME
+            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}"
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,

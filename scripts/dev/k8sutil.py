@@ -37,7 +37,7 @@ def wait_for_condition(
             res = _ignore_error_codes(fn, codes_to_ignore)
         except exceptions_to_ignore:
             pass
-        if res is not None and condition(res) == True:
+        if res is not None and condition(res):
             return True
 
         time.sleep(sleep_time)
