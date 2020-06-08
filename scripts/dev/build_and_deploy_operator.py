@@ -52,7 +52,7 @@ def _ensure_crds():
     )
 
     # Make sure that the CRD has being deleted before trying to create it again
-    if not k8s_conditions.wait_for_condition(
+    if not k8s_conditions.wait(
         lambda: crdv1.list_custom_resource_definition(
             field_selector="metadata.name==mongodb.mongodb.com"
         ),

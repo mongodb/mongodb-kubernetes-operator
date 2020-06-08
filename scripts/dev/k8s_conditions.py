@@ -12,7 +12,7 @@ def _current_milliseconds() -> int:
     return int(round(time.time() * 1000))
 
 
-def wait_for_condition(
+def wait(
     fn,
     condition,
     exceptions_to_ignore=None,

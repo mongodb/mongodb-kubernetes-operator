@@ -140,7 +140,7 @@ def create_test_runner_pod(test: str):
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(test)
 
-    if not k8s_conditions.wait_for_condition(
+    if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
             dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}"
         ),
@@ -158,7 +158,7 @@ def create_test_runner_pod(test: str):
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
     print("Waiting for pod to be running")
-    if not k8s_conditions.wait_for_condition(
+    if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
