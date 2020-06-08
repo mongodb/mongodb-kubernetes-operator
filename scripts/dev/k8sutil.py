@@ -25,7 +25,7 @@ def wait_for_condition(
     it periodically calls the function fn and then applies the condition function on the result
     until it returns True or we reach timeout
 
-    Exceptions raised by the call to fn are ignored if contained in exceptions_to_ignore
+    exceptions_to_ignore is a tuple of Exceptions to ignore is raised by the call to fn
     If ApiException is not ignored, if raised by the call to fn codes in codes_to_ignore are ignored
     """
     start_time = _current_milliseconds()
