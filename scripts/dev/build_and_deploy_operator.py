@@ -1,15 +1,15 @@
 import io
 import os
-import time
 from typing import Dict, Optional
 
 import yaml
 from kubernetes import client, config
-from kubernetes.client.rest import ApiException
 
 from dev_config import DevConfig, load_config
 from dockerfile_generator import render
 from dockerutil import build_and_push_image
+
+from k8sutil import wait_for_condition, ignore_if_already_exists, ignore_if_doesnt_exist
 
 
 def _load_operator_service_account() -> Optional[Dict]:
@@ -51,6 +51,17 @@ def _ensure_crds():
         lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
     )
 
+    # Make sure that the CRD has being deleted before trying to create it again
+    if not wait_for_condition(
+        lambda: crdv1.list_custom_resource_definition(
+            field_selector="metadata.name==mongodb.mongodb.com"
+        ),
+        lambda crd_list: len(crd_list.items) == 0,
+        timeout=5,
+        sleep_time=0.5,
+    ):
+        raise Exception("Execution timed out while waiting for the CRD to be deleted")
+
     # TODO: fix this, when calling create_custom_resource_definition, we get the error
     # ValueError("Invalid value for `conditions`, must not be `None`")
     # but the crd is still successfully created
@@ -68,31 +79,6 @@ def build_and_push_operator(repo_url: str, tag: str, path: str):
     and pushes it to the target repo
     """
     return build_and_push_image(repo_url, tag, path, "operator")
-
-
-def _ignore_error_codes(fn, codes):
-    try:
-        fn()
-    except ApiException as e:
-        if e.status not in codes:
-            raise
-
-
-def ignore_if_already_exists(fn):
-    """
-    ignore_if_already_exists accepts a function and calls it,
-    ignoring an Kubernetes API conflict errors
-    """
-
-    return _ignore_error_codes(fn, [409])
-
-
-def ignore_if_doesnt_exist(fn):
-    """
-    ignore_if_doesnt_exist accepts a function and calls it,
-    ignoring an Kubernetes API not found errors
-    """
-    return _ignore_error_codes(fn, [404])
 
 
 def deploy_operator():
