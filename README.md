@@ -4,8 +4,6 @@
 
 This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
 
-This codebase is currently _alpha_, and is not ready for production use.
-
 If you are a MongoDB Enterprise customer, or need Enterprise features such as Backup, you can use the [MongoDB Enterprise Operator for Kubernetes](https://github.com/mongodb/mongodb-enterprise-kubernetes).
 
 ## Table of Contents
