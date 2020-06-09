@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/kylelemons/godebug/pretty"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -130,7 +132,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Infof("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
@@ -265,24 +266,43 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	if err != nil {
 		return err
 	}
+
 	if err := r.client.CreateOrUpdate(&cm); err != nil {
 		return err
 	}
 	return nil
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig) automationconfig.AutomationConfig {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig) automationconfig.AutomationConfig {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
-	return automationconfig.NewBuilder().
+	newAc := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion(1). // TODO: Correctly set the version
+		SetAutomationConfigVersion(currentAc.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		Build()
+
+	zap.L().Sugar().Infof("NewAc: %+v", newAc)
+
+	zap.L().Sugar().Infof("OlcdA: %+v", currentAc)
+
+	b1, _ := json.Marshal(newAc)
+	b2, _ := json.Marshal(currentAc)
+
+	zap.L().Sugar().Infof("Bytes: %s", reflect.DeepEqual([]byte(b1), []byte(b2)))
+	zap.L().Sugar().Infof(pretty.Compare(newAc, currentAc))
+	if !reflect.DeepEqual(newAc, currentAc) {
+		zap.L().Info("Not equal")
+		newAc.Version += 1
+	}
+
+	zap.L().Sugar().Infof("NewAcModified: %s", newAc)
+
+	return newAc
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
@@ -323,7 +343,12 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
-	ac := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version))
+	currentCm := &corev1.ConfigMap{}
+	currentAc := automationconfig.AutomationConfig{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm); err == nil {
+		json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	}
+	ac := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAc)
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
 		return corev1.ConfigMap{}, err
