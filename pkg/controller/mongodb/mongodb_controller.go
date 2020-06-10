@@ -286,21 +286,9 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		AddVersion(mdbVersionConfig).
 		Build()
 
-	zap.L().Sugar().Infof("NewAc: %+v", newAc)
-
-	zap.L().Sugar().Infof("OlcdA: %+v", currentAc)
-
-	b1, _ := json.Marshal(newAc)
-	b2, _ := json.Marshal(currentAc)
-
-	zap.L().Sugar().Infof("Bytes: %s", reflect.DeepEqual([]byte(b1), []byte(b2)))
-	zap.L().Sugar().Infof(pretty.Compare(newAc, currentAc))
 	if !reflect.DeepEqual(newAc, currentAc) {
-		zap.L().Info("Not equal")
 		newAc.Version += 1
 	}
-
-	zap.L().Sugar().Infof("NewAcModified: %s", newAc)
 
 	return newAc
 }
