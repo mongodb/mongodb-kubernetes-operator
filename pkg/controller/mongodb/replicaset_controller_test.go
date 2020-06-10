@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -182,4 +183,65 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
+}
+
+func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+	currentCm := &corev1.ConfigMap{}
+	currentAc := automationconfig.AutomationConfig{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm)
+
+	assert.NoError(t, err)
+
+	json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	assert.Equal(t, 1, currentAc.Version)
+
+	mdbRef := &mdb
+	mdbRef.Spec.Members += 1
+
+	_ = mgr.GetClient().Update(context.TODO(), &mdb)
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+	currentCm = &corev1.ConfigMap{}
+	currentAc = automationconfig.AutomationConfig{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm)
+
+	assert.NoError(t, err)
+
+	json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	assert.Equal(t, 2, currentAc.Version)
+
+}
+
+func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+	currentCm := &corev1.ConfigMap{}
+	currentAc := automationconfig.AutomationConfig{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm)
+
+	assert.NoError(t, err)
+
+	json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	assert.Equal(t, currentAc.Version, 1)
+
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+	currentCm = &corev1.ConfigMap{}
+	currentAc = automationconfig.AutomationConfig{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm)
+
+	assert.NoError(t, err)
+
+	json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	assert.Equal(t, currentAc.Version, 1)
 }
