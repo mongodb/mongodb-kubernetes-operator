@@ -31,6 +31,7 @@ type MongoDBSpec struct {
 	// +optional
 	Members int `json:"members"`
 	// Type defines which type of MongoDB deployment the resource should create
+	// +kubebuilder:validation:Enum=ReplicaSet
 	Type Type `json:"type"`
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version"`
