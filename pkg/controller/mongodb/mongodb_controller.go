@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/kylelemons/godebug/pretty"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
