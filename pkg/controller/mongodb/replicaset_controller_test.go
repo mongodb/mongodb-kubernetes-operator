@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -184,19 +183,6 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	assertReconciliationSuccessful(t, res, err)
 }
 
-func getCurrentAutomationConfig(mdb mdbv1.MongoDB, mgr *client.MockedManager, t *testing.T) automationconfig.AutomationConfig {
-	currentCm := &corev1.ConfigMap{}
-	currentAc := automationconfig.AutomationConfig{}
-	err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, currentCm)
-
-	assert.NoError(t, err)
-
-	err = json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
-	assert.NoError(t, err)
-
-	return currentAc
-}
-
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
@@ -205,7 +191,8 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc := getCurrentAutomationConfig(mdb, mgr, t)
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, currentAc.Version)
 
 	mdb.Spec.Members += 1
@@ -214,7 +201,8 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc = getCurrentAutomationConfig(mdb, mgr, t)
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, currentAc.Version)
 
 }
@@ -227,12 +215,14 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc := getCurrentAutomationConfig(mdb, mgr, t)
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc = getCurrentAutomationConfig(mdb, mgr, t)
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 }

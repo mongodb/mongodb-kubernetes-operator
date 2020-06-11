@@ -285,17 +285,19 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		AddVersion(mdbVersionConfig).
 		Build()
 
-	/* Here we compare the bytes of the two automationconfigs,
-	 we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
-	and in the AutomationConfig Struct we use omitempty to set empty field to nil */
-	newAcBytes, err1 := json.Marshal(newAc)
-	if err1 != nil {
-		return automationconfig.AutomationConfig{}, err1
+	// Here we compare the bytes of the two automationconfigs,
+	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
+	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
+	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
+
+	newAcBytes, err := json.Marshal(newAc)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
 	}
 
-	currentAcBytes, err2 := json.Marshal(currentAc)
-	if err2 != nil {
-		return automationconfig.AutomationConfig{}, err2
+	currentAcBytes, err := json.Marshal(currentAc)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
 	}
 
 	if bytes.Compare(newAcBytes, currentAcBytes) != 0 {
@@ -338,28 +340,35 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
+func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentCm := corev1.ConfigMap{}
+	currentAc := automationconfig.AutomationConfig{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
+		if !errors.IsNotFound(err) {
+			return automationconfig.AutomationConfig{}, err
+		}
+	} else if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+	return currentAc, nil
+}
+
 func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
 	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
-	currentCm := corev1.ConfigMap{}
-	currentAc := automationconfig.AutomationConfig{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
-		if !errors.IsNotFound(err) {
-			return corev1.ConfigMap{}, err
-		}
-	} else {
-		if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
-			return corev1.ConfigMap{}, err
-		}
-	}
-	ac, err1 := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAc)
-	if err1 != nil {
+
+	currentAc, err := getCurrentAutomationConfig(r.client, mdb)
+	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
-	acBytes, err2 := json.Marshal(ac)
-	if err2 != nil {
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAc)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
+	acBytes, err := json.Marshal(ac)
+	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
 

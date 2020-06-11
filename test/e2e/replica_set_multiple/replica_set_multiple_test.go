@@ -31,6 +31,9 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb0))
 	t.Run("mdb1: Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb1))
 
+	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
+	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
+
 	t.Run("mdb0: Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb0))
 	t.Run("mdb1: Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb1))
 
@@ -56,6 +59,7 @@ func TestReplicaSet(t *testing.T) {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
 			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
+			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 2))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb0.MongoURI(),
@@ -64,6 +68,7 @@ func TestReplicaSet(t *testing.T) {
 			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb0, 3))
 			t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
 			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
+			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb0.MongoURI(),

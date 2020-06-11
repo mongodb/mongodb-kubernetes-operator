@@ -2,6 +2,7 @@ package mongodbtests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -102,6 +104,18 @@ func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 		assert.Contains(t, cm.Data, mongodb.AutomationConfigKey)
 
 		t.Log("The ConfigMap contained the automation config")
+	}
+}
+
+func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVersion int) func(t *testing.T) {
+	return func(t *testing.T) {
+		currentCm := corev1.ConfigMap{}
+		currentAc := automationconfig.AutomationConfig{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm)
+		assert.NoError(t, err)
+		err = json.Unmarshal([]byte(currentCm.Data[mongodb.AutomationConfigKey]), &currentAc)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedVersion, currentAc.Version)
 	}
 }
 

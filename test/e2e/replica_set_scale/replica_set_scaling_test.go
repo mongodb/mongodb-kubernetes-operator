@@ -24,12 +24,14 @@ func TestReplicaSetScale(t *testing.T) {
 	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
@@ -38,6 +40,7 @@ func TestReplicaSetScale(t *testing.T) {
 			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
 			t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 				mdbv1.MongoDBStatus{
 					MongoURI: mdb.MongoURI(),
