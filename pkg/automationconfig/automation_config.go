@@ -14,28 +14,28 @@ const (
 
 type Auth struct {
 	// Users is a list which contains the desired users at the project level.
-	Users    []MongoDBUser `json:"usersWanted"`
+	Users    []MongoDBUser `json:"usersWanted,omitempty"`
 	Disabled bool          `json:"disabled"`
 	// AuthoritativeSet indicates if the MongoDBUsers should be synced with the current list of Users
 	AuthoritativeSet bool `json:"authoritativeSet"`
 	// AutoAuthMechanisms is a list of auth mechanisms the Automation Agent is able to use
-	AutoAuthMechanisms []string `json:"autoAuthMechanisms"`
+	AutoAuthMechanisms []string `json:"autoAuthMechanisms,omitempty"`
 
 	// AutoAuthMechanism is the currently active agent authentication mechanism. This is a read only
 	// field
 	AutoAuthMechanism string `json:"autoAuthMechanism"`
 	// DeploymentAuthMechanisms is a list of possible auth mechanisms that can be used within deployments
-	DeploymentAuthMechanisms []string `json:"deploymentAuthMechanisms"`
+	DeploymentAuthMechanisms []string `json:"deploymentAuthMechanisms,omitempty"`
 	// AutoUser is the MongoDB Automation Agent user, when x509 is enabled, it should be set to the subject of the AA's certificate
-	AutoUser string `json:"autoUser"`
+	AutoUser string `json:"autoUser,omitempty"`
 	// Key is the contents of the KeyFile, the automation agent will ensure this a KeyFile with these contents exists at the `KeyFile` path
-	Key string `json:"key"`
+	Key string `json:"key,omitempty"`
 	// KeyFile is the path to a keyfile with read & write permissions. It is a required field if `Disabled=false`
-	KeyFile string `json:"keyfile"`
+	KeyFile string `json:"keyfile,omitempty"`
 	// KeyFileWindows is required if `Disabled=false` even if the value is not used
-	KeyFileWindows string `json:"keyfileWindows"`
+	KeyFileWindows string `json:"keyfileWindows,omitempty"`
 	// AutoPwd is a required field when going from `Disabled=false` to `Disabled=true`
-	AutoPwd string `json:"autoPwd"`
+	AutoPwd string `json:"autoPwd,omitempty"`
 }
 
 func DisabledAuth() Auth {
@@ -131,7 +131,7 @@ type Net struct {
 }
 
 type Security struct {
-	ClusterAuthMode string `json:"clusterAuthMode"`
+	ClusterAuthMode string `json:"clusterAuthMode,omitempty"`
 }
 
 type ReplicaSet struct {

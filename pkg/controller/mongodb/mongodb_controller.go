@@ -285,7 +285,10 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		AddVersion(mdbVersionConfig).
 		Build()
 
-	if !reflect.DeepEqual(newAc, currentAc) {
+	b1, _ := json.Marshal(newAc)
+	b2, _ := json.Marshal(currentAc)
+
+	if !reflect.DeepEqual([]byte(b1), []byte(b2)) {
 		newAc.Version += 1
 	}
 
