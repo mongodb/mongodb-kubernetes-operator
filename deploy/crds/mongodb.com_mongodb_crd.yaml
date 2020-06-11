@@ -15,11 +15,11 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Current state of the MongoDB deployment
-      jsonPath: .status.phase
+      JSONPath: .status.phase # manually changed from jsonPath
       name: Phase
       type: string
     - description: Version of MongoDB server
-      jsonPath: .status.version
+      JSONPath: .status.version # manually changed from jsonPath
       name: Version
       type: string
     name: v1

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	apiextentionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
@@ -30,7 +30,7 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 	}
 
 	for _, filePath := range crdFilePaths {
-		crd := &apiextentionsv1.CustomResourceDefinition{}
+		crd := &apiextensionv1.CustomResourceDefinition{}
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("error reading file: %v", err)
@@ -52,7 +52,7 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 	return nil
 }
 
-func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextentionsv1.CustomResourceDefinition) error {
+func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextensionv1.CustomResourceDefinition) error {
 	jsonBytes, err := yaml.YAMLToJSON(bytes)
 	if err != nil {
 		return err
