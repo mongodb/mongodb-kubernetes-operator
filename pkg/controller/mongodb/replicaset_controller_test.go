@@ -191,7 +191,9 @@ func getCurrentAutomationConfig(mdb mdbv1.MongoDB, mgr *client.MockedManager, t 
 
 	assert.NoError(t, err)
 
-	json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	err = json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc)
+	assert.NoError(t, err)
+
 	return currentAc
 }
 
@@ -206,8 +208,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	currentAc := getCurrentAutomationConfig(mdb, mgr, t)
 	assert.Equal(t, 1, currentAc.Version)
 
-	mdbRef := &mdb
-	mdbRef.Spec.Members += 1
+	mdb.Spec.Members += 1
 
 	_ = mgr.GetClient().Update(context.TODO(), &mdb)
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
