@@ -10,7 +10,8 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	//apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
@@ -30,7 +31,8 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 	}
 
 	for _, filePath := range crdFilePaths {
-		crd := &apiextensionv1.CustomResourceDefinition{}
+		//crd := &apiextensionv1.CustomResourceDefinition{}
+		crd := &apiextensionsv1beta1.CustomResourceDefinition{}
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("error reading file: %v", err)
@@ -38,7 +40,8 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 		if err := marshalCRDFromYAMLBytes(data, crd); err != nil {
 			return fmt.Errorf("error converting yaml bytes to CRD: %v", err)
 		}
-		_, err = apiextensionsClientSet.ApiextensionsV1().CustomResourceDefinitions().Create(crd)
+		//_, err = apiextensionsClientSet.ApiextensionsV1().CustomResourceDefinitions().Create(crd)
+		_, err = apiextensionsClientSet.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 
 		if apierrors.IsAlreadyExists(err) {
 			fmt.Println("CRD already exists")
@@ -52,7 +55,8 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 	return nil
 }
 
-func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextensionv1.CustomResourceDefinition) error {
+//func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextensionv1.CustomResourceDefinition) error {
+func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextensionsv1beta1.CustomResourceDefinition) error {
 	jsonBytes, err := yaml.YAMLToJSON(bytes)
 	if err != nil {
 		return err
