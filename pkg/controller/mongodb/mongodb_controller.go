@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -275,20 +274,15 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
-	currentAc, err := getCurrentAutomationConfig(client, mdb)
-	if err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
 	newAc, err := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
-		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
-		Build()
+		Build(client, mdb, AutomationConfigKey)
 
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
@@ -328,20 +322,6 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		SetClusterIP("None").
 		SetPort(27017).
 		Build()
-}
-
-func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm := corev1.ConfigMap{}
-	currentAc := automationconfig.AutomationConfig{}
-	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
-		// If the AC was not found we don't treat it as an error
-		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
-
-	}
-	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-	return currentAc, nil
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {

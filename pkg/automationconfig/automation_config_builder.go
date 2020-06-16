@@ -2,8 +2,15 @@ package automationconfig
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Topology string
@@ -23,7 +30,6 @@ type Builder struct {
 	fcv            string
 	topology       Topology
 	mongodbVersion string
-	previousAC     AutomationConfig
 	// MongoDB installable versions
 	versions []MongoDbVersionConfig
 }
@@ -76,11 +82,21 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
-func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Builder {
-	b.previousAC = previousAC
-	return b
+func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB, automationConfigKey string) (AutomationConfig, error) {
+	currentCm := corev1.ConfigMap{}
+	currentAc := AutomationConfig{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
+		// If the AC was not found we don't surface it as an error
+		return AutomationConfig{}, k8sClient.IgnoreNotFound(err)
+
+	}
+	if err := json.Unmarshal([]byte(currentCm.Data[automationConfigKey]), &currentAc); err != nil {
+		return AutomationConfig{}, err
+	}
+	return currentAc, nil
 }
-func (b *Builder) Build() (AutomationConfig, error) {
+
+func (b *Builder) Build(client mdbClient.Client, mdb mdbv1.MongoDB, automationConfigKey string) (AutomationConfig, error) {
 	hostnames := make([]string, b.members)
 	for i := 0; i < b.members; i++ {
 		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
@@ -94,8 +110,13 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		members[i] = newReplicaSetMember(process, i)
 	}
 
+	previousAC, err := getCurrentAutomationConfig(client, mdb, automationConfigKey)
+	if err != nil {
+		return AutomationConfig{}, err
+	}
+
 	currentAc := AutomationConfig{
-		Version:   b.previousAC.Version,
+		Version:   previousAC.Version,
 		Processes: processes,
 		ReplicaSets: []ReplicaSet{
 			{
@@ -114,7 +135,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
 	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
 
-	newAcBytes, err := json.Marshal(b.previousAC)
+	newAcBytes, err := json.Marshal(previousAC)
 	if err != nil {
 		return AutomationConfig{}, err
 	}
