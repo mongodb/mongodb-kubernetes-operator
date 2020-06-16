@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -Eeou pipefail
 
+# create the kind network early unless it already exists.
+# it would normally be created automatically by kind but we
+# need it earlier to get the IP address of our registry.
+docker network create kind || true
 
 # adapted from https://kind.sigs.k8s.io/docs/user/local-registry/
 # create registry container unless it already exists
@@ -9,11 +13,12 @@ reg_port='5000'
 running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
 if [ "${running}" != 'true' ]; then
   docker run \
-    -d --restart=always -p "${reg_port}:${reg_port}" --name "${reg_name}" \
+    -d --restart=always -p "${reg_port}:${reg_port}" --name "${reg_name}" --network kind \
     registry:2
 fi
 
-ip="$(docker inspect kind-registry -f '{{.NetworkSettings.IPAddress}}')"
+# find registry IP inside the kind network
+ip="$(docker inspect kind-registry -f '{{.NetworkSettings.Networks.kind.IPAddress}}')"
 
 # create a cluster with the local registry enabled in containerd
 cat <<EOF | kind create cluster --kubeconfig ~/.kube/kind --config=-
