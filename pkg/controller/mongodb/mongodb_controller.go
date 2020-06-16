@@ -334,7 +334,7 @@ func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (aut
 	currentCm := corev1.ConfigMap{}
 	currentAc := automationconfig.AutomationConfig{}
 	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
-		// If the AC was not found we don't treat it as an error
+		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
 
 	}
