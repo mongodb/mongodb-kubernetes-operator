@@ -1,7 +1,6 @@
 package mongodb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -272,36 +272,26 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return nil
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
-	newAc := automationconfig.NewBuilder().
+
+	currentAc, err := getCurrentAutomationConfig(client, mdb)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+	newAc, err := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
+		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion(currentAc.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		Build()
 
-	// Here we compare the bytes of the two automationconfigs,
-	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
-	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
-	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
-
-	newAcBytes, err := json.Marshal(newAc)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
-	}
-
-	currentAcBytes, err := json.Marshal(currentAc)
-	if err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-
-	if bytes.Compare(newAcBytes, currentAcBytes) != 0 {
-		newAc.Version += 1
 	}
 
 	return newAc, nil
@@ -344,10 +334,11 @@ func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (aut
 	currentCm := corev1.ConfigMap{}
 	currentAc := automationconfig.AutomationConfig{}
 	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
-		if !errors.IsNotFound(err) {
-			return automationconfig.AutomationConfig{}, err
-		}
-	} else if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+		// If the AC was not found we don't treat it as an error
+		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
+
+	}
+	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
 	return currentAc, nil
@@ -359,11 +350,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	currentAc, err := getCurrentAutomationConfig(r.client, mdb)
-	if err != nil {
-		return corev1.ConfigMap{}, err
-	}
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAc)
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), r.client)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
