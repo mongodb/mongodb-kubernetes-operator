@@ -34,6 +34,7 @@ func TestReplicaSet(t *testing.T) {
 		})))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 		mdbv1.MongoDBStatus{
 			MongoURI: mdb.MongoURI(),

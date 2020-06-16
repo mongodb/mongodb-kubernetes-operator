@@ -26,15 +26,15 @@ func defaultMongoDbVersion(version string) MongoDbVersionConfig {
 
 func TestBuildAutomationConfig(t *testing.T) {
 
-	ac := NewBuilder().
+	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		SetFCV("4.0").
 		Build()
 
+	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
 	assert.Equal(t, 1, ac.Version)
 
@@ -63,15 +63,15 @@ func TestBuildAutomationConfig(t *testing.T) {
 
 func TestMongoDbVersions(t *testing.T) {
 
-	ac := NewBuilder().
+	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		AddVersion(defaultMongoDbVersion("4.2.0")).
 		Build()
 
+	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
 	assert.Len(t, ac.Versions, 1)
 	assert.Len(t, ac.Versions[0].Builds, 1)
@@ -90,16 +90,16 @@ func TestMongoDbVersions(t *testing.T) {
 		},
 	)
 
-	ac = NewBuilder().
+	ac, err = NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		AddVersion(defaultMongoDbVersion("4.2.0")).
 		AddVersion(version2).
 		Build()
 
+	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
 	assert.Len(t, ac.Versions, 2)
 	assert.Len(t, ac.Versions[0].Builds, 1)
@@ -107,42 +107,42 @@ func TestMongoDbVersions(t *testing.T) {
 }
 
 func TestHasOptions(t *testing.T) {
-	ac := NewBuilder().
+	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		Build()
 
+	assert.NoError(t, err)
 	assert.Equal(t, ac.Options.DownloadBase, "/var/lib/mongodb-mms-automation")
 }
 
 func TestModulesNotNil(t *testing.T) {
 	// We make sure the .Modules is initialized as an empty list of strings
 	// or it will dumped as null attribute in json.
-	ac := NewBuilder().
+	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		AddVersion(defaultMongoDbVersion("4.3.2")).
 		Build()
 
+	assert.NoError(t, err)
 	assert.NotNil(t, ac.Versions[0].Builds[0].Modules)
 }
 
 func TestProcessHasPortSetToDefault(t *testing.T) {
-	ac := NewBuilder().
+	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
-		SetAutomationConfigVersion(1).
 		SetMembers(3).
 		AddVersion(defaultMongoDbVersion("4.3.2")).
 		Build()
 
+	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
 	assert.Equal(t, ac.Processes[0].Args26.Net.Port, 27017)
 	assert.Equal(t, ac.Processes[1].Args26.Net.Port, 27017)

@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -130,7 +131,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// TODO: Read current automation config version from config map
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Infof("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
@@ -265,24 +265,36 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	if err != nil {
 		return err
 	}
+
 	if err := r.client.CreateOrUpdate(&cm); err != nil {
 		return err
 	}
 	return nil
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig) automationconfig.AutomationConfig {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
-	return automationconfig.NewBuilder().
+
+	currentAc, err := getCurrentAutomationConfig(client, mdb)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+	newAc, err := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
+		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetAutomationConfigVersion(1). // TODO: Correctly set the version
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		Build()
+
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+
+	return newAc, nil
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
@@ -318,12 +330,30 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
+func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentCm := corev1.ConfigMap{}
+	currentAc := automationconfig.AutomationConfig{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
+		// If the AC was not found we don't surface it as an error
+		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
+
+	}
+	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+	return currentAc, nil
+}
+
 func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
 	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
-	ac := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version))
+
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), r.client)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
 		return corev1.ConfigMap{}, err

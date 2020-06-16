@@ -181,5 +181,48 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
+}
 
+func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, currentAc.Version)
+
+	mdb.Spec.Members += 1
+
+	_ = mgr.GetClient().Update(context.TODO(), &mdb)
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, currentAc.Version)
+
+}
+
+func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+	assert.Equal(t, currentAc.Version, 1)
+
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+	assert.Equal(t, currentAc.Version, 1)
 }

@@ -1,6 +1,8 @@
 package automationconfig
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 )
 
@@ -21,7 +23,7 @@ type Builder struct {
 	fcv            string
 	topology       Topology
 	mongodbVersion string
-
+	previousAC     AutomationConfig
 	// MongoDB installable versions
 	versions []MongoDbVersionConfig
 }
@@ -74,12 +76,11 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
-func (b *Builder) SetAutomationConfigVersion(version int) *Builder {
-	b.version = version
+func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Builder {
+	b.previousAC = previousAC
 	return b
 }
-
-func (b *Builder) Build() AutomationConfig {
+func (b *Builder) Build() (AutomationConfig, error) {
 	hostnames := make([]string, b.members)
 	for i := 0; i < b.members; i++ {
 		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
@@ -93,8 +94,8 @@ func (b *Builder) Build() AutomationConfig {
 		members[i] = newReplicaSetMember(process, i)
 	}
 
-	return AutomationConfig{
-		Version:   b.version,
+	currentAc := AutomationConfig{
+		Version:   b.previousAC.Version,
 		Processes: processes,
 		ReplicaSets: []ReplicaSet{
 			{
@@ -107,6 +108,26 @@ func (b *Builder) Build() AutomationConfig {
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
 		Auth:     DisabledAuth(),
 	}
+
+	// Here we compare the bytes of the two automationconfigs,
+	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
+	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
+	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
+
+	newAcBytes, err := json.Marshal(b.previousAC)
+	if err != nil {
+		return AutomationConfig{}, err
+	}
+
+	currentAcBytes, err := json.Marshal(currentAc)
+	if err != nil {
+		return AutomationConfig{}, err
+	}
+
+	if bytes.Compare(newAcBytes, currentAcBytes) != 0 {
+		currentAc.Version += 1
+	}
+	return currentAc, nil
 }
 
 func toHostName(name string, index int) string {
