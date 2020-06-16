@@ -191,7 +191,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.GetCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb, "automation-config")
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, currentAc.Version)
 
@@ -200,7 +200,8 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	_ = mgr.GetClient().Update(context.TODO(), &mdb)
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
-	currentAc, err = automationconfig.GetCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb, "automation-config")
+
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, currentAc.Version)
 
@@ -214,14 +215,14 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.GetCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb, "automation-config")
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = automationconfig.GetCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb, "automation-config")
+	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 }
