@@ -52,6 +52,8 @@ spec:
             type:
               description: Type defines which type of MongoDB deployment the resource
                 should create
+              enum:
+              - ReplicaSet
               type: string
             version:
               description: Version defines which version of MongoDB will be used
