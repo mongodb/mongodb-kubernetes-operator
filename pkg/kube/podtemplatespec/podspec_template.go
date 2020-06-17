@@ -58,6 +58,11 @@ func WithServiceAccount(serviceAccountName string) PodTemplateFunc {
 
 func WithVolume(volume corev1.Volume) PodTemplateFunc {
 	return func(template *corev1.PodTemplateSpec) {
+		for _, v := range template.Spec.Volumes {
+			if v.Name == volume.Name {
+				return
+			}
+		}
 		template.Spec.Volumes = append(template.Spec.Volumes, volume)
 	}
 }

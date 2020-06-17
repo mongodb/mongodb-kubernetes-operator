@@ -516,8 +516,10 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.Statef
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaims(volumeClaims),
 		statefulset.WithPodSpecTemplate(podtemplatespec.Modify(
+			podtemplatespec.WithPodLabels(labels),
 			podtemplatespec.WithVolume(healthStatusVolume),
 			podtemplatespec.WithVolume(hooksVolume),
+			podtemplatespec.WithVolume(automationConfigVolume),
 			podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 			podtemplatespec.WithInitContainers(),
 			podtemplatespec.WithContainers(
@@ -525,7 +527,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.Statef
 				mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{healthStatusVolumeMount, dataVolume, hooksVolumeMount}),
 			),
 			podtemplatespec.WithInitContainers(
-				preStopHookInit([]corev1.VolumeMount{hooksVolumeMount}),
+				preStopHookInit([]corev1.VolumeMount{hooksVolumeMount, automationConfigVolumeMount, healthStatusVolumeMount}),
 			),
 		)),
 	)
