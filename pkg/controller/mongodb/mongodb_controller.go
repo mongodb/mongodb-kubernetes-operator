@@ -152,14 +152,31 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
-	if ready, err := r.isStatefulSetReady(mdb, getUpdateStrategyType(mdb)); err != nil {
+	currentSts := appsv1.StatefulSet{}
 
-		r.log.Infof("error checking StatefulSet status: %+v", err)
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &currentSts); err != nil {
+		r.log.Infof("Error getting STS: %s", err)
 		return reconcile.Result{}, err
-	} else if !ready {
-		r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
-		return reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	}
+
+	r.log.Infof("MDB: %+v", mdb.Spec)
+
+	r.log.Infof("waiting....")
+	time.Sleep(5 * time.Second)
+
+	if !(currentSts.Spec.UpdateStrategy.Type == getUpdateStrategyType(mdb) && statefulset.IsReady(currentSts, mdb.Spec.Members)) {
+		r.log.Infof("StatefulSet is not yet ready!. Current strategy type: %s", currentSts.Spec.UpdateStrategy.Type)
+		return reconcile.Result{Requeue: true}, nil
+	}
+
+	//if ready, err := r.isStatefulSetReady(mdb, getUpdateStrategyType(mdb)); err != nil {
+	//
+	//	r.log.Infof("error checking StatefulSet status: %+v", err)
+	//	return reconcile.Result{}, err
+	//} else if !ready {
+	//	r.log.Infof("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)
+	//	return reconcile.Result{RequeueAfter: time.Second * 10}, nil
+	//}
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
@@ -227,7 +244,8 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	applyStatefulSetChanges(mdb, &set)
+	buildStatefulSetModificationFunction(mdb)(&set)
+	r.log.Debugf("STS: %+v", set)
 
 	if err = r.client.CreateOrUpdate(&set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
@@ -521,13 +539,12 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.Statef
 			podtemplatespec.WithVolume(hooksVolume),
 			podtemplatespec.WithVolume(automationConfigVolume),
 			podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-			podtemplatespec.WithInitContainers(),
 			podtemplatespec.WithContainers(
 				mongodbAgentContainer([]corev1.VolumeMount{healthStatusVolumeMount, automationConfigVolumeMount, dataVolume}),
-				mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{healthStatusVolumeMount, dataVolume, hooksVolumeMount}),
+				mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{healthStatusVolumeMount, automationConfigVolumeMount, dataVolume, hooksVolumeMount}),
 			),
 			podtemplatespec.WithInitContainers(
-				preStopHookInit([]corev1.VolumeMount{hooksVolumeMount, automationConfigVolumeMount, healthStatusVolumeMount}),
+				preStopHookInit([]corev1.VolumeMount{hooksVolumeMount}),
 			),
 		)),
 	)

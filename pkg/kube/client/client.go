@@ -38,7 +38,7 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 			if err != nil {
 				return fmt.Errorf("Error creating the object: %s", err)
 			}
-			return err
+			return nil
 		}
 		return fmt.Errorf("Error getting the object: %s", err)
 	}
@@ -46,7 +46,7 @@ func (c client) CreateOrUpdate(obj runtime.Object) error {
 	if err != nil {
 		return fmt.Errorf("Error updating the object: %s", err)
 	}
-	return err
+	return nil
 }
 
 // GetAndUpdate fetches the most recent version of the runtime.Object with the provided

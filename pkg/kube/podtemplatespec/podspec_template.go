@@ -9,11 +9,12 @@ type PodTemplateFunc func(*corev1.PodTemplateSpec)
 
 func WithContainers(containers ...corev1.Container) PodTemplateFunc {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		for _, c := range containers {
-			if !containsContainer(podTemplateSpec.Spec.Containers, c) {
-				podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, c)
-			}
-		}
+		podTemplateSpec.Spec.Containers = containers
+		//for idx, c := range containers {
+		//	if !containsContainer(podTemplateSpec.Spec.Containers, c) {
+		//		podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, c)
+		//	}
+		//}
 	}
 }
 
@@ -26,11 +27,12 @@ func EditContainer(idx int, modFunc container.Modification) PodTemplateFunc {
 
 func WithInitContainers(containers ...corev1.Container) PodTemplateFunc {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		for _, c := range containers {
-			if !containsContainer(podTemplateSpec.Spec.InitContainers, c) {
-				podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, containers...)
-			}
-		}
+		podTemplateSpec.Spec.InitContainers = containers
+		//for _, c := range containers {
+		//	if !containsContainer(podTemplateSpec.Spec.InitContainers, c) {
+		//		podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, containers...)
+		//	}
+		//}
 	}
 }
 
