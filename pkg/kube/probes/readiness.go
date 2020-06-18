@@ -6,7 +6,7 @@ type Modification func(*corev1.Probe)
 
 func WithExecCommand(cmd []string) Modification {
 	return func(probe *corev1.Probe) {
-		if probe.Handler.Exec != nil {
+		if probe.Handler.Exec == nil {
 			probe.Handler.Exec = &corev1.ExecAction{}
 		}
 		probe.Handler.Exec.Command = cmd

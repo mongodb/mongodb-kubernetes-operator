@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistantvolumeclaim"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -475,7 +477,7 @@ mongod -f /data/automation-mongod.conf ;
 	)
 }
 
-func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.StatefulSet) {
+func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -513,7 +515,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.Statef
 		statefulset.WithOwnerReference(ownerReferences),
 		statefulset.WithReplicas(mdb.Spec.Members),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
-		statefulset.WithVolumeClaim(dataVolumeName, PvcModification()),
+		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				podtemplatespec.WithPodLabels(labels),
@@ -529,16 +531,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) func(*appsv1.Statef
 	)
 }
 
-func PvcModification() func(*corev1.PersistentVolumeClaim) {
-	return func(pvc *corev1.PersistentVolumeClaim) {
-		pvc.Name = dataVolumeName
-		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		pvc.Spec.Resources = corev1.ResourceRequirements{
-			Requests: resourcerequirements.BuildDefaultStorageRequirements(),
-		}
-	}
-}
-
 func getDomain(service, namespace, clusterName string) string {
 	if clusterName == "" {
 		clusterName = "cluster.local"
@@ -551,5 +543,13 @@ func defaultReadiness() probes.Modification {
 		probes.WithExecCommand([]string{readinessProbePath}),
 		probes.WithFailureThreshold(240),
 		probes.WithInitialDelaySeconds(5),
+	)
+}
+
+func defaultPvc() persistantvolumeclaim.Modification {
+	return persistantvolumeclaim.Apply(
+		persistantvolumeclaim.WithName(dataVolumeName),
+		persistantvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
+		persistantvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
 	)
 }

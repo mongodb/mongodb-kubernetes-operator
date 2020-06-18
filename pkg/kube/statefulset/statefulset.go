@@ -147,8 +147,8 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 	return func(set *appsv1.StatefulSet) {
 		idx := findVolumeClaimIndexByName(name, set.Spec.VolumeClaimTemplates)
 		if idx == -1 {
-			idx = 0
 			set.Spec.VolumeClaimTemplates = append(set.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{})
+			idx = len(set.Spec.VolumeClaimTemplates) - 1
 		}
 		pvc := &set.Spec.VolumeClaimTemplates[idx]
 		f(pvc)
