@@ -22,9 +22,12 @@ func WithImagePullPolicy(pullPolicy corev1.PullPolicy) Modification {
 	}
 }
 
-func WithReadinessProbe(probe corev1.Probe) Modification {
+func WithReadinessProbe(probeFunc func(*corev1.Probe)) Modification {
 	return func(container *corev1.Container) {
-		container.ReadinessProbe = &probe
+		if container.ReadinessProbe == nil {
+			container.ReadinessProbe = &corev1.Probe{}
+		}
+		probeFunc(container.ReadinessProbe)
 	}
 }
 
