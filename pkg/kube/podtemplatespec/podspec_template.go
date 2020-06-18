@@ -1,38 +1,56 @@
 package podtemplatespec
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
 type PodTemplateFunc func(*corev1.PodTemplateSpec)
 
-func WithContainers(containers ...corev1.Container) PodTemplateFunc {
+const (
+	notFound = -1
+)
+
+func prettyPrint(i interface{}) {
+	b, err := json.MarshalIndent(i, "", "  ")
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	zap.S().Infof(string(b))
+}
+
+func WithContainer(name string, container func(*corev1.Container)) PodTemplateFunc {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		podTemplateSpec.Spec.Containers = containers
-		//for idx, c := range containers {
-		//	if !containsContainer(podTemplateSpec.Spec.Containers, c) {
-		//		podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, c)
-		//	}
-		//}
+		idx := findIndexByName(name, podTemplateSpec.Spec.Containers)
+		if idx == notFound {
+			idx = 0
+			zap.S().Infof("[%s] was not found", name)
+			podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, corev1.Container{})
+		}
+		c := &podTemplateSpec.Spec.Containers[idx]
+		zap.S().Info("PRINTING C")
+		prettyPrint(c)
+		container(c)
+		prettyPrint(c)
 	}
 }
 
-func EditContainer(idx int, modFunc container.Modification) PodTemplateFunc {
-	return func(template *corev1.PodTemplateSpec) {
-		c := &template.Spec.Containers[idx]
-		modFunc(c)
-	}
-}
-
-func WithInitContainers(containers ...corev1.Container) PodTemplateFunc {
+func WithInitContainer(name string, container func(*corev1.Container)) PodTemplateFunc {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		podTemplateSpec.Spec.InitContainers = containers
-		//for _, c := range containers {
-		//	if !containsContainer(podTemplateSpec.Spec.InitContainers, c) {
-		//		podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, containers...)
-		//	}
-		//}
+		idx := findIndexByName(name, podTemplateSpec.Spec.InitContainers)
+		if idx == notFound {
+			idx = 0
+			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{})
+		}
+		c := &podTemplateSpec.Spec.InitContainers[idx]
+		zap.S().Info("PRINTING INIT C")
+		prettyPrint(c)
+		container(c)
+		prettyPrint(c)
 	}
 }
 
@@ -69,7 +87,7 @@ func WithVolume(volume corev1.Volume) PodTemplateFunc {
 	}
 }
 
-func Modify(templateMods ...PodTemplateFunc) PodTemplateFunc {
+func Apply(templateMods ...PodTemplateFunc) PodTemplateFunc {
 	return func(template *corev1.PodTemplateSpec) {
 		for _, f := range templateMods {
 			f(template)
@@ -77,11 +95,11 @@ func Modify(templateMods ...PodTemplateFunc) PodTemplateFunc {
 	}
 }
 
-func containsContainer(containers []corev1.Container, c corev1.Container) bool {
-	for _, v := range containers {
-		if v.Name == c.Name {
-			return true
+func findIndexByName(name string, containers []corev1.Container) int {
+	for idx, c := range containers {
+		if c.Name == name {
+			return idx
 		}
 	}
-	return false
+	return notFound
 }

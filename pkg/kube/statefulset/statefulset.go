@@ -93,32 +93,32 @@ func HaveEqualSpec(builtSts appsv1.StatefulSet, existingSts appsv1.StatefulSet) 
 	return reflect.DeepEqual(stsToMerge.Spec, existingSts.Spec), nil
 }
 
-type ModificationFunc func(*appsv1.StatefulSet)
+type Modification func(*appsv1.StatefulSet)
 
-func WithName(name string) ModificationFunc {
+func WithName(name string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Name = name
 	}
 }
 
-func WithNamespace(namespace string) ModificationFunc {
+func WithNamespace(namespace string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Namespace = namespace
 	}
 }
 
-func WithServiceName(svcName string) ModificationFunc {
+func WithServiceName(svcName string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Spec.ServiceName = svcName
 	}
 }
 
-func WithLabels(labels map[string]string) ModificationFunc {
+func WithLabels(labels map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
 		set.Labels = copyMap(labels)
 	}
 }
-func WithMatchLabels(matchLabels map[string]string) ModificationFunc {
+func WithMatchLabels(matchLabels map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
 		if set.Spec.Selector == nil {
 			set.Spec.Selector = &metav1.LabelSelector{}
@@ -126,7 +126,7 @@ func WithMatchLabels(matchLabels map[string]string) ModificationFunc {
 		set.Spec.Selector.MatchLabels = copyMap(matchLabels)
 	}
 }
-func WithOwnerReference(ownerRefs []metav1.OwnerReference) ModificationFunc {
+func WithOwnerReference(ownerRefs []metav1.OwnerReference) Modification {
 	ownerReference := make([]metav1.OwnerReference, len(ownerRefs))
 	copy(ownerReference, ownerRefs)
 	return func(set *appsv1.StatefulSet) {
@@ -134,14 +134,14 @@ func WithOwnerReference(ownerRefs []metav1.OwnerReference) ModificationFunc {
 	}
 }
 
-func WithReplicas(replicas int) ModificationFunc {
+func WithReplicas(replicas int) Modification {
 	stsReplicas := int32(replicas)
 	return func(sts *appsv1.StatefulSet) {
 		sts.Spec.Replicas = &stsReplicas
 	}
 }
 
-func WithUpdateStrategyType(strategyType appsv1.StatefulSetUpdateStrategyType) ModificationFunc {
+func WithUpdateStrategyType(strategyType appsv1.StatefulSetUpdateStrategyType) Modification {
 	return func(set *appsv1.StatefulSet) {
 		set.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
 			Type: strategyType,
@@ -149,22 +149,35 @@ func WithUpdateStrategyType(strategyType appsv1.StatefulSetUpdateStrategyType) M
 	}
 }
 
-func WithPodSpecTemplate(templateFunc func(*corev1.PodTemplateSpec)) ModificationFunc {
+func WithPodSpecTemplate(templateFunc func(*corev1.PodTemplateSpec)) Modification {
 	return func(set *appsv1.StatefulSet) {
 		template := &set.Spec.Template
 		templateFunc(template)
 	}
 }
 
-func WithVolumeClaims(volumeClaims []corev1.PersistentVolumeClaim) ModificationFunc {
-	volumeClaimsTemplates := make([]corev1.PersistentVolumeClaim, len(volumeClaims))
-	copy(volumeClaimsTemplates, volumeClaims)
+func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modification {
 	return func(set *appsv1.StatefulSet) {
-		set.Spec.VolumeClaimTemplates = volumeClaimsTemplates
+		idx := findVolumeClaimIndexByName(name, set.Spec.VolumeClaimTemplates)
+		if idx == -1 {
+			idx = 0
+			set.Spec.VolumeClaimTemplates = append(set.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{})
+		}
+		pvc := &set.Spec.VolumeClaimTemplates[idx]
+		f(pvc)
 	}
 }
 
-func Modify(funcs ...ModificationFunc) func(*appsv1.StatefulSet) {
+func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {
+	for idx, pvc := range pvcs {
+		if pvc.Name == name {
+			return idx
+		}
+	}
+	return -1
+}
+
+func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
 	return func(sts *appsv1.StatefulSet) {
 		for _, f := range funcs {
 			f(sts)

@@ -4,14 +4,6 @@ import corev1 "k8s.io/api/core/v1"
 
 type Modification func(*corev1.Container)
 
-func New(modifications ...Modification) corev1.Container {
-	c := corev1.Container{}
-	for _, mod := range modifications {
-		mod(&c)
-	}
-	return c
-}
-
 func WithName(name string) Modification {
 	return func(container *corev1.Container) {
 		container.Name = name
@@ -62,7 +54,7 @@ func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
 	}
 }
 
-func ModifyAll(modifications ...Modification) Modification {
+func Apply(modifications ...Modification) Modification {
 	return func(container *corev1.Container) {
 		for _, mod := range modifications {
 			mod(container)
