@@ -1,13 +1,22 @@
 package mongodb
 
 import (
+	"os"
+	"reflect"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 )
+
+func init() {
+
+	os.Setenv(preStopHookImageEnv, "pre-stop-hook-image")
+}
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 	mdb := newTestReplicaSet()
@@ -38,11 +47,22 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Equal(t, operatorServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 1)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 2)
-	assert.Equal(t, "agent-image", sts.Spec.Template.Spec.Containers[0].Image)
-	assert.Equal(t, "mongo:4.2.2", sts.Spec.Template.Spec.Containers[1].Image)
-	assert.NotNil(t, sts.Spec.Template.Spec.Containers[0].ReadinessProbe)
 
-	probe := sts.Spec.Template.Spec.Containers[0].ReadinessProbe
+	agentContainer := sts.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, "agent-image", agentContainer.Image)
+	probe := agentContainer.ReadinessProbe
+	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
 	assert.Equal(t, int32(240), probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
+	assert.Len(t, agentContainer.VolumeMounts, 3)
+
+	mongodContainer := sts.Spec.Template.Spec.Containers[1]
+	assert.Equal(t, "mongo:4.2.2", mongodContainer.Image)
+	assert.NotNil(t, sts.Spec.Template.Spec.Containers[0].ReadinessProbe)
+	assert.Len(t, mongodContainer.VolumeMounts, 3)
+
+	initContainer := sts.Spec.Template.Spec.InitContainers[0]
+	assert.Equal(t, preStopHookName, initContainer.Name)
+	assert.Equal(t, "pre-stop-hook-image", initContainer.Image)
+	assert.Len(t, initContainer.VolumeMounts, 1)
 }
