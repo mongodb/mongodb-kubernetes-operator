@@ -56,7 +56,7 @@ def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str):
     and pushes it to the target repo
     """
     dockerfile_text = render(image_type)
-    with open(f"{path}/Dockerfile", "w") as f:
+    with open("{}/Dockerfile".format(path), "w") as f:
         f.write(dockerfile_text)
 
     build_image(repo_url, tag, path)
