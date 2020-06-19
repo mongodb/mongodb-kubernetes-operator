@@ -7,6 +7,7 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
+import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
 from dev_config import load_config
@@ -132,13 +133,13 @@ def _delete_testrunner_pod() -> None:
     )
 
 
-def create_test_runner_pod(test: str):
+def create_test_runner_pod(test: str, config_file: str, tag: str):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
-    dev_config = load_config()
+    dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(test)
+    pod_body = _get_testrunner_pod_body(test, config_file, tag)
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
@@ -168,8 +169,8 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         raise Exception("Pod never got into Running state!")
 
 
-def _get_testrunner_pod_body(test: str) -> Dict:
-    dev_config = load_config()
+def _get_testrunner_pod_body(test: str, config_file: str, tag: str) -> Dict:
+    dev_config = load_config(config_file)
     return {
         "kind": "Pod",
         "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
@@ -184,11 +185,11 @@ def _get_testrunner_pod_body(test: str) -> Dict:
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+                        f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
                         "--preHookImage",
-                        f"{dev_config.repo_url}/prehook",
+                        f"{dev_config.repo_url}/{dev_config.prehook_image}:{tag}",
                         "--testImage",
-                        f"{dev_config.repo_url}/e2e",
+                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
                         f"--test={test}",
                         f"--namespace={dev_config.namespace}",
                     ],
@@ -207,32 +208,40 @@ def parse_args():
         type=bool,
         default=False,
     )
+    parser.add_argument(
+        "--skip-image-build",
+        help="Skip building images",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument("--tag", help="Tag for the images", type=str, default="latest")
+    parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
-
 
 def main():
     args = parse_args()
     config.load_kube_config()
-    dev_config = load_config()
+    dev_config = load_config(args.config_file)
     create_kube_config()
 
     if not args.skip_operator_install:
         build_and_push_operator(
             dev_config.repo_url,
-            f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+            f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
             ".",
         )
         deploy_operator()
 
-    build_and_push_testrunner(
-        dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
-    )
-    build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
-    build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/prehook", ".")
+    if not args.skip_image_build:
+        build_and_push_testrunner(
+            dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}:{args.tag}", "."
+        )
+        build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}", ".")
+        build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.prehook_image}:{args.tag}", ".")
 
     _prepare_testrunner_environment()
 
-    pod = create_test_runner_pod(args.test)
+    pod = create_test_runner_pod(args.test, args.config_file, args.tag)
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
@@ -243,6 +252,7 @@ def main():
     ).stream():
         print(line.decode("utf-8").rstrip())
 
+    dump_diagnostic.dump_all(dev_config.namespace)
 
 if __name__ == "__main__":
     main()
