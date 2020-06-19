@@ -35,8 +35,12 @@ class DevConfig:
         return self._config["e2e_image"]
 
     @property
-    def prehook_image(self):
-        return self._config["prehook_image"]
+    def prestop_hook_image(self):
+        return self._config["prestop_hook_image"]
+
+    @property
+    def testrunner_image(self):
+        return self._config["testrunner_image"]
 
 def load_config(config_file_path: str = None) -> Optional[DevConfig]:
     if config_file_path == None:

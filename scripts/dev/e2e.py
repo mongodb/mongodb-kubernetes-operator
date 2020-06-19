@@ -17,8 +17,6 @@ import time
 import os
 import yaml
 
-TEST_RUNNER_NAME = "test-runner"
-
 
 def _load_testrunner_service_account() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/service_account.yaml")
@@ -36,7 +34,7 @@ def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
-def _prepare_testrunner_environment():
+def _prepare_testrunner_environment(test_runner_name: str):
     """
     _prepare_testrunner_environment ensures the ServiceAccount,
     Role and ClusterRole and bindings are created for the test runner.
@@ -45,7 +43,7 @@ def _prepare_testrunner_environment():
     corev1 = client.CoreV1Api()
     dev_config = load_config()
 
-    _delete_testrunner_pod()
+    _delete_testrunner_pod(test_runner_name)
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
@@ -121,7 +119,7 @@ def build_and_push_prehook(repo_url: str, tag: str, path: str):
     return build_and_push_image(repo_url, tag, path, "prehook")
 
 
-def _delete_testrunner_pod() -> None:
+def _delete_testrunner_pod(test_runner_name: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
     if it already exists.
@@ -129,21 +127,21 @@ def _delete_testrunner_pod() -> None:
     dev_config = load_config()
     corev1 = client.CoreV1Api()
     k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace)
+        lambda: corev1.delete_namespaced_pod(test_runner_name, dev_config.namespace)
     )
 
 
-def create_test_runner_pod(test: str, config_file: str, tag: str):
+def create_test_runner_pod(test: str, config_file: str, tag: str, test_runner_name: str):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(test, config_file, tag)
+    pod_body = _get_testrunner_pod_body(test, config_file, tag, test_runner_name)
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}"
+            dev_config.namespace, field_selector=f"metadata.name=={test_runner_name}"
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,
@@ -169,25 +167,25 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         raise Exception("Pod never got into Running state!")
 
 
-def _get_testrunner_pod_body(test: str, config_file: str, tag: str) -> Dict:
+def _get_testrunner_pod_body(test: str, config_file: str, tag: str, test_runner_name: str) -> Dict:
     dev_config = load_config(config_file)
     return {
         "kind": "Pod",
-        "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
+        "metadata": {"name": test_runner_name, "namespace": dev_config.namespace,},
         "spec": {
             "restartPolicy": "Never",
-            "serviceAccountName": TEST_RUNNER_NAME,
+            "serviceAccountName": test_runner_name,
             "containers": [
                 {
-                    "name": TEST_RUNNER_NAME,
-                    "image": f"{dev_config.repo_url}/{TEST_RUNNER_NAME}",
+                    "name": test_runner_name,
+                    "image": f"{dev_config.repo_url}/{test_runner_name}",
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
                         f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
                         "--preHookImage",
-                        f"{dev_config.repo_url}/{dev_config.prehook_image}:{tag}",
+                        f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{tag}",
                         "--testImage",
                         f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
                         f"--test={test}",
@@ -221,8 +219,10 @@ def parse_args():
 def main():
     args = parse_args()
     config.load_kube_config()
+
     dev_config = load_config(args.config_file)
     create_kube_config()
+    test_runner_name = dev_config.testrunner_image
 
     if not args.skip_operator_install:
         build_and_push_operator(
@@ -234,21 +234,21 @@ def main():
 
     if not args.skip_image_build:
         build_and_push_testrunner(
-            dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}:{args.tag}", "."
+            dev_config.repo_url, f"{dev_config.repo_url}/{test_runner_name}:{args.tag}", "."
         )
         build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}", ".")
-        build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.prehook_image}:{args.tag}", ".")
+        build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{args.tag}", ".")
 
-    _prepare_testrunner_environment()
+    _prepare_testrunner_environment(test_runner_name)
 
-    pod = create_test_runner_pod(args.test, args.config_file, args.tag)
+    pod = create_test_runner_pod(args.test, args.config_file, args.tag, test_runner_name)
     corev1 = client.CoreV1Api()
 
-    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
+    wait_for_pod_to_be_running(corev1, test_runner_name, dev_config.namespace)
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
-        TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
+        test_runner_name, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
 
