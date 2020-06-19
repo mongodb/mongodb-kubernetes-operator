@@ -24,7 +24,7 @@ def header(msg: str) -> str:
     dashes = (
         "----------------------------------------------------------------------------"
     )
-    return f"{dashes}\n{msg}\n{dashes}"
+    return f"\n{dashes}\n{msg}\n{dashes}\n"
 
 
 def dump_crd(crd_log: typing.TextIO):
