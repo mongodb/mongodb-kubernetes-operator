@@ -161,6 +161,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: feature_compatibility_version
 
@@ -169,6 +170,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: feature_compatibility_version
 
@@ -177,6 +179,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: replica_set
 
@@ -185,6 +188,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: replica_set_readiness_probe
 
@@ -193,6 +197,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: replica_set_scale
 
@@ -201,6 +206,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: replica_set_change_version
 
@@ -209,6 +215,7 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
+      - func: upload_e2e_logs
         vars:
           test: replica_set_multiple
 
