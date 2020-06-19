@@ -163,7 +163,7 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
-        timeout=50,
+        timeout=300,
         exceptions_to_ignore=ApiException,
     ):
         raise Exception("Pod never got into Running state!")
