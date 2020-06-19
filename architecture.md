@@ -28,8 +28,8 @@ You create and update MongoDB resources by defining a MongoDB resource definitio
 1. Creates several volumes:
 
    - `data-volume` which is [persistent](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and mounts to `/data` on both the server and agent containers. Stores server data as well as `automation-mongod.conf` written by the agent and some locks the agent needs.
-   - `automation-config` which holds the mounted Automation config used by both the server and agent.
-   - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook.
+   - `automation-config` which is mounted from the previously generated ConfigMap to both the server and agent. Only lives as long as the pod.
+   - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook. Only lives as long as the pod.
     
 1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDB resource definition](deploy/crds/mongodb.com_v1_mongodb_cr.yaml).
 
