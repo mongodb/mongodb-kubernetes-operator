@@ -24,7 +24,7 @@ def header(msg: str) -> str:
     dashes = (
         "----------------------------------------------------------------------------"
     )
-    return f"\n{dashes}\n{msg}\n{dashes}\n"
+    return "\n{}\n{}\n{}\n".format(dashes,msg,dashes)
 
 
 def dump_crd(crd_log: typing.TextIO):
@@ -62,8 +62,8 @@ def dump_pod_log_namespaced(namespace: str, name: str):
     try:
         if name.startswith("mdb0"):
 
-            podFile_mongoDBAgent = open(f"logs/{name}-mongodb-agent.log", "w")
-            podFile_mongod = open(f"logs/{name}-mongod.log", "w")
+            podFile_mongoDBAgent = open("logs/{}-mongodb-agent.log".format(name), "w")
+            podFile_mongod = open("logs/{}-mongod.log".format(name), "w")
             log_mongodb_agent = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true", container="mongodb-agent"
             )
@@ -75,7 +75,7 @@ def dump_pod_log_namespaced(namespace: str, name: str):
             podFile_mongod.close()
             podFile_mongoDBAgent.close()
         elif name.startswith("mongodb-kubernetes-operator"):
-            podFile = open(f"logs/{name}.log", "w")
+            podFile = open("logs/{}.log".format(name), "w")
             log = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true"
             )
@@ -92,7 +92,7 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
         pods = corev1.list_namespaced_pod(namespace)
         for pod in pods.items:
             name = pod.metadata.name
-            diagnosticFile.write(header(f"Pod {name}"))
+            diagnosticFile.write(header("Pod {}".format(name)))
             diagnosticFile.write(yaml.dump(clean_nones(pod.to_dict())))
             dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
