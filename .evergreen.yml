@@ -32,6 +32,26 @@ functions:
           FILENAME: operator-sdk
           DIR: ${workdir}/bin
 
+  # upload_e2e_logs has the responsibility of dumping as much information as
+  # posible into the S3 bucket that corresponds to this ${version}. The
+  # Kubernetes cluster where the test finished running, should still be
+  # reachable. Note that after a timeout, Evergreen kills the running process
+  # and any running container in the host (which kills Kind).
+  upload_e2e_logs:
+    # TODO: note that the bucket is public so far - there was something with
+    # permissions that didn't allow uploads for the eng test acccount.
+    - command: s3.put
+      params:
+        aws_key: ${community_aws_access_key_id}
+        aws_secret: ${community_aws_secret_access_key}
+        local_files_include_filter:
+          - src/github.com/mongodb/mongodb-kubernetes-operator/logs/*
+        remote_file: logs/${task_id}/${execution}/
+        bucket: community-operator-e2e-artifacts
+        permissions: public-read
+        content_type: text/plain
+
+
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup
