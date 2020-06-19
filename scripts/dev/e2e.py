@@ -34,16 +34,16 @@ def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
-def _prepare_testrunner_environment(test_runner_name: str):
+def _prepare_testrunner_environment(test_runner_name: str, config_file: str):
     """
     _prepare_testrunner_environment ensures the ServiceAccount,
     Role and ClusterRole and bindings are created for the test runner.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
-    dev_config = load_config()
+    dev_config = load_config(config_file)
 
-    _delete_testrunner_pod(test_runner_name)
+    _delete_testrunner_pod(test_runner_name, config_file)
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
@@ -119,12 +119,12 @@ def build_and_push_prehook(repo_url: str, tag: str, path: str):
     return build_and_push_image(repo_url, tag, path, "prehook")
 
 
-def _delete_testrunner_pod(test_runner_name: str) -> None:
+def _delete_testrunner_pod(test_runner_name: str, config_file: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
     if it already exists.
     """
-    dev_config = load_config()
+    dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
     k8s_conditions.ignore_if_doesnt_exist(
         lambda: corev1.delete_namespaced_pod(test_runner_name, dev_config.namespace)
@@ -256,7 +256,7 @@ def main():
             ".",
         )
 
-    _prepare_testrunner_environment(test_runner_name)
+    _prepare_testrunner_environment(test_runner_name,args.config_file)
 
     pod = create_test_runner_pod(
         args.test, args.config_file, args.tag, test_runner_name
