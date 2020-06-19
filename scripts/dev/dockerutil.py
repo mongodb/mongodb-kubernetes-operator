@@ -28,7 +28,7 @@ def push_image(tag: str):
 
 def push_image_formatted(line) -> str:
     try:
-        line = json.loads(line.strip())
+        line = json.loads(line.strip().decode('utf-8'))
     except ValueError:
         return ""
 
