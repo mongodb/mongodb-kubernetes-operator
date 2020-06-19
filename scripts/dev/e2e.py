@@ -131,7 +131,9 @@ def _delete_testrunner_pod(test_runner_name: str) -> None:
     )
 
 
-def create_test_runner_pod(test: str, config_file: str, tag: str, test_runner_name: str):
+def create_test_runner_pod(
+    test: str, config_file: str, tag: str, test_runner_name: str
+):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
@@ -167,7 +169,9 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         raise Exception("Pod never got into Running state!")
 
 
-def _get_testrunner_pod_body(test: str, config_file: str, tag: str, test_runner_name: str) -> Dict:
+def _get_testrunner_pod_body(
+    test: str, config_file: str, tag: str, test_runner_name: str
+) -> Dict:
     dev_config = load_config(config_file)
     return {
         "kind": "Pod",
@@ -207,14 +211,17 @@ def parse_args():
         default=False,
     )
     parser.add_argument(
-        "--skip-image-build",
-        help="Skip building images",
-        type=bool,
-        default=False,
+        "--skip-image-build", help="Skip building images", type=bool, default=False,
     )
-    parser.add_argument("--tag", help="Tag for the images, it will be the same for all images", type=str, default="latest")
+    parser.add_argument(
+        "--tag",
+        help="Tag for the images, it will be the same for all images",
+        type=str,
+        default="latest",
+    )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -234,14 +241,26 @@ def main():
 
     if not args.skip_image_build:
         build_and_push_testrunner(
-            dev_config.repo_url, f"{dev_config.repo_url}/{test_runner_name}:{args.tag}", "."
+            dev_config.repo_url,
+            f"{dev_config.repo_url}/{test_runner_name}:{args.tag}",
+            ".",
         )
-        build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}", ".")
-        build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{args.tag}", ".")
+        build_and_push_e2e(
+            dev_config.repo_url,
+            f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
+            ".",
+        )
+        build_and_push_prehook(
+            dev_config.repo_url,
+            f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{args.tag}",
+            ".",
+        )
 
     _prepare_testrunner_environment(test_runner_name)
 
-    pod = create_test_runner_pod(args.test, args.config_file, args.tag, test_runner_name)
+    pod = create_test_runner_pod(
+        args.test, args.config_file, args.tag, test_runner_name
+    )
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(corev1, test_runner_name, dev_config.namespace)
@@ -253,6 +272,7 @@ def main():
         print(line.decode("utf-8").rstrip())
 
     dump_diagnostic.dump_all(dev_config.namespace)
+
 
 if __name__ == "__main__":
     main()

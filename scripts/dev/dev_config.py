@@ -42,6 +42,7 @@ class DevConfig:
     def testrunner_image(self):
         return self._config["testrunner_image"]
 
+
 def load_config(config_file_path: str = None) -> Optional[DevConfig]:
     if config_file_path == None:
         config_file_path = get_config_path()
