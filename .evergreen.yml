@@ -161,63 +161,63 @@ tasks:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: feature_compatibility_version
+      - func: upload_e2e_logs
 
   - name: e2e_test_feature_compatibility_version_upgrade
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: feature_compatibility_version
+      - func: upload_e2e_logs
 
   - name: e2e_test_replica_set
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: replica_set
+      - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_readiness_probe
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: replica_set_readiness_probe
+      - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_scale
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: replica_set_scale
+      - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_change_version
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: replica_set_change_version
+      - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_multiple
     commands:
       - func: clone
       - func: setup_kubernetes_environment
       - func: run_e2e_test
-      - func: upload_e2e_logs
         vars:
           test: replica_set_multiple
+      - func: upload_e2e_logs
 
 buildvariants:
   - name: go_unit_tests
