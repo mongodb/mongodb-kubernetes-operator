@@ -178,7 +178,7 @@ def _get_testrunner_pod_body(
         "metadata": {"name": test_runner_name, "namespace": dev_config.namespace,},
         "spec": {
             "restartPolicy": "Never",
-            "serviceAccountName": test_runner_name,
+            "serviceAccountName": "test-runner",
             "containers": [
                 {
                     "name": test_runner_name,
