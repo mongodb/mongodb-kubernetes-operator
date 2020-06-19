@@ -13,14 +13,21 @@ The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](http
 You create and update MongoDB resources by defining a MongoDB resource definition. When you apply the MongoDB resource definition to your Kubernetes environment, the Operator:
 
 1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://docs.mongodb.com/manual/replication/) member. 
-1. Creates two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
-
-   - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. </br>
-     `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
-
-   - A container for the MongoDB Agent. </br>
-     The Automation function of the MongoDB Agent handles configuring, stopping, and restarting the `mongod` process. The MongoDB Agent periodically polls the `mongod` to determine status and can deploy changes as needed. 
 1. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod. 
+1. Creates one [init container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) and two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
+
+   - An init container which copies the `cmd/prestop` binary to the main `mongod` container. [This pre-stop hook](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/) is used during [version upgrades](#example-mongodb-version-upgrade).
+
+   - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
+
+   - A container for the MongoDB Agent. The Automation function of the MongoDB Agent handles configuring, stopping, and restarting the `mongod` process. The MongoDB Agent periodically polls the `mongod` to determine status and can deploy changes as needed. 
+     
+1. Creates several volumes:
+
+   - `data-volume` which is [persistent](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and mounts to `/data` on both the server and agent containers. Stores server data as well as `automation-mongod.conf` written by the agent and some locks the agent needs.
+   - `automation-config` which is mounted from the previously generated ConfigMap to both the server and agent. Only lives as long as the pod.
+   - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook. Only lives as long as the pod.
+    
 1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDB resource definition](deploy/crds/mongodb.com_v1_mongodb_cr.yaml).
 
 <!--

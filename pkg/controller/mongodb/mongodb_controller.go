@@ -509,7 +509,6 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 		SetUpdateStrategy(getUpdateStrategyType(mdb)).
 		SetOwnerReference(ownerReferences)
 
-	// TODO: Add this section to architecture document.
 	// The design of the multi-container and the different volumes mounted to them is as follows:
 	// There will be two volumes mounted:
 	// 1. "data-volume": Access to /data for both agent and mongod. Shared data is required because
