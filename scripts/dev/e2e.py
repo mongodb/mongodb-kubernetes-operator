@@ -214,7 +214,7 @@ def parse_args():
         type=bool,
         default=False,
     )
-    parser.add_argument("--tag", help="Tag for the images", type=str, default="latest")
+    parser.add_argument("--tag", help="Tag for the images, it will be the same for all images", type=str, default="latest")
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 

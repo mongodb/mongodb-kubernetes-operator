@@ -1,6 +1,7 @@
 package feature_compatibility_version_upgrade
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -17,7 +18,9 @@ func TestMain(m *testing.M) {
 
 func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 	ctx := f.NewContext(t)
-	defer ctx.Cleanup()
+	if os.Getenv("SKIP_CLEANUP") != "1" {
+		defer ctx.Cleanup()
+	}
 	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}

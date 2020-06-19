@@ -1,6 +1,7 @@
 package replica_set
 
 import (
+	"os"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -17,7 +18,9 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSet(t *testing.T) {
 	ctx := f.NewContext(t)
-	//defer ctx.Cleanup()
+	if os.Getenv("SKIP_CLEANUP") != "1" {
+		defer ctx.Cleanup()
+	}
 	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}

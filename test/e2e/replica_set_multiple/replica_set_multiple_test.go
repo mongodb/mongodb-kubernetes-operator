@@ -1,6 +1,7 @@
 package replica_set_multiple
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -18,7 +19,9 @@ func TestMain(m *testing.M) {
 // same time. One of them is scaled to 5 and then back to 3
 func TestReplicaSet(t *testing.T) {
 	ctx := f.NewContext(t)
-	defer ctx.Cleanup()
+	if os.Getenv("SKIP_CLEANUP") != "1" {
+		defer ctx.Cleanup()
+	}
 	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}
