@@ -110,8 +110,8 @@ def dump_all(namespace: str, to_file: bool):
         diagnosticFile = open("logs/diagnostics.txt", "w")
         crd_log = open("logs/crd.log", "w")
     else:
-        diagnosticFile = sys.stdout
-        crd_log = sys.stdout
+        diagnosticFile = sys.stderr
+        crd_log = sys.stderr
 
     dump_crd(crd_log)
     dump_persistent_volume(diagnosticFile)
