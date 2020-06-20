@@ -1,6 +1,7 @@
 import os
 import json
 import yaml
+import sys
 import typing
 
 from kubernetes.client.rest import ApiException
@@ -100,13 +101,17 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
     return
 
 
-def dump_all(namespace: str):
+def dump_all(namespace: str, to_file: bool):
 
     if not os.path.exists("logs"):
         os.makedirs("logs")
 
-    diagnosticFile = open("logs/diagnostics.txt", "w")
-    crd_log = open("logs/crd.log", "w")
+    if to_file:
+        diagnosticFile = open("logs/diagnostics.txt", "w")
+        crd_log = open("logs/crd.log", "w")
+    else:
+        diagnosticFile = sys.stdout
+        crd_log = sys.stdout
 
     dump_crd(crd_log)
     dump_persistent_volume(diagnosticFile)
