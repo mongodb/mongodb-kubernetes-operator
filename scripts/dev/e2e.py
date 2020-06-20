@@ -127,7 +127,7 @@ def _delete_testrunner_pod(test_runner_name: str, config_file: str) -> None:
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
     k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(test_runner_name, dev_config.namespace)
+        lambda: corev1.delete_namespaced_pod("test-runner", dev_config.namespace)
     )
 
 
@@ -143,7 +143,7 @@ def create_test_runner_pod(
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector="metadata.name=={}".format(test_runner_name)
+            dev_config.namespace, field_selector="metadata.name==test-runner"
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,
@@ -175,13 +175,13 @@ def _get_testrunner_pod_body(
     dev_config = load_config(config_file)
     return {
         "kind": "Pod",
-        "metadata": {"name": test_runner_name, "namespace": dev_config.namespace,},
+        "metadata": {"name": "test-runner", "namespace": dev_config.namespace,},
         "spec": {
             "restartPolicy": "Never",
             "serviceAccountName": "test-runner",
             "containers": [
                 {
-                    "name": test_runner_name,
+                    "name": "test-runner",
                     "image":"{}/{}".format(dev_config.repo_url,test_runner_name),
                     "imagePullPolicy": "Always",
                     "command": [
