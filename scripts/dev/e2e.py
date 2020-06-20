@@ -166,7 +166,7 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         timeout=50,
         exceptions_to_ignore=ApiException,
     ):
-        dump_diagnostic.dump_all(namespace,False)
+        dump_diagnostic.dump_all(namespace,True)
         raise Exception("Pod never got into Running state!")
 
 
