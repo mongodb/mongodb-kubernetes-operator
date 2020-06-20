@@ -248,6 +248,8 @@ buildvariants:
       - name: e2e_test_feature_compatibility_version
       - name: e2e_test_feature_compatibility_version_upgrade
       - name: e2e_test_replica_set_multiple
+    teardown_task:
+      - func: upload_e2e_logs
 
   - name: init_test_run
     display_name: init_test_run
