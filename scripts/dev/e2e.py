@@ -263,7 +263,7 @@ def main():
     )
     corev1 = client.CoreV1Api()
 
-    wait_for_pod_to_be_running(corev1, test_runner_name, dev_config.namespace)
+    wait_for_pod_to_be_running(corev1, "test-runner", dev_config.namespace)
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
