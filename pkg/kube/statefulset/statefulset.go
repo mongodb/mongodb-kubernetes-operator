@@ -7,6 +7,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	notFound = -1
+)
+
 // VolumeMountData contains values required for the MountVolume function
 type VolumeMountData struct {
 	Name      string
@@ -146,7 +150,7 @@ func WithPodSpecTemplate(templateFunc func(*corev1.PodTemplateSpec)) Modificatio
 func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modification {
 	return func(set *appsv1.StatefulSet) {
 		idx := findVolumeClaimIndexByName(name, set.Spec.VolumeClaimTemplates)
-		if idx == -1 {
+		if idx == notFound {
 			set.Spec.VolumeClaimTemplates = append(set.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{})
 			idx = len(set.Spec.VolumeClaimTemplates) - 1
 		}
@@ -161,7 +165,7 @@ func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim
 			return idx
 		}
 	}
-	return -1
+	return notFound
 }
 
 func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {

@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistantvolumeclaim"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
@@ -135,19 +135,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		r.log.Infof("error creating automation config config map: %s", err)
+		r.log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
-		r.log.Infof("Error ensuring the service exists: %s", err)
+		r.log.Warnf("Error ensuring the service exists: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
-		r.log.Infof("Error creating/updating StatefulSet: %+v", err)
+		r.log.Warnf("Error creating/updating StatefulSet: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -160,7 +160,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
-		r.log.Infof("error checking StatefulSet status: %+v", err)
+		r.log.Warnf("error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -171,20 +171,20 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Infof("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Warnf("error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Setting MongoDB Annotations")
 	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.LastVersionAnnotationKey, mdb.Spec.Version); err != nil {
-		r.log.Infof("Error setting annotation: %+v", err)
+		r.log.Warnf("Error setting annotation: %+v", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Updating MongoDB Status")
 	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
-		r.log.Infof("Error updating the status of the MongoDB resource: %+v", err)
+		r.log.Warnf("Error updating the status of the MongoDB resource: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -240,7 +240,7 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
 	set := appsv1.StatefulSet{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &set)
+	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
@@ -269,7 +269,7 @@ func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, va
 // operators should be performed here
 func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
 	newMdb := &mdbv1.MongoDB{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, newMdb); err != nil {
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
 		return mdbv1.MongoDBStatus{}, fmt.Errorf("error getting resource: %+v", err)
 	}
 	newMdb.UpdateSuccess()
@@ -546,10 +546,10 @@ func defaultReadiness() probes.Modification {
 	)
 }
 
-func defaultPvc() persistantvolumeclaim.Modification {
-	return persistantvolumeclaim.Apply(
-		persistantvolumeclaim.WithName(dataVolumeName),
-		persistantvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
-		persistantvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
+func defaultPvc() persistentvolumeclaim.Modification {
+	return persistentvolumeclaim.Apply(
+		persistentvolumeclaim.WithName(dataVolumeName),
+		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
+		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
 	)
 }
