@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,6 +95,10 @@ func (m MongoDB) ServiceName() string {
 
 func (m MongoDB) ConfigMapName() string {
 	return m.Name + "-config"
+}
+
+func (m MongoDB) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.
