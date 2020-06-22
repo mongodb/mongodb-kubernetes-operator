@@ -33,7 +33,7 @@ def dump_crd(crd_log: typing.TextIO) -> str:
     retVal=""
     try:
         headerS = header("CRD")
-        retVal =+ headerS
+        retVal += headerS
         crd_log.write(retVal)
         mdb = crdv1.list_custom_resource_definition(pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
