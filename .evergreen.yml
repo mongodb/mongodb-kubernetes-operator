@@ -46,8 +46,6 @@ functions:
         aws_secret: ${community_aws_secret_access_key}
         local_files_include_filter_prefix: mongodb-kubernetes-operator/logs/
         local_files_include_filter:
-          - e2e/*.txt
-          - e2e/*.log
           - e2e/*.tar.gz
         remote_file: logs/${task_id}/${execution}/
         bucket: community-operator-e2e-logs
