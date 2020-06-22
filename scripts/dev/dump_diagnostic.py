@@ -49,7 +49,7 @@ def dump_persistent_volume(diagnosticFile: typing.TextIO) -> str:
     try:
         headerS = header("Persistent Volume Claims")
         retVal += headerS
-        diagnosticFile.write(header)
+        diagnosticFile.write(headerS)
         mdb = corev1.list_persistent_volume(pretty="true")
         boidy = yaml.dump(clean_nones(mdb.to_dict()))
         retVal += body
@@ -64,7 +64,7 @@ def dump_stateful_sets_namespaced(diagnosticFile: typing.TextIO, namespace: str)
     try:
         headerS = header("Stateful Sets")
         retVal += headerS
-        diagnosticFile.write(header);
+        diagnosticFile.write(headerS);
         mdb = av1beta1.list_namespaced_stateful_set(namespace, pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
         retVal += body
@@ -113,7 +113,7 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
     try:
         headerS = header("Pods")
         retVal += headerS
-        diagnosticFile.write(header)
+        diagnosticFile.write(headerS)
         pods = corev1.list_namespaced_pod(namespace)
         for pod in pods.items:
             name = pod.metadata.name
@@ -121,7 +121,7 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
             retVal += headerS
             body = yaml.dump(clean_nones(pod.to_dict()));
             retVal += body
-            diagnosticFile.write(header)
+            diagnosticFile.write(headerS)
             diagnosticFile.write(body)
             dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
