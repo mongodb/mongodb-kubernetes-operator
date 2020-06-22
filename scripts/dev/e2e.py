@@ -165,7 +165,6 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         timeout=50,
         exceptions_to_ignore=ApiException,
     ):
-        print("Dump: {}".format(dump_diagnostic.dump_all(namespace,False)))
         raise Exception("Pod never got into Running state!")
 
 
@@ -271,7 +270,7 @@ def main():
     ).stream():
         print(line.decode("utf-8").rstrip())
 
-    dump_diagnostic.dump_all(dev_config.namespace, True)
+    dump_diagnostic.dump_all(dev_config.namespace)
 
 
 if __name__ == "__main__":
