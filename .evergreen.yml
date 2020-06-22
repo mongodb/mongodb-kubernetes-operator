@@ -42,7 +42,6 @@ functions:
     # permissions that didn't allow uploads for the eng test acccount.
     - command: s3.put
       params:
-        working_dir: mongodb-kubernetes-operator
         aws_key: ${community_aws_access_key_id}
         aws_secret: ${community_aws_secret_access_key}
         local_files_include_filter:

@@ -271,7 +271,7 @@ def main():
     ).stream():
         print(line.decode("utf-8").rstrip())
 
-    dump_diagnostic.dump_all(dev_config.namespace, False)
+    dump_diagnostic.dump_all(dev_config.namespace, True)
 
 
 if __name__ == "__main__":
