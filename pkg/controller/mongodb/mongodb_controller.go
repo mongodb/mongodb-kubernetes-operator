@@ -57,6 +57,14 @@ const (
 	clusterFilePath                = "/var/lib/automation/config/automation-config"
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
+
+	tlsCAMountPath     = "/var/lib/tls/ca/"
+	tlsCACertName      = "ca.crt"
+	tlsSecretMountPath = "/var/lib/tls/secret/"
+	tlsSecretCertName  = "tls.crt"
+	tlsSecretKeyName   = "tls.key"
+	tlsServerMountPath = "/var/lib/tls/server/"
+	tlsServerFileName  = "server.pem"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -298,7 +306,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
-	newAc, err := automationconfig.NewBuilder().
+	builder := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
@@ -306,9 +314,13 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
-		AddVersion(mdbVersionConfig).
-		Build()
+		AddVersion(mdbVersionConfig)
 
+	if mdb.Spec.TLS.Enabled {
+		builder.SetTLS(tlsCAMountPath+tlsCACertName, tlsServerMountPath+tlsServerFileName)
+	}
+
+	newAc, err := builder.Build()
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
@@ -506,6 +518,40 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
+	agentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume}
+	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, dataVolume}
+
+	tlsPodSpec := podtemplatespec.Apply()
+	if mdb.Spec.TLS.Enabled {
+		// Configure an empty volume into which the TLS init container will write the certificate and key file
+		tlsVolume := statefulset.CreateVolumeFromEmptyDir("tls")
+		tlsVolumeMount := statefulset.CreateVolumeMount(tlsVolume.Name, tlsServerMountPath, statefulset.WithReadOnly(false))
+		agentVolumeMounts = append(agentVolumeMounts, tlsVolumeMount)
+		mongodVolumeMounts = append(mongodVolumeMounts, tlsVolumeMount)
+
+		// Configure a volume which mounts the CA certificate from a ConfigMap
+		// The certificate is used by both mongod and the agent
+		caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapRef)
+		caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
+		agentVolumeMounts = append(agentVolumeMounts, caVolumeMount)
+		mongodVolumeMounts = append(mongodVolumeMounts, caVolumeMount)
+
+		// Configure a volume which mounts the secret holding the server key and certificate
+		// The same key-certificate pair is used for all servers
+		tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.SecretRef)
+		tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
+
+		// MongoDB expects both key and certificate to be provided in a single PEM file
+		// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
+		// Because of this we need to use an init container which reads the two files mounted from the secret and combines them into one
+		tlsPodSpec = podtemplatespec.Apply(
+			podtemplatespec.WithInitContainer("tls-init", tlsInit(tlsVolumeMount, tlsSecretVolumeMount)),
+			podtemplatespec.WithVolume(tlsVolume),
+			podtemplatespec.WithVolume(caVolume),
+			podtemplatespec.WithVolume(tlsSecretVolume),
+		)
+	}
+
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
 		statefulset.WithNamespace(mdb.Namespace),
@@ -523,11 +569,28 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithVolume(hooksVolume),
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
+				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(agentVolumeMounts)),
+				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, mongodVolumeMounts)),
 				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
+				tlsPodSpec,
 			),
 		),
+	)
+}
+
+// tlsInit creates an init container which combines the mounted tls.key and tls.crt into a single PEM file
+func tlsInit(tlsMount, tlsSecretMount corev1.VolumeMount) container.Modification {
+	command := fmt.Sprintf(
+		"cat %s %s > %s",
+		tlsSecretMountPath+tlsSecretCertName,
+		tlsSecretMountPath+tlsSecretKeyName,
+		tlsServerMountPath+tlsServerFileName)
+
+	return container.Apply(
+		container.WithName("tls-init"),
+		container.WithImage("busybox"),
+		container.WithCommand([]string{"sh", "-c", command}),
+		container.WithVolumeMounts([]corev1.VolumeMount{tlsMount, tlsSecretMount}),
 	)
 }
 
