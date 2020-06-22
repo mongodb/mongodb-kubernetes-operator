@@ -49,7 +49,7 @@ functions:
           - e2e/*.txt
           - e2e/*.log
         remote_file: logs/${task_id}/${execution}/
-        bucket: community-operator-e2e-artifacts
+        bucket: community-operator-e2e-logs
         permissions: public-read
         content_type: text/plain
 
