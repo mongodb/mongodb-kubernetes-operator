@@ -182,7 +182,7 @@ def _get_testrunner_pod_body(
             "containers": [
                 {
                     "name": "test-runner",
-                    "image":"{}/{}".format(dev_config.repo_url,test_runner_name),
+                    "image":"{}/{}:{}".format(dev_config.repo_url,test_runner_name,tag),
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
