@@ -123,7 +123,7 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
             retVal += body
             diagnosticFile.write(headerS)
             diagnosticFile.write(body)
-            dump_pod_log_namespaced(namespace, name)
+            retVal += dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
     return retVal
