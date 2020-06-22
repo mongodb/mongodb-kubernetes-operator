@@ -2,6 +2,7 @@ package podtemplatespec
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Modification func(*corev1.PodTemplateSpec)
@@ -17,6 +18,11 @@ func Apply(templateMods ...Modification) Modification {
 		}
 	}
 }
+
+func NOOP() Modification {
+	return func(spec *corev1.PodTemplateSpec) {}
+}
+
 func WithContainer(name string, containerfunc func(*corev1.Container)) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		idx := findIndexByName(name, podTemplateSpec.Spec.Containers)
@@ -76,4 +82,72 @@ func findIndexByName(name string, containers []corev1.Container) int {
 		}
 	}
 	return notFound
+}
+
+func WithTerminationGracePeriodSeconds(seconds int) Modification {
+	s := int64(seconds)
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.TerminationGracePeriodSeconds = &s
+	}
+}
+
+func WithFsGroup(fsGroup int) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		spec := &podTemplateSpec.Spec
+		fsGroup64 := int64(fsGroup)
+		spec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup: &fsGroup64,
+		}
+	}
+}
+
+func WithImagePullSecrets(name string) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.ImagePullSecrets = append(podTemplateSpec.Spec.ImagePullSecrets, corev1.LocalObjectReference{
+			Name: name,
+		})
+	}
+}
+
+func WithTopologyKey(topologyKey string, idx int) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[idx].PodAffinityTerm.TopologyKey = topologyKey
+	}
+}
+
+func WithAffinity(stsName, antiAffinityLabelKey string, weight int) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.Affinity =
+			&corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						Weight: int32(weight),
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{antiAffinityLabelKey: stsName}},
+						},
+					}},
+				},
+			}
+	}
+}
+
+func WithNodeAffinity(nodeAffinity *corev1.NodeAffinity) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.Affinity.NodeAffinity = nodeAffinity
+	}
+}
+
+func WithPodAffinity(podAffinity *corev1.PodAffinity) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.Affinity.PodAffinity = podAffinity
+	}
+}
+
+func WithAnnotations(annotations map[string]string) Modification {
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Annotations = annotations
+	}
 }

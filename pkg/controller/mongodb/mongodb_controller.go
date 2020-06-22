@@ -420,11 +420,9 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 		},
 		),
 		container.WithEnv(
-			[]corev1.EnvVar{
-				{
-					Name:  agentHealthStatusFilePathEnv,
-					Value: agentHealthStatusFilePathValue,
-				},
+			corev1.EnvVar{
+				Name:  agentHealthStatusFilePathEnv,
+				Value: agentHealthStatusFilePathValue,
 			},
 		),
 	)
@@ -462,15 +460,13 @@ mongod -f /data/automation-mongod.conf ;
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(mongoDbCommand),
 		container.WithEnv(
-			[]corev1.EnvVar{
-				{
-					Name:  agentHealthStatusFilePathEnv,
-					Value: "/healthstatus/agent-health-status.json",
-				},
-				{
-					Name:  preStopHookLogFilePathEnv,
-					Value: "/hooks/pre-stop-hook.log",
-				},
+			corev1.EnvVar{
+				Name:  agentHealthStatusFilePathEnv,
+				Value: "/healthstatus/agent-health-status.json",
+			},
+			corev1.EnvVar{
+				Name:  preStopHookLogFilePathEnv,
+				Value: "/hooks/pre-stop-hook.log",
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),

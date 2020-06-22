@@ -24,6 +24,27 @@ func WithInitialDelaySeconds(initialDelaySeconds int) Modification {
 		probe.InitialDelaySeconds = int32(initialDelaySeconds)
 	}
 }
+func WithSuccessThreshold(successThreshold int) Modification {
+	return func(probe *corev1.Probe) {
+		probe.SuccessThreshold = int32(successThreshold)
+	}
+}
+func WithPeriodSeconds(periodSeconds int) Modification {
+	return func(probe *corev1.Probe) {
+		probe.PeriodSeconds = int32(periodSeconds)
+	}
+}
+func WithTimeoutSeconds(initialDelaySeconds int) Modification {
+	return func(probe *corev1.Probe) {
+		probe.InitialDelaySeconds = int32(initialDelaySeconds)
+	}
+}
+
+func WithHandler(handler corev1.Handler) Modification {
+	return func(probe *corev1.Probe) {
+		probe.Handler = handler
+	}
+}
 
 func Apply(funcs ...Modification) Modification {
 	return func(probe *corev1.Probe) {

@@ -2,6 +2,7 @@ package persistentvolumeclaim
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Modification func(claim *corev1.PersistentVolumeClaim)
@@ -12,6 +13,10 @@ func Apply(funcs ...Modification) Modification {
 			f(claim)
 		}
 	}
+}
+
+func NOOP() Modification {
+	return func(claim *corev1.PersistentVolumeClaim) {}
 }
 
 func WithName(name string) Modification {
@@ -29,5 +34,17 @@ func WithAccessModes(accessMode corev1.PersistentVolumeAccessMode) Modification 
 func WithResourceRequests(requests corev1.ResourceList) Modification {
 	return func(claim *corev1.PersistentVolumeClaim) {
 		claim.Spec.Resources.Requests = requests
+	}
+}
+
+func WithLabelSelector(selector *metav1.LabelSelector) Modification {
+	return func(claim *corev1.PersistentVolumeClaim) {
+		claim.Spec.Selector = selector
+	}
+}
+
+func WithStorageClassName(storageClassName string) Modification {
+	return func(claim *corev1.PersistentVolumeClaim) {
+		claim.Spec.StorageClassName = &storageClassName
 	}
 }

@@ -1,6 +1,9 @@
 package container
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
+	corev1 "k8s.io/api/core/v1"
+)
 
 type Modification func(*corev1.Container)
 
@@ -31,6 +34,15 @@ func WithReadinessProbe(probeFunc func(*corev1.Probe)) Modification {
 	}
 }
 
+func WithLivenessProbe(readinessProbeFunc func(*corev1.Probe)) Modification {
+	return func(container *corev1.Container) {
+		if container.LivenessProbe == nil {
+			container.LivenessProbe = &corev1.Probe{}
+		}
+		readinessProbeFunc(container.LivenessProbe)
+	}
+}
+
 func WithResourceRequirements(resources corev1.ResourceRequirements) Modification {
 	return func(container *corev1.Container) {
 		container.Resources = resources
@@ -43,7 +55,16 @@ func WithCommand(cmd []string) Modification {
 	}
 }
 
-func WithEnv(envs []corev1.EnvVar) Modification {
+func WithLifecycle(lifeCycleMod lifecycle.Modification) Modification {
+	return func(container *corev1.Container) {
+		if container.Lifecycle == nil {
+			container.Lifecycle = &corev1.Lifecycle{}
+		}
+		lifeCycleMod(container.Lifecycle)
+	}
+}
+
+func WithEnv(envs ...corev1.EnvVar) Modification {
 	return func(container *corev1.Container) {
 		container.Env = envs
 	}
@@ -55,6 +76,22 @@ func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
 	return func(container *corev1.Container) {
 		container.VolumeMounts = volumesMountsCopy
 	}
+}
+
+func WithPorts(ports []corev1.ContainerPort) Modification {
+	return func(container *corev1.Container) {
+		container.Ports = ports
+	}
+}
+
+func WithSecurityContext(context corev1.SecurityContext) Modification {
+	return func(container *corev1.Container) {
+		container.SecurityContext = &context
+	}
+}
+
+func NOOP() Modification {
+	return func(container *corev1.Container) {}
 }
 
 func Apply(modifications ...Modification) Modification {
