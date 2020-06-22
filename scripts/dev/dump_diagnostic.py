@@ -51,7 +51,7 @@ def dump_persistent_volume(diagnosticFile: typing.TextIO) -> str:
         retVal += headerS
         diagnosticFile.write(headerS)
         mdb = corev1.list_persistent_volume(pretty="true")
-        boidy = yaml.dump(clean_nones(mdb.to_dict()))
+        body = yaml.dump(clean_nones(mdb.to_dict()))
         retVal += body
         diagnosticFile.write(body)
     except ApiException as e:
