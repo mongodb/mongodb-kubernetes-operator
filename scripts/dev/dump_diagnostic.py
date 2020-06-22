@@ -88,7 +88,7 @@ def dump_pod_log_namespaced(namespace: str, name: str):
             log_mongod = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true", container="mongod"
             )
-            retVal += log_mondodb_agent
+            retVal += log_mongodb_agent
             retVal += log_mongod
             podFile_mongoDBAgent.write(log_mongodb_agent)
             podFile_mongod.write(log_mongod)
