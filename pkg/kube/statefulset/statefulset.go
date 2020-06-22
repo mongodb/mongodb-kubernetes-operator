@@ -1,11 +1,14 @@
 package statefulset
 
 import (
-	"reflect"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	notFound = -1
 )
 
 // VolumeMountData contains values required for the MountVolume function
@@ -81,12 +84,94 @@ func IsReady(sts appsv1.StatefulSet, expectedReplicas int) bool {
 	return allUpdated && allReady
 }
 
-// HaveEqualSpec accepts a StatefulSet builtSts, and a second existingSts, and compares
-// the Spec of both inputs but only comparing the fields that were specified in builtSts
-func HaveEqualSpec(builtSts appsv1.StatefulSet, existingSts appsv1.StatefulSet) (bool, error) {
-	stsToMerge := *existingSts.DeepCopyObject().(*appsv1.StatefulSet)
-	if err := mergo.Merge(&stsToMerge, builtSts, mergo.WithOverride); err != nil {
-		return false, err
+type Modification func(*appsv1.StatefulSet)
+
+func WithName(name string) Modification {
+	return func(sts *appsv1.StatefulSet) {
+		sts.Name = name
 	}
-	return reflect.DeepEqual(stsToMerge.Spec, existingSts.Spec), nil
+}
+
+func WithNamespace(namespace string) Modification {
+	return func(sts *appsv1.StatefulSet) {
+		sts.Namespace = namespace
+	}
+}
+
+func WithServiceName(svcName string) Modification {
+	return func(sts *appsv1.StatefulSet) {
+		sts.Spec.ServiceName = svcName
+	}
+}
+
+func WithLabels(labels map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Labels = copyMap(labels)
+	}
+}
+func WithMatchLabels(matchLabels map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		if set.Spec.Selector == nil {
+			set.Spec.Selector = &metav1.LabelSelector{}
+		}
+		set.Spec.Selector.MatchLabels = copyMap(matchLabels)
+	}
+}
+func WithOwnerReference(ownerRefs []metav1.OwnerReference) Modification {
+	ownerReference := make([]metav1.OwnerReference, len(ownerRefs))
+	copy(ownerReference, ownerRefs)
+	return func(set *appsv1.StatefulSet) {
+		set.OwnerReferences = ownerReference
+	}
+}
+
+func WithReplicas(replicas int) Modification {
+	stsReplicas := int32(replicas)
+	return func(sts *appsv1.StatefulSet) {
+		sts.Spec.Replicas = &stsReplicas
+	}
+}
+
+func WithUpdateStrategyType(strategyType appsv1.StatefulSetUpdateStrategyType) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+			Type: strategyType,
+		}
+	}
+}
+
+func WithPodSpecTemplate(templateFunc func(*corev1.PodTemplateSpec)) Modification {
+	return func(set *appsv1.StatefulSet) {
+		template := &set.Spec.Template
+		templateFunc(template)
+	}
+}
+
+func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modification {
+	return func(set *appsv1.StatefulSet) {
+		idx := findVolumeClaimIndexByName(name, set.Spec.VolumeClaimTemplates)
+		if idx == notFound {
+			set.Spec.VolumeClaimTemplates = append(set.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{})
+			idx = len(set.Spec.VolumeClaimTemplates) - 1
+		}
+		pvc := &set.Spec.VolumeClaimTemplates[idx]
+		f(pvc)
+	}
+}
+
+func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {
+	for idx, pvc := range pvcs {
+		if pvc.Name == name {
+			return idx
+		}
+	}
+	return notFound
+}
+
+func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
+	return func(sts *appsv1.StatefulSet) {
+		for _, f := range funcs {
+			f(sts)
+		}
+	}
 }

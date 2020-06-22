@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -94,7 +96,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, agentName, agentContainer.Name)
 	assert.Equal(t, os.Getenv(agentImageEnv), agentContainer.Image)
-	expectedProbe := defaultReadinessProbe()
+	expectedProbe := probes.New(defaultReadiness())
 	assert.True(t, reflect.DeepEqual(&expectedProbe, agentContainer.ReadinessProbe))
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
