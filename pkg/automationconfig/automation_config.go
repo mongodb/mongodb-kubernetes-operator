@@ -178,9 +178,16 @@ func newReplicaSetMember(p Process, id int) ReplicaSetMember {
 	}
 }
 
+type ClientCertificateMode string
+
+const (
+	ClientCertificateModeOptional ClientCertificateMode = "OPTIONAL"
+	ClientCertificateModeRequired                       = "REQUIRED"
+)
+
 type SSL struct {
-	CAFilePath            string `json:"CAFilePath"`
-	ClientCertificateMode string `json:"clientCertificateMode"`
+	CAFilePath            string                `json:"CAFilePath"`
+	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
 }
 
 type AutomationConfig struct {
@@ -188,7 +195,7 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-	SSL         SSL          `json:"ssl,omitempty""`
+	SSL         SSL          `json:"ssl"`
 
 	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
 	Options  Options                `json:"options"`

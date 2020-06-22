@@ -128,15 +128,15 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
 		Auth:     DisabledAuth(),
+		SSL: SSL{
+			ClientCertificateMode: ClientCertificateModeOptional,
+		},
 	}
 
 	// Set up TLS between agent and server
 	// Agent needs to trust the certificate presented by the server
 	if b.isTLSEnabled() {
-		currentAc.SSL = SSL{
-			CAFilePath:            b.tlsCAFile,
-			ClientCertificateMode: "OPTIONAL",
-		}
+		currentAc.SSL.CAFilePath = b.tlsCAFile
 	}
 
 	// Here we compare the bytes of the two automationconfigs,
