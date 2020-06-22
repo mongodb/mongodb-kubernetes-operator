@@ -32,7 +32,7 @@ def dump_crd(crd_log: typing.TextIO):
     crdv1 = client.ApiextensionsV1beta1Api()
     try:
         headerS = header("CRD")
-        crd_log.write(headers)
+        crd_log.write(headerS)
         mdb = crdv1.list_custom_resource_definition(pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
         crd_log.write(body)
