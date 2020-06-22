@@ -32,7 +32,7 @@ def dump_crd(crd_log: typing.TextIO):
     crdv1 = client.ApiextensionsV1beta1Api()
     try:
         headerS = header("CRD")
-        crd_log.write(retVal)
+        crd_log.write(headers)
         mdb = crdv1.list_custom_resource_definition(pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
         crd_log.write(body)
@@ -96,7 +96,6 @@ def dump_pod_log_namespaced(namespace: str, name: str):
 
 def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str):
     corev1 = client.CoreV1Api()
-    retVal= ""
     try:
         headerS = header("Pods")
         diagnosticFile.write(headerS)
@@ -107,7 +106,7 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
             body = yaml.dump(clean_nones(pod.to_dict()));
             diagnosticFile.write(headerS)
             diagnosticFile.write(body)
-            retVal += dump_pod_log_namespaced(namespace, name)
+            dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
     return 
@@ -128,4 +127,4 @@ def dump_all(namespace: str):
 
     diagnosticFile.close()
     crd_log.close()
-    return retVal
+    return
