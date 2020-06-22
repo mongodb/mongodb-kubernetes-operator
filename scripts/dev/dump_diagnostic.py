@@ -37,7 +37,7 @@ def dump_crd(crd_log: typing.TextIO):
         body = yaml.dump(clean_nones(mdb.to_dict()))
         crd_log.write(body)
     except ApiException as e:
-        print("Exception when calling ist_custom_resource_definition: %s\n" % e)
+        print("Exception when calling list_custom_resource_definition: %s\n" % e)
     return
 
 def dump_persistent_volume(diagnosticFile: typing.TextIO):
@@ -70,8 +70,8 @@ def dump_pod_log_namespaced(namespace: str, name: str):
     try:
         if name.startswith("mdb0"):
 
-            podFile_mongoDBAgent = open("logs/{}-mongodb-agent.log".format(name), "w")
-            podFile_mongod = open("logs/{}-mongod.log".format(name), "w")
+            podFile_mongoDBAgent = open("logs/e2e/{}-mongodb-agent.log".format(name), "w")
+            podFile_mongod = open("logs/e2e/{}-mongod.log".format(name), "w")
             log_mongodb_agent = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true", container="mongodb-agent"
             )
@@ -83,7 +83,7 @@ def dump_pod_log_namespaced(namespace: str, name: str):
             podFile_mongod.close()
             podFile_mongoDBAgent.close()
         elif name.startswith("mongodb-kubernetes-operator"):
-            podFile = open("logs/{}.log".format(name), "w")
+            podFile = open("logs/e2e/{}.log".format(name), "w")
             log = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true"
             )
@@ -117,8 +117,11 @@ def dump_all(namespace: str):
     if not os.path.exists("logs"):
         os.makedirs("logs")
 
-    diagnosticFile = open("logs/diagnostics.txt", "w")
-    crd_log = open("logs/crd.log", "w")
+    if not os.path.exists("logs/e2e"):
+        os.makedirs("logs/e2e")
+
+    diagnosticFile = open("logs/e2e/diagnostics.txt", "w")
+    crd_log = open("logs/e2e/crd.log", "w")
 
     dump_crd(crd_log)
     dump_persistent_volume(diagnosticFile)
