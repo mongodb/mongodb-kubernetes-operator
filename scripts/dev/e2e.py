@@ -267,7 +267,7 @@ def main():
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
-        test_runner_name, dev_config.namespace, follow=True, _preload_content=False
+        "test-runner", dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
 
