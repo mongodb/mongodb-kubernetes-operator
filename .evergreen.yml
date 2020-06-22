@@ -44,9 +44,10 @@ functions:
       params:
         aws_key: ${community_aws_access_key_id}
         aws_secret: ${community_aws_secret_access_key}
-        local_files_include_filter_prefix: logs/
+        local_files_include_filter_prefix: mongodb-kubernetes-operator/logs/
         local_files_include_filter:
-          - ./*
+          - *.log
+          - *.txt
         remote_file: logs/${task_id}/${execution}/
         bucket: community-operator-e2e-artifacts
         permissions: public-read
