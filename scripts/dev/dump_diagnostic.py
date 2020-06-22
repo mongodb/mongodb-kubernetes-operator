@@ -32,8 +32,8 @@ def dump_crd(crd_log: typing.TextIO) -> str:
     crdv1 = client.ApiextensionsV1beta1Api()
     retVal=""
     try:
-        header = header("CRD")
-        retVal =+ header
+        headerS = header("CRD")
+        retVal =+ headerS
         crd_log.write(retVal)
         mdb = crdv1.list_custom_resource_definition(pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
@@ -47,8 +47,8 @@ def dump_persistent_volume(diagnosticFile: typing.TextIO) -> str:
     corev1 = client.CoreV1Api()
     retVal= ""
     try:
-        header = header("Persistent Volume Claims")
-        retVal += header
+        headerS = header("Persistent Volume Claims")
+        retVal += headerS
         diagnosticFile.write(header)
         mdb = corev1.list_persistent_volume(pretty="true")
         boidy = yaml.dump(clean_nones(mdb.to_dict()))
@@ -62,8 +62,8 @@ def dump_stateful_sets_namespaced(diagnosticFile: typing.TextIO, namespace: str)
     av1beta1 = client.AppsV1Api()
     retVal = ""
     try:
-        header = header("Stateful Sets")
-        retVal += header
+        headerS = header("Stateful Sets")
+        retVal += headerS
         diagnosticFile.write(header);
         mdb = av1beta1.list_namespaced_stateful_set(namespace, pretty="true")
         body = yaml.dump(clean_nones(mdb.to_dict()))
@@ -111,14 +111,14 @@ def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str)
     corev1 = client.CoreV1Api()
     retVal= ""
     try:
-        header = header("Pods")
-        retVal += header;
+        headerS = header("Pods")
+        retVal += headerS
         diagnosticFile.write(header)
         pods = corev1.list_namespaced_pod(namespace)
         for pod in pods.items:
             name = pod.metadata.name
-            header = header("Pod {}".format(name));
-            retVal += header;
+            headerS = header("Pod {}".format(name));
+            retVal += headerS
             body = yaml.dump(clean_nones(pod.to_dict()));
             retVal += body
             diagnosticFile.write(header)
