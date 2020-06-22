@@ -1,6 +1,6 @@
 {
     "namespace": "default",
-    "repo_url": "quay.io/mongodb/",
+    "repo_url": "quay.io/mongodb",
     "operator_image": "community-operator-dev",
     "e2e_image": "community-operator-e2e",
     "prestop_hook_image": "community-operator-pre-stop-hook",
