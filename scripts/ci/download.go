@@ -28,7 +28,7 @@ func mustMakeOptions() downloadOptions {
 	return downloadOptions{
 		url:      os.Getenv("URL"),
 		fileName: os.Getenv("FILENAME"),
-		perms:    os.FileMode(755),
+		perms:    os.FileMode(777),
 		dir:      os.Getenv("DIR"),
 	}
 }
