@@ -42,6 +42,23 @@ type MongoDBSpec struct {
 	// be set for the deployment
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
+
+	// TLS configuration for both client-server and server-server communication
+	// +optional
+	TLS TLS `json:"tls"`
+}
+
+// TLS is the configuration used to set up TLS encryption
+type TLS struct {
+	Enabled bool `json:"enabled"`
+
+	// SecretRef is the name of a secret containing a key and certificate to use for TLS
+	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
+	SecretRef string `json:"secretRef"`
+
+	// CAConfigMapRef is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
+	// The key inside the ConfigMap is expected to be "ca.crt"
+	CAConfigMapRef string `json:"caConfigMapRef"`
 }
 
 // MongoDBStatus defines the observed state of MongoDB
