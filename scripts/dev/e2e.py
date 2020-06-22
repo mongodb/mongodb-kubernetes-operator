@@ -149,7 +149,6 @@ def create_test_runner_pod(
         timeout=10,
         sleep_time=0.5,
     ):
-
         raise Exception(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
@@ -166,7 +165,7 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         timeout=50,
         exceptions_to_ignore=ApiException,
     ):
-        dump_diagnostic.dump_all(namespace,False)
+        print("Dump: {}".format(dump_diagnostic.dump_all(namespace,False)))
         raise Exception("Pod never got into Running state!")
 
 
