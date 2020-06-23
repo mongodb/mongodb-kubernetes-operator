@@ -72,7 +72,7 @@ func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
 }
 
 func (b *Builder) isTLSEnabled() bool {
-	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != ""
+	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != SSLModeDisabled
 }
 
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
