@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 
 pip3 install black
-black -q --check scripts test pkg scripts
+if ! black -q --check scripts test pkg scripts
+then
+    echo "Black linting check failed!"
+    exit 1
+fi
+
+exit 0
