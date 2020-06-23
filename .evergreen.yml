@@ -63,13 +63,6 @@ functions:
         env:
           KUBECONFIG: ${workdir}/kube_config
 
-  setup_requirements:
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/setup_requirements.sh
-
   black_linting_test:
     - command: subprocess.exec
       type: test
@@ -148,7 +141,6 @@ tasks:
   - name: black_linting_check
     commands:
         - func: clone
-        - func: setup_requirements
         - func: black_linting_test
 
   - name: unit_tests
