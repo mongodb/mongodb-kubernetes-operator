@@ -1,11 +1,33 @@
 package container
 
 import (
+	"sort"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
 	corev1 "k8s.io/api/core/v1"
 )
 
 type Modification func(*corev1.Container)
+
+func Apply(modifications ...Modification) Modification {
+	return func(container *corev1.Container) {
+		for _, mod := range modifications {
+			mod(container)
+		}
+	}
+}
+
+func New(mods ...Modification) corev1.Container {
+	c := corev1.Container{}
+	for _, mod := range mods {
+		mod(&c)
+	}
+	return c
+}
+
+func NOOP() Modification {
+	return func(container *corev1.Container) {}
+}
 
 func WithName(name string) Modification {
 	return func(container *corev1.Container) {
@@ -64,10 +86,31 @@ func WithLifecycle(lifeCycleMod lifecycle.Modification) Modification {
 	}
 }
 
-func WithEnv(envs ...corev1.EnvVar) Modification {
+func WithEnvs(envs ...corev1.EnvVar) Modification {
 	return func(container *corev1.Container) {
-		container.Env = envs
+		container.Env = mergeEnvs(container.Env, envs)
 	}
+}
+
+func mergeEnvs(existing, desired []corev1.EnvVar) []corev1.EnvVar {
+	envMap := make(map[string]corev1.EnvVar)
+	for _, env := range existing {
+		envMap[env.Name] = env
+	}
+
+	for _, env := range desired {
+		envMap[env.Name] = env
+	}
+
+	var mergedEnv []corev1.EnvVar
+	for _, env := range envMap {
+		mergedEnv = append(mergedEnv, env)
+	}
+
+	sort.SliceStable(mergedEnv, func(i, j int) bool {
+		return mergedEnv[i].Name < mergedEnv[j].Name
+	})
+	return mergedEnv
 }
 
 func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
@@ -87,17 +130,5 @@ func WithPorts(ports []corev1.ContainerPort) Modification {
 func WithSecurityContext(context corev1.SecurityContext) Modification {
 	return func(container *corev1.Container) {
 		container.SecurityContext = &context
-	}
-}
-
-func NOOP() Modification {
-	return func(container *corev1.Container) {}
-}
-
-func Apply(modifications ...Modification) Modification {
-	return func(container *corev1.Container) {
-		for _, mod := range modifications {
-			mod(container)
-		}
 	}
 }

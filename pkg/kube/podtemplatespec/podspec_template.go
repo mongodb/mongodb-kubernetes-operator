@@ -11,6 +11,14 @@ const (
 	notFound = -1
 )
 
+func New(templateMods ...Modification) corev1.PodTemplateSpec {
+	podTemplateSpec := corev1.PodTemplateSpec{}
+	for _, templateMod := range templateMods {
+		templateMod(&podTemplateSpec)
+	}
+	return podTemplateSpec
+}
+
 func Apply(templateMods ...Modification) Modification {
 	return func(template *corev1.PodTemplateSpec) {
 		for _, f := range templateMods {
@@ -36,6 +44,18 @@ func WithContainer(name string, containerfunc func(*corev1.Container)) Modificat
 	}
 }
 
+func WithContainerByIndex(index int, funcs ...func(container *corev1.Container)) func(podTemplateSpec *corev1.PodTemplateSpec) {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		if index >= len(podTemplateSpec.Spec.Containers) {
+			podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, corev1.Container{})
+		}
+		c := &podTemplateSpec.Spec.Containers[index]
+		for _, f := range funcs {
+			f(c)
+		}
+	}
+}
+
 func WithInitContainer(name string, containerfunc func(*corev1.Container)) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		idx := findIndexByName(name, podTemplateSpec.Spec.InitContainers)
@@ -46,6 +66,18 @@ func WithInitContainer(name string, containerfunc func(*corev1.Container)) Modif
 		}
 		c := &podTemplateSpec.Spec.InitContainers[idx]
 		containerfunc(c)
+	}
+}
+
+func WithInitContainerByIndex(index int, funcs ...func(container *corev1.Container)) func(podTemplateSpec *corev1.PodTemplateSpec) {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		if index >= len(podTemplateSpec.Spec.Containers) {
+			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{})
+		}
+		c := &podTemplateSpec.Spec.InitContainers[index]
+		for _, f := range funcs {
+			f(c)
+		}
 	}
 }
 
@@ -140,6 +172,12 @@ func WithNodeAffinity(nodeAffinity *corev1.NodeAffinity) Modification {
 func WithPodAffinity(podAffinity *corev1.PodAffinity) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		podTemplateSpec.Spec.Affinity.PodAffinity = podAffinity
+	}
+}
+
+func WithTolerations(tolerations []corev1.Toleration) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.Tolerations = tolerations
 	}
 }
 
