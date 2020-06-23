@@ -140,7 +140,7 @@ tasks:
           image: quay.io/mongodb/community-operator-testrunner:${version_id}
           image_type: testrunner
 
-  - name: black_linting_check
+  - name: black_linting
     commands:
         - func: clone
         - func: black_linting_test
@@ -236,12 +236,12 @@ buildvariants:
       - name: e2e_test_feature_compatibility_version_upgrade
       - name: e2e_test_replica_set_multiple
 
-  - name: black_linting_test
-    display_name: black_linting_test
+  - name: code_health
+    display_name: code_health
     run_on:
       - ubuntu1604-build
     tasks:
-      - name: black_linting_check
+      - name: black_linting
 
   - name: init_test_run
     display_name: init_test_run
