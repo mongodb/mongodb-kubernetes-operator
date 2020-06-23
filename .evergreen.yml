@@ -68,6 +68,8 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
+        include_expansions_in_env:
+          - version_id
         binary: scripts/ci/run_black_linting_check_on_docker.sh
 
   run_e2e_test:
