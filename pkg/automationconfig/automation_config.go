@@ -138,9 +138,9 @@ type SSLMode string
 
 const (
 	SSLModeDisabled  SSLMode = "disabled"
-	SSLModeAllowed           = "allowSSL"
-	SSLModePreferred         = "preferSSL"
-	SSLModeRequired          = "requireSSL"
+	SSLModeAllowed   SSLMode = "allowSSL"
+	SSLModePreferred SSLMode = "preferSSL"
+	SSLModeRequired  SSLMode = "requireSSL"
 )
 
 type MongoDBSSL struct {
