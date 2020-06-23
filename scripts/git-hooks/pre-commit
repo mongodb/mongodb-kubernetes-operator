@@ -19,5 +19,4 @@ done
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
 do
     black -q "$file"
-    git add "$file"
 done

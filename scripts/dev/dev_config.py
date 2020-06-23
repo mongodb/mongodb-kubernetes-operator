@@ -32,6 +32,11 @@ def load_config() -> Optional[DevConfig]:
     with open(config_file_path, "r") as f:
         return DevConfig(json.loads(f.read()))
 
+
+
+
+
+    
     print(
         f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
     )
