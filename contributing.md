@@ -147,4 +147,3 @@ To set up the pre-commit hooks, please create symbolic links from the provided [
 ## Please make sure you sign our Contributor Agreement
 You can find it [here](https://www.mongodb.com/legal/contributor-agreement). This will be
 required when creating a PR against this repo!
-

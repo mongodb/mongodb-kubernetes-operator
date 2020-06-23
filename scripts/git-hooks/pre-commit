@@ -15,7 +15,7 @@ do
 done
 
 
-# Black linting of every file that was changed
+# Black linting of every python file that was changed
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
 do
     black -q "$file"
