@@ -30,7 +30,7 @@ def unit_test_params():
     }
 
 
-def linting_check_params():
+def python_formatting_params():
     return {
         "base_image": "python:slim",
     }
@@ -42,7 +42,7 @@ def render(image_name):
         "e2e": e2e_params(),
         "testrunner": test_runner_params(),
         "operator": operator_params(),
-        "linting": linting_check_params(),
+        "pythin_formatting": python_formatting_params(),
     }
 
     render_values = param_dict.get(image_name, dict())
