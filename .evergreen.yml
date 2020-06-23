@@ -239,7 +239,7 @@ buildvariants:
     run_on:
       - ubuntu1604-build
     tasks:
-      - name: black_linting_test
+      - name: black_linting_check
 
   - name: init_test_run
     display_name: init_test_run
