@@ -26,6 +26,7 @@ type Builder struct {
 	previousAC        AutomationConfig
 	tlsCAFile         string
 	tlsCertAndKeyFile string
+	tlsMode           SSLMode
 	// MongoDB installable versions
 	versions []MongoDbVersionConfig
 }
@@ -63,9 +64,10 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 	return b
 }
 
-func (b *Builder) SetTLS(caFile, certAndKeyFile string) *Builder {
+func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
 	b.tlsCAFile = caFile
 	b.tlsCertAndKeyFile = certAndKeyFile
+	b.tlsMode = mode
 	return b
 }
 
@@ -107,7 +109,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		// Configure TLS for mongod if enabled
 		if b.isTLSEnabled() {
-			opts = append(opts, withTLS(b.tlsCAFile, b.tlsCertAndKeyFile))
+			opts = append(opts, withTLS(b.tlsCAFile, b.tlsCertAndKeyFile, b.tlsMode))
 		}
 
 		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
@@ -172,10 +174,10 @@ func withFCV(fcv string) func(*Process) {
 }
 
 // withTLS enables TLS for the mongod process
-func withTLS(caFile, tlsKeyFile string) func(*Process) {
+func withTLS(caFile, tlsKeyFile string, mode SSLMode) func(*Process) {
 	return func(process *Process) {
 		process.Args26.Net.SSL = MongoDBSSL{
-			Mode:                               SSLModeRequired,
+			Mode:                               mode,
 			CAFile:                             caFile,
 			PEMKeyFile:                         tlsKeyFile,
 			AllowConnectionsWithoutCertificate: true,
