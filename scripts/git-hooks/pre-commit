@@ -7,9 +7,17 @@ if ! type goimports &> /dev/null; then
     GO111MODULE=off go get golang.org/x/tools/cmd/goimports
 fi
 
-# Formats each file that was changed.
+# Formats each go file that was changed.
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
 do
     goimports -w "${file}"
+    git add "$file"
+done
+
+
+# Black linting of every file that was changed 
+for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+do
+    black "$file"
     git add "$file"
 done
