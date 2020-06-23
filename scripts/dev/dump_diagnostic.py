@@ -31,11 +31,9 @@ def header(msg: str) -> str:
 def dump_crd(crd_log: typing.TextIO):
     crdv1 = client.ApiextensionsV1beta1Api()
     try:
-        headerS = header("CRD")
-        crd_log.write(headerS)
+        crd_log.write(header("CRD"))
         mdb = crdv1.list_custom_resource_definition(pretty="true")
-        body = yaml.dump(clean_nones(mdb.to_dict()))
-        crd_log.write(body)
+        crd_log.write(yaml.dump(clean_nones(mdb.to_dict())))
     except ApiException as e:
         print("Exception when calling list_custom_resource_definition: %s\n" % e)
     return
@@ -43,11 +41,9 @@ def dump_crd(crd_log: typing.TextIO):
 def dump_persistent_volume(diagnosticFile: typing.TextIO):
     corev1 = client.CoreV1Api()
     try:
-        headerS = header("Persistent Volume Claims")
-        diagnosticFile.write(headerS)
+        diagnosticFile.write(header("Persistent Volume Claims"))
         mdb = corev1.list_persistent_volume(pretty="true")
-        body = yaml.dump(clean_nones(mdb.to_dict()))
-        diagnosticFile.write(body)
+        diagnosticFile.write(yaml.dump(clean_nones(mdb.to_dict())))
     except ApiException as e:
         print("Exception when calling list_persistent_volume %s\n" % e)
     return
@@ -55,11 +51,9 @@ def dump_persistent_volume(diagnosticFile: typing.TextIO):
 def dump_stateful_sets_namespaced(diagnosticFile: typing.TextIO, namespace: str):
     av1beta1 = client.AppsV1Api()
     try:
-        headerS = header("Stateful Sets")
-        diagnosticFile.write(headerS);
+        diagnosticFile.write(header("Stateful Sets"))
         mdb = av1beta1.list_namespaced_stateful_set(namespace, pretty="true")
-        body = yaml.dump(clean_nones(mdb.to_dict()))
-        diagnosticFile.write(body);
+        diagnosticFile.write(yaml.dump(clean_nones(mdb.to_dict())))
     except ApiException as e:
         print("Exception when calling list_namespaced_stateful_set: %s\n" % e)
     return 
@@ -69,7 +63,6 @@ def dump_pod_log_namespaced(namespace: str, name: str):
     corev1 = client.CoreV1Api()
     try:
         if name.startswith("mdb0"):
-
             podFile_mongoDBAgent = open("logs/e2e/{}-mongodb-agent.log".format(name), "w")
             podFile_mongod = open("logs/e2e/{}-mongod.log".format(name), "w")
             log_mongodb_agent = corev1.read_namespaced_pod_log(
@@ -97,19 +90,16 @@ def dump_pod_log_namespaced(namespace: str, name: str):
 def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str):
     corev1 = client.CoreV1Api()
     try:
-        headerS = header("Pods")
-        diagnosticFile.write(headerS)
+        diagnosticFile.write(header("Pods"))
         pods = corev1.list_namespaced_pod(namespace)
         for pod in pods.items:
             name = pod.metadata.name
-            headerS = header("Pod {}".format(name));
-            body = yaml.dump(clean_nones(pod.to_dict()));
-            diagnosticFile.write(headerS)
-            diagnosticFile.write(body)
+            diagnosticFile.write(header("Pod {}".format(name)))
+            diagnosticFile.write(yaml.dump(clean_nones(pod.to_dict())))
             dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
-    return 
+    return
 
 
 def dump_all(namespace: str):
