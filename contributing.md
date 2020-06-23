@@ -140,8 +140,13 @@ python scripts/dev/e2e.py --test <new-test>
 ## Set up pre-commit hooks
 To set up the pre-commit hooks, please create symbolic links from the provided [hooks](https://github.com/mongodb/mongodb-kubernetes-operator/tree/master/scripts/git-hooks):
 
-1. Navigate to your `.git/hooks` directory: `cd .git/hooks`
-1. Create a symlink for every file in the `scripts/git-hooks` directory: `ln -s -f  ../../scripts/git-hooks/* .`
+* Navigate to your `.git/hooks` directory: 
+
+	`cd .git/hooks`
+
+* Create a symlink for every file in the `scripts/git-hooks` directory: 
+
+	`ln -s -f  ../../scripts/git-hooks/* .`
 
 
 ## Please make sure you sign our Contributor Agreement
