@@ -2,7 +2,6 @@
 
 # This should be copied to .git/hooks/pre-commit
 
-echo "executing pre-commit hook"
 if ! type goimports &> /dev/null; then
     echo "Installing goimports"
     GO111MODULE=off go get golang.org/x/tools/cmd/goimports
@@ -16,11 +15,9 @@ do
 done
 
 
-# Black linting of every file that was changed 
+# Black linting of every file that was changed
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
 do
-    black "$file"
+    black -q "$file"
     git add "$file"
 done
-
-exit 1
