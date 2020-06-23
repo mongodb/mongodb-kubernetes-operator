@@ -32,7 +32,7 @@ def unit_test_params():
 
 def linting_check_params():
     return {
-        "base_image": "python",
+        "base_image": "python:alpine",
     }
 
 
