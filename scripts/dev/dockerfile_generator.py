@@ -30,12 +30,19 @@ def unit_test_params():
     }
 
 
+def linting_check_params():
+    return {
+        "base_image": "python",
+    }
+
+
 def render(image_name):
     param_dict = {
         "unittest": unit_test_params(),
         "e2e": e2e_params(),
         "testrunner": test_runner_params(),
         "operator": operator_params(),
+        "linting": linting_check_params(),
     }
 
     render_values = param_dict.get(image_name, dict())

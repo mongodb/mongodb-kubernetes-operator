@@ -1,0 +1,16 @@
+{% if builder %}
+FROM {{builder_image}} AS builder
+
+{% else %}
+FROM {{base_image}}
+{% endif %}
+
+
+ADD . .
+
+{% block packages -%}
+{% endblock -%}
+
+{% block command -%}
+CMD ["./scripts/ci/run_black_linting_check.sh"]
+{% endblock -%}

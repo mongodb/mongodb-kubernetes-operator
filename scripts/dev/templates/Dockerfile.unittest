@@ -1,5 +1,6 @@
 {% extends "Dockerfile.template" %}
 
+
 {% block command -%}
 CMD ["go", "test", "./pkg/..."]
 {% endblock -%}

@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-black --check scripts test pkg scripts
+pip3 install black
+black -q --check scripts test pkg scripts
