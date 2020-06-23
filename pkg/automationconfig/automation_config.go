@@ -83,6 +83,9 @@ func newProcess(name, hostName, version, replSetName string, opts ...func(proces
 		Args26: Args26{
 			Net: Net{
 				Port: 27017,
+				SSL: MongoDBSSL{
+					Mode: SSLModeDisabled,
+				},
 			},
 			Storage: Storage{
 				DBPath: DefaultMongoDBDataDir,
@@ -127,7 +130,24 @@ type Args26 struct {
 }
 
 type Net struct {
-	Port int `json:"port"`
+	Port int        `json:"port"`
+	SSL  MongoDBSSL `json:"ssl"`
+}
+
+type SSLMode string
+
+const (
+	SSLModeDisabled  SSLMode = "disabled"
+	SSLModeAllowed           = "allowSSL"
+	SSLModePreferred         = "preferSSL"
+	SSLModeRequired          = "requireSSL"
+)
+
+type MongoDBSSL struct {
+	Mode                               SSLMode `json:"mode"`
+	PEMKeyFile                         string  `json:"PEMKeyFile,omitempty"`
+	CAFile                             string  `json:"CAFile,omitempty"`
+	AllowConnectionsWithoutCertificate bool    `json:"allowConnectionsWithoutCertificates"`
 }
 
 type Security struct {
@@ -158,11 +178,24 @@ func newReplicaSetMember(p Process, id int) ReplicaSetMember {
 	}
 }
 
+type ClientCertificateMode string
+
+const (
+	ClientCertificateModeOptional ClientCertificateMode = "OPTIONAL"
+	ClientCertificateModeRequired                       = "REQUIRED"
+)
+
+type SSL struct {
+	CAFilePath            string                `json:"CAFilePath"`
+	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
+}
+
 type AutomationConfig struct {
 	Version     int          `json:"version"`
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
+	SSL         SSL          `json:"ssl"`
 
 	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
 	Options  Options                `json:"options"`
