@@ -137,6 +137,10 @@ python scripts/dev/e2e.py --test <new-test>
 
 # Before Committing your code
 
-Please make sure you sign our Contributor Agreement
-[here](https://www.mongodb.com/legal/contributor-agreement). This will be
+## Set up pre-commit hooks
+Please copy the files in [this folder](https://github.com/mongodb/mongodb-kubernetes-operator/tree/master/scripts/git-hooks) to your `.git/hooks` directory
+
+## Please make sure you sign our Contributor Agreement
+You can find it [here](https://www.mongodb.com/legal/contributor-agreement). This will be
 required when creating a PR against this repo!
+
