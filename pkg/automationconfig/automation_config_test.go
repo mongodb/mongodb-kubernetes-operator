@@ -41,14 +41,14 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Storage.DBPath)
-		assert.Equal(t, SSLModeDisabled, p.Args26.Net.SSL.Mode)
+		assert.Equal(t, TLSModeDisabled, p.Args26.Net.TLS.Mode)
 		assert.Equal(t, "my-rs", p.Args26.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
 
-	assert.Empty(t, ac.SSL.CAFilePath, "the config shouldn't have a trusted CA")
+	assert.Empty(t, ac.TLS.CAFilePath, "the config shouldn't have a trusted CA")
 
 	assert.Len(t, ac.ReplicaSets, 1)
 	rs := ac.ReplicaSets[0]
@@ -179,7 +179,7 @@ func TestVersionManifest_BuildsForVersion(t *testing.T) {
 func TestTLS(t *testing.T) {
 	caPath := "/path/to/ca"
 	certAndKeyPath := "/path/to/cert"
-	mode := SSLModeRequired
+	mode := TLSModeRequired
 
 	ac, err := NewBuilder().
 		SetName("my-rs").
@@ -195,13 +195,13 @@ func TestTLS(t *testing.T) {
 
 	// Ensure every process has TLS configured
 	for _, p := range ac.Processes {
-		assert.Equal(t, mode, p.Args26.Net.SSL.Mode)
-		assert.Equal(t, caPath, p.Args26.Net.SSL.CAFile)
-		assert.Equal(t, certAndKeyPath, p.Args26.Net.SSL.PEMKeyFile)
-		assert.True(t, p.Args26.Net.SSL.AllowConnectionsWithoutCertificate)
+		assert.Equal(t, mode, p.Args26.Net.TLS.Mode)
+		assert.Equal(t, caPath, p.Args26.Net.TLS.CAFile)
+		assert.Equal(t, certAndKeyPath, p.Args26.Net.TLS.CertificateKeyFile)
+		assert.True(t, p.Args26.Net.TLS.AllowConnectionsWithoutCertificate)
 	}
 
 	// Ensure the CA was configured as trusted for the agent
-	assert.Equal(t, caPath, ac.SSL.CAFilePath)
-	assert.Equal(t, ClientCertificateModeOptional, ac.SSL.ClientCertificateMode)
+	assert.Equal(t, caPath, ac.TLS.CAFilePath)
+	assert.Equal(t, ClientCertificateModeOptional, ac.TLS.ClientCertificateMode)
 }

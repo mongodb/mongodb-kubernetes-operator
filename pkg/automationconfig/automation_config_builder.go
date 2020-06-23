@@ -26,7 +26,7 @@ type Builder struct {
 	previousAC        AutomationConfig
 	tlsCAFile         string
 	tlsCertAndKeyFile string
-	tlsMode           SSLMode
+	tlsMode           TLSMode
 	// MongoDB installable versions
 	versions []MongoDbVersionConfig
 }
@@ -64,7 +64,7 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 	return b
 }
 
-func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
+func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode TLSMode) *Builder {
 	b.tlsCAFile = caFile
 	b.tlsCertAndKeyFile = certAndKeyFile
 	b.tlsMode = mode
@@ -72,7 +72,7 @@ func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
 }
 
 func (b *Builder) isTLSEnabled() bool {
-	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != SSLModeDisabled
+	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != TLSModeDisabled
 }
 
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
@@ -130,7 +130,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
 		Auth:     DisabledAuth(),
-		SSL: SSL{
+		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
 	}
@@ -138,7 +138,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	// Set up TLS between agent and server
 	// Agent needs to trust the certificate presented by the server
 	if b.isTLSEnabled() {
-		currentAc.SSL.CAFilePath = b.tlsCAFile
+		currentAc.TLS.CAFilePath = b.tlsCAFile
 	}
 
 	// Here we compare the bytes of the two automationconfigs,
@@ -174,12 +174,12 @@ func withFCV(fcv string) func(*Process) {
 }
 
 // withTLS enables TLS for the mongod process
-func withTLS(caFile, tlsKeyFile string, mode SSLMode) func(*Process) {
+func withTLS(caFile, tlsKeyFile string, mode TLSMode) func(*Process) {
 	return func(process *Process) {
-		process.Args26.Net.SSL = MongoDBSSL{
+		process.Args26.Net.TLS = MongoDBTLS{
 			Mode:                               mode,
 			CAFile:                             caFile,
-			PEMKeyFile:                         tlsKeyFile,
+			CertificateKeyFile:                 tlsKeyFile,
 			AllowConnectionsWithoutCertificate: true,
 		}
 	}
