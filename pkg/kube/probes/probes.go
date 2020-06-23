@@ -4,6 +4,22 @@ import corev1 "k8s.io/api/core/v1"
 
 type Modification func(*corev1.Probe)
 
+func Apply(funcs ...Modification) Modification {
+	return func(probe *corev1.Probe) {
+		for _, f := range funcs {
+			f(probe)
+		}
+	}
+}
+
+func New(funcs ...Modification) corev1.Probe {
+	probe := corev1.Probe{}
+	for _, f := range funcs {
+		f(&probe)
+	}
+	return probe
+}
+
 func WithExecCommand(cmd []string) Modification {
 	return func(probe *corev1.Probe) {
 		if probe.Handler.Exec == nil {
@@ -44,20 +60,4 @@ func WithHandler(handler corev1.Handler) Modification {
 	return func(probe *corev1.Probe) {
 		probe.Handler = handler
 	}
-}
-
-func Apply(funcs ...Modification) Modification {
-	return func(probe *corev1.Probe) {
-		for _, f := range funcs {
-			f(probe)
-		}
-	}
-}
-
-func New(funcs ...Modification) corev1.Probe {
-	probe := corev1.Probe{}
-	for _, f := range funcs {
-		f(&probe)
-	}
-	return probe
 }
