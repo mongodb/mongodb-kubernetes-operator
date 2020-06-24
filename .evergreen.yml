@@ -51,7 +51,7 @@ functions:
         region: us-east-1
         remote_file: logs/${task_id}/${execution}/
         bucket: community-operator-e2e-logs
-        permissions: private
+        permissions: public-read-write
         content_type: text/plain
 
 
