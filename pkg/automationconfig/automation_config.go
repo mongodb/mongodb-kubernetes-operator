@@ -83,8 +83,8 @@ func newProcess(name, hostName, version, replSetName string, opts ...func(proces
 		Args26: Args26{
 			Net: Net{
 				Port: 27017,
-				TLS: MongoDBTLS{
-					Mode: TLSModeDisabled,
+				SSL: MongoDBSSL{
+					Mode: SSLModeDisabled,
 				},
 			},
 			Storage: Storage{
@@ -131,21 +131,21 @@ type Args26 struct {
 
 type Net struct {
 	Port int        `json:"port"`
-	TLS  MongoDBTLS `json:"tls"`
+	SSL  MongoDBSSL `json:"ssl"`
 }
 
-type TLSMode string
+type SSLMode string
 
 const (
-	TLSModeDisabled  TLSMode = "disabled"
-	TLSModeAllowed   TLSMode = "allowTLS"
-	TLSModePreferred TLSMode = "preferTLS"
-	TLSModeRequired  TLSMode = "requireTLS"
+	SSLModeDisabled  SSLMode = "disabled"
+	SSLModeAllowed   SSLMode = "allowSSL"
+	SSLModePreferred SSLMode = "preferSSL"
+	SSLModeRequired  SSLMode = "requireSSL"
 )
 
-type MongoDBTLS struct {
-	Mode                               TLSMode `json:"mode"`
-	CertificateKeyFile                 string  `json:"certificateKeyFile,omitempty"`
+type MongoDBSSL struct {
+	Mode                               SSLMode `json:"mode"`
+	PEMKeyFile                         string  `json:"PEMKeyFile,omitempty"`
 	CAFile                             string  `json:"CAFile,omitempty"`
 	AllowConnectionsWithoutCertificate bool    `json:"allowConnectionsWithoutCertificates"`
 }
@@ -185,7 +185,7 @@ const (
 	ClientCertificateModeRequired                       = "REQUIRED"
 )
 
-type TLS struct {
+type SSL struct {
 	CAFilePath            string                `json:"CAFilePath"`
 	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
 }
@@ -195,7 +195,7 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-	TLS         TLS          `json:"tls"`
+	SSL         SSL          `json:"ssl"`
 
 	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
 	Options  Options                `json:"options"`
