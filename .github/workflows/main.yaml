@@ -50,4 +50,5 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_PYTHON: true
           VALIDATE_BASH: true
+          VALIDATE_GOLANG: true
 ...
