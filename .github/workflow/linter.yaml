@@ -48,4 +48,5 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_ANSIBLE: false
           VALIDATE_YAML: true
+          VALIDATE_PYTHON: true
 
