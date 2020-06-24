@@ -181,16 +181,24 @@ def _get_testrunner_pod_body(
             "containers": [
                 {
                     "name": "test-runner",
-                    "image":"{}/{}:{}".format(dev_config.repo_url,test_runner_name,tag),
+                    "image": "{}/{}:{}".format(
+                        dev_config.repo_url, test_runner_name, tag
+                    ),
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        "{}/{}:{}".format(dev_config.repo_url,dev_config.operator_image,tag),
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.operator_image, tag
+                        ),
                         "--preHookImage",
-                        "{}/{}:{}".format(dev_config.repo_url,dev_config.prestop_hook_image,tag),
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.prestop_hook_image, tag
+                        ),
                         "--testImage",
-                        "{}/{}:{}".format(dev_config.repo_url,dev_config.e2e_image,tag),
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.e2e_image, tag
+                        ),
                         "--test={}".format(test),
                         "--namespace={}".format(dev_config.namespace),
                     ],
@@ -233,7 +241,7 @@ def main():
     if not args.skip_operator_install:
         build_and_push_operator(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url,dev_config.operator_image,args.tag),
+            "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
             ".",
         )
         deploy_operator()
@@ -241,21 +249,23 @@ def main():
     if not args.skip_image_build:
         build_and_push_testrunner(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url,test_runner_name,args.tag),
+            "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
             ".",
         )
         build_and_push_e2e(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url,dev_config.e2e_image,args.tag),
+            "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
             ".",
         )
         build_and_push_prehook(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url,dev_config.prestop_hook_image,args.tag),
+            "{}/{}:{}".format(
+                dev_config.repo_url, dev_config.prestop_hook_image, args.tag
+            ),
             ".",
         )
 
-    _prepare_testrunner_environment(test_runner_name,args.config_file)
+    _prepare_testrunner_environment(test_runner_name, args.config_file)
 
     pod = create_test_runner_pod(
         args.test, args.config_file, args.tag, test_runner_name
