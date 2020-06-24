@@ -44,7 +44,7 @@ def _ensure_crds():
     """
     ensure_crds makes sure that all the required CRDs have been created
     """
-    crdv1 = client.ApiextensionsV1beta1Api()
+    crdv1 = client.ApiextensionsV1Api()
     crd = _load_mongodb_crd()
 
     k8s_conditions.ignore_if_doesnt_exist(
