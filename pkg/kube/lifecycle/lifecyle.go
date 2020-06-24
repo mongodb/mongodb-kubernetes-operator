@@ -4,6 +4,7 @@ import corev1 "k8s.io/api/core/v1"
 
 type Modification func(lifecycle *corev1.Lifecycle)
 
+// Apply returns a function which applies a series of Modification functions to a *corev1.Lifecycle
 func Apply(modifications ...Modification) Modification {
 	return func(lifecycle *corev1.Lifecycle) {
 		for _, mod := range modifications {
@@ -12,6 +13,7 @@ func Apply(modifications ...Modification) Modification {
 	}
 }
 
+// WithPrestopCommand sets the LifeCycles PreStop Exec Command
 func WithPrestopCommand(preStopCmd []string) Modification {
 	return func(lc *corev1.Lifecycle) {
 		if lc.PreStop == nil {
