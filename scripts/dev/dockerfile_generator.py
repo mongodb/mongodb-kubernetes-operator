@@ -42,7 +42,7 @@ def render(image_name):
         "e2e": e2e_params(),
         "testrunner": test_runner_params(),
         "operator": operator_params(),
-        "pythin_formatting": python_formatting_params(),
+        "python_formatting": python_formatting_params(),
     }
 
     render_values = param_dict.get(image_name, dict())
