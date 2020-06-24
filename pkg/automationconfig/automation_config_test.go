@@ -205,3 +205,26 @@ func TestTLS(t *testing.T) {
 	assert.Equal(t, caPath, ac.SSL.CAFilePath)
 	assert.Equal(t, ClientCertificateModeOptional, ac.SSL.ClientCertificateMode)
 }
+
+func TestTLSIsEnabled(t *testing.T) {
+	// TLS should only be considered enabled if both a CA cert, a cert-key file and a non-disabled mode are set
+	builder := NewBuilder().
+		SetTLS("", "", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("", "/path", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "/path", SSLModeDisabled)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "/path", SSLModeRequired)
+	assert.True(t, builder.isTLSEnabled())
+}
