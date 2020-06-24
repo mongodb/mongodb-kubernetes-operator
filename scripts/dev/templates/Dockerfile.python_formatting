@@ -1,7 +1,13 @@
 FROM {{base_image}}
 
-ADD . .
+
+{% for add in adds %}
+ADD {{add}} {{add}}
+{% endfor %}
+
+ADD {{script_location}} {{script_location}}
+
 
 {% block command -%}
-CMD ["./scripts/ci/run_black_linting_check.sh"]
+CMD ["{{script_location}}", "{{ directories|join(' ') }}"]
 {% endblock -%}

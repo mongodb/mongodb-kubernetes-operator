@@ -19,7 +19,9 @@ RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/downloa
 COPY go.mod go.sum ./
 RUN go mod download
 
-ADD . .
+{% for add in adds %}
+ADD {{add}} {{add}}
+{% endfor %}
 
 RUN /bin/operator-sdk generate k8s
 
