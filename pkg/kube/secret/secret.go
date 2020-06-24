@@ -43,14 +43,16 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 	return "", fmt.Errorf("key \"%s\" not present in the Secret %s/%s", key, objectKey.Namespace, objectKey.Name)
 }
 
-func ReadByteData(getter Getter, key client.ObjectKey) (map[string][]byte, error) {
-	secret, err := getter.GetSecret(key)
+// ReadByteData reads the Data field of the secret with the given objectKey
+func ReadByteData(getter Getter, objectKey client.ObjectKey) (map[string][]byte, error) {
+	secret, err := getter.GetSecret(objectKey)
 	if err != nil {
 		return nil, err
 	}
 	return secret.Data, nil
 }
 
+// ReadStringData reads the StringData field of the secret with the given objectKey
 func ReadStringData(getter Getter, key client.ObjectKey) (map[string]string, error) {
 	secret, err := getter.GetSecret(key)
 	if err != nil {
@@ -59,6 +61,7 @@ func ReadStringData(getter Getter, key client.ObjectKey) (map[string]string, err
 	return secret.StringData, nil
 }
 
+// UpdateField updates a single field in the secret with the provided objectKey
 func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value string) error {
 	secret, err := getUpdater.GetSecret(objectKey)
 	if err != nil {
@@ -68,13 +71,14 @@ func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value s
 	return getUpdater.UpdateSecret(secret)
 }
 
+// CreateOrUpdate creates the Secret if it doesn't exist, other wise it updates it
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
-	secret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
+	newSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			return getUpdateCreator.CreateSecret(secret)
 		}
 		return err
 	}
-	return getUpdateCreator.UpdateSecret(secret)
+	return getUpdateCreator.UpdateSecret(newSecret)
 }
