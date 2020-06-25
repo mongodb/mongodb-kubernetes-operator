@@ -113,7 +113,7 @@ functions:
       type: setup
       params:
       working_dir: src/github.com/10gen/ops-manager-kubernetes
-      binary: scripts/ci/cleanuo.sh
+      binary: scripts/ci/cleanup.sh
 
 task_groups:
 - name: e2e_test_group
