@@ -108,12 +108,12 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
-  cleanup_environment:
+  cleanup_logs:
     - command: subprocess.exec
       type: setup
       params:
-      working_dir: src/github.com/10gen/ops-manager-kubernetes
-      binary: scripts/ci/cleanup.sh
+        working_dir: mongodb-kubernetes-operator
+        command: "rm -rf logs/*"
 
 task_groups:
 - name: e2e_test_group
@@ -131,7 +131,7 @@ task_groups:
     - e2e_test_replica_set_multiple
   teardown_task:
     - func: upload_e2e_logs
-    - func: cleanup_environment
+    - func: cleanup_logs
 
 tasks:
   - name: build_operator_image
