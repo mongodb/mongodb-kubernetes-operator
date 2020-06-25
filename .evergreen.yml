@@ -161,7 +161,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
-      - func: upload_e2e_logs
+  #    - func: upload_e2e_logs
 
   - name: e2e_test_feature_compatibility_version_upgrade
     commands:
@@ -170,7 +170,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
-      - func: upload_e2e_logs
+     # - func: upload_e2e_logs
 
   - name: e2e_test_replica_set
     commands:
@@ -179,7 +179,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set
-      - func: upload_e2e_logs
+     # - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_readiness_probe
     commands:
@@ -188,7 +188,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_readiness_probe
-      - func: upload_e2e_logs
+     # - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_scale
     commands:
@@ -197,7 +197,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_scale
-      - func: upload_e2e_logs
+     # - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_change_version
     commands:
@@ -206,7 +206,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_change_version
-      - func: upload_e2e_logs
+    #  - func: upload_e2e_logs
 
   - name: e2e_test_replica_set_multiple
     commands:
@@ -215,7 +215,7 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_multiple
-      - func: upload_e2e_logs
+   #   - func: upload_e2e_logs
 
 buildvariants:
   - name: go_unit_tests
