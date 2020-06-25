@@ -111,6 +111,9 @@ functions:
 
 task_groups:
 - name: e2e_test_group
+  setup_group:
+    - func: clone
+    - func: setup_kubernetes_environment
   tasks:
     - e2e_test_replica_set
     - e2e_test_replica_set_readiness_probe
@@ -170,8 +173,6 @@ tasks:
 
   - name: e2e_test_feature_compatibility_version
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
@@ -179,8 +180,6 @@ tasks:
 
   - name: e2e_test_feature_compatibility_version_upgrade
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
@@ -188,8 +187,6 @@ tasks:
 
   - name: e2e_test_replica_set
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set
@@ -197,8 +194,6 @@ tasks:
 
   - name: e2e_test_replica_set_readiness_probe
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_readiness_probe
@@ -206,8 +201,6 @@ tasks:
 
   - name: e2e_test_replica_set_scale
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_scale
@@ -215,8 +208,6 @@ tasks:
 
   - name: e2e_test_replica_set_change_version
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_change_version
@@ -224,8 +215,6 @@ tasks:
 
   - name: e2e_test_replica_set_multiple
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_multiple
