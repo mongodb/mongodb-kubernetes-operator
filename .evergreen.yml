@@ -110,7 +110,7 @@ functions:
 
 
 task_groups:
-- name: e2e_tests
+- name: e2e_testing
   tasks:
     - e2e_test_replica_set
     - e2e_test_replica_set_readiness_probe
@@ -253,7 +253,7 @@ buildvariants:
       - name: build_testrunner_image
         variant: init_test_run
     tasks:
-      - name: e2e_tests
+      - name: e2e_testing
 
   - name: init_test_run
     display_name: init_test_run
