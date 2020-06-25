@@ -1,12 +1,12 @@
 package replica_set
 
 import (
-	"os"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
+	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -17,19 +17,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
-	ctx := f.NewContext(t)
 
-	// When the tests are ran in the evg host we don't want to clean up
-	// the context, as we need it to dump diagnostics
-	// In all other cases (e.g. tests ran locally) we still clean up
-	// the context when we finish
-	if os.Getenv("SKIP_CLEANUP") != "1" {
+	ctx, shouldCleanup := setup.InitTest(t)
+
+	if shouldCleanup {
 		defer ctx.Cleanup()
 	}
-	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
-		t.Fatal(err)
-	}
-
 	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
