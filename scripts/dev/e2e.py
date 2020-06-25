@@ -227,6 +227,7 @@ def parse_args():
         type=str,
         default="latest",
     )
+    parser.add_argument("--dump_diagnostic", help="Dump diagnostic information into files", type=bool, default=False)
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
@@ -281,7 +282,8 @@ def main():
     ).stream():
         print(line.decode("utf-8").rstrip())
 
-    dump_diagnostic.dump_all(dev_config.namespace)
+    if args.dump_diagnostic:
+        dump_diagnostic.dump_all(dev_config.namespace)
 
 
 if __name__ == "__main__":

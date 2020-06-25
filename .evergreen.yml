@@ -108,6 +108,20 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
+
+task_groups:
+- name: e2e_tests
+  tasks:
+    - name: e2e_test_replica_set
+    - name: e2e_test_replica_set_readiness_probe
+    - name: e2e_test_replica_set_scale
+    - name: e2e_test_replica_set_change_version
+    - name: e2e_test_feature_compatibility_version
+    - name: e2e_test_feature_compatibility_version_upgrade
+    - name: e2e_test_replica_set_multiple
+  teardown_task:
+    - func: upload_e2e_logs
+
 tasks:
   - name: build_operator_image
     priority: 60
@@ -239,15 +253,7 @@ buildvariants:
       - name: build_testrunner_image
         variant: init_test_run
     tasks:
-      - name: e2e_test_replica_set
-      - name: e2e_test_replica_set_readiness_probe
-      - name: e2e_test_replica_set_scale
-      - name: e2e_test_replica_set_change_version
-      - name: e2e_test_feature_compatibility_version
-      - name: e2e_test_feature_compatibility_version_upgrade
-      - name: e2e_test_replica_set_multiple
-    teardown_task:
-      - func: upload_e2e_logs
+      - name: e2e_tests
 
   - name: init_test_run
     display_name: init_test_run
