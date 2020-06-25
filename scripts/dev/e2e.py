@@ -134,14 +134,14 @@ def _delete_testrunner_pod(config_file: str) -> None:
 
 
 def create_test_runner_pod(
-    test: str, config_file: str, tag: str, test_runner_image_name: str
+        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str
 ):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(test, config_file, tag, test_runner_image_name)
+    pod_body = _get_testrunner_pod_body(test, config_file, tag, skip_cleanup, test_runner_image_name)
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
@@ -172,7 +172,7 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
 
 
 def _get_testrunner_pod_body(
-    test: str, config_file: str, tag: str, test_runner_image_name: str
+        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str
 ) -> Dict:
     dev_config = load_config(config_file)
     return {
@@ -204,6 +204,7 @@ def _get_testrunner_pod_body(
                         ),
                         "--test={}".format(test),
                         "--namespace={}".format(dev_config.namespace),
+                        "--skipCleanup={}".format(skip_cleanup)
                     ],
                 }
             ],
@@ -235,6 +236,7 @@ def parse_args():
         type=bool,
         default=False,
     )
+    parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", type=bool, action='store_true')
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
@@ -276,8 +278,8 @@ def main():
 
     _prepare_testrunner_environment(args.config_file)
 
-    pod = create_test_runner_pod(
-        args.test, args.config_file, args.tag, test_runner_name
+    _ = create_test_runner_pod(
+        args.test, args.config_file, args.tag, args.skip_cleanup, test_runner_name
     )
     corev1 = client.CoreV1Api()
 

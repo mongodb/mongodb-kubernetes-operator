@@ -44,7 +44,7 @@ class DevConfig:
 
 
 def load_config(config_file_path: str = None) -> Optional[DevConfig]:
-    if config_file_path == None:
+    if config_file_path is None:
         config_file_path = get_config_path()
     with open(config_file_path, "r") as f:
         return DevConfig(json.loads(f.read()))

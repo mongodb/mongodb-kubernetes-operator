@@ -37,22 +37,22 @@ def dump_crd(crd_log: typing.TextIO):
         print("Exception when calling list_custom_resource_definition: %s\n" % e)
 
 
-def dump_persistent_volume(diagnosticFile: typing.TextIO):
+def dump_persistent_volume(diagnostic_file: typing.TextIO):
     corev1 = client.CoreV1Api()
     try:
-        diagnosticFile.write(header("Persistent Volume Claims"))
+        diagnostic_file.write(header("Persistent Volumes"))
         mdb = corev1.list_persistent_volume(pretty="true")
-        diagnosticFile.write(yaml.dump(clean_nones(mdb.to_dict())))
+        diagnostic_file.write(yaml.dump(clean_nones(mdb.to_dict())))
     except ApiException as e:
         print("Exception when calling list_persistent_volume %s\n" % e)
 
 
-def dump_stateful_sets_namespaced(diagnosticFile: typing.TextIO, namespace: str):
+def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str):
     av1beta1 = client.AppsV1Api()
     try:
-        diagnosticFile.write(header("Stateful Sets"))
+        diagnostic_file.write(header("Stateful Sets"))
         mdb = av1beta1.list_namespaced_stateful_set(namespace, pretty="true")
-        diagnosticFile.write(yaml.dump(clean_nones(mdb.to_dict())))
+        diagnostic_file.write(yaml.dump(clean_nones(mdb.to_dict())))
     except ApiException as e:
         print("Exception when calling list_namespaced_stateful_set: %s\n" % e)
 
@@ -61,40 +61,40 @@ def dump_pod_log_namespaced(namespace: str, name: str):
     corev1 = client.CoreV1Api()
     try:
         if name.startswith("mdb0"):
-            pod_file_mongoDB_agent = open(
-                "logs/e2e/{}-mongodb-agent.log".format(name), "w"
-            )
-            pod_file_mongod = open("logs/e2e/{}-mongod.log".format(name), "w")
+
             log_mongodb_agent = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true", container="mongodb-agent"
             )
             log_mongod = corev1.read_namespaced_pod_log(
                 name=name, namespace=namespace, pretty="true", container="mongod"
             )
-            pod_file_mongoDB_agent.write(log_mongodb_agent)
-            pod_file_mongod.write(log_mongod)
-            pod_file_mongod.close()
-            pod_file_mongoDB_agent.close()
+            with open(
+                "logs/e2e/{}-mongodb-agent.log".format(name), "w"
+            ) as  pod_file_mongodb_agent:
+                pod_file_mongodb_agent.write(log_mongodb_agent)
+            with open("logs/e2e/{}-mongod.log".format(name), "w") as pod_file_mongod:
+                pod_file_mongod.write(log_mongod)
+
         elif name.startswith("mongodb-kubernetes-operator"):
-            pod_file = open("logs/e2e/{}.log".format(name), "w")
-            log = corev1.read_namespaced_pod_log(
-                name=name, namespace=namespace, pretty="true"
-            )
-            pod_file.write(log)
-            pod_file.close()
+            with open("logs/e2e/{}.log".format(name), "w") as pod_file:
+                log = corev1.read_namespaced_pod_log(
+                    name=name, namespace=namespace, pretty="true"
+                )
+                pod_file.write(log)
+
     except ApiException as e:
         print("Exception when calling read_namespaced_pod_log: %s\n" % e)
 
 
-def dump_pods_and_logs_namespaced(diagnosticFile: typing.TextIO, namespace: str):
+def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str):
     corev1 = client.CoreV1Api()
     try:
-        diagnosticFile.write(header("Pods"))
+        diagnostic_file.write(header("Pods"))
         pods = corev1.list_namespaced_pod(namespace)
         for pod in pods.items:
             name = pod.metadata.name
-            diagnosticFile.write(header("Pod {}".format(name)))
-            diagnosticFile.write(yaml.dump(clean_nones(pod.to_dict())))
+            diagnostic_file.write(header("Pod {}".format(name)))
+            diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
             dump_pod_log_namespaced(namespace, name)
     except ApiException as e:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
@@ -108,13 +108,10 @@ def dump_all(namespace: str):
     if not os.path.exists("logs/e2e"):
         os.makedirs("logs/e2e")
 
-    diagnostic_file = open("logs/e2e/diagnostics.txt", "w")
-    crd_log = open("logs/e2e/crd.log", "w")
+    with open("logs/e2e/diagnostics.txt", "w") as diagnostic_file:
+        dump_persistent_volume(diagnostic_file)
+        dump_stateful_sets_namespaced(diagnostic_file, namespace)
+        dump_pods_and_logs_namespaced(diagnostic_file, namespace)
 
-    dump_crd(crd_log)
-    dump_persistent_volume(diagnostic_file)
-    dump_stateful_sets_namespaced(diagnostic_file, namespace)
-    dump_pods_and_logs_namespaced(diagnostic_file, namespace)
-
-    diagnostic_file.close()
-    crd_log.close()
+    with open("logs/e2e/crd.log", "w") as crd_log:
+        dump_crd(crd_log)
