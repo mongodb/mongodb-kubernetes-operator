@@ -71,17 +71,6 @@ functions:
           FILENAME: kind
           DIR: ${workdir}/bin
 
-    - command: subprocess.exec
-      type: setup
-      params:
-        add_to_path:
-          - ${workdir}/bin
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/create_kind_cluster.sh
-        env:
-          KUBECONFIG: ${workdir}/kube_config
-
-
   create_kind_cluster:
     - command: subprocess.exec
       type: setup
