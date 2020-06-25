@@ -113,7 +113,7 @@ functions:
       type: setup
       params:
       working_dir: src/github.com/10gen/ops-manager-kubernetes
-      command: "rm -rf bin/* && kind delete cluster"
+      binary: scripts/ci/cleanuo.sh
 
 task_groups:
 - name: e2e_test_group
