@@ -11,6 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	skipCleanup = "SKIP_CLEANUP"
+)
+
 func InitTest(t *testing.T) (*f.Context, bool) {
 	ctx := f.NewContext(t)
 
@@ -18,9 +22,8 @@ func InitTest(t *testing.T) (*f.Context, bool) {
 		t.Fatal(err)
 	}
 
-	skip := os.Getenv("SKIP_CLEANUP")
+	skip := os.Getenv(skipCleanup)
 
-	fmt.Printf("SKIP_CLEANUP: %s\n", skip)
 	return ctx, skip != "True"
 }
 

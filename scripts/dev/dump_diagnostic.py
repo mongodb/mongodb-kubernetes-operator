@@ -41,9 +41,11 @@ def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str
 
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
-   for container in containers:
-       with open("logs/e2e/{}-{}.log".format(name,container.name)) as log_file:
-           log_file.write(k8s_request_data.get_pod_log_namespaced(namespace,name,container.name))
+    print(containers)
+    for container in containers:
+        print(container)
+        with open("logs/e2e/{}-{}.log".format(name,container.name),"w") as log_file:
+            log_file.write(k8s_request_data.get_pod_log_namespaced(namespace,name,container.name))
 
 def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str):
     pods = k8s_request_data.get_pods_namespaced(namespace)
@@ -51,7 +53,7 @@ def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str
         name = pod.metadata.name
         diagnostic_file.write(header("Pod {}".format(name)))
         diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
-        dump_pod_log_namespaced(namespace, name, pod.metadata.spec.containers)
+        dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
 def dump_all(namespace: str):
