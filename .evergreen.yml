@@ -71,6 +71,10 @@ functions:
           FILENAME: kind
           DIR: ${workdir}/bin
 
+    - func: create_kind_cluster
+
+
+  create_kind_cluster:
     - command: subprocess.exec
       type: setup
       params:
@@ -119,8 +123,9 @@ task_groups:
 - name: e2e_test_group
   setup_group:
     - func: clone
-  setup_task:
     - func: setup_kubernetes_environment
+  setup_task:
+    - func: create_kind_cluster
   tasks:
     - e2e_test_replica_set
     - e2e_test_replica_set_readiness_probe
