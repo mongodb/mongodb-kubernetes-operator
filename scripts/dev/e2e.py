@@ -236,7 +236,7 @@ def parse_args():
         type=bool,
         default=False,
     )
-    parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", type=bool, action='store_true')
+    parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", action='store_true')
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
