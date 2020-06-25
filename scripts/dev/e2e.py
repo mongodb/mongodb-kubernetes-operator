@@ -19,6 +19,7 @@ import yaml
 
 TEST_RUNNER_NAME = "test-runner"
 
+
 def _load_testrunner_service_account() -> Optional[Dict]:
     return load_yaml_from_file("deploy/testrunner/service_account.yaml")
 
@@ -144,7 +145,8 @@ def create_test_runner_pod(
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector="metadata.name=={}".format(TEST_RUNNER_NAME)
+            dev_config.namespace,
+            field_selector="metadata.name=={}".format(TEST_RUNNER_NAME),
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,
@@ -227,7 +229,12 @@ def parse_args():
         type=str,
         default="latest",
     )
-    parser.add_argument("--dump_diagnostic", help="Dump diagnostic information into files", type=bool, default=False)
+    parser.add_argument(
+        "--dump_diagnostic",
+        help="Dump diagnostic information into files",
+        type=bool,
+        default=False,
+    )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
