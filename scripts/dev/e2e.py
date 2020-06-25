@@ -218,11 +218,10 @@ def parse_args():
     parser.add_argument(
         "--skip-operator-install",
         help="Do not install the Operator, assumes one is installed already",
-        type=bool,
-        default=False,
+        action='store_false'
     )
     parser.add_argument(
-        "--skip-image-build", help="Skip building images", type=bool, default=False,
+        "--skip-image-build", help="Skip building images", action='store_false',
     )
     parser.add_argument(
         "--tag",
@@ -233,22 +232,15 @@ def parse_args():
     parser.add_argument(
         "--dump_diagnostic",
         help="Dump diagnostic information into files",
-        type=bool,
-        default=False,
+        action='store_false'
     )
     parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", action='store_false')
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-    config.load_kube_config()
-
-    dev_config = load_config(args.config_file)
-    create_kube_config()
+def build_and_push_images(args, dev_config):
     test_runner_name = dev_config.testrunner_image
-
     if not args.skip_operator_install:
         build_and_push_operator(
             dev_config.repo_url,
@@ -256,26 +248,28 @@ def main():
             ".",
         )
         deploy_operator()
+        if not args.skip_image_build:
+            build_and_push_testrunner(
+                dev_config.repo_url,
+                "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
+                ".",
+            )
+            build_and_push_e2e(
+                dev_config.repo_url,
+                "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
+                ".",
+            )
+            build_and_push_prehook(
+                dev_config.repo_url,
+                "{}/{}:{}".format(
+                    dev_config.repo_url, dev_config.prestop_hook_image, args.tag
+                ),
+                ".",
+            )
 
-    if not args.skip_image_build:
-        build_and_push_testrunner(
-            dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
-            ".",
-        )
-        build_and_push_e2e(
-            dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
-            ".",
-        )
-        build_and_push_prehook(
-            dev_config.repo_url,
-            "{}/{}:{}".format(
-                dev_config.repo_url, dev_config.prestop_hook_image, args.tag
-            ),
-            ".",
-        )
 
+def prepare_and_run_testrunner(args, dev_config):
+    test_runner_name = dev_config.testrunner_image
     _prepare_testrunner_environment(args.config_file)
 
     _ = create_test_runner_pod(
@@ -290,6 +284,16 @@ def main():
         TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
+
+def main():
+    args = parse_args()
+    config.load_kube_config()
+
+    dev_config = load_config(args.config_file)
+    create_kube_config()
+
+    build_and_push_images(args, dev_config)
+    prepare_and_run_testrunner(args, dev_config)
 
     if args.dump_diagnostic:
         dump_diagnostic.dump_all(dev_config.namespace)
