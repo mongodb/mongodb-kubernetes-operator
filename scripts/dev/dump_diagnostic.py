@@ -41,9 +41,7 @@ def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str
 
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
-    print(containers)
     for container in containers:
-        print(container)
         with open("logs/e2e/{}-{}.log".format(name,container.name),"w") as log_file:
             log_file.write(k8s_request_data.get_pod_log_namespaced(namespace,name,container.name))
 
