@@ -1,13 +1,13 @@
 package replica_set_multiple
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
+	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
@@ -18,17 +18,11 @@ func TestMain(m *testing.M) {
 // TestReplicaSet creates two MongoDB resources that are handled by the Operator at the
 // same time. One of them is scaled to 5 and then back to 3
 func TestReplicaSet(t *testing.T) {
-	ctx := f.NewContext(t)
 
-	// When the tests are ran in the evg host we don't want to clean up
-	// the context, as we need it to dump diagnostics
-	// In all other cases (e.g. tests ran locally) we still clean up
-	// the context when we finish
-	if os.Getenv("SKIP_CLEANUP") != "1" {
+	ctx, shouldCleanup := setup.InitTest(t)
+
+	if shouldCleanup {
 		defer ctx.Cleanup()
-	}
-	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
-		t.Fatal(err)
 	}
 
 	mdb0 := e2eutil.NewTestMongoDB("mdb0")
