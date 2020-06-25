@@ -18,6 +18,11 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSet(t *testing.T) {
 	ctx := f.NewContext(t)
+
+	// When the tests are ran in the evg host we don't want to clean up
+	// the context, as we need it to dump diagnostics
+	// In all other cases (e.g. tests ran locally) we still clean up
+	// the context when we finish
 	if os.Getenv("SKIP_CLEANUP") != "1" {
 		defer ctx.Cleanup()
 	}
