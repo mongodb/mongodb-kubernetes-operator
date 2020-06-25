@@ -109,7 +109,7 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
-  cleanup_logs:
+  cleanup_env:
     - command: subprocess.exec
       type: setup
       params:
@@ -133,7 +133,7 @@ task_groups:
     - e2e_test_replica_set_multiple
   teardown_task:
     - func: upload_e2e_logs
-    - func: cleanup_logs
+    - func: cleanup_env
 
 tasks:
   - name: build_operator_image
