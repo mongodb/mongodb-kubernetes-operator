@@ -113,7 +113,7 @@ functions:
       type: setup
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "rm -rf logs/*"
+        command: "rm -rf logs/* bin/*"
 
 task_groups:
 - name: e2e_test_group
