@@ -1,7 +1,10 @@
 FROM ubuntu:16.04
 
-ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.13.0.6199-1.rhel7_x86_64.tar.gz
-ARG agent_version=10.13.0.6199-1
+ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.14.8.6391-1.rhel7_x86_64.tar.gz
+ARG agent_version=10.14.8.6391-1
+
+ARG tools_url=https://downloads.mongodb.org/tools/db/mongodb-database-tools-ubuntu1604-x86_64-100.0.2.tgz
+ARG tools_version=100.0.2
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
@@ -24,5 +27,9 @@ RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
     && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe \
     && mkdir -p /var/log/mongodb-mms-automation/ \
     && chmod -R +wr /var/log/mongodb-mms-automation/
+
+# Install MongoDB tools. The agent will automatically search the folder and find the binaries.
+RUN curl --fail --retry 3 --silent $tools_url -o mongodb-tools.tgz \
+    && tar xfz mongodb-tools.tgz --directory /var/lib/mongodb-mms-automation/
 
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
