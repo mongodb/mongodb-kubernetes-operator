@@ -53,6 +53,6 @@ def load_config(config_file_path: str = None) -> DevConfig:
             return DevConfig(json.loads(f.read()))
     except Exception as e:
         print(
-            f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
+            "No DevConfig found. Please ensure that the configuration file exists at '{}'".format(config_file_path)
         )
         raise
