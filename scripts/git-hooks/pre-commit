@@ -22,7 +22,7 @@ function mypy_check()
     local exit_status=0
     # Mypy doesn't support recursive traversal of directories
     # So we manually call it on every staged python file
-    # and OR together the error codes to see if at least one failed    echo "Running mypy on staged python files"
+    echo "Running mypy on staged python files"
     for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
     do
         echo "Analyzing $file ..."
