@@ -27,7 +27,7 @@ const (
 	defaultNamespace = "default"
 
 	pollingInterval time.Duration = 1 * time.Second
-	pollingDuration time.Duration = 30 * time.Second
+	pollingDuration time.Duration = 60 * time.Second
 )
 
 func main() {
