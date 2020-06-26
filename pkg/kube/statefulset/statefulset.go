@@ -86,6 +86,22 @@ func IsReady(sts appsv1.StatefulSet, expectedReplicas int) bool {
 
 type Modification func(*appsv1.StatefulSet)
 
+func New(mods ...Modification) appsv1.StatefulSet {
+	sts := appsv1.StatefulSet{}
+	for _, mod := range mods {
+		mod(&sts)
+	}
+	return sts
+}
+
+func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
+	return func(sts *appsv1.StatefulSet) {
+		for _, f := range funcs {
+			f(sts)
+		}
+	}
+}
+
 func WithName(name string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Name = name
@@ -166,12 +182,4 @@ func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim
 		}
 	}
 	return notFound
-}
-
-func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
-	return func(sts *appsv1.StatefulSet) {
-		for _, f := range funcs {
-			f(sts)
-		}
-	}
 }

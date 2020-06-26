@@ -36,16 +36,18 @@ type flags struct {
 	preHookImage  string
 	testImage     string
 	test          string
+	skipCleanup   string
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, preHookImage, testImage, test *string
+	var namespace, deployDir, operatorImage, preHookImage, testImage, test, skipCleanup *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
 	preHookImage = flag.String("preHookImage", "quay.io/mongodb/community-operator-prehook:latest", "the prestophook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
 	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
+	skipCleanup = flag.String("skipCleanup", "1", "specifies whether to skip cleaning up the context or not")
 	flag.Parse()
 
 	return flags{
@@ -55,6 +57,7 @@ func parseFlags() flags {
 		preHookImage:  *preHookImage,
 		testImage:     *testImage,
 		test:          *test,
+		skipCleanup:   *skipCleanup,
 	}
 }
 
@@ -94,7 +97,7 @@ func runCmd(f flags) error {
 	fmt.Println("Successfully deployed the operator")
 
 	testToRun := "test/operator-sdk-test.yaml"
-	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test), withEnvVar("SKIP_CLEANUP", f.skipCleanup)); err != nil {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 
@@ -204,6 +207,14 @@ func withTestImage(image string) func(obj runtime.Object) {
 	return func(obj runtime.Object) {
 		if testPod, ok := obj.(*corev1.Pod); ok {
 			testPod.Spec.Containers[0].Image = image
+		}
+	}
+}
+
+func withEnvVar(key, val string) func(obj runtime.Object) {
+	return func(obj runtime.Object) {
+		if testPod, ok := obj.(*corev1.Pod); ok {
+			testPod.Spec.Containers[0].Env = append(testPod.Spec.Containers[0].Env, corev1.EnvVar{Name: key, Value: val})
 		}
 	}
 }
