@@ -225,7 +225,6 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, currentAc.Version)
-
 }
 
 func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
@@ -319,4 +318,89 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsVolumeMount)
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
+}
+
+func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+	createAC := func(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
+		manifest, err := mockManifestProvider(mdb.Spec.Version)()
+		assert.NoError(t, err)
+		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
+
+		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{})
+		assert.NoError(t, err)
+		return ac
+	}
+
+	t.Run("With TLS disabled", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ac := createAC(mdb)
+
+		assert.Equal(t, automationconfig.SSL{
+			CAFilePath:            "",
+			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+		}, ac.SSL)
+
+		for _, process := range ac.Processes {
+			assert.Equal(t, automationconfig.MongoDBSSL{
+				Mode: automationconfig.SSLModeDisabled,
+			}, process.Args26.Net.SSL)
+		}
+	})
+
+	t.Run("With TLS enabled, during rollout", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		ac := createAC(mdb)
+
+		assert.Equal(t, automationconfig.SSL{
+			CAFilePath:            "",
+			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+		}, ac.SSL)
+
+		for _, process := range ac.Processes {
+			assert.Equal(t, automationconfig.MongoDBSSL{
+				Mode: automationconfig.SSLModeDisabled,
+			}, process.Args26.Net.SSL)
+		}
+	})
+
+	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+		ac := createAC(mdb)
+
+		assert.Equal(t, automationconfig.SSL{
+			CAFilePath:            tlsCAMountPath + tlsCACertName,
+			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+		}, ac.SSL)
+
+		for _, process := range ac.Processes {
+			assert.Equal(t, automationconfig.MongoDBSSL{
+				Mode:                               automationconfig.SSLModeRequired,
+				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
+				CAFile:                             tlsCAMountPath + tlsCACertName,
+				AllowConnectionsWithoutCertificate: true,
+			}, process.Args26.Net.SSL)
+		}
+	})
+
+	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+		mdb.Spec.TLS.Optional = true
+		ac := createAC(mdb)
+
+		assert.Equal(t, automationconfig.SSL{
+			CAFilePath:            tlsCAMountPath + tlsCACertName,
+			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+		}, ac.SSL)
+
+		for _, process := range ac.Processes {
+			assert.Equal(t, automationconfig.MongoDBSSL{
+				Mode:                               automationconfig.SSLModePreferred,
+				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
+				CAFile:                             tlsCAMountPath + tlsCACertName,
+				AllowConnectionsWithoutCertificate: true,
+			}, process.Args26.Net.SSL)
+		}
+	})
 }
