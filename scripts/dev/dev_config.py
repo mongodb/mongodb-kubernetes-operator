@@ -26,13 +26,32 @@ class DevConfig:
     def repo_url(self):
         return self._config["repo_url"]
 
+    @property
+    def operator_image(self):
+        return self._config["operator_image"]
 
-def load_config() -> Optional[DevConfig]:
-    config_file_path = get_config_path()
+    @property
+    def e2e_image(self):
+        return self._config["e2e_image"]
+
+    @property
+    def prestop_hook_image(self):
+        return self._config["prestop_hook_image"]
+
+    @property
+    def testrunner_image(self):
+        return self._config["testrunner_image"]
+
+
+def load_config(config_file_path: str = None) -> Optional[DevConfig]:
+    if config_file_path is None:
+        config_file_path = get_config_path()
     with open(config_file_path, "r") as f:
         return DevConfig(json.loads(f.read()))
 
     print(
-        f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
+        "No DevConfig found. Please ensure that the configuration file exists at '{}'".format(
+            config_file_path
+        )
     )
     return None
