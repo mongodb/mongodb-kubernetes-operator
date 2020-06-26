@@ -2,35 +2,44 @@
 
 # This should be copied to .git/hooks/pre-commit
 
-if ! type goimports &> /dev/null; then
-    echo "Installing goimports"
-    GO111MODULE=off go get golang.org/x/tools/cmd/goimports
-fi
-
-# Formats each file that was changed.
-for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
-do
-    goimports -w "${file}"
-    git add "$file"
-done
-
-# Mypy doesn't support recursive traversal of directories
-# So we manually call it on every staged python file
-# and OR together the error codes to see if at least one failed
-{
-local exit_status=0
-echo "Running mypy on staged python files"
-for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
-do
-    echo "Analyzing $file ..."
-    # We ignore missing import otherwise mypy will complain
-    # about 3rd party libraries not providing type hints
-    if ! mypy --ignore-missing-imports "${file}"; then
-        exit_status=1
+function go_imports() {
+    if ! type goimports &> /dev/null; then
+        echo "Installing goimports"
+        GO111MODULE=off go get golang.org/x/tools/cmd/goimports
     fi
-done
 
-if [ $exit_status -ne 0 ]; then
+    # Formats each file that was changed.
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+    do
+        goimports -w "${file}"
+        git add "$file"
+    done
+
+}
+
+function mypy_check()
+{
+    local exit_status=0
+    # Mypy doesn't support recursive traversal of directories
+    # So we manually call it on every staged python file
+    # and OR together the error codes to see if at least one failed    echo "Running mypy on staged python files"
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+    do
+        echo "Analyzing $file ..."
+        # We ignore missing import otherwise mypy will complain
+        # about 3rd party libraries not providing type hints
+        if ! mypy --ignore-missing-imports "${file}"; then
+            exit_status=1
+        fi
+    done
+    return exit_status
+}
+
+
+
+go_imports
+mypy_check
+if [ $? -ne 0 ]; then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
     # In some cases we might encounter mypy errors that we do not
@@ -43,4 +52,4 @@ if [ $exit_status -ne 0 ]; then
          " false positives."
     exit 1
 fi
-}
+
