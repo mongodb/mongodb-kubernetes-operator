@@ -1,4 +1,5 @@
 import os
+import shutil
 import yaml
 import typing
 
@@ -56,8 +57,10 @@ def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str
 
 def dump_all(namespace: str):
 
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
+    if os.path.exists("logs"):
+        shutil.rmtree("logs")
+        
+    os.makedirs("logs")
 
     if not os.path.exists("logs/e2e"):
         os.makedirs("logs/e2e")
@@ -69,3 +72,8 @@ def dump_all(namespace: str):
 
     with open("logs/e2e/crd.log", "w") as crd_log:
         dump_crd(crd_log)
+
+
+
+if __name__ == "__main__":
+    dump_all("default")

@@ -7,13 +7,11 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
-import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
 from dev_config import load_config
 from kubernetes import client, config
 import argparse
-import time
 import os
 import yaml
 
@@ -229,11 +227,6 @@ def parse_args():
         type=str,
         default="latest",
     )
-    parser.add_argument(
-        "--dump_diagnostic",
-        help="Dump diagnostic information into files",
-        action='store_false'
-    )
     parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", action='store_false')
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -294,9 +287,6 @@ def main():
 
     build_and_push_images(args, dev_config)
     prepare_and_run_testrunner(args, dev_config)
-
-    if args.dump_diagnostic:
-        dump_diagnostic.dump_all(dev_config.namespace)
 
 
 if __name__ == "__main__":
