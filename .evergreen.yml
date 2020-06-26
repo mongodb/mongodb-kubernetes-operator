@@ -120,6 +120,7 @@ functions:
 
 task_groups:
 - name: e2e_test_group
+  max_hosts: 3
   setup_group:
     - func: clone
     - func: setup_kubernetes_environment
