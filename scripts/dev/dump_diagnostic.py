@@ -5,6 +5,7 @@ import typing
 
 import k8s_request_data
 
+
 def clean_nones(value):
     """
     Recursively remove all None values from dictionaries and lists, and returns
@@ -29,6 +30,7 @@ def dump_crd(crd_log: typing.TextIO):
     crd_log.write(header("CRD"))
     crd_log.write(yaml.dump(clean_nones(crd)))
 
+
 def dump_persistent_volume(diagnostic_file: typing.TextIO):
     diagnostic_file.write(header("Persistent Volumes"))
     pv = k8s_request_data.get_persistent_volumes()
@@ -43,8 +45,11 @@ def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
     for container in containers:
-        with open("logs/e2e/{}-{}.log".format(name,container.name),"w") as log_file:
-            log_file.write(k8s_request_data.get_pod_log_namespaced(namespace,name,container.name))
+        with open("logs/e2e/{}-{}.log".format(name, container.name), "w") as log_file:
+            log_file.write(
+                k8s_request_data.get_pod_log_namespaced(namespace, name, container.name)
+            )
+
 
 def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str):
     pods = k8s_request_data.get_pods_namespaced(namespace)
@@ -72,5 +77,3 @@ def dump_all(namespace: str):
 
     with open("logs/e2e/crd.log", "w") as crd_log:
         dump_crd(crd_log)
-
-

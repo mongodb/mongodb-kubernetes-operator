@@ -134,14 +134,20 @@ def _delete_testrunner_pod(config_file: str) -> None:
 
 
 def create_test_runner_pod(
-        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str, dump: bool
+    test: str,
+    config_file: str,
+    tag: str,
+    skip_cleanup: str,
+    test_runner_image_name: str,
 ):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(test, config_file, tag, skip_cleanup, test_runner_image_name)
+    pod_body = _get_testrunner_pod_body(
+        test, config_file, tag, skip_cleanup, test_runner_image_name
+    )
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
@@ -152,8 +158,6 @@ def create_test_runner_pod(
         timeout=10,
         sleep_time=0.5,
     ):
-        if dump:
-            dump_diagnostic.dump_all(dev_config.namespace)
         raise Exception(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
@@ -161,7 +165,7 @@ def create_test_runner_pod(
     return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
 
 
-def wait_for_pod_to_be_running(corev1, name, namespace, dump):
+def wait_for_pod_to_be_running(corev1, name, namespace):
     print("Waiting for pod to be running")
     if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(name, namespace),
@@ -170,13 +174,15 @@ def wait_for_pod_to_be_running(corev1, name, namespace, dump):
         timeout=50,
         exceptions_to_ignore=ApiException,
     ):
-        if dump:
-            dump_diagnostic.dump_all(namespace)
         raise Exception("Pod never got into Running state!")
 
 
 def _get_testrunner_pod_body(
-        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str
+    test: str,
+    config_file: str,
+    tag: str,
+    skip_cleanup: str,
+    test_runner_image_name: str,
 ) -> Dict:
     dev_config = load_config(config_file)
     return {
@@ -208,7 +214,7 @@ def _get_testrunner_pod_body(
                         ),
                         "--test={}".format(test),
                         "--namespace={}".format(dev_config.namespace),
-                        "--skipCleanup={}".format(skip_cleanup)
+                        "--skipCleanup={}".format(skip_cleanup),
                     ],
                 }
             ],
@@ -222,10 +228,10 @@ def parse_args():
     parser.add_argument(
         "--skip-operator-install",
         help="Do not install the Operator, assumes one is installed already",
-        action='store_false'
+        action="store_false",
     )
     parser.add_argument(
-        "--skip-image-build", help="Skip building images", action='store_false',
+        "--skip-image-build", help="Skip building images", action="store_false",
     )
     parser.add_argument(
         "--tag",
@@ -236,9 +242,13 @@ def parse_args():
     parser.add_argument(
         "--dump_diagnostic",
         help="Dump diagnostic information into files",
-        action='store_false'
+        action="store_false",
     )
-    parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", action='store_false')
+    parser.add_argument(
+        "--skip-cleanup",
+        help="skip the context cleanup when the test ends",
+        action="store_false",
+    )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
@@ -277,17 +287,24 @@ def prepare_and_run_testrunner(args, dev_config):
     _prepare_testrunner_environment(args.config_file)
 
     _ = create_test_runner_pod(
-        args.test, args.config_file, args.tag, args.skip_cleanup, test_runner_name, args.dump_diagnostic
+        args.test,
+        args.config_file,
+        args.tag,
+        args.skip_cleanup,
+        test_runner_name,
     )
     corev1 = client.CoreV1Api()
 
-    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace, args.dump_diagnostic)
+    wait_for_pod_to_be_running(
+        corev1, TEST_RUNNER_NAME, dev_config.namespace, 
+    )
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
         TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
+
 
 def main():
     args = parse_args()
@@ -296,11 +313,12 @@ def main():
     dev_config = load_config(args.config_file)
     create_kube_config()
 
-    build_and_push_images(args, dev_config)
-    prepare_and_run_testrunner(args, dev_config)
-
-    if args.dump_diagnostic:
-        dump_diagnostic.dump_all(dev_config.namespace)
+    try:
+        build_and_push_images(args, dev_config)
+        prepare_and_run_testrunner(args, dev_config)
+    finally:
+        if args.dump_diagnostic:
+            dump_diagnostic.dump_all(dev_config.namespace)
 
 
 if __name__ == "__main__":
