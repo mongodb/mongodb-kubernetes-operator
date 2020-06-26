@@ -22,7 +22,7 @@ do
     exit_status=exit_status||$?
 done
 
-if [ "$exit_status" -ne 0 ]
+if [ $exit_status -ne 0 ]
 then
     echo "MyPy returned some errors, please correct them before pushing your code"
 fi
