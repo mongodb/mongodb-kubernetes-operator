@@ -59,7 +59,7 @@ def dump_all(namespace: str):
 
     if os.path.exists("logs"):
         shutil.rmtree("logs")
-        
+
     os.makedirs("logs")
 
     if not os.path.exists("logs/e2e"):
@@ -74,6 +74,3 @@ def dump_all(namespace: str):
         dump_crd(crd_log)
 
 
-
-if __name__ == "__main__":
-    dump_all("default")

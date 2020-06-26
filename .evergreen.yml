@@ -118,14 +118,6 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
-
-  dump_e2e_logs:
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: mongodb-kubernetes-operator
-        command: "python3 ./scripts/dev/dump_diagnostic.py"
-
 task_groups:
 - name: e2e_test_group
   setup_group:
@@ -142,7 +134,6 @@ task_groups:
     - e2e_test_feature_compatibility_version_upgrade
     - e2e_test_replica_set_multiple
   teardown_task:
-    - func: dump_e2e_logs
     - func: upload_e2e_logs
 
 tasks:

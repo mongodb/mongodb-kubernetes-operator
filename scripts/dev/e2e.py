@@ -7,11 +7,13 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
+import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
 from dev_config import load_config
 from kubernetes import client, config
 import argparse
+import time
 import os
 import yaml
 
@@ -132,7 +134,7 @@ def _delete_testrunner_pod(config_file: str) -> None:
 
 
 def create_test_runner_pod(
-        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str
+        test: str, config_file: str, tag: str, skip_cleanup: str, test_runner_image_name: str, dump: bool
 ):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
@@ -150,6 +152,8 @@ def create_test_runner_pod(
         timeout=10,
         sleep_time=0.5,
     ):
+        if dump:
+            dump_diagnostic.dump_all(dev_config.namespace)
         raise Exception(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
@@ -157,7 +161,7 @@ def create_test_runner_pod(
     return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
 
 
-def wait_for_pod_to_be_running(corev1, name, namespace):
+def wait_for_pod_to_be_running(corev1, name, namespace, dump):
     print("Waiting for pod to be running")
     if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(name, namespace),
@@ -166,6 +170,8 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         timeout=50,
         exceptions_to_ignore=ApiException,
     ):
+        if dump:
+            dump_diagnostic.dump_all(namespace)
         raise Exception("Pod never got into Running state!")
 
 
@@ -227,6 +233,11 @@ def parse_args():
         type=str,
         default="latest",
     )
+    parser.add_argument(
+        "--dump_diagnostic",
+        help="Dump diagnostic information into files",
+        action='store_false'
+    )
     parser.add_argument("--skip-cleanup", help="skip the context cleanup when the test ends", action='store_false')
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -266,11 +277,11 @@ def prepare_and_run_testrunner(args, dev_config):
     _prepare_testrunner_environment(args.config_file)
 
     _ = create_test_runner_pod(
-        args.test, args.config_file, args.tag, args.skip_cleanup, test_runner_name
+        args.test, args.config_file, args.tag, args.skip_cleanup, test_runner_name, args.dump_diagnostic
     )
     corev1 = client.CoreV1Api()
 
-    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
+    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace, args.dump_diagnostic)
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
@@ -287,6 +298,9 @@ def main():
 
     build_and_push_images(args, dev_config)
     prepare_and_run_testrunner(args, dev_config)
+
+    if args.dump_diagnostic:
+        dump_diagnostic.dump_all(dev_config.namespace)
 
 
 if __name__ == "__main__":
