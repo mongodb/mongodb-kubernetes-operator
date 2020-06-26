@@ -26,5 +26,5 @@ if [ $exit_status -ne 0 ]
 then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
-    #exit 1
+    exit 1
 fi
