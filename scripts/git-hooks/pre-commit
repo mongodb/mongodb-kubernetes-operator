@@ -13,3 +13,15 @@ do
     goimports -w "${file}"
     git add "$file"
 done
+
+
+echo "Running mypy on staged python files"
+for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+do
+    mypy "${file}"
+    exit_status = exit_status || $? 
+done
+
+if [ "$exit_status" -ne 0 ] ; then
+    echo "MyPy returned some errors, please correct them before pushing your code"
+fi
