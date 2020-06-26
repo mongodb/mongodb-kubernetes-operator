@@ -17,19 +17,19 @@ done
 # Mypy doesn't support recursive traversal of directories
 # So we manually call it on every staged python file
 # and OR together the error codes to see if at least one failed
-exit_status=0
+local exit_status=0
 echo "Running mypy on staged python files"
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
 do
     echo "Analyzing $file ..."
     # We ignore missing import otherwise mypy will complain
     # about 3rd party libraries not providing type hints
-    mypy --ignore-missing-imports "${file}"
-    ((exit_status=exit_status||$?))
+    if ! mypy --ignore-missing-imports "${file}"; then
+        exit_status=1
+    fi
 done
 
-if [ $exit_status -ne 0 ]
-then
+if [ $exit_status -eq 0 ]; then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
     # In some cases we might encounter mypy errors that we do not
