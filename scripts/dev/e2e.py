@@ -227,6 +227,10 @@ def main():
     build_and_push_testrunner(
         dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
     )
+
+
+
+    
     build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
     build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/prehook", ".")
 

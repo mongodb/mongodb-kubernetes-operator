@@ -19,7 +19,7 @@ echo "Running mypy on staged python files"
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
 do
     mypy "${file}"
-    exit_status=exit_status||$?
+    ((exit_status=exit_status||$?))
 done
 
 if [ $exit_status -ne 0 ]
