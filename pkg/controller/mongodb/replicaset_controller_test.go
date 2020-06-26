@@ -39,6 +39,25 @@ func newTestReplicaSet() mdbv1.MongoDB {
 	}
 }
 
+func newTestReplicaSetWithTLS() mdbv1.MongoDB {
+	return mdbv1.MongoDB{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "my-rs",
+			Namespace:   "my-ns",
+			Annotations: map[string]string{},
+		},
+		Spec: mdbv1.MongoDBSpec{
+			Members: 3,
+			Version: "4.2.2",
+			TLS: mdbv1.TLS{
+				Enabled:        true,
+				CAConfigMapRef: "caConfigMap",
+				SecretRef:      "secretRef",
+			},
+		},
+	}
+}
+
 func mockManifestProvider(version string) func() (automationconfig.VersionManifest, error) {
 	return func() (automationconfig.VersionManifest, error) {
 		return automationconfig.VersionManifest{
@@ -227,4 +246,77 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
+}
+
+func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts := appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	// Assert that all TLS volumes have been added.
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 6)
+	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "tls",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "tls-ca",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: mdb.Spec.TLS.CAConfigMapRef,
+				},
+			},
+		},
+	})
+	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "tls-secret",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: mdb.Spec.TLS.SecretRef,
+			},
+		},
+	})
+
+	// Assert that the TLS init container has been added.
+	tlsVolumeMount := corev1.VolumeMount{
+		Name:      "tls",
+		ReadOnly:  false,
+		MountPath: tlsServerMountPath,
+	}
+	tlsSecretVolumeMount := corev1.VolumeMount{
+		Name:      "tls-secret",
+		ReadOnly:  true,
+		MountPath: tlsSecretMountPath,
+	}
+	tlsCAVolumeMount := corev1.VolumeMount{
+		Name:      "tls-ca",
+		ReadOnly:  true,
+		MountPath: tlsCAMountPath,
+	}
+
+	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
+	tlsInitContainer := sts.Spec.Template.Spec.InitContainers[1]
+	assert.Equal(t, "tls-init", tlsInitContainer.Name)
+
+	// Assert that all containers have the correct volumes mounted.
+	assert.Len(t, tlsInitContainer.VolumeMounts, 2)
+	assert.Contains(t, tlsInitContainer.VolumeMounts, tlsVolumeMount)
+	assert.Contains(t, tlsInitContainer.VolumeMounts, tlsSecretVolumeMount)
+
+	agentContainer := sts.Spec.Template.Spec.Containers[0]
+	assert.Contains(t, agentContainer.VolumeMounts, tlsVolumeMount)
+	assert.Contains(t, agentContainer.VolumeMounts, tlsCAVolumeMount)
+
+	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
+	assert.Contains(t, mongodbContainer.VolumeMounts, tlsVolumeMount)
+	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
 }
