@@ -108,15 +108,12 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - version_id
         command: "pip3 install mypy"
+
     - command: subprocess.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - version_id
         command: "find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
 
 
