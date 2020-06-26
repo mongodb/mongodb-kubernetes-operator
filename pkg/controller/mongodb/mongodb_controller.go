@@ -189,19 +189,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	if mdb.IsRollingOutTLS() {
-		r.log.Debug("Completing TLS rollout")
-
-		mdb.Annotations[mdbv1.TlsEnabledAnnotationKey] = "true"
-		if err := r.ensureAutomationConfig(mdb); err != nil {
-			r.log.Warnf("error updating automation config after TLS rollout: %s", err)
-			return reconcile.Result{}, err
-		}
-
-		if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.TlsEnabledAnnotationKey, "true"); err != nil {
-			r.log.Warnf("Error setting TLS annotation: %+v", err)
-			return reconcile.Result{}, err
-		}
+	if err := r.completeTLSRollout(mdb); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Updating MongoDB Status")
@@ -275,6 +264,28 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	return nil
 }
 
+// completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
+// At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
+// The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
+func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
+	if mdb.Spec.TLS.Enabled && !mdb.HasRolledOutTLS() {
+		r.log.Debug("Completing TLS rollout")
+
+		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+		if err := r.ensureAutomationConfig(mdb); err != nil {
+			r.log.Warnf("error updating automation config after TLS rollout: %s", err)
+			return err
+		}
+
+		if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.TLSRolledOutKey, "true"); err != nil {
+			r.log.Warnf("Error setting TLS annotation: %+v", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // setAnnotation updates the monogdb resource with the given namespaced name and sets the annotation
 // "key" with the provided value "val"
 func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
@@ -331,9 +342,13 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig)
 
-	if mdb.Spec.TLS.Enabled && !mdb.IsRollingOutTLS() {
+	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
+	// The agent needs these to be in place before the config is updated.
+	// The agents will handle the gradual introduction of TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+	if mdb.Spec.TLS.Enabled && mdb.HasRolledOutTLS() {
 		mode := automationconfig.SSLModeRequired
 		if mdb.Spec.TLS.Optional {
+			// SSLModePreferred requires server-server connections to use TLS but makes it optional for clients.
 			mode = automationconfig.SSLModePreferred
 		}
 
