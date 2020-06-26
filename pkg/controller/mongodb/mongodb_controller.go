@@ -189,6 +189,21 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	if mdb.IsRollingOutTLS() {
+		r.log.Debug("Completing TLS rollout")
+
+		mdb.Annotations[mdbv1.TlsEnabledAnnotationKey] = "true"
+		if err := r.ensureAutomationConfig(mdb); err != nil {
+			r.log.Warnf("error updating automation config after TLS rollout: %s", err)
+			return reconcile.Result{}, err
+		}
+
+		if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.TlsEnabledAnnotationKey, "true"); err != nil {
+			r.log.Warnf("Error setting TLS annotation: %+v", err)
+			return reconcile.Result{}, err
+		}
+	}
+
 	r.log.Debug("Updating MongoDB Status")
 	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
@@ -316,8 +331,11 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig)
 
-	if mdb.Spec.TLS.Enabled {
-		builder.SetTLS(tlsCAMountPath+tlsCACertName, tlsServerMountPath+tlsServerFileName)
+	if mdb.Spec.TLS.Enabled && !mdb.IsRollingOutTLS() {
+		builder.SetTLS(
+			tlsCAMountPath+tlsCACertName,
+			tlsServerMountPath+tlsServerFileName,
+		)
 	}
 
 	newAc, err := builder.Build()
