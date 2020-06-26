@@ -32,7 +32,7 @@ function mypy_check()
             exit_status=1
         fi
     done
-    return exit_status
+    return $exit_status
 }
 
 
