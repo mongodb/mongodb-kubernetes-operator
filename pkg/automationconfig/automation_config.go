@@ -164,8 +164,14 @@ type AutomationConfig struct {
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
 
-	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
-	Options  Options                `json:"options"`
+	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
+	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
+	Options      Options                `json:"options"`
+}
+
+type ToolsVersion struct {
+	Version string                       `json:"version"`
+	URLs    map[string]map[string]string `json:"urls"`
 }
 
 type VersionManifest struct {
