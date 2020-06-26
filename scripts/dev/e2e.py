@@ -7,6 +7,7 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
+import k8s_request_data
 import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict, Optional
@@ -15,6 +16,7 @@ from kubernetes import client, config
 import argparse
 import time
 import os
+import sys
 import yaml
 
 TEST_RUNNER_NAME = "test-runner"
@@ -316,9 +318,14 @@ def main():
     try:
         build_and_push_images(args, dev_config)
         prepare_and_run_testrunner(args, dev_config)
+        test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
     finally:
         if args.dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
+
+    if test_runner_pod.status.phase != "Succeeded":
+        sys.exit(1)
+
 
 
 if __name__ == "__main__":

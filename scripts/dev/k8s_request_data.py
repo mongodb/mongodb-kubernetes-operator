@@ -29,13 +29,22 @@ def get_stateful_sets_namespaced(namespace: str) -> dict:
     return sst.to_dict()
 
 
-def get_pods_namespaced(namespace) -> list:
+def get_pods_namespaced(namespace: str) -> list:
     corev1 = client.CoreV1Api()
     try:
         pods = corev1.list_namespaced_pod(namespace)
     except ApiException as e:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
     return pods.items
+
+def get_pod_namespaced(namespace: str, pod_name: str):
+    corev1 = client.CoreV1Api()
+    try:
+        pod = corev1.read_namespaced_pod(name=pod_name, namespace=namespace)
+    except ApiException as e:
+        print("Exception when calling read_namespaced_pod: %s\n" % e)
+    return pod
+
 
 
 def get_pod_log_namespaced(namespace: str, pod_name: str, container_name: str) -> str:
