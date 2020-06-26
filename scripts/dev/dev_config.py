@@ -26,6 +26,22 @@ class DevConfig:
     def repo_url(self):
         return self._config["repo_url"]
 
+    @property
+    def operator_image(self):
+        return self._config["operator_image"]
+
+    @property
+    def e2e_image(self):
+        return self._config["e2e_image"]
+
+    @property
+    def prestop_hook_image(self):
+        return self._config["prestop_hook_image"]
+
+    @property
+    def testrunner_image(self):
+        return self._config["testrunner_image"]
+
 
 def load_config() -> DevConfig:
     config_file_path = get_config_path()
