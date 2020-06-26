@@ -332,9 +332,15 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		AddVersion(mdbVersionConfig)
 
 	if mdb.Spec.TLS.Enabled && !mdb.IsRollingOutTLS() {
+		mode := automationconfig.SSLModeRequired
+		if mdb.Spec.TLS.Optional {
+			mode = automationconfig.SSLModePreferred
+		}
+
 		builder.SetTLS(
 			tlsCAMountPath+tlsCACertName,
 			tlsServerMountPath+tlsServerFileName,
+			mode,
 		)
 	}
 

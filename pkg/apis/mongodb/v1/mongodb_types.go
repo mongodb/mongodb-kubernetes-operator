@@ -55,6 +55,10 @@ type MongoDBSpec struct {
 type TLS struct {
 	Enabled bool `json:"enabled"`
 
+	// Optional configures if TLS should be required or optional for connections
+	// +optional
+	Optional bool `json:"optional"`
+
 	// SecretRef is the name of a secret containing a key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
