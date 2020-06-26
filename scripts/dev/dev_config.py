@@ -43,8 +43,10 @@ class DevConfig:
         return self._config["testrunner_image"]
 
 
-def load_config() -> DevConfig:
-    config_file_path = get_config_path()
+
+def load_config(config_file_path: str = None) -> DevConfig:
+    if config_file_path is None:
+        config_file_path = get_config_path()
 
     try:
         with open(config_file_path, "r") as f:
