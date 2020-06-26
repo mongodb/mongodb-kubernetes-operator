@@ -188,8 +188,7 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 	lastPlan := healthStatus.Plans[len(healthStatus.Plans)-1]
 	for _, m := range lastPlan.Moves {
 		// When changing version the plan will contain a "ChangeVersion" step
-		switch m.Move {
-		case "ChangeVersion":
+		if m.Move == "ChangeVersion" {
 			return true
 		}
 	}
