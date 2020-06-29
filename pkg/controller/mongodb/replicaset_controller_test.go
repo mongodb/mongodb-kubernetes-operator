@@ -50,9 +50,9 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 			Members: 3,
 			Version: "4.2.2",
 			TLS: mdbv1.TLS{
-				Enabled:        true,
-				CAConfigMapRef: "caConfigMap",
-				SecretRef:      "secretRef",
+				Enabled:         true,
+				CAConfigMapRef:  "caConfigMap",
+				ServerSecretRef: "secretRef",
 			},
 		},
 	}
@@ -280,7 +280,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.Spec.TLS.SecretRef,
+				SecretName: mdb.Spec.TLS.ServerSecretRef,
 			},
 		},
 	})

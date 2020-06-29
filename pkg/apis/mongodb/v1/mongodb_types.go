@@ -59,13 +59,13 @@ type TLS struct {
 	// +optional
 	Optional bool `json:"optional"`
 
-	// SecretRef is the name of a secret containing a key and certificate to use for TLS
+	// ServerSecretRef is the name of a secret containing a private key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
-	SecretRef string `json:"secretRef"`
+	ServerSecretRef string `json:"serverSecretRef"`
 
 	// CAConfigMapRef is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
-	// The key inside the ConfigMap is expected to be "ca.crt"
+	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
 	CAConfigMapRef string `json:"caConfigMapRef"`
 }

@@ -358,7 +358,7 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 
 	// Ensure Secret exists
 	var secret corev1.Secret
-	secretName := types.NamespacedName{Name: mdb.Spec.TLS.SecretRef, Namespace: mdb.Namespace}
+	secretName := types.NamespacedName{Name: mdb.Spec.TLS.ServerSecretRef, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), secretName, &secret); err != nil {
 		return errors.IsNotFound(err), err
 	}
@@ -623,7 +623,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 		// Configure a volume which mounts the secret holding the server key and certificate
 		// The same key-certificate pair is used for all servers
-		tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.SecretRef)
+		tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretRef)
 		tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
 
 		// MongoDB expects both key and certificate to be provided in a single PEM file
