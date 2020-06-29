@@ -2,6 +2,18 @@ ignore:
   - "*.md"
 
 functions:
+  setup_virtualenv:
+    - command: subprocess.exec
+      type: setup
+      params:
+        #command: "virtualenv --python /opt/python/3.7/bin/python3 ./venv"
+        binary: scripts/ci/virtualenv.sh
+
+#    - command: subprocess.exec
+ #     type: setup
+  #    params:
+   #     command: ". venv/bin/activate"
+
   clone:
     - command: subprocess.exec
       type: setup
@@ -144,6 +156,7 @@ task_groups:
   max_hosts: 3
   setup_group:
     - func: clone
+    - func: setup_virtualenv
     - func: setup_kubernetes_environment
   setup_task:
     - func: create_kind_cluster
@@ -201,6 +214,7 @@ tasks:
 
   - name: black_formatting
     commands:
+        - func: setup_virtualenv
         - func: clone
         - func: black_formatting_test
 
