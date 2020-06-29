@@ -32,6 +32,24 @@ functions:
           FILENAME: operator-sdk
           DIR: ${workdir}/bin
 
+  # upload_e2e_logs has the responsibility of dumping as much information as
+  # posible into the S3 bucket 
+  upload_e2e_logs:
+    - command: s3.put
+      params:
+        aws_key: ${community_aws_access_key_id}
+        aws_secret: ${community_aws_secret_access_key}
+        local_files_include_filter_prefix: mongodb-kubernetes-operator/logs/
+        local_files_include_filter:
+          - e2e/*.txt
+          - e2e/*.log
+        region: us-east-1
+        remote_file: logs/${task_id}/${execution}/
+        bucket: community-operator-e2e-logs
+        permissions: public-read
+        content_type: text/plain
+
+
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup
@@ -53,6 +71,7 @@ functions:
           FILENAME: kind
           DIR: ${workdir}/bin
 
+  create_kind_cluster:
     - command: subprocess.exec
       type: setup
       params:
@@ -79,12 +98,33 @@ functions:
         add_to_path:
           - ${workdir}/bin
         working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - version_id
-          - test
-        binary: scripts/ci/run_test.sh
         env:
           KUBECONFIG: ${workdir}/kube_config
+        command: "pip3 install -r ./requirements.txt"
+
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        add_to_path:
+          - ${workdir}/bin
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+        command: "python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json"
+
+  mypy_linting_test:
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        command: "pip3 install mypy"
+
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        command: "find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
+
 
   build_and_push_image:
     - command: subprocess.exec
@@ -98,6 +138,25 @@ functions:
           - image_type
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
+
+task_groups:
+- name: e2e_test_group
+  max_hosts: 3
+  setup_group:
+    - func: clone
+    - func: setup_kubernetes_environment
+  setup_task:
+    - func: create_kind_cluster
+  tasks:
+    - e2e_test_replica_set
+    - e2e_test_replica_set_readiness_probe
+    - e2e_test_replica_set_scale
+    - e2e_test_replica_set_change_version
+    - e2e_test_feature_compatibility_version
+    - e2e_test_feature_compatibility_version_upgrade
+    - e2e_test_replica_set_multiple
+  teardown_task:
+    - func: upload_e2e_logs
 
 tasks:
   - name: build_operator_image
@@ -150,58 +209,51 @@ tasks:
       - func: clone
       - func: go_test
 
+
+  - name: mypy_linting
+    commands:
+        - func: clone
+        - func: mypy_linting_test
+
+
   - name: e2e_test_feature_compatibility_version
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
 
   - name: e2e_test_feature_compatibility_version_upgrade
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: feature_compatibility_version
 
   - name: e2e_test_replica_set
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set
 
   - name: e2e_test_replica_set_readiness_probe
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_readiness_probe
 
   - name: e2e_test_replica_set_scale
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_scale
 
   - name: e2e_test_replica_set_change_version
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_change_version
 
   - name: e2e_test_replica_set_multiple
     commands:
-      - func: clone
-      - func: setup_kubernetes_environment
       - func: run_e2e_test
         vars:
           test: replica_set_multiple
@@ -228,13 +280,15 @@ buildvariants:
       - name: build_testrunner_image
         variant: init_test_run
     tasks:
-      - name: e2e_test_replica_set
-      - name: e2e_test_replica_set_readiness_probe
-      - name: e2e_test_replica_set_scale
-      - name: e2e_test_replica_set_change_version
-      - name: e2e_test_feature_compatibility_version
-      - name: e2e_test_feature_compatibility_version_upgrade
-      - name: e2e_test_replica_set_multiple
+      - name: e2e_test_group
+
+  - name: code_health
+    display_name: code_health
+    run_on:
+      - ubuntu1604-build
+    tasks:
+      - name: mypy_linting
+
 
   - name: code_health
     display_name: code_health

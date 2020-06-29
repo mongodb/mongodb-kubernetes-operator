@@ -2,22 +2,64 @@
 
 # This should be copied to .git/hooks/pre-commit
 
-if ! type goimports &> /dev/null; then
-    echo "Installing goimports"
-    GO111MODULE=off go get golang.org/x/tools/cmd/goimports
+function go_imports() {
+    if ! type goimports &> /dev/null; then
+        echo "Installing goimports"
+        GO111MODULE=off go get golang.org/x/tools/cmd/goimports
+    fi
+
+    # Formats each file that was changed.
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+    do
+        goimports -w "${file}"
+        git add "$file"
+    done
+
+}
+
+function mypy_check()
+{
+    local exit_status=0
+    # Mypy doesn't support recursive traversal of directories
+    # So we manually call it on every staged python file
+    echo "Running mypy on staged python files"
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+    do
+        echo "Analyzing $file ..."
+        # We ignore missing import otherwise mypy will complain
+        # about 3rd party libraries not providing type hints
+        if ! mypy --ignore-missing-imports "${file}"; then
+            exit_status=1
+        fi
+    done
+    return $exit_status
+}
+
+function black_formatting()
+{
+    # Black formatting of every python file that was changed
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+    do
+        black -q "$file"
+        git add "$file"
+    done
+}
+
+
+
+go_imports
+black_formatting
+mypy_check
+if [ $? -ne 0 ]; then
+    echo "MyPy returned some errors, please correct them"
+    echo "Commit aborted"
+    # In some cases we might encounter mypy errors that we do not
+    # actually treat as such. So we provide a link to the dev
+    # for ignoring them through code annotation
+    echo "If some of the errors reported are false positives "\
+         "and should be ignored, mypy provides a way to silence "\
+         "errors: https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"\
+         "\nPlease use this only for errors that you are sure are"\
+         " false positives."
+    exit 1
 fi
-
-# Formats each go file that was changed.
-for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
-do
-    goimports -w "${file}"
-    git add "$file"
-done
-
-
-# Black formatting of every python file that was changed
-for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
-do
-    black -q "$file"
-    git add "$file"
-done
