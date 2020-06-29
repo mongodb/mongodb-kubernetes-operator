@@ -25,7 +25,6 @@ func defaultMongoDbVersion(version string) MongoDbVersionConfig {
 }
 
 func TestBuildAutomationConfig(t *testing.T) {
-
 	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
@@ -42,11 +41,14 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Storage.DBPath)
+		assert.Equal(t, SSLModeDisabled, p.Args26.Net.SSL.Mode)
 		assert.Equal(t, "my-rs", p.Args26.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
+
+	assert.Empty(t, ac.SSL.CAFilePath, "the config shouldn't have a trusted CA")
 
 	assert.Len(t, ac.ReplicaSets, 1)
 	rs := ac.ReplicaSets[0]
@@ -62,7 +64,6 @@ func TestBuildAutomationConfig(t *testing.T) {
 }
 
 func TestMongoDbVersions(t *testing.T) {
-
 	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
@@ -173,4 +174,57 @@ func TestVersionManifest_BuildsForVersion(t *testing.T) {
 
 	version = vm.BuildsForVersion("4.2.1")
 	assert.Empty(t, version.Builds)
+}
+
+func TestTLS(t *testing.T) {
+	caPath := "/path/to/ca"
+	certAndKeyPath := "/path/to/cert"
+	mode := SSLModeRequired
+
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(3).
+		SetFCV("4.0").
+		SetTLS(caPath, certAndKeyPath, mode).
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 3)
+
+	// Ensure every process has TLS configured
+	for _, p := range ac.Processes {
+		assert.Equal(t, mode, p.Args26.Net.SSL.Mode)
+		assert.Equal(t, caPath, p.Args26.Net.SSL.CAFile)
+		assert.Equal(t, certAndKeyPath, p.Args26.Net.SSL.PEMKeyFile)
+		assert.True(t, p.Args26.Net.SSL.AllowConnectionsWithoutCertificate)
+	}
+
+	// Ensure the CA was configured as trusted for the agent
+	assert.Equal(t, caPath, ac.SSL.CAFilePath)
+	assert.Equal(t, ClientCertificateModeOptional, ac.SSL.ClientCertificateMode)
+}
+
+func TestTLSIsEnabled(t *testing.T) {
+	// TLS should only be considered enabled if both a CA cert, a cert-key file and a non-disabled mode are set
+	builder := NewBuilder().
+		SetTLS("", "", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("", "/path", SSLModeRequired)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "/path", SSLModeDisabled)
+	assert.False(t, builder.isTLSEnabled())
+
+	builder = NewBuilder().
+		SetTLS("/path", "/path", SSLModeRequired)
+	assert.True(t, builder.isTLSEnabled())
 }
