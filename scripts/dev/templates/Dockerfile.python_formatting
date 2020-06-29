@@ -1,8 +1,8 @@
 FROM {{base_image}}
 
 
-{% for add in adds %}
-ADD {{add}} {{add}}
+{% for file in files_to_add %}
+ADD {{file}} {{file}}
 {% endfor %}
 
 ADD {{script_location}} {{script_location}}
