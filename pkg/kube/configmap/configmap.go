@@ -67,12 +67,12 @@ func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value s
 // CreateOrUpdate creates the given ConfigMap if it doesn't exist,
 // or updates it if it does.
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, cm corev1.ConfigMap) error {
-	cMap, err := getUpdateCreator.GetConfigMap(types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace})
+	_, err := getUpdateCreator.GetConfigMap(types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			return getUpdateCreator.CreateConfigMap(cm)
 		}
 		return err
 	}
-	return getUpdateCreator.UpdateConfigMap(cMap)
+	return getUpdateCreator.UpdateConfigMap(cm)
 }

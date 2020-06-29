@@ -1,7 +1,10 @@
 package statefulset
 
 import (
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -10,6 +13,64 @@ import (
 const (
 	notFound = -1
 )
+
+type Getter interface {
+	GetStatefulSet(objectKey client.ObjectKey) (appsv1.StatefulSet, error)
+}
+
+type Updater interface {
+	UpdateStatefulSet(sts appsv1.StatefulSet) error
+}
+
+type Creator interface {
+	CreateStatefulSet(sts appsv1.StatefulSet) error
+}
+
+type Deleter interface {
+	DeleteStatefulSet(objectKey client.ObjectKey) error
+}
+
+type GetUpdater interface {
+	Getter
+	Updater
+}
+
+type GetUpdateCreator interface {
+	Getter
+	Updater
+	Creator
+}
+
+type GetUpdateCreateDeleter interface {
+	Getter
+	Updater
+	Creator
+	Deleter
+}
+
+// CreateOrUpdate creates the given StatefulSet if it doesn't exist,
+// or updates it if it does.
+func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) error {
+	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			return getUpdateCreator.CreateStatefulSet(sts)
+		}
+		return err
+	}
+	return getUpdateCreator.UpdateStatefulSet(sts)
+}
+
+// GetAndUpdate applies the provided function to the most recent version of the object
+func GetAndUpdate(getUpdater GetUpdater, nsName types.NamespacedName, updateFunc func(*appsv1.StatefulSet)) error {
+	sts, err := getUpdater.GetStatefulSet(nsName)
+	if err != nil {
+		return err
+	}
+	// apply the function on the most recent version of the resource
+	updateFunc(&sts)
+	return getUpdater.UpdateStatefulSet(sts)
+}
 
 // VolumeMountData contains values required for the MountVolume function
 type VolumeMountData struct {

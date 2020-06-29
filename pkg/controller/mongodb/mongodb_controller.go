@@ -199,8 +199,7 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 		return nil
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	sts := &appsv1.StatefulSet{}
-	return r.client.GetAndUpdate(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, sts, func() {
+	return statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
 }
@@ -246,7 +245,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
-	if err = r.client.CreateOrUpdate(&set); err != nil {
+	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
@@ -284,11 +283,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	if err != nil {
 		return err
 	}
-
-	if err := r.client.CreateOrUpdate(&cm); err != nil {
-		return err
-	}
-	return nil
+	return configmap.CreateOrUpdate(r.client, cm)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {

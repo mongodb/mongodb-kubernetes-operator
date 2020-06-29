@@ -21,6 +21,10 @@ type Creator interface {
 	CreateSecret(secret corev1.Secret) error
 }
 
+type Deleter interface {
+	DeleteSecret(objectKey client.ObjectKey) error
+}
+
 type GetUpdater interface {
 	Getter
 	Updater
@@ -30,6 +34,13 @@ type GetUpdateCreator interface {
 	Getter
 	Updater
 	Creator
+}
+
+type GetUpdateCreateDeleter interface {
+	Getter
+	Updater
+	Creator
+	Deleter
 }
 
 func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, error) {
@@ -58,7 +69,12 @@ func ReadStringData(getter Getter, key client.ObjectKey) (map[string]string, err
 	if err != nil {
 		return nil, err
 	}
-	return secret.StringData, nil
+
+	stringData := make(map[string]string)
+	for k, v := range secret.Data {
+		stringData[k] = string(v)
+	}
+	return stringData, nil
 }
 
 // UpdateField updates a single field in the secret with the provided objectKey

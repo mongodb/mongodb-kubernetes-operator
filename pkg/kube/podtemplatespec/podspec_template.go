@@ -75,6 +75,20 @@ func WithInitContainer(name string, containerfunc func(*corev1.Container)) Modif
 	}
 }
 
+// WithInitContainerByIndex applies the modifications to the container with the provided index
+// if the index is out of range, a new container is added to accept these changes.
+func WithInitContainerByIndex(index int, funcs ...func(container *corev1.Container)) func(podTemplateSpec *corev1.PodTemplateSpec) {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		if index >= len(podTemplateSpec.Spec.InitContainers) {
+			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{})
+		}
+		c := &podTemplateSpec.Spec.InitContainers[index]
+		for _, f := range funcs {
+			f(c)
+		}
+	}
+}
+
 // WithPodLabels sets the PodTemplateSpec's Labels
 func WithPodLabels(labels map[string]string) Modification {
 	if labels == nil {
