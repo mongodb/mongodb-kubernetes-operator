@@ -61,18 +61,12 @@ func (c client) GetConfigMap(objectKey k8sClient.ObjectKey) (corev1.ConfigMap, e
 
 // UpdateConfigMap provides a thin wrapper and client.Client to update corev1.ConfigMap types
 func (c client) UpdateConfigMap(cm corev1.ConfigMap) error {
-	if err := c.Update(context.TODO(), &cm); err != nil {
-		return err
-	}
-	return nil
+	return c.Update(context.TODO(), &cm)
 }
 
 // CreateConfigMap provides a thin wrapper and client.Client to create corev1.ConfigMap types
 func (c client) CreateConfigMap(cm corev1.ConfigMap) error {
-	if err := c.Create(context.TODO(), &cm); err != nil {
-		return err
-	}
-	return nil
+	return c.Create(context.TODO(), &cm)
 }
 
 // GetSecret provides a thin wrapper and client.Client to access corev1.Secret types
@@ -86,18 +80,12 @@ func (c client) GetSecret(objectKey k8sClient.ObjectKey) (corev1.Secret, error) 
 
 // UpdateSecret provides a thin wrapper and client.Client to update corev1.Secret types
 func (c client) UpdateSecret(secret corev1.Secret) error {
-	if err := c.Update(context.TODO(), &secret); err != nil {
-		return err
-	}
-	return nil
+	return c.Update(context.TODO(), &secret)
 }
 
 // CreateSecret provides a thin wrapper and client.Client to create corev1.Secret types
 func (c client) CreateSecret(secret corev1.Secret) error {
-	if err := c.Create(context.TODO(), &secret); err != nil {
-		return err
-	}
-	return nil
+	return c.Create(context.TODO(), &secret)
 }
 
 // DeleteSecret provides a thin wrapper and client.Client to delete corev1.Secret types
@@ -108,10 +96,7 @@ func (c client) DeleteSecret(key k8sClient.ObjectKey) error {
 			Namespace: key.Namespace,
 		},
 	}
-	if err := c.Delete(context.TODO(), &s); err != nil {
-		return err
-	}
-	return nil
+	return c.Delete(context.TODO(), &s)
 }
 
 // GetService provides a thin wrapper and client.Client to access corev1.Service types
@@ -125,18 +110,12 @@ func (c client) GetService(objectKey k8sClient.ObjectKey) (corev1.Service, error
 
 // UpdateService provides a thin wrapper and client.Client to update corev1.Service types
 func (c client) UpdateService(secret corev1.Service) error {
-	if err := c.Update(context.TODO(), &secret); err != nil {
-		return err
-	}
-	return nil
+	return c.Update(context.TODO(), &secret)
 }
 
 // CreateService provides a thin wrapper and client.Client to create corev1.Service types
 func (c client) CreateService(s corev1.Service) error {
-	if err := c.Create(context.TODO(), &s); err != nil {
-		return err
-	}
-	return nil
+	return c.Create(context.TODO(), &s)
 }
 
 // GetStatefulSet provides a thin wrapper and client.Client to access appsv1.StatefulSet types
@@ -150,18 +129,12 @@ func (c client) GetStatefulSet(objectKey k8sClient.ObjectKey) (appsv1.StatefulSe
 
 // UpdateStatefulSet provides a thin wrapper and client.Client to update appsv1.StatefulSet types
 func (c client) UpdateStatefulSet(sts appsv1.StatefulSet) error {
-	if err := c.Update(context.TODO(), &sts); err != nil {
-		return err
-	}
-	return nil
+	return c.Update(context.TODO(), &sts)
 }
 
 // CreateStatefulSet provides a thin wrapper and client.Client to create appsv1.StatefulSet types
 func (c client) CreateStatefulSet(sts appsv1.StatefulSet) error {
-	if err := c.Create(context.TODO(), &sts); err != nil {
-		return err
-	}
-	return nil
+	return c.Create(context.TODO(), &sts)
 }
 
 // DeleteStatefulSet provides a thin wrapper and client.Client to delete appsv1.StatefulSet types
@@ -172,10 +145,7 @@ func (c client) DeleteStatefulSet(objectKey k8sClient.ObjectKey) error {
 			Namespace: objectKey.Namespace,
 		},
 	}
-	if err := c.Delete(context.TODO(), &sts); err != nil {
-		return err
-	}
-	return nil
+	return c.Delete(context.TODO(), &sts)
 }
 
 func namespacedNameFromObject(obj runtime.Object) types.NamespacedName {
