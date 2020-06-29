@@ -71,10 +71,11 @@ def parse_args():
     parser.add_argument(
         "--script_location",
         help="Location of the python script to run. (Used only for python_formatting)",
+        type=str,
     )
     args = parser.parse_args()
 
-    if "script_location" in vars(args) and args.image != "python_formatting":
+    if args.script_location is not None and args.image != "python_formatting":
         parser.error(
             'The --script_location argument can be used only when the image used is "python_formatting"'
         )
