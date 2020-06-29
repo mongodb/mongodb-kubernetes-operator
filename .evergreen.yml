@@ -288,13 +288,6 @@ buildvariants:
       - ubuntu1604-build
     tasks:
       - name: mypy_linting
-
-
-  - name: code_health
-    display_name: code_health
-    run_on:
-      - ubuntu1604-build
-    tasks:
       - name: black_formatting
 
   - name: init_test_run
