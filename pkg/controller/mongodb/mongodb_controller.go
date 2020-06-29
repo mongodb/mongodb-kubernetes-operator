@@ -284,7 +284,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 
 		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
 		if err := r.ensureAutomationConfig(mdb); err != nil {
-			r.log.Warnf("error updating automation config after TLS rollout: %s", err)
+			r.log.Warnf("Error updating automation config after TLS rollout: %s", err)
 			return err
 		}
 
@@ -389,7 +389,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 
 	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
 	// The agent needs these to be in place before the config is updated.
-	// The agents will handle the gradual introduction of TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
 	if mdb.Spec.TLS.Enabled && mdb.HasRolledOutTLS() {
 		mode := automationconfig.SSLModeRequired
 		if mdb.Spec.TLS.Optional {

@@ -52,7 +52,7 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 			TLS: mdbv1.TLS{
 				Enabled:         true,
 				CAConfigMapRef:  "caConfigMap",
-				ServerSecretRef: "secretRef",
+				ServerSecretRef: "serverSecret",
 			},
 		},
 	}
