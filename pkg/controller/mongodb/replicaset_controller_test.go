@@ -250,6 +250,30 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := client.NewManager(&mdb)
+
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mdb.Spec.TLS.ServerSecretRef,
+			Namespace: mdb.Namespace,
+		},
+		Data: map[string][]byte{
+			"tls.crt": []byte("CERT"),
+			"tls.key": []byte("KEY"),
+		},
+	}
+	mgr.GetClient().Create(context.TODO(), &secret)
+
+	configMap := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mdb.Spec.TLS.CAConfigMapRef,
+			Namespace: mdb.Namespace,
+		},
+		Data: map[string]string{
+			"ca.crt": "CERT",
+		},
+	}
+	mgr.GetClient().Create(context.TODO(), &configMap)
+
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
