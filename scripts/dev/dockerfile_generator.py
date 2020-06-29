@@ -3,7 +3,7 @@ import argparse
 import os
 
 
-def operator_params(files_to_add: str) -> dict:
+def operator_params(files_to_add):
     return {
         "builder": True,
         "builder_image": "golang",
@@ -12,7 +12,7 @@ def operator_params(files_to_add: str) -> dict:
     }
 
 
-def test_runner_params(files_to_add: str) -> dict:
+def test_runner_params(files_to_add):
     return {
         "builder": True,
         "builder_image": "golang",  # TODO: make this image smaller. There were errors using alpine
@@ -21,21 +21,21 @@ def test_runner_params(files_to_add: str) -> dict:
     }
 
 
-def e2e_params(files_to_add: str) -> dict:
+def e2e_params(files_to_add):
     return {
         "base_image": "golang",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
 
-def unit_test_params(files_to_add: str) -> dict:
+def unit_test_params(files_to_add):
     return {
         "base_image": "golang",
         "files_to_add": files_to_add,
     }
 
 
-def python_formatting_params(files_to_add: str, script: str) -> dict:
+def python_formatting_params(files_to_add, script):
     return {
         "base_image": "python:slim",
         "files_to_add": files_to_add,
@@ -43,7 +43,7 @@ def python_formatting_params(files_to_add: str, script: str) -> dict:
     }
 
 
-def render(image_name: str, files_to_add: str, script_location: str) -> str:
+def render(image_name, files_to_add, script_location):
     param_dict = {
         "unittest": unit_test_params(files_to_add),
         "e2e": e2e_params(files_to_add),
