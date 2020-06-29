@@ -71,7 +71,6 @@ def parse_args():
     parser.add_argument(
         "--script_location",
         help="Location of the python script to run. (Used only for python_formatting)",
-        default="./scripts/ci/run_black_formatting_check.sh",
     )
     args = parser.parse_args()
 
