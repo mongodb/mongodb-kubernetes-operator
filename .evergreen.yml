@@ -103,7 +103,19 @@ functions:
           KUBECONFIG: ${workdir}/kube_config
         command: "python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json"
 
-      
+  mypy_linting_test:
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        command: "pip3 install mypy"
+
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        command: "find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
+
 
   build_and_push_image:
     - command: subprocess.exec
@@ -183,6 +195,13 @@ tasks:
       - func: clone
       - func: go_test
 
+
+  - name: mypy_linting
+    commands:
+        - func: clone
+        - func: mypy_linting_test
+
+
   - name: e2e_test_feature_compatibility_version
     commands:
       - func: run_e2e_test
@@ -248,6 +267,14 @@ buildvariants:
         variant: init_test_run
     tasks:
       - name: e2e_test_group
+
+  - name: code_health
+    display_name: code_health
+    run_on:
+      - ubuntu1604-build
+    tasks:
+      - name: mypy_linting
+
 
   - name: init_test_run
     display_name: init_test_run

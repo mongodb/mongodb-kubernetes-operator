@@ -10,7 +10,7 @@ import k8s_conditions
 import k8s_request_data
 import dump_diagnostic
 from dockerutil import build_and_push_image
-from typing import Dict, Optional
+from typing import Dict
 from dev_config import load_config
 from kubernetes import client, config
 import argparse
@@ -22,19 +22,19 @@ import yaml
 TEST_RUNNER_NAME = "test-runner"
 
 
-def _load_testrunner_service_account() -> Optional[Dict]:
+def _load_testrunner_service_account() -> Dict:
     return load_yaml_from_file("deploy/testrunner/service_account.yaml")
 
 
-def _load_testrunner_role() -> Optional[Dict]:
+def _load_testrunner_role() -> Dict:
     return load_yaml_from_file("deploy/testrunner/role.yaml")
 
 
-def _load_testrunner_role_binding() -> Optional[Dict]:
+def _load_testrunner_role_binding() -> Dict:
     return load_yaml_from_file("deploy/testrunner/role_binding.yaml")
 
 
-def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
+def _load_testrunner_cluster_role_binding() -> Dict:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
