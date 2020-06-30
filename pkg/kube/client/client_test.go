@@ -17,7 +17,7 @@ func TestChangingName_CreatesNewObject(t *testing.T) {
 		Build()
 
 	client := NewClient(NewMockedClient())
-	err := client.CreateOrUpdate(&cm)
+	err := configmap.CreateOrUpdate(client, cm)
 	assert.NoError(t, err)
 
 	newCm := corev1.ConfigMap{}
@@ -33,7 +33,7 @@ func TestChangingName_CreatesNewObject(t *testing.T) {
 	newCm.Name = "new-name"
 
 	objectKey, _ = k8sClient.ObjectKeyFromObject(&newCm)
-	_ = client.CreateOrUpdate(&newCm)
+	_ = configmap.CreateOrUpdate(client, newCm)
 
 	_ = client.Get(context.TODO(), objectKey, &newCm)
 
@@ -48,11 +48,11 @@ func TestAddingDataField_ModifiesExistingObject(t *testing.T) {
 		Build()
 
 	client := NewClient(NewMockedClient())
-	err := client.CreateOrUpdate(&cm)
+	err := configmap.CreateOrUpdate(client, cm)
 	assert.NoError(t, err)
 
 	cm.Data["new-field"] = "value"
-	_ = client.CreateOrUpdate(&cm)
+	_ = configmap.CreateOrUpdate(client, cm)
 
 	newCm := corev1.ConfigMap{}
 	objectKey, err := k8sClient.ObjectKeyFromObject(&newCm)
