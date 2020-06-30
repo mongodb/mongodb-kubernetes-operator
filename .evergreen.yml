@@ -204,6 +204,7 @@ tasks:
   - name: unit_tests
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: go_test
 
 
