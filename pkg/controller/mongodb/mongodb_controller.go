@@ -599,40 +599,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
-	agentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume}
-	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, dataVolume}
-
-	tlsPodSpec := podtemplatespec.NOOP()
-	if mdb.Spec.TLS.Enabled {
-		// Configure an empty volume into which the TLS init container will write the certificate and key file
-		tlsVolume := statefulset.CreateVolumeFromEmptyDir("tls")
-		tlsVolumeMount := statefulset.CreateVolumeMount(tlsVolume.Name, tlsServerMountPath, statefulset.WithReadOnly(false))
-		agentVolumeMounts = append(agentVolumeMounts, tlsVolumeMount)
-		mongodVolumeMounts = append(mongodVolumeMounts, tlsVolumeMount)
-
-		// Configure a volume which mounts the CA certificate from a ConfigMap
-		// The certificate is used by both mongod and the agent
-		caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapRef)
-		caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
-		agentVolumeMounts = append(agentVolumeMounts, caVolumeMount)
-		mongodVolumeMounts = append(mongodVolumeMounts, caVolumeMount)
-
-		// Configure a volume which mounts the secret holding the server key and certificate
-		// The same key-certificate pair is used for all servers
-		tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretRef)
-		tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
-
-		// MongoDB expects both key and certificate to be provided in a single PEM file
-		// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
-		// Because of this we need to use an init container which reads the two files mounted from the secret and combines them into one
-		tlsPodSpec = podtemplatespec.Apply(
-			podtemplatespec.WithInitContainer("tls-init", tlsInit(tlsVolumeMount, tlsSecretVolumeMount)),
-			podtemplatespec.WithVolume(tlsVolume),
-			podtemplatespec.WithVolume(caVolume),
-			podtemplatespec.WithVolume(tlsSecretVolume),
-		)
-	}
-
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
 		statefulset.WithNamespace(mdb.Namespace),
@@ -650,12 +616,45 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithVolume(hooksVolume),
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(agentVolumeMounts)),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, mongodVolumeMounts)),
+				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
+				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				tlsPodSpec,
+				buildTLSPodSpecModification(mdb),
 			),
 		),
+	)
+}
+
+// buildTLSPodSpecModification will add the TLS init container and volumes to the pod template if TLS is enabled.
+func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification {
+	if !mdb.Spec.TLS.Enabled {
+		return podtemplatespec.NOOP()
+	}
+
+	// Configure an empty volume into which the TLS init container will write the certificate and key file
+	tlsVolume := statefulset.CreateVolumeFromEmptyDir("tls")
+	tlsVolumeMount := statefulset.CreateVolumeMount(tlsVolume.Name, tlsServerMountPath, statefulset.WithReadOnly(false))
+
+	// Configure a volume which mounts the CA certificate from a ConfigMap
+	// The certificate is used by both mongod and the agent
+	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapRef)
+	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
+
+	// Configure a volume which mounts the secret holding the server key and certificate
+	// The same key-certificate pair is used for all servers
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretRef)
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
+
+	// MongoDB expects both key and certificate to be provided in a single PEM file
+	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
+	// Because of this we need to use an init container which reads the two files mounted from the secret and combines them into one
+	return podtemplatespec.Apply(
+		podtemplatespec.WithInitContainer("tls-init", tlsInit(tlsVolumeMount, tlsSecretVolumeMount)),
+		podtemplatespec.WithVolume(tlsVolume),
+		podtemplatespec.WithVolume(caVolume),
+		podtemplatespec.WithVolume(tlsSecretVolume),
+		podtemplatespec.WithVolumeMounts(agentName, tlsVolumeMount, caVolumeMount),
+		podtemplatespec.WithVolumeMounts(mongodbName, tlsVolumeMount, caVolumeMount),
 	)
 }
 
