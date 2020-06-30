@@ -201,6 +201,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
+		r.log.Warnf("Error completing TLS rollout: %+v", err)
 		return reconcile.Result{}, err
 	}
 
