@@ -107,7 +107,7 @@ functions:
         script: |
             . venv/bin/activate
             pip3 install -r ./requirements.txt
-            python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json
+            KUBECONFIG=${workdir}/kube_config python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json
 
   mypy_linting_test:
     - command: shell.exec
@@ -117,7 +117,7 @@ functions:
         script: |
             . venv/bin/activate
             pip3 install mypy
-            find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +
+            find . -type f -not -path '*venv*' -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +
 
 
   build_and_push_image:
