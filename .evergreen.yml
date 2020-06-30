@@ -90,25 +90,28 @@ functions:
           KUBECONFIG: ${workdir}/kube_config
 
   black_formatting_test:
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "black --check `find . -type f -not -path '*venv*' -name '*.py'`"
+        binary: scrips/ci/run_black_formatting_check.sh
+
 
   run_e2e_test:
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "KUBECONFIG=${workdir}/kube_config python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json"
+        env:
+          KUBECONFIG: ${workdir}/kube_config
+        binary: scripts/ci/run_test.sh
 
   mypy_linting_test:
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "find . -type f -not -path '*venv*' -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
+        binary: scripts/ci/run_mypy_check.sh
 
 
   build_and_push_image:
