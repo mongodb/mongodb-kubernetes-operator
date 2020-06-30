@@ -156,7 +156,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if shouldRetry, err := r.checkTLSConfig(mdb); err != nil {
 		if shouldRetry {
 			// TODO: Use Kubernetes events to expose these errors to the user
-			r.log.Infof("Error in TLS configuration, retrying in 10 seconds: %s", err.Error())
+			r.log.Warnf("Error in TLS configuration, retrying in 10 seconds: %s", err.Error())
 			return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 
