@@ -210,6 +210,7 @@ tasks:
   - name: mypy_linting
     commands:
         - func: clone
+        - func: setup_virtualenv
         - func: mypy_linting_test
 
 
