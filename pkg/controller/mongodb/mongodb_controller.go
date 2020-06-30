@@ -602,7 +602,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	agentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume}
 	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, dataVolume}
 
-	tlsPodSpec := podtemplatespec.Apply()
+	tlsPodSpec := podtemplatespec.NOOP()
 	if mdb.Spec.TLS.Enabled {
 		// Configure an empty volume into which the TLS init container will write the certificate and key file
 		tlsVolume := statefulset.CreateVolumeFromEmptyDir("tls")
