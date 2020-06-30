@@ -280,19 +280,21 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 // At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
 // The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
 func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
-	if mdb.Spec.TLS.Enabled && !mdb.HasRolledOutTLS() {
-		r.log.Debug("Completing TLS rollout")
+	if !mdb.Spec.TLS.Enabled || mdb.HasRolledOutTLS() {
+		return nil
+	}
 
-		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
-		if err := r.ensureAutomationConfig(mdb); err != nil {
-			r.log.Warnf("Error updating automation config after TLS rollout: %s", err)
-			return err
-		}
+	r.log.Debug("Completing TLS rollout")
 
-		if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.TLSRolledOutKey, "true"); err != nil {
-			r.log.Warnf("Error setting TLS annotation: %+v", err)
-			return err
-		}
+	mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+	if err := r.ensureAutomationConfig(mdb); err != nil {
+		r.log.Warnf("Error updating automation config after TLS rollout: %s", err)
+		return err
+	}
+
+	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Name}, mdbv1.TLSRolledOutKey, "true"); err != nil {
+		r.log.Warnf("Error setting TLS annotation: %+v", err)
+		return err
 	}
 
 	return nil
