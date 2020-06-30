@@ -42,6 +42,17 @@ type MongoDBSpec struct {
 	// be set for the deployment
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
+
+	Security Security `json:"security"`
+}
+
+type Security struct {
+	Authentication Authentication `json:"authentication"`
+}
+
+type Authentication struct {
+	Enabled bool     `json:"enabled"`
+	Modes   []string `json:"modes"`
 }
 
 // MongoDBStatus defines the observed state of MongoDB

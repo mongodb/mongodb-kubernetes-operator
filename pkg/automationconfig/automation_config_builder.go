@@ -12,7 +12,12 @@ const (
 	ReplicaSetTopology Topology = "ReplicaSet"
 )
 
+type Enabler interface {
+	Enable(ac *AutomationConfig) error
+}
+
 type Builder struct {
+	enabler           Enabler
 	processes         []Process
 	replicaSets       []ReplicaSet
 	version           int
@@ -37,6 +42,11 @@ func NewBuilder() *Builder {
 		replicaSets: []ReplicaSet{},
 		versions:    []MongoDbVersionConfig{},
 	}
+}
+
+func (b *Builder) SetEnabler(enabler Enabler) *Builder {
+	b.enabler = enabler
+	return b
 }
 
 func (b *Builder) SetTopology(topology Topology) *Builder {
@@ -134,6 +144,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
 	}
+	//
+	//if err := b.enabler.Enable(&currentAc); err != nil {
+	//	return AutomationConfig{}, err
+	//}
 
 	// Set up TLS between agent and server
 	// Agent needs to trust the certificate presented by the server
