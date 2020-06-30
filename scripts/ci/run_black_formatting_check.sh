@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
+. venv/bin/activate
 pip3 install black
-if ! black -q --check ${1}
-then
-    echo "Black formatting check failed!"
-    exit 1
-fi
-
-exit 0
+black --check `find . -type f -not -path '*venv*' -name '*.py'`

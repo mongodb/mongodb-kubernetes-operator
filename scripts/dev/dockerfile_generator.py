@@ -56,7 +56,7 @@ def render(image_name, files_to_add, script_location):
 
     env = jinja2.Environment()
     env.loader = jinja2.FileSystemLoader(searchpath="scripts/dev/templates")
-    return env.get_template("Dockerfile.{}".format(image_name)).render(render_values)
+    return env.get_template(f"Dockerfile.{image_name}".render(render_values))
 
 
 def parse_args():

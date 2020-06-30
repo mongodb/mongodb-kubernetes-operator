@@ -111,7 +111,7 @@ def deploy_operator():
         lambda: appsv1.create_namespaced_deployment(
             dev_config.namespace,
             _load_operator_deployment(
-                "{}/mongodb-kubernetes-operator".format(dev_config.repo_url)
+                f"{dev_config.repo_url}/mongodb-kubernetes-operator"
             ),
         )
     )
@@ -121,9 +121,7 @@ def main():
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
-        dev_config.repo_url,
-        "{}/mongodb-kubernetes-operator".format(dev_config.repo_url),
-        ".",
+        dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", ".",
     )
     deploy_operator()
 

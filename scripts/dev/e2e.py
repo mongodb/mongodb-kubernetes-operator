@@ -153,8 +153,7 @@ def create_test_runner_pod(
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace,
-            field_selector="metadata.name=={}".format(TEST_RUNNER_NAME),
+            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,
@@ -196,27 +195,19 @@ def _get_testrunner_pod_body(
             "containers": [
                 {
                     "name": "test-runner",
-                    "image": "{}/{}:{}".format(
-                        dev_config.repo_url, test_runner_image_name, tag
-                    ),
+                    "image": f"{dev_config.repo_url}/{test_runner_image_name}:{tag}",
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.operator_image, tag
-                        ),
+                        f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
                         "--preHookImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.prestop_hook_image, tag
-                        ),
+                        f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{tag}",
                         "--testImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.e2e_image, tag
-                        ),
-                        "--test={}".format(test),
-                        "--namespace={}".format(dev_config.namespace),
-                        "--skipCleanup={}".format(skip_cleanup),
+                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
+                        f"--test={test}",
+                        f"--namespace={dev_config.namespace}",
+                        f"--skipCleanup={skip_cleanup}",
                     ],
                 }
             ],
@@ -260,26 +251,24 @@ def build_and_push_images(args, dev_config):
     if not args.skip_operator_install:
         build_and_push_operator(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
+            f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
             ".",
         )
         deploy_operator()
         if not args.skip_image_build:
             build_and_push_testrunner(
                 dev_config.repo_url,
-                "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
+                f"{dev_config.repo_url}/{test_runner_name}:{args.tag}",
                 ".",
             )
             build_and_push_e2e(
                 dev_config.repo_url,
-                "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
+                f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
                 ".",
             )
             build_and_push_prehook(
                 dev_config.repo_url,
-                "{}/{}:{}".format(
-                    dev_config.repo_url, dev_config.prestop_hook_image, args.tag
-                ),
+                f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{args.tag}",
                 ".",
             )
 
