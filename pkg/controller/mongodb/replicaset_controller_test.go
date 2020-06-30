@@ -50,9 +50,9 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 			Members: 3,
 			Version: "4.2.2",
 			TLS: mdbv1.TLS{
-				Enabled:         true,
-				CAConfigMapRef:  "caConfigMap",
-				ServerSecretRef: "serverSecret",
+				Enabled:          true,
+				CAConfigMapName:  "caConfigMap",
+				ServerSecretName: "serverSecret",
 			},
 		},
 	}
@@ -253,7 +253,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.TLS.ServerSecretRef,
+			Name:      mdb.Spec.TLS.ServerSecretName,
 			Namespace: mdb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -265,7 +265,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.TLS.CAConfigMapRef,
+			Name:      mdb.Spec.TLS.CAConfigMapName,
 			Namespace: mdb.Namespace,
 		},
 		Data: map[string]string{
@@ -295,7 +295,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mdb.Spec.TLS.CAConfigMapRef,
+					Name: mdb.Spec.TLS.CAConfigMapName,
 				},
 			},
 		},
@@ -304,7 +304,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.Spec.TLS.ServerSecretRef,
+				SecretName: mdb.Spec.TLS.ServerSecretName,
 			},
 		},
 	})

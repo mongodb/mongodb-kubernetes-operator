@@ -59,15 +59,15 @@ type TLS struct {
 	// +optional
 	Optional bool `json:"optional"`
 
-	// ServerSecretRef is the name of a secret containing a private key and certificate to use for TLS
+	// ServerSecretName is the name of a secret containing a private key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
-	ServerSecretRef string `json:"serverSecretRef"`
+	ServerSecretName string `json:"serverSecretName"`
 
-	// CAConfigMapRef is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
+	// CAConfigMapName is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CAConfigMapRef string `json:"caConfigMapRef"`
+	CAConfigMapName string `json:"caConfigMapName"`
 }
 
 // MongoDBStatus defines the observed state of MongoDB

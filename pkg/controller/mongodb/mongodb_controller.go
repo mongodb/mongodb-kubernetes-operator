@@ -342,7 +342,7 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 
 	// Ensure CA ConfigMap exists
 	var caConfigMap corev1.ConfigMap
-	configMapName := types.NamespacedName{Name: mdb.Spec.TLS.CAConfigMapRef, Namespace: mdb.Namespace}
+	configMapName := types.NamespacedName{Name: mdb.Spec.TLS.CAConfigMapName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), configMapName, &caConfigMap); err != nil {
 		return errors.IsNotFound(err), err
 	}
@@ -354,7 +354,7 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 
 	// Ensure Secret exists
 	var secret corev1.Secret
-	secretName := types.NamespacedName{Name: mdb.Spec.TLS.ServerSecretRef, Namespace: mdb.Namespace}
+	secretName := types.NamespacedName{Name: mdb.Spec.TLS.ServerSecretName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), secretName, &secret); err != nil {
 		return errors.IsNotFound(err), err
 	}
@@ -637,12 +637,12 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
-	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapRef)
+	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapName)
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
-	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretRef)
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretName)
 	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
