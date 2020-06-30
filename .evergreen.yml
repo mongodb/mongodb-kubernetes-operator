@@ -104,6 +104,9 @@ functions:
         working_dir: mongodb-kubernetes-operator
         env:
           KUBECONFIG: ${workdir}/kube_config
+        include_expansions_in_env:
+          - version_id
+          - test
         binary: scripts/ci/run_test.sh
 
   mypy_linting_test:
