@@ -94,7 +94,7 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        binary: scrips/ci/run_black_formatting_check.sh
+        binary: scripts/ci/run_black_formatting_check.sh
 
 
   run_e2e_test:
