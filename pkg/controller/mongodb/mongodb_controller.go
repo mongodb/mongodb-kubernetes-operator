@@ -292,7 +292,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 		return err
 	}
 
-	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Name}, mdbv1.TLSRolledOutKey, "true"); err != nil {
+	if err := r.setAnnotation(mdb.NamespacedName(), mdbv1.TLSRolledOutKey, "true"); err != nil {
 		r.log.Warnf("Error setting TLS annotation: %+v", err)
 		return err
 	}
