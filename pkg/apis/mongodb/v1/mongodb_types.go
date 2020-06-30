@@ -46,6 +46,12 @@ type MongoDBSpec struct {
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 
+	// Security configures security features, such as TLS, for a deployment
+	// +optional
+	Security Security `json:"security"`
+}
+
+type Security struct {
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`

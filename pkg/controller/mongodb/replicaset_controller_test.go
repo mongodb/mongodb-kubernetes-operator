@@ -49,10 +49,12 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 		Spec: mdbv1.MongoDBSpec{
 			Members: 3,
 			Version: "4.2.2",
-			TLS: mdbv1.TLS{
-				Enabled:          true,
-				CAConfigMapName:  "caConfigMap",
-				ServerSecretName: "serverSecret",
+			Security: mdbv1.Security{
+				TLS: mdbv1.TLS{
+					Enabled:          true,
+					CAConfigMapName:  "caConfigMap",
+					ServerSecretName: "serverSecret",
+				},
 			},
 		},
 	}
@@ -253,7 +255,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.TLS.ServerSecretName,
+			Name:      mdb.Spec.Security.TLS.ServerSecretName,
 			Namespace: mdb.Namespace,
 		},
 		Data: map[string][]byte{
@@ -265,7 +267,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.TLS.CAConfigMapName,
+			Name:      mdb.Spec.Security.TLS.CAConfigMapName,
 			Namespace: mdb.Namespace,
 		},
 		Data: map[string]string{
@@ -295,7 +297,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mdb.Spec.TLS.CAConfigMapName,
+					Name: mdb.Spec.Security.TLS.CAConfigMapName,
 				},
 			},
 		},
@@ -304,7 +306,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.Spec.TLS.ServerSecretName,
+				SecretName: mdb.Spec.Security.TLS.ServerSecretName,
 			},
 		},
 	})
@@ -410,7 +412,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
-		mdb.Spec.TLS.Optional = true
+		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 
 		assert.Equal(t, automationconfig.SSL{

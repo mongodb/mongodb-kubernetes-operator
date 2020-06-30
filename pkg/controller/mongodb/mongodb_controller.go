@@ -279,7 +279,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 // At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
 // The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
 func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
-	if !mdb.Spec.TLS.Enabled || mdb.HasRolledOutTLS() {
+	if !mdb.Spec.Security.TLS.Enabled || mdb.HasRolledOutTLS() {
 		return nil
 	}
 
@@ -334,7 +334,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 
 // checkTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
 func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
-	if !mdb.Spec.TLS.Enabled {
+	if !mdb.Spec.Security.TLS.Enabled {
 		return false, nil
 	}
 
@@ -342,7 +342,7 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 
 	// Ensure CA ConfigMap exists
 	var caConfigMap corev1.ConfigMap
-	configMapName := types.NamespacedName{Name: mdb.Spec.TLS.CAConfigMapName, Namespace: mdb.Namespace}
+	configMapName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CAConfigMapName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), configMapName, &caConfigMap); err != nil {
 		return errors.IsNotFound(err), err
 	}
@@ -354,7 +354,7 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 
 	// Ensure Secret exists
 	var secret corev1.Secret
-	secretName := types.NamespacedName{Name: mdb.Spec.TLS.ServerSecretName, Namespace: mdb.Namespace}
+	secretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.ServerSecretName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), secretName, &secret); err != nil {
 		return errors.IsNotFound(err), err
 	}
@@ -386,9 +386,9 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
 	// The agent needs these to be in place before the config is updated.
 	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-	if mdb.Spec.TLS.Enabled && mdb.HasRolledOutTLS() {
+	if mdb.Spec.Security.TLS.Enabled && mdb.HasRolledOutTLS() {
 		mode := automationconfig.SSLModeRequired
-		if mdb.Spec.TLS.Optional {
+		if mdb.Spec.Security.TLS.Optional {
 			// SSLModePreferred requires server-server connections to use TLS but makes it optional for clients.
 			mode = automationconfig.SSLModePreferred
 		}
@@ -627,7 +627,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 // buildTLSPodSpecModification will add the TLS init container and volumes to the pod template if TLS is enabled.
 func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification {
-	if !mdb.Spec.TLS.Enabled {
+	if !mdb.Spec.Security.TLS.Enabled {
 		return podtemplatespec.NOOP()
 	}
 
@@ -637,12 +637,12 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
-	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.TLS.CAConfigMapName)
+	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CAConfigMapName)
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
-	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.TLS.ServerSecretName)
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.ServerSecretName)
 	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
