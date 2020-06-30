@@ -94,7 +94,8 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: . venv/bin/activate
+        script: |
+            . venv/bin/activate
             pip3 install black
             black --check `find . -type f -not -path '*venv*' -name '*.py'`
 
@@ -103,7 +104,8 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: . venv/bin/activate
+        script: |
+            . venv/bin/activate
             pip3 install -r ./requirements.txt
             python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json
 
@@ -112,7 +114,8 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: . venv/bin/activate
+        script: |
+            . venv/bin/activate
             pip3 install mypy
             find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +
 
