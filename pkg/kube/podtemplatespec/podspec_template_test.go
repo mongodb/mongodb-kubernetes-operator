@@ -9,6 +9,13 @@ import (
 )
 
 func TestPodTemplateSpec(t *testing.T) {
+	volumeMount1 := corev1.VolumeMount{
+		Name: "vol-1",
+	}
+	volumeMount2 := corev1.VolumeMount{
+		Name: "vol-2",
+	}
+
 	p := New(
 		WithVolume(corev1.Volume{
 			Name: "vol-1",
@@ -21,15 +28,20 @@ func TestPodTemplateSpec(t *testing.T) {
 		WithInitContainerByIndex(0, container.Apply(
 			container.WithName("init-container-0"),
 			container.WithImage("init-image"),
+			container.WithVolumeMounts([]corev1.VolumeMount{volumeMount1}),
 		)),
 		WithContainerByIndex(0, container.Apply(
 			container.WithName("container-0"),
 			container.WithImage("image"),
+			container.WithVolumeMounts([]corev1.VolumeMount{volumeMount1}),
 		)),
 		WithContainerByIndex(1, container.Apply(
 			container.WithName("container-1"),
 			container.WithImage("image"),
 		)),
+		WithVolumeMounts("init-container-0", volumeMount2),
+		WithVolumeMounts("container-0", volumeMount2),
+		WithVolumeMounts("container-1", volumeMount1, volumeMount2),
 	)
 
 	assert.Len(t, p.Spec.Volumes, 2)
@@ -45,12 +57,17 @@ func TestPodTemplateSpec(t *testing.T) {
 	assert.Len(t, p.Spec.InitContainers, 1)
 	assert.Equal(t, "init-container-0", p.Spec.InitContainers[0].Name)
 	assert.Equal(t, "init-image", p.Spec.InitContainers[0].Image)
+	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.InitContainers[0].VolumeMounts)
 
 	assert.Len(t, p.Spec.Containers, 2)
+
 	assert.Equal(t, "container-0", p.Spec.Containers[0].Name)
 	assert.Equal(t, "image", p.Spec.Containers[0].Image)
+	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.Containers[0].VolumeMounts)
+
 	assert.Equal(t, "container-1", p.Spec.Containers[1].Name)
 	assert.Equal(t, "image", p.Spec.Containers[1].Image)
+	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.Containers[0].VolumeMounts)
 }
 
 func TestPodTemplateSpec_MultipleEditsToContainer(t *testing.T) {
