@@ -245,6 +245,8 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	if err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
+
+	fmt.Println("resource: ", mdb)
 	buildStatefulSetModificationFunction(mdb)(&set)
 	if err = r.client.CreateOrUpdate(&set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
@@ -399,6 +401,7 @@ func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyTy
 func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
 	buildStatefulSetModificationFunction(mdb)(&sts)
+
 	return sts, nil
 }
 

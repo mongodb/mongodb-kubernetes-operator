@@ -6,3 +6,9 @@ spec:
   members: 3
   type: ReplicaSet
   version: "4.2.6"
+  statefulset:
+    spec:
+      template:
+        metadata:
+          annotations:
+            key1: value1
