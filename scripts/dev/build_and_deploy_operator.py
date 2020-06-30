@@ -2,6 +2,8 @@ import io
 import os
 from typing import Dict
 
+import sys
+
 import yaml
 from kubernetes import client, config
 
@@ -117,14 +119,15 @@ def deploy_operator():
     )
 
 
-def main():
+def main() -> int:
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
         dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", ".",
     )
     deploy_operator()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

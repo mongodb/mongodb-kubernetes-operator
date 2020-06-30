@@ -7,7 +7,7 @@ functions:
       type: setup
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "virtualenv --python /opt/python/3.7/bin/python3 ./venv"
+        binary: scripts/ci/setup_virtualenv.sh
 
   clone:
     - command: subprocess.exec
@@ -94,30 +94,21 @@ functions:
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: |
-            . venv/bin/activate
-            pip3 install black
-            black --check `find . -type f -not -path '*venv*' -name '*.py'`
+        command: "black --check `find . -type f -not -path '*venv*' -name '*.py'`"
 
   run_e2e_test:
     - command: shell.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: |
-            . venv/bin/activate
-            pip3 install -r ./requirements.txt
-            KUBECONFIG=${workdir}/kube_config python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json
+        command: "KUBECONFIG=${workdir}/kube_config python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json"
 
   mypy_linting_test:
     - command: shell.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        script: |
-            . venv/bin/activate
-            pip3 install mypy
-            find . -type f -not -path '*venv*' -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +
+        command: "find . -type f -not -path '*venv*' -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
 
 
   build_and_push_image:

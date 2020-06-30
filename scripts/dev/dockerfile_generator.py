@@ -1,9 +1,11 @@
 import jinja2
 import argparse
 import os
+import sys
+from typing import List, Dict, Union
 
 
-def operator_params(files_to_add):
+def operator_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
     return {
         "builder": True,
         "builder_image": "golang",
@@ -12,7 +14,9 @@ def operator_params(files_to_add):
     }
 
 
-def test_runner_params(files_to_add):
+def test_runner_params(
+    files_to_add: List[str],
+) -> Dict[str, Union[bool, str, List[str]]]:
     return {
         "builder": True,
         "builder_image": "golang",  # TODO: make this image smaller. There were errors using alpine
@@ -21,21 +25,23 @@ def test_runner_params(files_to_add):
     }
 
 
-def e2e_params(files_to_add):
+def e2e_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
     return {
         "base_image": "golang",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
 
-def unit_test_params(files_to_add):
+def unit_test_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
     return {
         "base_image": "golang",
         "files_to_add": files_to_add,
     }
 
 
-def python_formatting_params(files_to_add, script):
+def python_formatting_params(
+    files_to_add, script
+) -> Dict[str, Union[bool, str, List[str]]]:
     return {
         "base_image": "python:slim",
         "files_to_add": files_to_add,
@@ -43,7 +49,7 @@ def python_formatting_params(files_to_add, script):
     }
 
 
-def render(image_name, files_to_add, script_location):
+def render(image_name, files_to_add, script_location) -> str:
     param_dict = {
         "unittest": unit_test_params(files_to_add),
         "e2e": e2e_params(files_to_add),
@@ -58,10 +64,8 @@ def render(image_name, files_to_add, script_location):
     env.loader = jinja2.FileSystemLoader(searchpath="scripts/dev/templates")
     return env.get_template(f"Dockerfile.{image_name}").render(render_values)
 
-    return env.get_template(f"Dockerfile.{image_name}").render(render_values)
 
-
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("image", help="Type of image for the Dockerfile")
     parser.add_argument(
@@ -85,10 +89,11 @@ def parse_args():
     return args
 
 
-def main():
+def main() -> int:
     args = parse_args()
     print(render(args.image, args.files_to_add.split(os.linesep), args.script_location))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
