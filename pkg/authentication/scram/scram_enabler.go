@@ -34,7 +34,7 @@ func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) {
 	auth.KeyFileWindows = automationAgentWindowsKeyFilePath
 	auth.AutoAuthMechanisms = []string{scram256}
 	auth.AutoUser = agentName
-	auth.AutoAuthMechanism = "SCRAM-SHA-256"
+	auth.AutoAuthMechanism = scram256
 	auth.AutoPwd = s.AgentPassword
 	auth.Key = s.AgentKeyFile
 }
