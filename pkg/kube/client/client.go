@@ -50,7 +50,7 @@ func (c client) GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, up
 	return c.Update(context.TODO(), obj)
 }
 
-// GetConfigMap provides a thin wrapper and Client.Client to access corev1.ConfigMap types
+// GetConfigMap provides a thin wrapper and client.client to access corev1.ConfigMap types
 func (c client) GetConfigMap(objectKey k8sClient.ObjectKey) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{}
 	if err := c.Get(context.TODO(), objectKey, &cm); err != nil {
@@ -59,17 +59,17 @@ func (c client) GetConfigMap(objectKey k8sClient.ObjectKey) (corev1.ConfigMap, e
 	return cm, nil
 }
 
-// UpdateConfigMap provides a thin wrapper and Client.Client to update corev1.ConfigMap types
+// UpdateConfigMap provides a thin wrapper and client.Client to update corev1.ConfigMap types
 func (c client) UpdateConfigMap(cm corev1.ConfigMap) error {
 	return c.Update(context.TODO(), &cm)
 }
 
-// CreateConfigMap provides a thin wrapper and Client.Client to create corev1.ConfigMap types
+// CreateConfigMap provides a thin wrapper and client.Client to create corev1.ConfigMap types
 func (c client) CreateConfigMap(cm corev1.ConfigMap) error {
 	return c.Create(context.TODO(), &cm)
 }
 
-// GetSecret provides a thin wrapper and Client.Client to access corev1.Secret types
+// GetSecret provides a thin wrapper and client.Client to access corev1.Secret types
 func (c client) GetSecret(objectKey k8sClient.ObjectKey) (corev1.Secret, error) {
 	s := corev1.Secret{}
 	if err := c.Get(context.TODO(), objectKey, &s); err != nil {
@@ -78,17 +78,17 @@ func (c client) GetSecret(objectKey k8sClient.ObjectKey) (corev1.Secret, error) 
 	return s, nil
 }
 
-// UpdateSecret provides a thin wrapper and Client.Client to update corev1.Secret types
+// UpdateSecret provides a thin wrapper and client.Client to update corev1.Secret types
 func (c client) UpdateSecret(secret corev1.Secret) error {
 	return c.Update(context.TODO(), &secret)
 }
 
-// CreateSecret provides a thin wrapper and Client.Client to create corev1.Secret types
+// CreateSecret provides a thin wrapper and client.Client to create corev1.Secret types
 func (c client) CreateSecret(secret corev1.Secret) error {
 	return c.Create(context.TODO(), &secret)
 }
 
-// DeleteSecret provides a thin wrapper and Client.Client to delete corev1.Secret types
+// DeleteSecret provides a thin wrapper and client.Client to delete corev1.Secret types
 func (c client) DeleteSecret(key k8sClient.ObjectKey) error {
 	s := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
