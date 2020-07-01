@@ -49,6 +49,28 @@ spec:
             members:
               description: Members is the number of members in the replica set
               type: integer
+            security:
+              description: Security configures security features, such as TLS, and
+                authentication settings for a deployment
+              properties:
+                authentication:
+                  properties:
+                    enabled:
+                      description: Enabled specifies if authentication should be enabled
+                      type: boolean
+                    modes:
+                      description: Modes is an array specifying which authentication
+                        methods should be enabled
+                      items:
+                        enum:
+                        - SCRAM
+                        type: string
+                      type: array
+                  required:
+                  - enabled
+                  - modes
+                  type: object
+              type: object
             type:
               description: Type defines which type of MongoDB deployment the resource
                 should create

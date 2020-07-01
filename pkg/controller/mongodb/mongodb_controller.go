@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -136,7 +134,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	if err := r.ensureAutomationConfig(mdb); err != nil {
+	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	if err != nil {
+		r.log.Warnf("Error configuring authentication: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	if err := r.ensureAutomationConfig(mdb, enabler); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
@@ -280,25 +284,21 @@ func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (
 	return newMdb.Status, nil
 }
 
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb)
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB, enabler automationconfig.AuthEnabler) error {
+	cm, err := r.buildAutomationConfigConfigMap(mdb, enabler)
 	if err != nil {
 		return err
 	}
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, enabler automationconfig.AuthEnabler) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
-	currentAc, err := getCurrentAutomationConfig(client, mdb)
+	currentAc, err := getCurrentAutomationConfig(getUpdater, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
-
-	password := "1231hdsifhdsjkfhkjsdfhjksdhfjkdjskf"
-	keyfile := "sdjkhfkjsdhfkjdshfkjdshkfjdshfkjsdhfkjshfksahkfhakhfjdsafhksd"
-
 	newAc, err := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -308,10 +308,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
-		SetEnabler(scram.Enabler{
-			AgentPassword: password,
-			AgentKeyFile:  keyfile,
-		}).
+		SetAuthEnabler(enabler).
 		Build()
 
 	if err != nil {
@@ -368,13 +365,14 @@ func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.Mongo
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB, enabler automationconfig.AuthEnabler) (corev1.ConfigMap, error) {
+
 	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), r.client)
+	ac, err := buildAutomationConfig(r.client, mdb, manifest.BuildsForVersion(mdb.Spec.Version), enabler)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -443,22 +441,6 @@ func preStopHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 	)
 }
 
-func keyFileInit(volumeMount []corev1.VolumeMount) container.Modification {
-	cmd := []string{
-		"chmod",
-		"-R",
-		"600",
-		"/var/lib/mongodb-mms-automation/keyfile",
-	}
-	return container.Apply(
-		container.WithName("keyfile-init"),
-		container.WithCommand(cmd),
-		container.WithImage("busybox"),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithVolumeMounts(volumeMount),
-	)
-}
-
 // /var/lib/mongodb-mms-automation/keyfile
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
 	mongoDbCommand := []string{
@@ -522,43 +504,10 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	//keyFileVolume := statefulset.CreateVolumeFromEmptyDir("keyfile")
-	//keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(false))
-	//keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(true))
-
-	/*
-
-	   apiVersion: v1
-	   kind: Pod
-	   metadata:
-	     name: mypod
-	   spec:
-	     containers:
-	     - name: mypod
-	       image: redis
-	       volumeMounts:
-	       - name: foo
-	         mountPath: "/etc/foo"
-	     volumes:
-	     - name: foo
-	       secret:
-	         secretName: mysecret
-	         defaultMode: 0400
-	*/
-
-	//output, _ := strconv.ParseInt("0600", 8, 64)
-	//fmt.Println(output)
-
-	//m := int32(0600)
-	//keyFileVolume := statefulset.CreateVolumeFromSecret("my-secret-volume", "my-secret", statefulset.WithSecretDefaultMode(&m))
-	//keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(false))
-	//keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(false))
-	//
-	//dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-
-	keyFileVolume := statefulset.CreateVolumeFromEmptyDir("my-secret-volume")
-	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(false))
-	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/keyfile", statefulset.WithReadOnly(false))
+	mode := int32(0600)
+	keyFileVolume := statefulset.CreateVolumeFromSecret(mdb.ScramCredentialsNamespacedName().Name, mdb.ScramCredentialsNamespacedName().Name, statefulset.WithSecretDefaultMode(&mode))
+	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
+	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
@@ -583,7 +532,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume, keyFileVolumeVolumeMount})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount, keyFileVolumeVolumeMountMongod})),
 				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer("keyfile-init", keyFileInit([]corev1.VolumeMount{keyFileVolumeVolumeMount})),
 			),
 		),
 	)

@@ -1,86 +1,53 @@
 package scram
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"fmt"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-const (
-	scram256                              = "SCRAM-SHA-256"
-	automationAgentKeyFilePathInContainer = "/var/lib/mongodb-mms-automation/keyfile/keyfile"
-	automationAgentWindowsKeyFilePath     = "%SystemDrive%\\MMSAutomation\\versions\\keyfile"
-	agentName                             = "mms-automation"
-)
-
-type Enabler struct {
-	AgentPassword string
-	AgentKeyFile  string
-}
-
-func (s Enabler) Enable(auth automationconfig.Auth) (automationconfig.Auth, error) {
-	if err := s.enableAgentAuthentication(&auth); err != nil {
-		return automationconfig.Auth{}, err
+// EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
+// the scram enabler configured with this values
+func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (Enabler, error) {
+	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
+	if err != nil {
+		return Enabler{}, fmt.Errorf("error generating password: %s", err)
 	}
-	if err := ensurePassword(s.AgentPassword, &auth); err != nil {
-		return automationconfig.Auth{}, err
+
+	generatedContents, err := generate.KeyFileContents()
+	if err != nil {
+		return Enabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
 	}
-	enableDeploymentMechanisms(&auth)
 
-	return auth, nil
-}
-
-func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) error {
-	auth.Disabled = false
-	auth.AuthoritativeSet = true
-	auth.KeyFile = automationAgentKeyFilePathInContainer
-	auth.KeyFileWindows = automationAgentWindowsKeyFilePath
-	auth.AutoAuthMechanisms = []string{scram256}
-	auth.AutoUser = agentName
-
-	if err := s.ensureKeyFileContents(auth); err != nil {
-		return err
-	}
-	return nil
-}
-
-func enableDeploymentMechanisms(auth *automationconfig.Auth) {
-	if containsString(auth.DeploymentAuthMechanisms, scram256) {
-		return
-	}
-	auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, scram256)
-}
-
-func ensurePassword(existingPassword string, auth *automationconfig.Auth) error {
-	auth.AutoPwd = existingPassword
-	//if existingPassword != "" {
-	//	return nil
-	//}
-	//automationAgentPassword, err := generate.KeyFileContents()
-	//if err != nil {
-	//	return err
-	//}
-	//auth.AutoPwd = automationAgentPassword
-	return nil
-}
-
-func (s Enabler) ensureKeyFileContents(auth *automationconfig.Auth) error {
-
-	auth.Key = s.AgentKeyFile
-
-	//if auth.Key == "" {
-	//	keyfileContents, err := generate.KeyFileContents()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	auth.Key = keyfileContents
-	//}
-	return nil
-}
-
-func containsString(slice []string, s string) bool {
-	for _, elem := range slice {
-		if elem == s {
-			return true
+	agentSecret, err := getUpdateCreator.GetSecret(secretNsName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			s := secret.Builder().
+				SetNamespace(secretNsName.Namespace).
+				SetName(secretNsName.Name).
+				SetField(scramAgentPasswordKey, generatedPassword).
+				SetField(scramAgentKeyfileKey, generatedContents).
+				Build()
+			return Enabler{
+				AgentPassword: generatedPassword,
+				AgentKeyFile:  generatedContents,
+			}, getUpdateCreator.CreateSecret(s)
 		}
 	}
-	return false
+
+	if _, ok := agentSecret.Data[scramAgentPasswordKey]; !ok {
+		agentSecret.Data[scramAgentPasswordKey] = []byte(generatedPassword)
+	}
+
+	if _, ok := agentSecret.Data[scramAgentKeyfileKey]; !ok {
+		agentSecret.Data[scramAgentKeyfileKey] = []byte(generatedContents)
+	}
+
+	return Enabler{
+		AgentPassword: string(agentSecret.Data[scramAgentPasswordKey]),
+		AgentKeyFile:  string(agentSecret.Data[scramAgentKeyfileKey]),
+	}, getUpdateCreator.UpdateSecret(agentSecret)
 }

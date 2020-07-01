@@ -38,7 +38,7 @@ type Auth struct {
 	AutoPwd string `json:"autoPwd,omitempty"`
 }
 
-func DisabledAuth() Auth {
+func disabledAuth() Auth {
 	return Auth{
 		Users:                    make([]MongoDBUser, 0),
 		AutoAuthMechanisms:       make([]string, 0),

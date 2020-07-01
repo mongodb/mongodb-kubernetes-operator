@@ -131,10 +131,10 @@ func CreateVolumeMount(name, path string, options ...func(*corev1.VolumeMount)) 
 }
 
 func WithSecretDefaultMode(mode *int32) func(*corev1.Volume) {
-	//mode32 := int32(mode)
-	//mode32 := int32(0x0600)
 	return func(v *corev1.Volume) {
-		//v.VolumeSource.Secret.DefaultMode = &mode32
+		if v.VolumeSource.Secret == nil {
+			v.VolumeSource.Secret = &corev1.SecretVolumeSource{}
+		}
 		v.VolumeSource.Secret.DefaultMode = mode
 	}
 }

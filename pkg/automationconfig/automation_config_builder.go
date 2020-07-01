@@ -12,12 +12,12 @@ const (
 	ReplicaSetTopology Topology = "ReplicaSet"
 )
 
-type Enabler interface {
-	Enable(auth Auth) (Auth, error)
+type AuthEnabler interface {
+	EnableAuth(auth Auth) Auth
 }
 
 type Builder struct {
-	enabler           Enabler
+	enabler           AuthEnabler
 	processes         []Process
 	replicaSets       []ReplicaSet
 	version           int
@@ -44,7 +44,7 @@ func NewBuilder() *Builder {
 	}
 }
 
-func (b *Builder) SetEnabler(enabler Enabler) *Builder {
+func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
 	b.enabler = enabler
 	return b
 }
@@ -127,11 +127,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		members[i] = newReplicaSetMember(process, i)
 	}
 
-	auth, err := b.enabler.Enable(DisabledAuth())
-	if err != nil {
-		return AutomationConfig{}, err
-	}
-
 	currentAc := AutomationConfig{
 		Version:   b.previousAC.Version,
 		Processes: processes,
@@ -144,7 +139,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		},
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     auth,
+		Auth:     b.enabler.EnableAuth(disabledAuth()),
 		SSL: SSL{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
