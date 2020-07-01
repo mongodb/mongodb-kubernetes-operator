@@ -24,10 +24,10 @@ const (
 const (
 	// LastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	LastVersionAnnotationKey = "lastVersion"
+	LastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
 
 	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	TLSRolledOutKey = "tlsRolledOut"
+	TLSRolledOutKey = "mongodb.com/v1.tlsRolledOut"
 )
 
 // MongoDBSpec defines the desired state of MongoDB
