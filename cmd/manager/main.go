@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller"
 	"go.uber.org/zap"
@@ -61,9 +65,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	newClientFunc := func(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
+		return client.New(config, options)
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
 		Namespace: namespace,
+		NewClient: newClientFunc,
 	})
 
 	if err != nil {

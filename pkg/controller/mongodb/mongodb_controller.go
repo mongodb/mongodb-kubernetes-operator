@@ -1,7 +1,6 @@
 package mongodb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -207,24 +206,26 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
 // is currently ready.
 func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
-	stsFunc := buildStatefulSetModificationFunction(mdb)
-	stsCopy := existingStatefulSet.DeepCopyObject()
-	stsFunc(existingStatefulSet)
-	stsCopyBytes, err := json.Marshal(stsCopy)
-	if err != nil {
-		return false, err
-	}
+	//stsFunc := buildStatefulSetModificationFunction(mdb)
+	//stsCopy := existingStatefulSet.DeepCopyObject()
+	//stsFunc(existingStatefulSet)
+	//stsCopyBytes, err := json.Marshal(stsCopy)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//stsBytes, err := json.Marshal(existingStatefulSet)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//// comparison is done with bytes instead of reflect.DeepEqual as there are
+	//// some issues with nil/empty maps not being compared correctly otherwise
+	//areEqual := bytes.Compare(stsCopyBytes, stsBytes) == 0
 
-	stsBytes, err := json.Marshal(existingStatefulSet)
-	if err != nil {
-		return false, err
-	}
-
-	// comparison is done with bytes instead of reflect.DeepEqual as there are
-	// some issues with nil/empty maps not being compared correctly otherwise
-	areEqual := bytes.Compare(stsCopyBytes, stsBytes) == 0
 	isReady := statefulset.IsReady(*existingStatefulSet, mdb.Spec.Members)
-	return areEqual && isReady, nil
+	//return areEqual && isReady, nil
+	return isReady, nil
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
@@ -474,11 +475,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	}
 
 	ownerReferences := []metav1.OwnerReference{
-		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-			Group:   mdbv1.SchemeGroupVersion.Group,
-			Version: mdbv1.SchemeGroupVersion.Version,
-			Kind:    mdb.Kind,
-		}),
+		defaultControllerOwnerReferences(&mdb),
 	}
 
 	// the health status volume is required in both agent and mongod pods.
@@ -543,4 +540,12 @@ func defaultPvc() persistentvolumeclaim.Modification {
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
 		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
 	)
+}
+
+func defaultControllerOwnerReferences(mdb *mdbv1.MongoDB) metav1.OwnerReference {
+	return *metav1.NewControllerRef(mdb, schema.GroupVersionKind{
+		Group:   mdbv1.SchemeGroupVersion.Group,
+		Version: mdbv1.SchemeGroupVersion.Version,
+		Kind:    "MongoDB",
+	})
 }

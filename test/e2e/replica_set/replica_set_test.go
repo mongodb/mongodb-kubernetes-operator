@@ -6,7 +6,7 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,7 +31,7 @@ func TestReplicaSet(t *testing.T) {
 		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
 			Group:   mdbv1.SchemeGroupVersion.Group,
 			Version: mdbv1.SchemeGroupVersion.Version,
-			Kind:    mdb.Kind,
+			Kind:    "MongoDB",
 		})))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))

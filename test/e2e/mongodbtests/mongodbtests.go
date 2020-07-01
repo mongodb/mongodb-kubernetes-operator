@@ -176,7 +176,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
 				Group:   mdbv1.SchemeGroupVersion.Group,
 				Version: mdbv1.SchemeGroupVersion.Version,
-				Kind:    mdb.Kind,
+				Kind:    "MongoDB",
 			})))
 		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
 		t.Run("Test Status Was Updated", Status(mdb,
