@@ -2,73 +2,77 @@ package scram
 
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 )
 
 const (
 	scram256                              = "SCRAM-SHA-256"
-	automationAgentKeyFilePathInContainer = "/var/lib/mongodb-mms-automation/keyfile"
+	automationAgentKeyFilePathInContainer = "/var/lib/mongodb-mms-automation/keyfile/keyfile"
 	automationAgentWindowsKeyFilePath     = "%SystemDrive%\\MMSAutomation\\versions\\keyfile"
 	agentName                             = "mms-automation"
 )
 
 type Enabler struct {
 	AgentPassword string
+	AgentKeyFile  string
 }
 
-func (s Enabler) Enable(ac *automationconfig.AutomationConfig) error {
-	if err := enableAgentAuthentication(ac); err != nil {
-		return err
+func (s Enabler) Enable(auth automationconfig.Auth) (automationconfig.Auth, error) {
+	if err := s.enableAgentAuthentication(&auth); err != nil {
+		return automationconfig.Auth{}, err
 	}
-	if err := ensurePassword(s.AgentPassword, ac); err != nil {
-		return err
+	if err := ensurePassword(s.AgentPassword, &auth); err != nil {
+		return automationconfig.Auth{}, err
 	}
-	enableDeploymentMechanisms(ac)
+	enableDeploymentMechanisms(&auth)
 
+	return auth, nil
+}
+
+func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) error {
+	auth.Disabled = false
+	auth.AuthoritativeSet = true
+	auth.KeyFile = automationAgentKeyFilePathInContainer
+	auth.KeyFileWindows = automationAgentWindowsKeyFilePath
+	auth.AutoAuthMechanisms = []string{scram256}
+	auth.AutoUser = agentName
+
+	if err := s.ensureKeyFileContents(auth); err != nil {
+		return err
+	}
 	return nil
 }
 
-func enableAgentAuthentication(ac *automationconfig.AutomationConfig) error {
-	ac.Auth.Disabled = false
-	ac.Auth.AuthoritativeSet = true
-	ac.Auth.KeyFile = automationAgentKeyFilePathInContainer
-	ac.Auth.KeyFileWindows = automationAgentWindowsKeyFilePath
-	ac.Auth.AutoAuthMechanisms = []string{scram256}
-	ac.Auth.AutoUser = agentName
-
-	if err := ensureKeyFileContents(ac); err != nil {
-		return err
-	}
-	return nil
-}
-
-func enableDeploymentMechanisms(ac *automationconfig.AutomationConfig) {
-	if containsString(ac.Auth.DeploymentAuthMechanisms, scram256) {
+func enableDeploymentMechanisms(auth *automationconfig.Auth) {
+	if containsString(auth.DeploymentAuthMechanisms, scram256) {
 		return
 	}
-	ac.Auth.DeploymentAuthMechanisms = append(ac.Auth.DeploymentAuthMechanisms, scram256)
+	auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, scram256)
 }
 
-func ensurePassword(existingPassword string, ac *automationconfig.AutomationConfig) error {
-	if existingPassword != "" {
-		return nil
-	}
-	automationAgentPassword, err := generate.KeyFileContents()
-	if err != nil {
-		return err
-	}
-	ac.Auth.AutoPwd = automationAgentPassword
+func ensurePassword(existingPassword string, auth *automationconfig.Auth) error {
+	auth.AutoPwd = existingPassword
+	//if existingPassword != "" {
+	//	return nil
+	//}
+	//automationAgentPassword, err := generate.KeyFileContents()
+	//if err != nil {
+	//	return err
+	//}
+	//auth.AutoPwd = automationAgentPassword
 	return nil
 }
 
-func ensureKeyFileContents(ac *automationconfig.AutomationConfig) error {
-	if ac.Auth.Key == "" {
-		keyfileContents, err := generate.KeyFileContents()
-		if err != nil {
-			return err
-		}
-		ac.Auth.Key = keyfileContents
-	}
+func (s Enabler) ensureKeyFileContents(auth *automationconfig.Auth) error {
+
+	auth.Key = s.AgentKeyFile
+
+	//if auth.Key == "" {
+	//	keyfileContents, err := generate.KeyFileContents()
+	//	if err != nil {
+	//		return err
+	//	}
+	//	auth.Key = keyfileContents
+	//}
 	return nil
 }
 

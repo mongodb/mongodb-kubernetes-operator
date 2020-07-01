@@ -92,8 +92,8 @@ func CreateVolumeFromConfigMap(name, sourceName string) corev1.Volume {
 	}
 }
 
-func CreateVolumeFromSecret(name, sourceName string) corev1.Volume {
-	return corev1.Volume{
+func CreateVolumeFromSecret(name, sourceName string, options ...func(v *corev1.Volume)) corev1.Volume {
+	volumeMount := &corev1.Volume{
 		Name: name,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -101,6 +101,11 @@ func CreateVolumeFromSecret(name, sourceName string) corev1.Volume {
 			},
 		},
 	}
+	for _, option := range options {
+		option(volumeMount)
+	}
+	return *volumeMount
+
 }
 
 func CreateVolumeFromEmptyDir(name string) corev1.Volume {
@@ -123,6 +128,15 @@ func CreateVolumeMount(name, path string, options ...func(*corev1.VolumeMount)) 
 		option(volumeMount)
 	}
 	return *volumeMount
+}
+
+func WithSecretDefaultMode(mode *int32) func(*corev1.Volume) {
+	//mode32 := int32(mode)
+	//mode32 := int32(0x0600)
+	return func(v *corev1.Volume) {
+		//v.VolumeSource.Secret.DefaultMode = &mode32
+		v.VolumeSource.Secret.DefaultMode = mode
+	}
 }
 
 // WithSubPath sets the SubPath for this VolumeMount

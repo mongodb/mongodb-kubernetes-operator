@@ -13,7 +13,7 @@ const (
 )
 
 type Enabler interface {
-	Enable(ac *AutomationConfig) error
+	Enable(auth Auth) (Auth, error)
 }
 
 type Builder struct {
@@ -127,6 +127,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		members[i] = newReplicaSetMember(process, i)
 	}
 
+	auth, err := b.enabler.Enable(DisabledAuth())
+	if err != nil {
+		return AutomationConfig{}, err
+	}
+
 	currentAc := AutomationConfig{
 		Version:   b.previousAC.Version,
 		Processes: processes,
@@ -139,15 +144,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		},
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     DisabledAuth(),
+		Auth:     auth,
 		SSL: SSL{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
 	}
-	//
-	//if err := b.enabler.Enable(&currentAc); err != nil {
-	//	return AutomationConfig{}, err
-	//}
 
 	// Set up TLS between agent and server
 	// Agent needs to trust the certificate presented by the server
