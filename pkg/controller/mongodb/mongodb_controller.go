@@ -348,10 +348,12 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 
 	// Ensure CA ConfigMap exists
 	var caConfigMap corev1.ConfigMap
-	configMapName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CAConfigMapName, Namespace: mdb.Namespace}
-	if err := r.client.Get(context.TODO(), configMapName, &caConfigMap); err != nil {
+	if err := r.client.Get(context.TODO(), mdb.TLSConfigMapNamespacedName(), &caConfigMap); err != nil {
 		if errors.IsNotFound(err) {
-			return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`CA ConfigMap "%s" not found`, caConfigMap.Name)}, nil
+			return tlsValidationResult{
+				Valid:   false,
+				Message: fmt.Sprintf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName().String()),
+			}, nil
 		}
 
 		return tlsValidationResult{}, err
@@ -359,15 +361,16 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 
 	// Ensure ConfigMap has a "ca.crt" field
 	if cert, ok := caConfigMap.Data[tlsCACertName]; !ok || cert == "" {
-		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`ConfigMap "%s" should have a CA certificate in field "%s"`, caConfigMap.Name, tlsCACertName)}, nil
+		message := fmt.Sprintf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName().String(), tlsCACertName)
+		return tlsValidationResult{Valid: false, Message: message}, nil
 	}
 
 	// Ensure Secret exists
 	var secret corev1.Secret
-	secretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.ServerSecretName, Namespace: mdb.Namespace}
-	if err := r.client.Get(context.TODO(), secretName, &secret); err != nil {
+	if err := r.client.Get(context.TODO(), mdb.TLSSecretNamespacedName(), &secret); err != nil {
 		if errors.IsNotFound(err) {
-			return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" not found`, caConfigMap.Name)}, nil
+			message := fmt.Sprintf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName().String())
+			return tlsValidationResult{Valid: false, Message: message}, nil
 		}
 
 		return tlsValidationResult{}, err
@@ -375,10 +378,12 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 
 	// Ensure Secret has "tls.crt" and "tls.key" fields
 	if key, ok := secret.Data[tlsSecretKeyName]; !ok || len(key) == 0 {
-		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" should have a key in field "%s"`, secret.Name, tlsSecretKeyName)}, nil
+		message := fmt.Sprintf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName().String(), tlsSecretKeyName)
+		return tlsValidationResult{Valid: false, Message: message}, nil
 	}
 	if cert, ok := secret.Data[tlsSecretCertName]; !ok || len(cert) == 0 {
-		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" should have a certificate in field "%s"`, secret.Name, tlsSecretKeyName)}, nil
+		message := fmt.Sprintf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName().String(), tlsSecretKeyName)
+		return tlsValidationResult{Valid: false, Message: message}, nil
 	}
 
 	return tlsValidationResult{Valid: true}, nil

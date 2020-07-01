@@ -136,6 +136,14 @@ func (m MongoDB) ConfigMapName() string {
 	return m.Name + "-config"
 }
 
+func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CAConfigMapName, Namespace: m.Namespace}
+}
+
+func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.ServerSecretName, Namespace: m.Namespace}
+}
+
 func (m MongoDB) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
