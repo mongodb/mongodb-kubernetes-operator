@@ -12,6 +12,7 @@ const (
 	ReplicaSetTopology Topology = "ReplicaSet"
 )
 
+// AuthEnabler is an interface which can configure authentication settings
 type AuthEnabler interface {
 	EnableAuth(auth Auth) Auth
 }
@@ -127,6 +128,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		members[i] = newReplicaSetMember(process, i)
 	}
 
+	auth := disabledAuth()
+	if b.enabler != nil {
+		auth = b.enabler.EnableAuth(auth)
+	}
+
 	currentAc := AutomationConfig{
 		Version:   b.previousAC.Version,
 		Processes: processes,
@@ -139,7 +145,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		},
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     b.enabler.EnableAuth(disabledAuth()),
+		Auth:     auth,
 		SSL: SSL{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},

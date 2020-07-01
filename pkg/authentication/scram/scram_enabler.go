@@ -9,23 +9,23 @@ const (
 	scram256                              = "SCRAM-SHA-256"
 	automationAgentKeyFilePathInContainer = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 	automationAgentWindowsKeyFilePath     = "%SystemDrive%\\MMSAutomation\\versions\\keyfile"
-	agentName                             = "mms-automation"
-	scramAgentPasswordKey                 = "password"
-	scramAgentKeyfileKey                  = "keyfile"
+	AgentName                             = "mms-automation"
+	AgentPasswordKey                      = "password"
+	AgentKeyfileKey                       = "keyfile"
 )
 
-type Enabler struct {
-	AgentPassword string
-	AgentKeyFile  string
+type authEnabler struct {
+	agentPassword string
+	agentKeyFile  string
 }
 
-func (s Enabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
+func (s authEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
 	s.enableAgentAuthentication(&auth)
 	enableDeploymentMechanisms(&auth)
 	return auth
 }
 
-func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) {
+func (s authEnabler) enableAgentAuthentication(auth *automationconfig.Auth) {
 	auth.Disabled = false
 	auth.AuthoritativeSet = true
 	auth.KeyFile = automationAgentKeyFilePathInContainer
@@ -33,10 +33,19 @@ func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) {
 	// windows file is specified to pass validation, this will never be used
 	auth.KeyFileWindows = automationAgentWindowsKeyFilePath
 	auth.AutoAuthMechanisms = []string{scram256}
-	auth.AutoUser = agentName
+
+	// the username of the MongoDB Agent
+	auth.AutoUser = AgentName
+
+	// the mechanism used by the Agent
 	auth.AutoAuthMechanism = scram256
-	auth.AutoPwd = s.AgentPassword
-	auth.Key = s.AgentKeyFile
+
+	// the password for the Agent user
+	auth.AutoPwd = s.agentPassword
+
+	// the contents the keyfile should have, this file is owned and managed
+	// by the agent
+	auth.Key = s.agentKeyFile
 }
 
 func enableDeploymentMechanisms(auth *automationconfig.Auth) {

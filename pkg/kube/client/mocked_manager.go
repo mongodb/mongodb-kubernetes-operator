@@ -15,9 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// MockedManager exists to unit test the reconciliation loops and wrap the mocked client
+// MockedManager exists to unit test the reconciliation loops and wrap the mocked Client
 type MockedManager struct {
-	client k8sClient.Client
+	Client Client
 }
 
 func NewManager(obj runtime.Object) *MockedManager {
@@ -25,7 +25,7 @@ func NewManager(obj runtime.Object) *MockedManager {
 	if obj != nil {
 		_ = c.Create(context.TODO(), obj)
 	}
-	return &MockedManager{client: c}
+	return &MockedManager{Client: NewClient(c)}
 }
 
 func (m *MockedManager) Add(_ manager.Runnable) error {
@@ -61,21 +61,21 @@ func (m *MockedManager) GetAdmissionDecoder() admission.Decoder {
 	return *d
 }
 
-// GetAPIReader returns the client reader
+// GetAPIReader returns the Client reader
 func (m *MockedManager) GetAPIReader() k8sClient.Reader {
 	return nil
 }
 
-// GetClient returns a client configured with the Config
+// GetClient returns a Client configured with the Config
 func (m *MockedManager) GetClient() k8sClient.Client {
-	return m.client
+	return m.Client
 }
 
 func (m *MockedManager) GetEventRecorderFor(_ string) record.EventRecorder {
 	return nil
 }
 
-// GetFieldIndexer returns a client.FieldIndexer configured with the client
+// GetFieldIndexer returns a Client.FieldIndexer configured with the Client
 func (m *MockedManager) GetFieldIndexer() k8sClient.FieldIndexer {
 	return nil
 }

@@ -134,13 +134,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	authEnabler, err := getAuthenticationEnabler(r.client, mdb)
 	if err != nil {
 		r.log.Warnf("Error configuring authentication: %s", err)
 		return reconcile.Result{}, err
 	}
 
-	if err := r.ensureAutomationConfig(mdb, enabler); err != nil {
+	if err := r.ensureAutomationConfig(mdb, authEnabler); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}

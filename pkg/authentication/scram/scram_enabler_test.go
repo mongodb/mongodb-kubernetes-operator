@@ -8,13 +8,13 @@ import (
 )
 
 func TestScramEnabler(t *testing.T) {
-	enabler := Enabler{
-		AgentPassword: "password",
-		AgentKeyFile:  "keyfilecontents",
+	enabler := authEnabler{
+		agentPassword: "password",
+		agentKeyFile:  "keyfilecontents",
 	}
 	auth := enabler.EnableAuth(automationconfig.Auth{})
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
-		assert.Equal(t, agentName, auth.AutoUser)
+		assert.Equal(t, AgentName, auth.AutoUser)
 		assert.Equal(t, "keyfilecontents", auth.Key)
 		assert.Equal(t, "password", auth.AutoPwd)
 		assert.Equal(t, scram256, auth.AutoAuthMechanism)

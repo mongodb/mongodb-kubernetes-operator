@@ -12,10 +12,10 @@ const (
 	scramShaOption = "SCRAM"
 )
 
-// noOpEnabler performs no changes, leaving authentication settings untouched
-type noOpEnabler struct{}
+// noOpAuthEnabler performs no changes, leaving authentication settings untouched
+type noOpAuthEnabler struct{}
 
-func (n noOpEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
+func (n noOpAuthEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
 	return auth
 }
 
@@ -23,16 +23,16 @@ func (n noOpEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Aut
 // authentication settings
 func getAuthenticationEnabler(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) (automationconfig.AuthEnabler, error) {
 	if !mdb.Spec.Security.Authentication.Enabled {
-		return noOpEnabler{}, nil
+		return noOpAuthEnabler{}, nil
 	}
 
 	// currently, just enable auth if it's in the list as there is only one option
 	if contains.AuthMode(mdb.Spec.Security.Authentication.Modes, scramShaOption) {
 		enabler, err := scram.EnsureAgentSecret(getUpdateCreator, mdb.ScramCredentialsNamespacedName())
 		if err != nil {
-			return noOpEnabler{}, err
+			return noOpAuthEnabler{}, err
 		}
 		return enabler, nil
 	}
-	return noOpEnabler{}, nil
+	return noOpAuthEnabler{}, nil
 }

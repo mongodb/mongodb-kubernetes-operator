@@ -3,6 +3,8 @@ package scram
 import (
 	"fmt"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -10,16 +12,16 @@ import (
 )
 
 // EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
-// the scram enabler configured with this values
-func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (Enabler, error) {
+// the scram authEnabler configured with this values
+func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (automationconfig.AuthEnabler, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
-		return Enabler{}, fmt.Errorf("error generating password: %s", err)
+		return authEnabler{}, fmt.Errorf("error generating password: %s", err)
 	}
 
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
-		return Enabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
+		return authEnabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
 	}
 
 	agentSecret, err := getUpdateCreator.GetSecret(secretNsName)
@@ -28,26 +30,27 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 			s := secret.Builder().
 				SetNamespace(secretNsName.Namespace).
 				SetName(secretNsName.Name).
-				SetField(scramAgentPasswordKey, generatedPassword).
-				SetField(scramAgentKeyfileKey, generatedContents).
+				SetField(AgentPasswordKey, generatedPassword).
+				SetField(AgentKeyfileKey, generatedContents).
 				Build()
-			return Enabler{
-				AgentPassword: generatedPassword,
-				AgentKeyFile:  generatedContents,
+			return authEnabler{
+				agentPassword: generatedPassword,
+				agentKeyFile:  generatedContents,
 			}, getUpdateCreator.CreateSecret(s)
 		}
+		return authEnabler{}, err
 	}
 
-	if _, ok := agentSecret.Data[scramAgentPasswordKey]; !ok {
-		agentSecret.Data[scramAgentPasswordKey] = []byte(generatedPassword)
+	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
+		agentSecret.Data[AgentPasswordKey] = []byte(generatedPassword)
 	}
 
-	if _, ok := agentSecret.Data[scramAgentKeyfileKey]; !ok {
-		agentSecret.Data[scramAgentKeyfileKey] = []byte(generatedContents)
+	if _, ok := agentSecret.Data[AgentKeyfileKey]; !ok {
+		agentSecret.Data[AgentKeyfileKey] = []byte(generatedContents)
 	}
 
-	return Enabler{
-		AgentPassword: string(agentSecret.Data[scramAgentPasswordKey]),
-		AgentKeyFile:  string(agentSecret.Data[scramAgentKeyfileKey]),
+	return authEnabler{
+		agentPassword: string(agentSecret.Data[AgentPasswordKey]),
+		agentKeyFile:  string(agentSecret.Data[AgentKeyfileKey]),
 	}, getUpdateCreator.UpdateSecret(agentSecret)
 }
