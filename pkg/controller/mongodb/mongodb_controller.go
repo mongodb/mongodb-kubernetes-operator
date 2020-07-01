@@ -222,7 +222,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	//// comparison is done with bytes instead of reflect.DeepEqual as there are
 	//// some issues with nil/empty maps not being compared correctly otherwise
 	//areEqual := bytes.Compare(stsCopyBytes, stsBytes) == 0
-
+	time.Sleep(10)
 	isReady := statefulset.IsReady(*existingStatefulSet, mdb.Spec.Members)
 	//return areEqual && isReady, nil
 	return isReady, nil
