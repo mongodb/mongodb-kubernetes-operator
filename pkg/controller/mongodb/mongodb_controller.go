@@ -153,15 +153,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	if shouldRetry, err := r.checkTLSConfig(mdb); err != nil {
-		if shouldRetry {
-			// TODO: Use Kubernetes events to expose these errors to the user
-			r.log.Warnf("Error in TLS configuration, retrying in 10 seconds: %s", err.Error())
-			return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
-		}
-
-		r.log.Warnf("Error checking TLS configuration: %s", err.Error())
+	validationResult, err := r.validateTLSConfig(mdb)
+	if err != nil {
 		return reconcile.Result{}, err
+	}
+	if !validationResult.Valid {
+		// TODO: Use Kubernetes events to expose these errors to the user
+		r.log.Warnf("Error in TLS configuration, retrying in 10 seconds: %s", validationResult.Message)
+		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
@@ -332,10 +331,17 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-// checkTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
+type tlsValidationResult struct {
+	Valid   bool
+	Message string
+}
+
+// validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
+// If TLS is correctly configured, the function will return a result where result.Valid = true.
+// If it's incorrectly configured the result will instead have result.Valid = false and a message for the user in result.Message.
+func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidationResult, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
-		return false, nil
+		return tlsValidationResult{Valid: true}, nil
 	}
 
 	r.log.Info("Ensuring TLS is correctly configured")
@@ -344,30 +350,38 @@ func (r *ReplicaSetReconciler) checkTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 	var caConfigMap corev1.ConfigMap
 	configMapName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CAConfigMapName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), configMapName, &caConfigMap); err != nil {
-		return errors.IsNotFound(err), err
+		if errors.IsNotFound(err) {
+			return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`CA ConfigMap "%s" not found`, caConfigMap.Name)}, nil
+		}
+
+		return tlsValidationResult{}, err
 	}
 
 	// Ensure ConfigMap has a "ca.crt" field
 	if cert, ok := caConfigMap.Data[tlsCACertName]; !ok || cert == "" {
-		return true, fmt.Errorf(`ConfigMap "%s" should have a CA certificate in field "%s"`, caConfigMap.Name, tlsCACertName)
+		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`ConfigMap "%s" should have a CA certificate in field "%s"`, caConfigMap.Name, tlsCACertName)}, nil
 	}
 
 	// Ensure Secret exists
 	var secret corev1.Secret
 	secretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.ServerSecretName, Namespace: mdb.Namespace}
 	if err := r.client.Get(context.TODO(), secretName, &secret); err != nil {
-		return errors.IsNotFound(err), err
+		if errors.IsNotFound(err) {
+			return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" not found`, caConfigMap.Name)}, nil
+		}
+
+		return tlsValidationResult{}, err
 	}
 
 	// Ensure Secret has "tls.crt" and "tls.key" fields
 	if key, ok := secret.Data[tlsSecretKeyName]; !ok || len(key) == 0 {
-		return true, fmt.Errorf(`Secret "%s" should have a key in field "%s"`, secret.Name, tlsSecretKeyName)
+		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" should have a key in field "%s"`, secret.Name, tlsSecretKeyName)}, nil
 	}
 	if cert, ok := secret.Data[tlsSecretCertName]; !ok || len(cert) == 0 {
-		return true, fmt.Errorf(`Secret "%s" should have a certificate in field "%s"`, secret.Name, tlsSecretKeyName)
+		return tlsValidationResult{Valid: false, Message: fmt.Sprintf(`Secret "%s" should have a certificate in field "%s"`, secret.Name, tlsSecretKeyName)}, nil
 	}
 
-	return false, nil
+	return tlsValidationResult{Valid: true}, nil
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAC automationconfig.AutomationConfig) (automationconfig.AutomationConfig, error) {
@@ -574,6 +588,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
+	fmt.Printf("%+v\n", mdb)
 
 	ownerReferences := []metav1.OwnerReference{
 		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
