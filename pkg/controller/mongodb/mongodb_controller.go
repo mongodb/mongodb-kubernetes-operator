@@ -435,12 +435,26 @@ func preStopHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
 	mongoDbCommand := []string{
-		"/bin/sh",
+		"/bin/bash",
 		"-c",
 		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
 		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+
+# terminate_mongod will send a SIGTERM signal to the mongod process
+terminate_mongod() {
+  kill -TERM "$mongo_pid" 2>/dev/null ;
+}
+
+# catch any SIGTERM signals and forward them to mongod
+# SIGTERM will be sent by Kubernetes during a graceful shutdown
+trap terminate_mongod SIGTERM ;
+
 # start mongod with this configuration
-mongod -f /data/automation-mongod.conf ;
+mongod -f /data/automation-mongod.conf &
+
+# capture the mongod PID for SIGTERM forwarding and wait for the process to finish
+mongo_pid=$! ;
+wait "$mongo_pid" ;
 
 # start the pre-stop-hook to restart the Pod when needed
 # If the Pod does not require to be restarted, the pre-stop-hook will
