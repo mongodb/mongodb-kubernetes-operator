@@ -2,7 +2,7 @@ package scram
 
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/stringutil"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 )
 
 const (
@@ -40,7 +40,7 @@ func (s Enabler) enableAgentAuthentication(auth *automationconfig.Auth) {
 }
 
 func enableDeploymentMechanisms(auth *automationconfig.Auth) {
-	if stringutil.Contains(auth.DeploymentAuthMechanisms, scram256) {
+	if contains.String(auth.DeploymentAuthMechanisms, scram256) {
 		return
 	}
 	auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, scram256)

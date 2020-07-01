@@ -5,6 +5,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 )
 
 const (
@@ -26,7 +27,7 @@ func getAuthenticationEnabler(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 	}
 
 	// currently, just enable auth if it's in the list as there is only one option
-	if containsAuthMode(mdb.Spec.Security.Authentication.Modes, scramShaOption) {
+	if contains.AuthMode(mdb.Spec.Security.Authentication.Modes, scramShaOption) {
 		enabler, err := scram.EnsureAgentSecret(getUpdateCreator, mdb.ScramCredentialsNamespacedName())
 		if err != nil {
 			return noOpEnabler{}, err
@@ -34,13 +35,4 @@ func getAuthenticationEnabler(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return enabler, nil
 	}
 	return noOpEnabler{}, nil
-}
-
-func containsAuthMode(slice []mdbv1.AuthMode, s mdbv1.AuthMode) bool {
-	for _, elem := range slice {
-		if elem == s {
-			return true
-		}
-	}
-	return false
 }
