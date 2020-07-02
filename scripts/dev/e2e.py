@@ -318,14 +318,11 @@ def main():
     try:
         build_and_push_images(args, dev_config)
         prepare_and_run_testrunner(args, dev_config)
-        test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
     finally:
         if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
-    print(test_runner_pod.status.phase)
-    time.sleep(20)
-    print(test_runner_pod.status.phase)
+    test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
     if test_runner_pod.status.phase != "Succeeded":
         sys.exit(1)
 
