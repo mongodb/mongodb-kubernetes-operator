@@ -39,6 +39,9 @@ linters-settings:
     # print struct with more effective memory layout or not, false by default
     suggest-new: true
 
-modules-download-mode: vendor
-# timeout for analysis, e.g. 30s, 5m, default is 1m
-timeout: 2m
+run:
+  modules-download-mode: vendor
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 2m
+  # default concurrency is a available CPU number
+  concurrency: 4
