@@ -228,12 +228,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Name of the test to run")
     parser.add_argument(
-        "--skip-operator-install",
+        "--install_operator",
         help="Do not install the Operator, assumes one is installed already",
         action="store_false",
     )
     parser.add_argument(
-        "--skip-image-build", help="Skip building images", action="store_false",
+        "--build_images", help="Skip building images", action="store_false",
     )
     parser.add_argument(
         "--tag",
@@ -242,12 +242,12 @@ def parse_args():
         default="latest",
     )
     parser.add_argument(
-        "--dump_diagnostic",
+        "--skip_dump_diagnostic",
         help="Dump diagnostic information into files",
         action="store_false",
     )
     parser.add_argument(
-        "--skip-cleanup",
+        "--perform-cleanup",
         help="skip the context cleanup when the test ends",
         action="store_false",
     )
@@ -257,31 +257,31 @@ def parse_args():
 
 def build_and_push_images(args, dev_config):
     test_runner_name = dev_config.testrunner_image
-    if not args.skip_operator_install:
+    if not args.install_operator:
         build_and_push_operator(
             dev_config.repo_url,
             "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
             ".",
         )
         deploy_operator()
-        if not args.skip_image_build:
-            build_and_push_testrunner(
-                dev_config.repo_url,
-                "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
-                ".",
-            )
-            build_and_push_e2e(
-                dev_config.repo_url,
-                "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
-                ".",
-            )
-            build_and_push_prehook(
-                dev_config.repo_url,
-                "{}/{}:{}".format(
-                    dev_config.repo_url, dev_config.prestop_hook_image, args.tag
-                ),
-                ".",
-            )
+    if not args.build_images:
+        build_and_push_testrunner(
+            dev_config.repo_url,
+            "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
+            ".",
+        )
+        build_and_push_e2e(
+            dev_config.repo_url,
+            "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
+            ".",
+        )
+        build_and_push_prehook(
+            dev_config.repo_url,
+            "{}/{}:{}".format(
+                dev_config.repo_url, dev_config.prestop_hook_image, args.tag
+            ),
+            ".",
+        )
 
 
 def prepare_and_run_testrunner(args, dev_config):
@@ -320,9 +320,12 @@ def main():
         prepare_and_run_testrunner(args, dev_config)
         test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
     finally:
-        if args.dump_diagnostic:
+        if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
+    print(test_runner_pod.status.phase)
+    time.sleep(10)
+    print(test_runner_pod.status.phase)
     if test_runner_pod.status.phase != "Succeeded":
         sys.exit(1)
 
