@@ -12,6 +12,10 @@ import (
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
+func init() {
+	rand.Seed(time.Now().Unix())
+}
+
 func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
