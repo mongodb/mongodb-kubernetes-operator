@@ -139,7 +139,7 @@ def create_test_runner_pod(
     test: str,
     config_file: str,
     tag: str,
-    skip_cleanup: str,
+    perform_cleanup: str,
     test_runner_image_name: str,
 ):
     """
@@ -148,7 +148,7 @@ def create_test_runner_pod(
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
     pod_body = _get_testrunner_pod_body(
-        test, config_file, tag, skip_cleanup, test_runner_image_name
+        test, config_file, tag, perform_cleanup, test_runner_image_name
     )
 
     if not k8s_conditions.wait(
@@ -183,7 +183,7 @@ def _get_testrunner_pod_body(
     test: str,
     config_file: str,
     tag: str,
-    skip_cleanup: str,
+    perform_cleanup: str,
     test_runner_image_name: str,
 ) -> Dict:
     dev_config = load_config(config_file)
@@ -216,7 +216,7 @@ def _get_testrunner_pod_body(
                         ),
                         "--test={}".format(test),
                         "--namespace={}".format(dev_config.namespace),
-                        "--skipCleanup={}".format(skip_cleanup),
+                        "--skipCleanup={}".format(perform_cleanup),
                     ],
                 }
             ],
@@ -292,7 +292,7 @@ def prepare_and_run_testrunner(args, dev_config):
         args.test,
         args.config_file,
         args.tag,
-        args.skip_cleanup,
+        args.perform_cleanup,
         test_runner_name,
     )
     corev1 = client.CoreV1Api()
@@ -324,7 +324,7 @@ def main():
             dump_diagnostic.dump_all(dev_config.namespace)
 
     print(test_runner_pod.status.phase)
-    time.sleep(10)
+    time.sleep(20)
     print(test_runner_pod.status.phase)
     if test_runner_pod.status.phase != "Succeeded":
         sys.exit(1)
