@@ -152,7 +152,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		r.log.Warnf("Error creating/updating StatefulSet: %+v", err)
 		return reconcile.Result{}, err
 	}
-	//time.Sleep(10 * time.Second)
 
 	currentSts := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
