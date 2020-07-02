@@ -56,9 +56,9 @@ jobs:
           VALIDATE_ALL_CODEBASE: true
           PYTHONPATH: "/github/workspace/:\
             /github/workflow/.venv/lib/python3.6/site-packages"
-          VALIDATE_ANSIBLE: false
-          VALIDATE_YAML: true
-          VALIDATE_PYTHON: true
-          VALIDATE_BASH: true
+         # VALIDATE_ANSIBLE: false
+          #VALIDATE_YAML: true
+          #VALIDATE_PYTHON: true
+          #VALIDATE_BASH: true
           VALIDATE_GO: true
 ...
