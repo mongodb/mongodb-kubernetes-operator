@@ -157,9 +157,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if !validationResult.Valid {
+	if !validationResult.valid {
 		// TODO: Use Kubernetes events to expose these errors to the user
-		r.log.Warnf("Error in TLS configuration, retrying in 10 seconds: %s", validationResult.Message)
+		r.log.Warnf("Error in TLS configuration, retrying in 10 seconds: %s", validationResult.message)
 		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
