@@ -40,7 +40,7 @@ linters-settings:
     suggest-new: true
 
 run:
-  modules-download-mode: readonly
+  modules-download-mode: 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 5m
   # default concurrency is a available CPU number
