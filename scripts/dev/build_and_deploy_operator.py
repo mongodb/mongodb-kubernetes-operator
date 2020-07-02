@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Dict, Optional
+from typing import Dict
 
 import yaml
 from kubernetes import client, config
@@ -12,32 +12,31 @@ from dockerutil import build_and_push_image
 import k8s_conditions
 
 
-def _load_operator_service_account() -> Optional[Dict]:
+def _load_operator_service_account() -> Dict:
     return load_yaml_from_file("deploy/service_account.yaml")
 
 
-def _load_operator_role() -> Optional[Dict]:
+def _load_operator_role() -> Dict:
     return load_yaml_from_file("deploy/role.yaml")
 
 
-def _load_operator_role_binding() -> Optional[Dict]:
+def _load_operator_role_binding() -> Dict:
     return load_yaml_from_file("deploy/role_binding.yaml")
 
 
-def _load_operator_deployment(operator_image: str) -> Optional[Dict]:
+def _load_operator_deployment(operator_image: str) -> Dict:
     operator = load_yaml_from_file("deploy/operator.yaml")
     operator["spec"]["template"]["spec"]["containers"][0]["image"] = operator_image
     return operator
 
 
-def _load_mongodb_crd() -> Optional[Dict]:
+def _load_mongodb_crd() -> Dict:
     return load_yaml_from_file("deploy/crds/mongodb.com_mongodb_crd.yaml")
 
 
-def load_yaml_from_file(path: str) -> Optional[Dict]:
+def load_yaml_from_file(path: str) -> Dict:
     with open(path, "r") as f:
         return yaml.full_load(f.read())
-    return None
 
 
 def _ensure_crds():
@@ -112,7 +111,7 @@ def deploy_operator():
         lambda: appsv1.create_namespaced_deployment(
             dev_config.namespace,
             _load_operator_deployment(
-                f"{dev_config.repo_url}/mongodb-kubernetes-operator"
+                "{}/mongodb-kubernetes-operator".format(dev_config.repo_url)
             ),
         )
     )
@@ -122,7 +121,9 @@ def main():
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
-        dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", "."
+        dev_config.repo_url,
+        "{}/mongodb-kubernetes-operator".format(dev_config.repo_url),
+        ".",
     )
     deploy_operator()
 

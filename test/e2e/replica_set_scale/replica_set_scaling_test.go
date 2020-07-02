@@ -7,6 +7,7 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
+	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
@@ -15,10 +16,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetScale(t *testing.T) {
-	ctx := f.NewContext(t)
-	defer ctx.Cleanup()
-	if err := e2eutil.RegisterTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
-		t.Fatal(err)
+
+	ctx, shouldCleanup := setup.InitTest(t)
+
+	if shouldCleanup {
+		defer ctx.Cleanup()
 	}
 
 	mdb := e2eutil.NewTestMongoDB("mdb0")
