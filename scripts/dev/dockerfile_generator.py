@@ -4,8 +4,10 @@ import os
 import sys
 from typing import List, Dict, Union
 
+DockerParameters = Dict[str, Union[bool, str, List[str]]]
 
-def operator_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
+
+def operator_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "builder": True,
         "builder_image": "golang",
@@ -14,9 +16,7 @@ def operator_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[
     }
 
 
-def test_runner_params(
-    files_to_add: List[str],
-) -> Dict[str, Union[bool, str, List[str]]]:
+def test_runner_params(files_to_add: List[str],) -> DockerParameters:
     return {
         "builder": True,
         "builder_image": "golang",  # TODO: make this image smaller. There were errors using alpine
@@ -25,23 +25,21 @@ def test_runner_params(
     }
 
 
-def e2e_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
+def e2e_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "base_image": "golang",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
 
-def unit_test_params(files_to_add: List[str]) -> Dict[str, Union[bool, str, List[str]]]:
+def unit_test_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "base_image": "golang",
         "files_to_add": files_to_add,
     }
 
 
-def python_formatting_params(
-    files_to_add, script
-) -> Dict[str, Union[bool, str, List[str]]]:
+def python_formatting_params(files_to_add, script) -> DockerParameters:
     return {
         "base_image": "python:slim",
         "files_to_add": files_to_add,
@@ -49,7 +47,7 @@ def python_formatting_params(
     }
 
 
-def render(image_name, files_to_add, script_location) -> str:
+def render(image_name: str, files_to_add: List[str], script_location: str) -> str:
     param_dict = {
         "unittest": unit_test_params(files_to_add),
         "e2e": e2e_params(files_to_add),
