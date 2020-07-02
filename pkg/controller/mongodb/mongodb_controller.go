@@ -513,7 +513,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
-	fmt.Printf("%+v\n", mdb)
 
 	ownerReferences := []metav1.OwnerReference{
 		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
