@@ -216,7 +216,7 @@ def _get_testrunner_pod_body(
                         ),
                         "--test={}".format(test),
                         "--namespace={}".format(dev_config.namespace),
-                        "--skipCleanup={}".format(perform_cleanup),
+                        "--performCleanup={}".format(perform_cleanup),
                     ],
                 }
             ],
@@ -228,12 +228,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Name of the test to run")
     parser.add_argument(
-        "--install_operator",
-        help="Do not install the Operator, assumes one is installed already",
-        action="store_false",
+        "--install-operator",
+        help="Install the operator instead of assuming one already exists",
+        action="store_true",
     )
     parser.add_argument(
-        "--build_images", help="Skip building images", action="store_false",
+        "--build-images", help="Build testrunner, e2e and prestop-hook images", action="store_true",
     )
     parser.add_argument(
         "--tag",
@@ -242,14 +242,14 @@ def parse_args():
         default="latest",
     )
     parser.add_argument(
-        "--skip_dump_diagnostic",
-        help="Dump diagnostic information into files",
-        action="store_false",
+        "--skip-dump-diagnostic",
+        help="Skip the dump of diagnostic information into files",
+        action="store_true",
     )
     parser.add_argument(
         "--perform-cleanup",
-        help="skip the context cleanup when the test ends",
-        action="store_false",
+        help="Cleanup the context after executing the tests",
+        action="store_true",
     )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -257,14 +257,14 @@ def parse_args():
 
 def build_and_push_images(args, dev_config):
     test_runner_name = dev_config.testrunner_image
-    if not args.install_operator:
+    if args.install_operator:
         build_and_push_operator(
             dev_config.repo_url,
             "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
             ".",
         )
         deploy_operator()
-    if not args.build_images:
+    if args.build_images:
         build_and_push_testrunner(
             dev_config.repo_url,
             "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
