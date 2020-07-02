@@ -5,6 +5,9 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
+
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
@@ -127,6 +130,26 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 
 	_ = mgrClient.Update(context.TODO(), &mdb)
 
+	// agents start the upgrade, they are not all ready
+	sts.Status.UpdatedReplicas = 1
+	sts.Status.ReadyReplicas = 2
+	err = mgrClient.Update(context.TODO(), &sts)
+
+	_ = mgrClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+
+	// the request is requeued as the agents are still doing the upgrade
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assert.NoError(t, err)
+	assert.Equal(t, res.RequeueAfter, time.Second*10)
+
+	_ = mgrClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
+	// upgrade is now complete
+	sts.Status.UpdatedReplicas = 3
+	sts.Status.ReadyReplicas = 3
+	err = mgrClient.Update(context.TODO(), &sts)
+
+	// reconcilliation is successful
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -198,6 +221,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	assert.Equal(t, 1, currentAc.Version)
 
 	mdb.Spec.Members += 1
+	makeStatefulSetReady(mgr.GetClient(), mdb)
 
 	_ = mgr.GetClient().Update(context.TODO(), &mdb)
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -227,4 +251,14 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
+}
+
+// makeStatefulSetReady updates the StatefulSet corresponding to the
+// provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
+func makeStatefulSetReady(c k8sClient.Client, mdb mdbv1.MongoDB) {
+	sts := appsv1.StatefulSet{}
+	_ = c.Get(context.TODO(), mdb.NamespacedName(), &sts)
+	sts.Status.ReadyReplicas = int32(mdb.Spec.Members)
+	sts.Status.UpdatedReplicas = int32(mdb.Spec.Members)
+	_ = c.Update(context.TODO(), &sts)
 }
