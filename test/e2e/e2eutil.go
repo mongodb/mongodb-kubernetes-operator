@@ -80,7 +80,6 @@ func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, st
 func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return statefulset.IsReady(sts, mdb.Spec.Members)
-		//return sts.Status.ReadyReplicas == int32(mdb.Spec.Members)
 	})
 }
 
