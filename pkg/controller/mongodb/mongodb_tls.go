@@ -1,8 +1,11 @@
 package mongodb
 
 import (
-	"context"
 	"fmt"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
@@ -30,8 +33,8 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 	r.log.Info("Ensuring TLS is correctly configured")
 
 	// Ensure CA ConfigMap exists
-	var caConfigMap corev1.ConfigMap
-	if err := r.client.Get(context.TODO(), mdb.TLSConfigMapNamespacedName(), &caConfigMap); err != nil {
+	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
+	if err != nil {
 		if errors.IsNotFound(err) {
 			return tlsValidationResult{
 				valid:   false,
@@ -43,14 +46,14 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 	}
 
 	// Ensure ConfigMap has a "ca.crt" field
-	if cert, ok := caConfigMap.Data[tlsCACertName]; !ok || cert == "" {
+	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
 		message := fmt.Sprintf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
 		return tlsValidationResult{valid: false, message: message}, nil
 	}
 
 	// Ensure Secret exists
-	var secret corev1.Secret
-	if err := r.client.Get(context.TODO(), mdb.TLSSecretNamespacedName(), &secret); err != nil {
+	secretData, err := secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
+	if err != nil {
 		if errors.IsNotFound(err) {
 			message := fmt.Sprintf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
 			return tlsValidationResult{valid: false, message: message}, nil
@@ -60,11 +63,11 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 	}
 
 	// Ensure Secret has "tls.crt" and "tls.key" fields
-	if key, ok := secret.Data[tlsSecretKeyName]; !ok || len(key) == 0 {
+	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
 		message := fmt.Sprintf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
 		return tlsValidationResult{valid: false, message: message}, nil
 	}
-	if cert, ok := secret.Data[tlsSecretCertName]; !ok || len(cert) == 0 {
+	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
 		message := fmt.Sprintf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
 		return tlsValidationResult{valid: false, message: message}, nil
 	}
