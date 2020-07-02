@@ -268,10 +268,39 @@ func Connect(mdb *mdbv1.MongoDB) error {
 	})
 }
 
+func WaitForSetting(mdb *mdbv1.MongoDB, setting, expectedValue string) func(*testing.T) {
+	return func(t *testing.T) {
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		assert.NoError(t, err)
+
+		err = wait.Poll(time.Second*1, time.Second*500, func() (done bool, err error) {
+			var result bson.D
+			mongoClient.
+				Database("admin").
+				RunCommand(context.TODO(), bson.D{{"getParameter", 1}, {"sslMode", 1}}).
+				Decode(&result)
+
+			value := result.Map()["sslMode"]
+			return value == expectedValue, nil
+		})
+
+		if err != nil {
+			t.Fatal(fmt.Sprintf("Error waiting for TLS setting to become enabled", err))
+		}
+	}
+}
+
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+	return isReachableDuring(mdb, interval, testFunc, func() error {
+		return Connect(mdb)
+	})
+}
+
+func isReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		defer cancelFunc()
@@ -285,7 +314,7 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 					t.Logf("context cancelled, no longer checking connectivity")
 					return
 				case <-time.After(interval):
-					if err := Connect(mdb); err != nil {
+					if err := connectFunc(); err != nil {
 						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
 					} else {
 						t.Logf("Successfully connected to %s", mdb.Name)
