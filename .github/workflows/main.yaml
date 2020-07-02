@@ -58,7 +58,7 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_PYTHON: true
           VALIDATE_BASH: true
-          VALIDATE_DOCKERFILE: true
-          VALIDATE_MARKDOWN: true
+          VALIDATE_DOCKER: true
+          VALIDATE_MD: true
           # VALIDATE_GO: true  This is currently broken: https://github.com/github/super-linter/issues/143
 ...
