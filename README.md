@@ -1,4 +1,4 @@
-# MongoDB Community Kubernetes Operator 
+# MongoDB Community Kubernetes Operator
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 

@@ -17,7 +17,7 @@ our local working environments in CI/CD systems.
 
 ## High-Perspective Architecture
 
-The operator itself consists of 1 image, that has all the operational logic to deploy and 
+The operator itself consists of 1 image, that has all the operational logic to deploy and
 maintain the MongoDB resources in your cluster.
 
 The operator deploys MongoDB in Pods (via a higher-level resource, a
@@ -64,7 +64,7 @@ of this file.
 
 ### Configure Docker registry
 
-The build process consist in multiple Docker images being built, you need to specify 
+The build process consist in multiple Docker images being built, you need to specify
 where you want the locally build images to be pushed. The Docker registry needs to be
 accessible from your Kubernetes cluster.
 
