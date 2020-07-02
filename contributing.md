@@ -15,7 +15,7 @@ makes it easier to run the tests in environments with access to a Kubernetes
 cluster with no go toolchain installed locally, making it easier to reproduce
 our local working environments in CI/CD systems.
 
-# High-Perspective Architecture
+## High-Perspective Architecture
 
 The operator itself consists of 1 image, that has all the operational logic to deploy and 
 maintain the MongoDB resources in your cluster.
@@ -39,7 +39,7 @@ by the operator and mounted in the Agent's Pod.
 Each Pod holds a member of a Replica Set, and each Pod has different components,
 each one of them in charge of some part of the lifecycle of the MongoDB database.
 
-# Developing locally
+## Developing locally
 
 The operator is built using the latest stable `operator-sdk` and `golang`. We use a simple
 json file that describe some local options that you need to set for the testing environment
@@ -62,18 +62,18 @@ your tests. The `repo_url` sets the Docker registry. In my case I have a
 this file, set the `MONGODB_COMMUNITY_CONFIG` env variable to the absolute path
 of this file.
 
-## Configure Docker registry
+### Configure Docker registry
 
 The build process consist in multiple Docker images being built, you need to specify 
 where you want the locally build images to be pushed. The Docker registry needs to be
 accessible from your Kubernetes cluster.
 
-## Test Namespace
+### Test Namespace
 
 You can change the namespace used for tests, if you are using `Kind`, for
 instance, you can leave this as `default`.
 
-## Python Environment
+### Python Environment
 
 The test runner is a Python script, in order to use it a virtualenv needs to be
 created. The dependencies of the Python environment are described, as usual, in
@@ -85,7 +85,7 @@ source venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-# Running Unit tests
+## Running Unit tests
 
 Unit tests should be run from the root of the project with:
 
@@ -93,9 +93,9 @@ Unit tests should be run from the root of the project with:
 go test ./pkg/...
 ```
 
-# Running E2E Tests
+## Running E2E Tests
 
-## Running an E2E test
+### Running an E2E test
 
 We have built a simple mechanism to run E2E tests on your cluster using a runner
 that deploys a series of Kubernetes objects, runs them, and awaits for their
@@ -125,7 +125,7 @@ python scripts/dev/e2e.py --test replica_set
 This will run the `replica_set` E2E test which is a simple test that installs a
 MongoDB Replica Set and asserts that the deployed server can be connected to.
 
-# Writing new E2E tests
+## Writing new E2E tests
 
 You can start with `replica_set` test as an starting point to write a new test.
 The tests are written using `operator-sdk` and so you can find more information
@@ -139,7 +139,7 @@ new E2E test, and to run them:
 python scripts/dev/e2e.py --test <new-test>
 ```
 
-# Before Committing your code
+## Before Committing your code
 
 Please make sure you sign our Contributor Agreement
 [here](https://www.mongodb.com/legal/contributor-agreement). This will be
