@@ -7,6 +7,7 @@ import (
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,15 +78,7 @@ func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, st
 // have reached the ready status
 func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		return sts.Status.ReadyReplicas == int32(mdb.Spec.Members)
-	})
-}
-
-// waitForStatefulSetToBeUpdated waits until all replicas of the StatefulSet with the given name
-// are updated.
-func WaitForStatefulSetToBeUpdated(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		return sts.Status.UpdatedReplicas == int32(mdb.Spec.Members)
+		return statefulset.IsReady(sts, mdb.Spec.Members)
 	})
 }
 

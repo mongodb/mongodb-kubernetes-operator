@@ -28,7 +28,8 @@ type Builder struct {
 	tlsCertAndKeyFile string
 	tlsMode           SSLMode
 	// MongoDB installable versions
-	versions []MongoDbVersionConfig
+	versions     []MongoDbVersionConfig
+	toolsVersion ToolsVersion
 }
 
 func NewBuilder() *Builder {
@@ -73,6 +74,11 @@ func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
 
 func (b *Builder) isTLSEnabled() bool {
 	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != SSLModeDisabled
+}
+
+func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
+	b.toolsVersion = version
+	return b
 }
 
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
@@ -128,6 +134,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			},
 		},
 		Versions: b.versions,
+		ToolsVersion: b.toolsVersion,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
 		Auth:     DisabledAuth(),
 		SSL: SSL{
