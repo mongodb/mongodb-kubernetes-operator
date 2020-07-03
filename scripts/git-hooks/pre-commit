@@ -36,13 +36,23 @@ function mypy_check()
 }
 
 function go_linting() {
-    dirs_to_analyze = ()
+    dirs_to_analyze=()
     for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
     do
-        dirs_to_analize+=("$(dirname "${file}")" )
+        dirs_to_analyze+=("$(dirname "${file}")" )
     done
     dirs_to_analyze=($(echo "${dirs_to_analyze[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-    echo $files_to_analize
+    if [ ${#dirs_to_analyze[@]} -ne 0 ]; then
+        echo "Running golangci-lint on staged files"
+        local exit_status=0
+        for file in $dirs_to_analyze
+        do
+            if ! golangci-lint run "${file}"; then
+                exit_status=1
+            fi
+        done
+        return $exit_status
+    fi
 
     return 0
 }
@@ -50,7 +60,6 @@ function go_linting() {
 
 go_imports
 mypy_check
-go_linting
 if [ $? -ne 0 ]; then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
@@ -64,4 +73,13 @@ if [ $? -ne 0 ]; then
          " false positives."
     exit 1
 fi
-
+go_linting
+if [ $? -ne 0 ]; then
+    echo "Golancli-lint returned some errors, please correct them"
+    echo "Commit aborted"
+    # In some cases we might encounter mypy errors that we do not
+    # actually treat as such. So we provide a link to the dev
+    # for ignoring them through code annotation
+    echo "If some of the errors reported are false positives bla bla I need to add this"
+    exit 1
+fi
