@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
-ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.13.0.6199-1.rhel7_x86_64.tar.gz
-ARG agent_version=10.13.0.6199-1
+ARG agent_version
+ARG tools_version
 
 RUN apt-get -qq update \
         && apt-get -y -qq install \
@@ -11,12 +11,14 @@ RUN apt-get -qq update \
         && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p agent \
-    && curl --fail --retry 3 --silent $agent_image -o agent/mongodb-agent.tar.gz \
+    && curl --fail --retry 3 --silent https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-${agent_version}.rhel7_x86_64.tar.gz -o agent/mongodb-agent.tar.gz \
     && tar xfz agent/mongodb-agent.tar.gz \
-    && mv mongodb-mms-automation-agent-$agent_version.rhel7_x86_64/mongodb-mms-automation-agent agent/mongodb-agent \
+    && mv mongodb-mms-automation-agent-*/mongodb-mms-automation-agent agent/mongodb-agent \
     && chmod +x agent/mongodb-agent \
     && mkdir -p /var/lib/automation/config \
-    && chmod -R +r /var/lib/automation/config
+    && chmod -R +r /var/lib/automation/config \
+    && rm agent/mongodb-agent.tar.gz \
+    && rm -r mongodb-mms-automation-agent-*
 
 RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
 #    && curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe -o /var/lib/mongodb-mms-automation/probes/readinessprobe \
@@ -24,5 +26,10 @@ RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
     && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe \
     && mkdir -p /var/log/mongodb-mms-automation/ \
     && chmod -R +wr /var/log/mongodb-mms-automation/
+
+# Install MongoDB tools. The agent will automatically search the folder and find the binaries.
+RUN curl --fail --retry 3 --silent https://downloads.mongodb.org/tools/db/mongodb-database-tools-ubuntu1604-x86_64-${tools_version}.tgz -o mongodb-tools.tgz \
+    && tar xfz mongodb-tools.tgz --directory /var/lib/mongodb-mms-automation/ \
+    && rm mongodb-tools.tgz
 
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
