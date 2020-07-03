@@ -1,6 +1,32 @@
 package service
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type Getter interface {
+	GetService(objectKey client.ObjectKey) (corev1.Service, error)
+}
+
+type Updater interface {
+	UpdateService(secret corev1.Service) error
+}
+
+type Creator interface {
+	CreateService(secret corev1.Service) error
+}
+
+type GetUpdater interface {
+	Getter
+	Updater
+}
+
+type GetUpdateCreator interface {
+	Getter
+	Updater
+	Creator
+}
 
 // Merge merges `source` into `dest`. Both arguments will remain unchanged
 // a new service will be created and returned.

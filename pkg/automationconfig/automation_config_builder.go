@@ -13,17 +13,20 @@ const (
 )
 
 type Builder struct {
-	processes      []Process
-	replicaSets    []ReplicaSet
-	version        int
-	auth           Auth
-	members        int
-	domain         string
-	name           string
-	fcv            string
-	topology       Topology
-	mongodbVersion string
-	previousAC     AutomationConfig
+	processes         []Process
+	replicaSets       []ReplicaSet
+	version           int
+	auth              Auth
+	members           int
+	domain            string
+	name              string
+	fcv               string
+	topology          Topology
+	mongodbVersion    string
+	previousAC        AutomationConfig
+	tlsCAFile         string
+	tlsCertAndKeyFile string
+	tlsMode           SSLMode
 	// MongoDB installable versions
 	versions     []MongoDbVersionConfig
 	toolsVersion ToolsVersion
@@ -62,6 +65,17 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 	return b
 }
 
+func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode SSLMode) *Builder {
+	b.tlsCAFile = caFile
+	b.tlsCertAndKeyFile = certAndKeyFile
+	b.tlsMode = mode
+	return b
+}
+
+func (b *Builder) isTLSEnabled() bool {
+	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != SSLModeDisabled
+}
+
 func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
 	b.toolsVersion = version
 	return b
@@ -95,7 +109,16 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
-		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, withFCV(b.fcv))
+		opts := []func(*Process){
+			withFCV(b.fcv),
+		}
+
+		// Configure TLS for mongod if enabled
+		if b.isTLSEnabled() {
+			opts = append(opts, withTLS(b.tlsCAFile, b.tlsCertAndKeyFile, b.tlsMode))
+		}
+
+		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
 		processes[i] = process
 		members[i] = newReplicaSetMember(process, i)
 	}
@@ -110,10 +133,19 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions:     b.versions,
+		Versions: b.versions,
 		ToolsVersion: b.toolsVersion,
-		Options:      Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:         DisabledAuth(),
+		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Auth:     DisabledAuth(),
+		SSL: SSL{
+			ClientCertificateMode: ClientCertificateModeOptional,
+		},
+	}
+
+	// Set up TLS between agent and server
+	// Agent needs to trust the certificate presented by the server
+	if b.isTLSEnabled() {
+		currentAc.SSL.CAFilePath = b.tlsCAFile
 	}
 
 	// Here we compare the bytes of the two automationconfigs,
@@ -145,5 +177,17 @@ func toHostName(name string, index int) string {
 func withFCV(fcv string) func(*Process) {
 	return func(process *Process) {
 		process.FeatureCompatibilityVersion = fcv
+	}
+}
+
+// withTLS enables TLS for the mongod process
+func withTLS(caFile, tlsKeyFile string, mode SSLMode) func(*Process) {
+	return func(process *Process) {
+		process.Args26.Net.SSL = MongoDBSSL{
+			Mode:                               mode,
+			CAFile:                             caFile,
+			PEMKeyFile:                         tlsKeyFile,
+			AllowConnectionsWithoutCertificate: true,
+		}
 	}
 }

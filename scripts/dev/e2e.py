@@ -7,44 +7,47 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
+import k8s_request_data
+import dump_diagnostic
 from dockerutil import build_and_push_image
-from typing import Dict, Optional
+from typing import Dict
 from dev_config import load_config
 from kubernetes import client, config
 import argparse
 import time
 import os
+import sys
 import yaml
 
 TEST_RUNNER_NAME = "test-runner"
 
 
-def _load_testrunner_service_account() -> Optional[Dict]:
+def _load_testrunner_service_account() -> Dict:
     return load_yaml_from_file("deploy/testrunner/service_account.yaml")
 
 
-def _load_testrunner_role() -> Optional[Dict]:
+def _load_testrunner_role() -> Dict:
     return load_yaml_from_file("deploy/testrunner/role.yaml")
 
 
-def _load_testrunner_role_binding() -> Optional[Dict]:
+def _load_testrunner_role_binding() -> Dict:
     return load_yaml_from_file("deploy/testrunner/role_binding.yaml")
 
 
-def _load_testrunner_cluster_role_binding() -> Optional[Dict]:
+def _load_testrunner_cluster_role_binding() -> Dict:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
-def _prepare_testrunner_environment():
+def _prepare_testrunner_environment(config_file: str):
     """
     _prepare_testrunner_environment ensures the ServiceAccount,
     Role and ClusterRole and bindings are created for the test runner.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
-    dev_config = load_config()
+    dev_config = load_config(config_file)
 
-    _delete_testrunner_pod()
+    _delete_testrunner_pod(config_file)
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
@@ -120,35 +123,43 @@ def build_and_push_prehook(repo_url: str, tag: str, path: str):
     return build_and_push_image(repo_url, tag, path, "prehook")
 
 
-def _delete_testrunner_pod() -> None:
+def _delete_testrunner_pod(config_file: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
     if it already exists.
     """
-    dev_config = load_config()
+    dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
     k8s_conditions.ignore_if_doesnt_exist(
         lambda: corev1.delete_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace)
     )
 
 
-def create_test_runner_pod(test: str):
+def create_test_runner_pod(
+    test: str,
+    config_file: str,
+    tag: str,
+    skip_cleanup: str,
+    test_runner_image_name: str,
+):
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
-    dev_config = load_config()
+    dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(test)
+    pod_body = _get_testrunner_pod_body(
+        test, config_file, tag, skip_cleanup, test_runner_image_name
+    )
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}"
+            dev_config.namespace,
+            field_selector="metadata.name=={}".format(TEST_RUNNER_NAME),
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=10,
         sleep_time=0.5,
     ):
-
         raise Exception(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
@@ -168,8 +179,14 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         raise Exception("Pod never got into Running state!")
 
 
-def _get_testrunner_pod_body(test: str) -> Dict:
-    dev_config = load_config()
+def _get_testrunner_pod_body(
+    test: str,
+    config_file: str,
+    tag: str,
+    skip_cleanup: str,
+    test_runner_image_name: str,
+) -> Dict:
+    dev_config = load_config(config_file)
     return {
         "kind": "Pod",
         "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
@@ -178,19 +195,28 @@ def _get_testrunner_pod_body(test: str) -> Dict:
             "serviceAccountName": TEST_RUNNER_NAME,
             "containers": [
                 {
-                    "name": TEST_RUNNER_NAME,
-                    "image": f"{dev_config.repo_url}/{TEST_RUNNER_NAME}",
+                    "name": "test-runner",
+                    "image": "{}/{}:{}".format(
+                        dev_config.repo_url, test_runner_image_name, tag
+                    ),
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.operator_image, tag
+                        ),
                         "--preHookImage",
-                        f"{dev_config.repo_url}/prehook",
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.prestop_hook_image, tag
+                        ),
                         "--testImage",
-                        f"{dev_config.repo_url}/e2e",
-                        f"--test={test}",
-                        f"--namespace={dev_config.namespace}",
+                        "{}/{}:{}".format(
+                            dev_config.repo_url, dev_config.e2e_image, tag
+                        ),
+                        "--test={}".format(test),
+                        "--namespace={}".format(dev_config.namespace),
+                        "--skipCleanup={}".format(skip_cleanup),
                     ],
                 }
             ],
@@ -204,44 +230,102 @@ def parse_args():
     parser.add_argument(
         "--skip-operator-install",
         help="Do not install the Operator, assumes one is installed already",
-        type=bool,
-        default=False,
+        action="store_false",
     )
+    parser.add_argument(
+        "--skip-image-build", help="Skip building images", action="store_false",
+    )
+    parser.add_argument(
+        "--tag",
+        help="Tag for the images, it will be the same for all images",
+        type=str,
+        default="latest",
+    )
+    parser.add_argument(
+        "--dump_diagnostic",
+        help="Dump diagnostic information into files",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--skip-cleanup",
+        help="skip the context cleanup when the test ends",
+        action="store_false",
+    )
+    parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-    config.load_kube_config()
-    dev_config = load_config()
-    create_kube_config()
-
+def build_and_push_images(args, dev_config):
+    test_runner_name = dev_config.testrunner_image
     if not args.skip_operator_install:
         build_and_push_operator(
             dev_config.repo_url,
-            f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+            "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
             ".",
         )
         deploy_operator()
+        if not args.skip_image_build:
+            build_and_push_testrunner(
+                dev_config.repo_url,
+                "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
+                ".",
+            )
+            build_and_push_e2e(
+                dev_config.repo_url,
+                "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
+                ".",
+            )
+            build_and_push_prehook(
+                dev_config.repo_url,
+                "{}/{}:{}".format(
+                    dev_config.repo_url, dev_config.prestop_hook_image, args.tag
+                ),
+                ".",
+            )
 
-    build_and_push_testrunner(
-        dev_config.repo_url, f"{dev_config.repo_url}/{TEST_RUNNER_NAME}", "."
+
+def prepare_and_run_testrunner(args, dev_config):
+    test_runner_name = dev_config.testrunner_image
+    _prepare_testrunner_environment(args.config_file)
+
+    _ = create_test_runner_pod(
+        args.test,
+        args.config_file,
+        args.tag,
+        args.skip_cleanup,
+        test_runner_name,
     )
-    build_and_push_e2e(dev_config.repo_url, f"{dev_config.repo_url}/e2e", ".")
-    build_and_push_prehook(dev_config.repo_url, f"{dev_config.repo_url}/prehook", ".")
-
-    _prepare_testrunner_environment()
-
-    pod = create_test_runner_pod(args.test)
     corev1 = client.CoreV1Api()
 
-    wait_for_pod_to_be_running(corev1, TEST_RUNNER_NAME, dev_config.namespace)
+    wait_for_pod_to_be_running(
+        corev1, TEST_RUNNER_NAME, dev_config.namespace, 
+    )
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
         TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
+
+
+def main():
+    args = parse_args()
+    config.load_kube_config()
+
+    dev_config = load_config(args.config_file)
+    create_kube_config()
+
+    try:
+        build_and_push_images(args, dev_config)
+        prepare_and_run_testrunner(args, dev_config)
+        test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
+    finally:
+        if args.dump_diagnostic:
+            dump_diagnostic.dump_all(dev_config.namespace)
+
+    if test_runner_pod.status.phase != "Succeeded":
+        sys.exit(1)
+
 
 
 if __name__ == "__main__":
