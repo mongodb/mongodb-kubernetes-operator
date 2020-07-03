@@ -70,22 +70,29 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 	return true, nil
 }
 
+// hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
+// These must be mounted before TLS can be enabled in the automation config.
+func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
+	_, completedRollout := mdb.Annotations[tLSRolledOutAnnotationKey]
+	return completedRollout
+}
+
 // completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
 // At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
 // The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
 func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
-	if !mdb.Spec.Security.TLS.Enabled || mdb.HasRolledOutTLS() {
+	if !mdb.Spec.Security.TLS.Enabled || hasRolledOutTLS(mdb) {
 		return nil
 	}
 
 	r.log.Debug("Completing TLS rollout")
 
-	mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+	mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
 	}
 
-	if err := r.setAnnotation(mdb.NamespacedName(), mdbv1.TLSRolledOutKey, "true"); err != nil {
+	if err := r.setAnnotation(mdb.NamespacedName(), tLSRolledOutAnnotationKey, "true"); err != nil {
 		return fmt.Errorf("error setting TLS annotation: %+v", err)
 	}
 

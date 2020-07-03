@@ -391,7 +391,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+		mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
 		ac := createAC(mdb)
 
 		assert.Equal(t, automationconfig.SSL{
@@ -411,7 +411,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[mdbv1.TLSRolledOutKey] = "true"
+		mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
 		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 

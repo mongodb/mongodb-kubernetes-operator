@@ -25,9 +25,6 @@ const (
 	// LastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
 	LastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
-
-	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	TLSRolledOutKey = "mongodb.com/v1.tlsRolledOut"
 )
 
 // MongoDBSpec defines the desired state of MongoDB
@@ -107,13 +104,6 @@ func (m MongoDB) IsChangingVersion() bool {
 		return (m.Spec.Version != lastVersion) && lastVersion != ""
 	}
 	return false
-}
-
-// HasRolledOutTLS indicates whether the certs and keys have been mounted to all pods.
-// We need to roll out these first before we can enable TLS on the servers.
-func (m MongoDB) HasRolledOutTLS() bool {
-	_, completedRollOut := m.Annotations[TLSRolledOutKey]
-	return completedRollOut
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

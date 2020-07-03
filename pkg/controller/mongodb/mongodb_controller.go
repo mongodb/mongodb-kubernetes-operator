@@ -58,6 +58,9 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
+	// TLSRolledOutKey indicates if TLS has been fully rolled out
+	tLSRolledOutAnnotationKey = "mongodb.com/v1.tlsRolledOut"
+
 	tlsCAMountPath     = "/var/lib/tls/ca/"
 	tlsCACertName      = "ca.crt"
 	tlsSecretMountPath = "/var/lib/tls/secret/"
@@ -323,7 +326,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
 	// The agent needs these to be in place before the config is updated.
 	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-	if mdb.Spec.Security.TLS.Enabled && mdb.HasRolledOutTLS() {
+	if mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb) {
 		mode := automationconfig.SSLModeRequired
 		if mdb.Spec.Security.TLS.Optional {
 			// SSLModePreferred requires server-server connections to use TLS but makes it optional for clients.
