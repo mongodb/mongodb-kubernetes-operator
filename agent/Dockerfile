@@ -28,7 +28,7 @@ RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
     && chmod -R +wr /var/log/mongodb-mms-automation/
 
 # Install MongoDB tools. The agent will automatically search the folder and find the binaries.
-RUN curl --fail --retry 3 --silent https://downloads.mongodb.org/tools/db/mongodb-database-tools-ubuntu1604-x86_64-$tools_version.tgz -o mongodb-tools.tgz \
+RUN curl --fail --retry 3 --silent https://downloads.mongodb.org/tools/db/mongodb-database-tools-ubuntu1604-x86_64-${tools_version}.tgz -o mongodb-tools.tgz \
     && tar xfz mongodb-tools.tgz --directory /var/lib/mongodb-mms-automation/ \
     && rm mongodb-tools.tgz
 
