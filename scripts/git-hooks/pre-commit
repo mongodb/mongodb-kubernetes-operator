@@ -35,10 +35,22 @@ function mypy_check()
     return $exit_status
 }
 
+function go_linting() {
+    dirs_to_analyze = ()
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+    do
+        dirs_to_analize+=("$(dirname "${file}")" )
+    done
+    dirs_to_analyze=($(echo "${dirs_to_analyze[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    echo $files_to_analize
+
+    return 0
+}
 
 
 go_imports
 mypy_check
+go_linting
 if [ $? -ne 0 ]; then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
