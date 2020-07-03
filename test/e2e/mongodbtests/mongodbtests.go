@@ -60,23 +60,11 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference met
 	}
 }
 
-// StatefulSetIsUpdated ensures that all the Pods of the StatefulSet are
-// in "Updated" condition.
-func StatefulSetIsUpdated(mdb *mdbv1.MongoDB) func(t *testing.T) {
-	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToBeUpdated(t, mdb, time.Second*15, time.Minute*5)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("StatefulSet %s/%s is updated!", mdb.Namespace, mdb.Name)
-	}
-}
-
 // StatefulSetHasUpdateStrategy verifies that the StatefulSet holding this MongoDB
 // resource has the correct Update Strategy
 func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDB, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToHaveUpdateStrategy(t, mdb, appsv1.RollingUpdateStatefulSetStrategyType, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -142,8 +130,6 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 			case <-time.After(10 * time.Second):
 				var result bson.M
 				err = database.RunCommand(ctx, runCommand).Decode(&result)
-				assert.NoError(t, err)
-
 				expected := primitive.M{"version": fcv}
 				if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
 					found = true
