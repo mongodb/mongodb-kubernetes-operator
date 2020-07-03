@@ -58,9 +58,19 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
+	tlsCAMountPath     = "/var/lib/tls/ca/"
+	tlsCACertName      = "ca.crt"
+	tlsSecretMountPath = "/var/lib/tls/secret/"
+	tlsSecretCertName  = "tls.crt"
+	tlsSecretKeyName   = "tls.key"
+	tlsServerMountPath = "/var/lib/tls/server/"
+	tlsServerFileName  = "server.pem"
+
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	lastVersionAnnotationKey       = "mongodb.com/v1.lastVersion"
+	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
+	// TLSRolledOutKey indicates if TLS has been fully rolled out
+	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
 )
 
@@ -150,6 +160,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	isTLSValid, err := r.validateTLSConfig(mdb)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !isTLSValid {
+		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		r.log.Warnf("Error creating/updating StatefulSet: %+v", err)
@@ -188,6 +206,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		r.log.Warnf("Error setting annotations: %+v", err)
+		return reconcile.Result{}, err
+	}
+
+	if err := r.completeTLSRollout(mdb); err != nil {
+		r.log.Warnf("Error completing TLS rollout: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -316,24 +339,37 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, client mdbClient.Client) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAC automationconfig.AutomationConfig) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
-	currentAc, err := getCurrentAutomationConfig(client, mdb)
-	if err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-	newAc, err := automationconfig.NewBuilder().
+	builder := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
-		SetPreviousAutomationConfig(currentAc).
+		SetPreviousAutomationConfig(currentAC).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
-		AddVersion(mdbVersionConfig).
-		Build()
+		AddVersion(mdbVersionConfig)
 
+	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
+	// The agent needs these to be in place before the config is updated.
+	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+	if mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb) {
+		mode := automationconfig.SSLModeRequired
+		if mdb.Spec.Security.TLS.Optional {
+			// SSLModePreferred requires server-server connections to use TLS but makes it optional for clients.
+			mode = automationconfig.SSLModePreferred
+		}
+
+		builder.SetTLS(
+			tlsCAMountPath+tlsCACertName,
+			tlsServerMountPath+tlsServerFileName,
+			mode,
+		)
+	}
+
+	newAc, err := builder.Build()
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
@@ -394,7 +430,12 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), r.client)
+	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
+
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -554,6 +595,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
+				buildTLSPodSpecModification(mdb),
 			),
 		),
 	)
