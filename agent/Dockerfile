@@ -11,7 +11,7 @@ RUN apt-get -qq update \
         && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p agent \
-    && curl --fail --retry 3 --silent https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-${agent_version}-1.rhel7_x86_64.tar.gz -o agent/mongodb-agent.tar.gz \
+    && curl --fail --retry 3 --silent https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-${agent_version}.rhel7_x86_64.tar.gz -o agent/mongodb-agent.tar.gz \
     && tar xfz agent/mongodb-agent.tar.gz \
     && mv mongodb-mms-automation-agent-*/mongodb-mms-automation-agent agent/mongodb-agent \
     && chmod +x agent/mongodb-agent \
