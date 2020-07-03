@@ -21,12 +21,6 @@ const (
 	Running Phase = "Running"
 )
 
-const (
-	// LastVersionAnnotationKey should indicate which version of MongoDB was last
-	// configured
-	LastVersionAnnotationKey = "lastVersion"
-)
-
 // MongoDBSpec defines the desired state of MongoDB
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
@@ -68,13 +62,6 @@ type MongoDB struct {
 func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
 	m.Status.Phase = Running
-}
-
-func (m MongoDB) IsChangingVersion() bool {
-	if lastVersion, ok := m.Annotations[LastVersionAnnotationKey]; ok {
-		return (m.Spec.Version != lastVersion) && lastVersion != ""
-	}
-	return false
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
