@@ -38,19 +38,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Install missing python packages
-        run: sudo apt-get install -y --no-install-recommends python3-venv python3-setuptools
+     # - name: Install missing python packages
+     #   run: sudo apt-get install -y --no-install-recommends python3-venv python3-setuptools
       ## Dependencies with pip + requirements.txt
-      - name: Install dependencies with pip + requirements.txt
-        run: |
-          python3 -m venv .venv
-          .venv/bin/pip install -r requirements.txt
+     # - name: Install dependencies with pip + requirements.txt
+      #  run: |
+      #    python3 -m venv .venv
+      #    .venv/bin/pip install -r requirements.txt
       # Now we move the dependencies where super-linter can see them
-      - name: Move the dependencies
-        run: mv .venv /home/runner/work/_temp/_github_workflow
+     # - name: Move the dependencies
+     #   run: mv .venv /home/runner/work/_temp/_github_workflow
+      - name : Install Operator SDK
+        run: |
+              curl -s https://api.github.com/repos/operator-framework/operator-sdk/releases/latest | grep browser_download_url | grep x86_64-linux-gnu | cut -d '"' -f 4 | wget -i -
+              sudo mv operator-sdk-*-x86_64-linux-gnu /usr/local/bin/operator-sdk
       - name: Generate DeepCopy
         run: operator-sdk generate k8s
-          
+
       - name: Lint Code Base
         uses: docker://bznein/superlinter:latest
         env:
