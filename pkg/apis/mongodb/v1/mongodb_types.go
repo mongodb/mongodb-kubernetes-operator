@@ -37,6 +37,8 @@ type MongoDBSpec struct {
 	// be set for the deployment
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
+
+	Id string
 }
 
 // MongoDBStatus defines the observed state of MongoDB
