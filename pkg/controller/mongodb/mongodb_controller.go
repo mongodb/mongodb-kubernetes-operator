@@ -72,6 +72,8 @@ const (
 	// TLSRolledOutKey indicates if TLS has been fully rolled out
 	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
+
+	trueAnnotation = "true"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -261,14 +263,14 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
 		annotations := map[string]string{
-			hasLeftReadyStateAnnotationKey: "true",
+			hasLeftReadyStateAnnotationKey: trueAnnotation,
 		}
 		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 			return false, fmt.Errorf("failed setting %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
 		}
 	}
 
-	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == "true"
+	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == trueAnnotation
 	r.log.Infow("StatefulSet Readiness", "isReady", isReady, "hasPerformedUpgrade", hasPerformedUpgrade, "areEqual", areEqual)
 
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {

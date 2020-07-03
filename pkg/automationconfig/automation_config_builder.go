@@ -133,10 +133,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions: b.versions,
+		Versions:     b.versions,
 		ToolsVersion: b.toolsVersion,
-		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     DisabledAuth(),
+		Options:      Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Auth:         DisabledAuth(),
 		SSL: SSL{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
@@ -163,8 +163,8 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		return AutomationConfig{}, err
 	}
 
-	if bytes.Compare(newAcBytes, currentAcBytes) != 0 {
-		currentAc.Version += 1
+	if !bytes.Equal(newAcBytes, currentAcBytes) {
+		currentAc.Version++
 	}
 	return currentAc, nil
 }
