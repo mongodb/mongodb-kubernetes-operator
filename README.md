@@ -1,4 +1,4 @@
-# MongoDB Community Kubernetes Operator
+# MongoDB Community Kubernetes Operator #
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
@@ -29,7 +29,7 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
 2. Have a Kubernetes solution available to use.
    If you need a Kubernetes solution, see the [Kubernetes documentation on picking the right solution](https://kubernetes.io/docs/setup). For testing, MongoDB recommends [Kind](https://kind.sigs.k8s.io/).
 3. Clone this repository.
-   ```bash
+   ```
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
    ```
 
@@ -43,21 +43,21 @@ To install the MongoDB Community Kubernetes Operator:
 2. Install the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
 
    a. Invoke the following `kubectl` command:
-      ```bash
+      ```
       kubectl create -f deploy/crds/mongodb.com_mongodb_crd.yaml
       ```
    b. Verify that the Custom Resource Definitions installed successfully:
-      ```bash
+      ```
       kubectl get crd/mongodb.mongodb.com
       ```
 3. Install the Operator.
 
    a. Invoke the following `kubectl` command to install the Operator in the specified namespace:
-      ```bash
+      ```
       kubectl create -f deploy/ --namespace <my-namespace>
       ```
    b. Verify that the Operator installed successsfully:
-      ```bash
+      ```
       kubectl get pods --namespace <my-namespace>
       ```
 
@@ -67,7 +67,7 @@ To upgrade the MongoDB Community Kubernetes Operator:
 
 1. Change to the directory in which you cloned the repository.
 2. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
-   ```bash
+   ```
    kubectl apply -f deploy/crds/mongodb.com_mongodb_crd.yaml
    ```
 
@@ -80,11 +80,11 @@ The [`/deploy/crds`](deploy/crds) directory contains example MongoDB resources t
 To deploy your first replica set:
 
 1. Invoke the following `kubectl` command:
-   ```bash
+   ```
    kubectl apply -f deploy/crds/mongodb.com_v1_mongodb_cr.yaml --namespace <my-namespace>
    ```
 2. Verify that the MongoDB resource deployed:
-   ```bash
+   ```
    kubectl get mongodb --namespace <my-namespace>
    ```
 
@@ -135,7 +135,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
    **NOTE:** Setting `featureCompatibilityVersion` to `4.0` disables [4.2 features incompatible with MongoDB 4.0](https://docs.mongodb.com/manual/release-notes/4.2-compatibility/#compatibility-enabled).
 
 2. Reapply the configuration to Kubernetes:
-   ```bash
+   ```
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 
