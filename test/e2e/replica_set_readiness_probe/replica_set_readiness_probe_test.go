@@ -16,11 +16,9 @@ func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
 
-func init() {
-	rand.Seed(time.Now().Unix())
-}
-
 func TestReplicaSetReadinessProbeScaling(t *testing.T) {
+
+	rand.Seed(time.Now().Unix())
 
 	ctx, shouldCleanup := setup.InitTest(t)
 
