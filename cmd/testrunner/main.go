@@ -30,34 +30,34 @@ import (
 )
 
 type flags struct {
-	deployDir     string
-	namespace     string
-	operatorImage string
-	preHookImage  string
-	testImage     string
-	test          string
-	skipCleanup   string
+	deployDir      string
+	namespace      string
+	operatorImage  string
+	preHookImage   string
+	testImage      string
+	test           string
+	performCleanup string
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, preHookImage, testImage, test, skipCleanup *string
+	var namespace, deployDir, operatorImage, preHookImage, testImage, test, performCleanup *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
 	preHookImage = flag.String("preHookImage", "quay.io/mongodb/community-operator-prehook:latest", "the prestophook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
 	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
-	skipCleanup = flag.String("skipCleanup", "1", "specifies whether to skip cleaning up the context or not")
+	performCleanup = flag.String("performCleanup", "1", "specifies whether to performing a cleanup the context or not")
 	flag.Parse()
 
 	return flags{
-		deployDir:     *deployDir,
-		namespace:     *namespace,
-		operatorImage: *operatorImage,
-		preHookImage:  *preHookImage,
-		testImage:     *testImage,
-		test:          *test,
-		skipCleanup:   *skipCleanup,
+		deployDir:      *deployDir,
+		namespace:      *namespace,
+		operatorImage:  *operatorImage,
+		preHookImage:   *preHookImage,
+		testImage:      *testImage,
+		test:           *test,
+		performCleanup: *performCleanup,
 	}
 }
 
@@ -97,7 +97,7 @@ func runCmd(f flags) error {
 	fmt.Println("Successfully deployed the operator")
 
 	testToRun := "test/operator-sdk-test.yaml"
-	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test), withEnvVar("SKIP_CLEANUP", f.skipCleanup)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test), withEnvVar("PERFORM_CLEANUP", f.performCleanup)); err != nil {
 		return fmt.Errorf("error deploying test: %v", err)
 	}
 

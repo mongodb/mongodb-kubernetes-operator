@@ -58,9 +58,6 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	tLSRolledOutAnnotationKey = "mongodb.com/v1.tlsRolledOut"
-
 	tlsCAMountPath     = "/var/lib/tls/ca/"
 	tlsCACertName      = "ca.crt"
 	tlsSecretMountPath = "/var/lib/tls/secret/"
@@ -68,6 +65,13 @@ const (
 	tlsSecretKeyName   = "tls.key"
 	tlsServerMountPath = "/var/lib/tls/server/"
 	tlsServerFileName  = "server.pem"
+
+	// lastVersionAnnotationKey should indicate which version of MongoDB was last
+	// configured
+	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
+	// TLSRolledOutKey indicates if TLS has been fully rolled out
+	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
+	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -195,8 +199,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Setting MongoDB Annotations")
-	if err := r.setAnnotation(types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdbv1.LastVersionAnnotationKey, mdb.Spec.Version); err != nil {
-		r.log.Warnf("Error setting annotation: %+v", err)
+
+	annotations := map[string]string{
+		lastVersionAnnotationKey:       mdb.Spec.Version,
+		hasLeftReadyStateAnnotationKey: "false",
+	}
+	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
+		r.log.Warnf("Error setting annotations: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -219,7 +228,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
 func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
-	if !mdb.IsChangingVersion() {
+	if !isChangingVersion(mdb) {
 		return nil
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
@@ -244,10 +253,28 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 		return false, err
 	}
 
-	// comparison is done with bytes instead of reflect.DeepEqual as there are
-	// some issues with nil/empty maps not being compared correctly otherwise
-	areEqual := bytes.Compare(stsCopyBytes, stsBytes) == 0
+	//comparison is done with bytes instead of reflect.DeepEqual as there are
+	//some issues with nil/empty maps not being compared correctly otherwise
+	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
+
 	isReady := statefulset.IsReady(*existingStatefulSet, mdb.Spec.Members)
+	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
+		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
+		annotations := map[string]string{
+			hasLeftReadyStateAnnotationKey: "true",
+		}
+		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
+			return false, fmt.Errorf("failed setting %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
+		}
+	}
+
+	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == "true"
+	r.log.Infow("StatefulSet Readiness", "isReady", isReady, "hasPerformedUpgrade", hasPerformedUpgrade, "areEqual", areEqual)
+
+	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+		return areEqual && isReady && hasPerformedUpgrade, nil
+	}
+
 	return areEqual && isReady, nil
 }
 
@@ -275,15 +302,17 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	return nil
 }
 
-// setAnnotation updates the monogdb resource with the given namespaced name and sets the annotation
-// "key" with the provided value "val"
-func (r ReplicaSetReconciler) setAnnotation(nsName types.NamespacedName, key, val string) error {
+// setAnnotations updates the monogdb resource annotations by applying the provided annotations
+// on top of the existing ones
+func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
 	mdb := mdbv1.MongoDB{}
 	return r.client.GetAndUpdate(nsName, &mdb, func() {
 		if mdb.Annotations == nil {
 			mdb.Annotations = map[string]string{}
 		}
-		mdb.Annotations[key] = val
+		for key, val := range annotations {
+			mdb.Annotations[key] = val
+		}
 	})
 }
 
@@ -425,7 +454,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
 // should be configured with
 func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyType {
-	if !mdb.IsChangingVersion() {
+	if !isChangingVersion(mdb) {
 		return appsv1.RollingUpdateStatefulSetStrategyType
 	}
 	return appsv1.OnDeleteStatefulSetStrategyType
@@ -437,6 +466,13 @@ func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
 	buildStatefulSetModificationFunction(mdb)(&sts)
 	return sts, nil
+}
+
+func isChangingVersion(mdb mdbv1.MongoDB) bool {
+	if lastVersion, ok := mdb.Annotations[lastVersionAnnotationKey]; ok {
+		return (mdb.Spec.Version != lastVersion) && lastVersion != ""
+	}
+	return false
 }
 
 func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modification {
