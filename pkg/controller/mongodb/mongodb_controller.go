@@ -350,7 +350,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetPreviousAutomationConfig(currentAC).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
-		AddVersion(mdbVersionConfig)
+		AddVersion(mdbVersionConfig).
+		SetToolsVersion(dummyToolsVersionConfig())
 
 	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
 	// The agent needs these to be in place before the config is updated.
@@ -375,6 +376,21 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	}
 
 	return newAc, nil
+}
+
+// dummyToolsVersionConfig generates a dummy config for the tools settings in the automation config.
+// The agent will not uses any of these values but requires them to be set.
+// TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
+func dummyToolsVersionConfig() automationconfig.ToolsVersion {
+	return automationconfig.ToolsVersion{
+		Version: "100.0.2",
+		URLs: map[string]map[string]string{
+			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
+			"linux": {
+				"ubuntu1604": "https://dummy",
+			},
+		},
+	}
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
