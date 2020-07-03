@@ -18,6 +18,8 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 
+	rand.Seed(time.Now().Unix())
+
 	ctx, shouldCleanup := setup.InitTest(t)
 
 	if shouldCleanup {
@@ -31,7 +33,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
-			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members-1)))
+			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members)))
 			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
