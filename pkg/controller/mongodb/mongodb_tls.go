@@ -17,17 +17,14 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 )
 
-type tlsValidationResult struct {
-	valid   bool
-	message string
-}
-
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-// If TLS is correctly configured, the function will return a result where result.valid = true.
-// If it's incorrectly configured the result will instead have result.valid = false and a message for the user in result.message.
-func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidationResult, error) {
+// The possible return values are:
+// - (true, nil) if the config is valid
+// - (false, nil) if the config is not valid
+// - (_, err) if an error occured when validating the config
+func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
-		return tlsValidationResult{valid: true}, nil
+		return true, nil
 	}
 
 	r.log.Info("Ensuring TLS is correctly configured")
@@ -36,43 +33,41 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (tlsValidati
 	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return tlsValidationResult{
-				valid:   false,
-				message: fmt.Sprintf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName()),
-			}, nil
+			r.log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
+			return false, nil
 		}
 
-		return tlsValidationResult{}, err
+		return false, err
 	}
 
 	// Ensure ConfigMap has a "ca.crt" field
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		message := fmt.Sprintf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
-		return tlsValidationResult{valid: false, message: message}, nil
+		r.log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
+		return false, nil
 	}
 
 	// Ensure Secret exists
 	secretData, err := secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		if errors.IsNotFound(err) {
-			message := fmt.Sprintf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
-			return tlsValidationResult{valid: false, message: message}, nil
+			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
+			return false, nil
 		}
 
-		return tlsValidationResult{}, err
+		return false, err
 	}
 
 	// Ensure Secret has "tls.crt" and "tls.key" fields
 	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
-		message := fmt.Sprintf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return tlsValidationResult{valid: false, message: message}, nil
+		r.log.Warnf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
+		return false, nil
 	}
 	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
-		message := fmt.Sprintf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return tlsValidationResult{valid: false, message: message}, nil
+		r.log.Warnf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
+		return false, nil
 	}
 
-	return tlsValidationResult{valid: true}, nil
+	return true, nil
 }
 
 // completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
