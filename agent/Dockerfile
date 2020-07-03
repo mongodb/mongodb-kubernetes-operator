@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
-ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.14.8.6391-1.rhel7_x86_64.tar.gz
-ARG agent_version=10.14.8.6391-1
+ARG agent_image=https://s3.amazonaws.com/mciuploads/mms-automation/mongodb-mms-build-agent/builds/automation-agent/prod/mongodb-mms-automation-agent-10.15.1.6468-1.rhel7_x86_64.tar.gz
+ARG agent_version=10.15.1.6468-1
 
 ARG tools_version=100.0.2
 
