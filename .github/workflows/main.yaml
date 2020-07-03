@@ -49,7 +49,7 @@ jobs:
       - name: Move the dependencies
         run: mv .venv /home/runner/work/_temp/_github_workflow
       - name: Lint Code Base
-        uses: docker://github/super-linter:v2.2.0
+        uses: docker://bznein/superlinter:latest
         env:
           VALIDATE_ALL_CODEBASE: true
           # Now we set the PYTHONPATH to the path of the dependencies *inside* the container
