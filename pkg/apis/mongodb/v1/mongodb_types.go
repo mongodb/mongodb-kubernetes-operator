@@ -136,10 +136,14 @@ func (m MongoDB) ConfigMapName() string {
 	return m.Name + "-config"
 }
 
+// TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate
+// As the ConfigMap will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
 func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CAConfigMapName, Namespace: m.Namespace}
 }
 
+// TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
+// As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
 func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.ServerSecretName, Namespace: m.Namespace}
 }
