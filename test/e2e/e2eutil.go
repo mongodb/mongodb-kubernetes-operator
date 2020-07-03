@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
