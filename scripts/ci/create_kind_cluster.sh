@@ -1,3 +1,3 @@
 #!/bin/sh
 
-kind create cluster --kubeconfig ${KUBECONFIG}
+kind create cluster --kubeconfig "${KUBECONFIG}"
