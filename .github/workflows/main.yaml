@@ -63,9 +63,8 @@ jobs:
           # Now we set the PYTHONPATH to the path of the dependencies *inside* the container
           PYTHONPATH: "/github/workspace/:\
             /github/workflow/.venv/lib/python3.6/site-packages"
-     #     VALIDATE_YAML: true
-      #    VALIDATE_PYTHON: true
-       #   VALIDATE_BASH: true
-        #  VALIDATE_MD: true
-          VALIDATE_GO: true # This is currently broken: https://github.com/github/super-linter/issues/143
+          VALIDATE_YAML: true
+          VALIDATE_PYTHON: true
+          VALIDATE_BASH: true
+          # VALIDATE_GO: true  This is currently broken: https://github.com/github/super-linter/issues/143
 ...
