@@ -48,6 +48,9 @@ jobs:
       # Now we move the dependencies where super-linter can see them
       - name: Move the dependencies
         run: mv .venv /home/runner/work/_temp/_github_workflow
+      - name: Generate DeepCopy
+        run: operator-sdk generate k8s
+          
       - name: Lint Code Base
         uses: docker://bznein/superlinter:latest
         env:
