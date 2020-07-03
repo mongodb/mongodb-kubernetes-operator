@@ -48,7 +48,7 @@ jobs:
 
       - name: Move the dependencies
         run: mv .venv /home/runner/work/_temp/_github_workflow
-        
+
       # This part is not needed until we can add GO linting
       # - name : Install Operator SDK
       #   run: |
@@ -61,7 +61,7 @@ jobs:
       - name: Lint Code Base
         uses: docker://github/super-linter:v3
         env:
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true
           # Now we set the PYTHONPATH to the path of the dependencies *inside* the container
           PYTHONPATH: "/github/workspace/:\
             /github/workflow/.venv/lib/python3.6/site-packages"
