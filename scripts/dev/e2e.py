@@ -157,7 +157,7 @@ def create_test_runner_pod(
             field_selector="metadata.name=={}".format(TEST_RUNNER_NAME),
         ),
         lambda pod_list: len(pod_list.items) == 0,
-        timeout=10,
+        timeout=20,
         sleep_time=0.5,
     ):
         raise Exception(
@@ -173,7 +173,7 @@ def wait_for_pod_to_be_running(corev1, name, namespace):
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
-        timeout=50,
+        timeout=90,
         exceptions_to_ignore=ApiException,
     ):
         raise Exception("Pod never got into Running state!")
@@ -323,8 +323,19 @@ def main():
             dump_diagnostic.dump_all(dev_config.namespace)
 
     test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
-    if test_runner_pod.status.phase != "Succeeded":
+
+    corev1 = client.CoreV1Api()
+    if not k8s_conditions.wait(
+            lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
+            lambda pod: pod.status.phase == "Succeeded",
+            sleep_time=5,
+            timeout=50,
+            exceptions_to_ignore=ApiException,
+    ):
         sys.exit(1)
+
+  #  if test_runner_pod.status.phase != "Succeeded":
+   #     sys.exit(1)
 
 
 
