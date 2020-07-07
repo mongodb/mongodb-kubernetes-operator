@@ -1,0 +1,72 @@
+---
+###########################
+###########################
+## Linter GitHub Actions ##
+###########################
+###########################
+name: Lint Code Base
+
+#
+# Documentation:
+# https://help.github.com/en/articles/workflow-syntax-for-github-actions
+#
+
+#############################
+# Start the job on all push #
+#############################
+on:
+  pull_request:
+    branches: [master]
+
+###############
+# Set the Job #
+###############
+jobs:
+  build:
+    # Name the Job
+    name: Lint Code Base
+    # Set the agent to run on
+    runs-on: ubuntu-latest
+
+    ##################
+    # Load all steps #
+    ##################
+    steps:
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Install missing python packages
+        run: sudo apt-get install -y --no-install-recommends python3-venv python3-setuptools
+
+      - name: Install dependencies with pip + requirements.txt
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Move the dependencies
+        run: mv .venv /home/runner/work/_temp/_github_workflow
+
+      # This part is not needed until we can add GO linting
+      # - name : Install Operator SDK
+      #   run: |
+      #         curl -s https://api.github.com/repos/operator-framework/operator-sdk/releases/latest | grep browser_download_url | grep x86_64-linux-gnu | cut -d '"' -f 4 | wget -i -
+      #         sudo mv operator-sdk-*-x86_64-linux-gnu /usr/local/bin/operator-sdk
+      #         sudo chmod 777 /usr/local/bin/operator-sdk
+      # - name: Generate DeepCopy
+      #   Run: operator-sdk generate k8s
+
+      - name: Lint Code Base
+        uses: docker://github/super-linter:v3
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          # Now we set the PYTHONPATH to the path of the dependencies *inside* the container
+          PYTHONPATH: "/github/workspace/:\
+            /github/workflow/.venv/lib/python3.6/site-packages"
+          VALIDATE_YAML: true
+          VALIDATE_PYTHON: true
+          VALIDATE_BASH: true
+          # VALIDATE_GO: true  This is currently broken: https://github.com/github/super-linter/issues/143
+...

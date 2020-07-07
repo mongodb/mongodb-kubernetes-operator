@@ -11,6 +11,14 @@ const (
 	notFound = -1
 )
 
+func New(templateMods ...Modification) corev1.PodTemplateSpec {
+	podTemplateSpec := corev1.PodTemplateSpec{}
+	for _, templateMod := range templateMods {
+		templateMod(&podTemplateSpec)
+	}
+	return podTemplateSpec
+}
+
 // Apply returns a function which applies a series of Modification functions to a *corev1.PodTemplateSpec
 func Apply(templateMods ...Modification) Modification {
 	return func(template *corev1.PodTemplateSpec) {
@@ -18,16 +26,6 @@ func Apply(templateMods ...Modification) Modification {
 			f(template)
 		}
 	}
-}
-
-// New returns a concrete corev1.PodTemplateSpec instance which has been modified based on the provided
-// modifications
-func New(templateMods ...Modification) corev1.PodTemplateSpec {
-	podTemplateSpec := corev1.PodTemplateSpec{}
-	for _, templateMod := range templateMods {
-		templateMod(&podTemplateSpec)
-	}
-	return podTemplateSpec
 }
 
 // NOOP is a valid Modification which applies no changes
@@ -81,7 +79,7 @@ func WithInitContainer(name string, containerfunc func(*corev1.Container)) Modif
 // if the index is out of range, a new container is added to accept these changes.
 func WithInitContainerByIndex(index int, funcs ...func(container *corev1.Container)) func(podTemplateSpec *corev1.PodTemplateSpec) {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		if index >= len(podTemplateSpec.Spec.Containers) {
+		if index >= len(podTemplateSpec.Spec.InitContainers) {
 			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{})
 		}
 		c := &podTemplateSpec.Spec.InitContainers[index]
@@ -210,4 +208,31 @@ func WithAnnotations(annotations map[string]string) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		podTemplateSpec.Annotations = annotations
 	}
+}
+
+// WithVolumeMounts will add volume mounts to a container or init container by name
+func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		container := findContainerByName(containerName, podTemplateSpec)
+		if container == nil {
+			return
+		}
+
+		container.VolumeMounts = append(container.VolumeMounts, volumeMounts...)
+	}
+}
+
+// findContainerByName will find either a container or init container by name in a pod template spec
+func findContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *corev1.Container {
+	containerIdx := findIndexByName(name, podTemplateSpec.Spec.Containers)
+	if containerIdx != notFound {
+		return &podTemplateSpec.Spec.Containers[containerIdx]
+	}
+
+	initIdx := findIndexByName(name, podTemplateSpec.Spec.InitContainers)
+	if initIdx != notFound {
+		return &podTemplateSpec.Spec.InitContainers[initIdx]
+	}
+
+	return nil
 }
