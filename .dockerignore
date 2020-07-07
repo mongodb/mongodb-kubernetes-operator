@@ -3,6 +3,6 @@
 agent
 build/_output
 zz_*
-scripts
 vendor/
+scripts/
 .git/

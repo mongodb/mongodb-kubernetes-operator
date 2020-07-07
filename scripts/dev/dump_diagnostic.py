@@ -22,7 +22,7 @@ def header(msg: str) -> str:
     dashes = (
         "----------------------------------------------------------------------------"
     )
-    return "\n{0}\n{1}\n{0}\n".format(dashes, msg)
+    return f"\n{dashes}\n{msg}\n{dashes}\n"
 
 
 def dump_crd(crd_log: typing.TextIO):
@@ -55,7 +55,7 @@ def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str
     pods = k8s_request_data.get_pods_namespaced(namespace)
     for pod in pods:
         name = pod.metadata.name
-        diagnostic_file.write(header("Pod {}".format(name)))
+        diagnostic_file.write(header(f"Pod {name}"))
         diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
         dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
