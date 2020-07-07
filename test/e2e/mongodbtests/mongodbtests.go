@@ -136,7 +136,7 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 				}
 			}
 
-			tries -= 1
+			tries--
 		}
 
 		assert.True(t, found)
