@@ -207,7 +207,7 @@ def _get_testrunner_pod_body(
                         f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
                         f"--test={test}",
                         f"--namespace={dev_config.namespace}",
-                        f"--skipCleanup={skip_cleanup}",
+                        f"--performCleanup={perform_cleanup}",
                     ],
                 }
             ],
@@ -224,7 +224,9 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
-        "--build-images", help="Build testrunner, e2e and prestop-hook images", action="store_true",
+        "--build-images",
+        help="Build testrunner, e2e and prestop-hook images",
+        action="store_true",
     )
     parser.add_argument(
         "--tag",
@@ -281,11 +283,7 @@ def prepare_and_run_testrunner(args, dev_config):
     _prepare_testrunner_environment(args.config_file)
 
     _ = create_test_runner_pod(
-        args.test,
-        args.config_file,
-        args.tag,
-        args.perform_cleanup,
-        test_runner_name,
+        args.test, args.config_file, args.tag, args.perform_cleanup, test_runner_name,
     )
     corev1 = client.CoreV1Api()
 
@@ -314,7 +312,9 @@ def main():
         if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
-    test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
+    test_runner_pod = k8s_request_data.get_pod_namespaced(
+        dev_config.namespace, TEST_RUNNER_NAME
+    )
     if test_runner_pod.status.phase != "Succeeded":
         sys.exit(1)
 
