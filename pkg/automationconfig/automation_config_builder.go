@@ -15,8 +15,6 @@ const (
 type Builder struct {
 	processes         []Process
 	replicaSets       []ReplicaSet
-	version           int
-	auth              Auth
 	members           int
 	domain            string
 	name              string

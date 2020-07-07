@@ -60,8 +60,8 @@ const (
 
 	tlsCAMountPath     = "/var/lib/tls/ca/"
 	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/secret/"
-	tlsSecretCertName  = "tls.crt"
+	tlsSecretMountPath = "/var/lib/tls/secret/" //nolint
+	tlsSecretCertName  = "tls.crt"              //nolint
 	tlsSecretKeyName   = "tls.key"
 	tlsServerMountPath = "/var/lib/tls/server/"
 	tlsServerFileName  = "server.pem"

@@ -113,7 +113,8 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 // on the value of `tries`.
 func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
 	return func(t *testing.T) {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
 		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 		assert.NoError(t, err)
 
@@ -126,14 +127,14 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 		}
 		found := false
 		for !found && tries > 0 {
-			select {
-			case <-time.After(10 * time.Second):
-				var result bson.M
-				err = database.RunCommand(ctx, runCommand).Decode(&result)
-				expected := primitive.M{"version": fcv}
-				if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-					found = true
-				}
+			<-time.After(10 * time.Second)
+			var result bson.M
+			if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
+				continue
+			}
+			expected := primitive.M{"version": fcv}
+			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
+				found = true
 			}
 
 			tries--
@@ -144,7 +145,7 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 }
 
 // CreateMongoDBResource creates the MongoDB resource
-func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
+func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.Context) func(*testing.T) {
 	return func(t *testing.T) {
 		if err := f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx}); err != nil {
 			t.Fatal(err)
@@ -238,7 +239,8 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 // Connect performs a connectivity check by initializing a mongo client
 // and inserting a document into the MongoDB resource
 func Connect(mdb *mdbv1.MongoDB) error {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
