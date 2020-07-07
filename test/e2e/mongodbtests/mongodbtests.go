@@ -262,7 +262,6 @@ func Connect(mdb *mdbv1.MongoDB) error {
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
 
 		// As we should NOT use t.Fatal inside a goroutine, we use a channel to communicate that
 		errs := make(chan error)
@@ -270,6 +269,7 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 		// start a go routine which will periodically check basic MongoDB connectivity
 		// once all the test functions have been executed, the go routine will be cancelled
 		go func() {
+			defer cancelFunc()
 			for {
 				select {
 				case <-ctx.Done():
