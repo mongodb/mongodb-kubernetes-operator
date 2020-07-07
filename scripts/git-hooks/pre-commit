@@ -80,6 +80,10 @@ if [ $? -ne 0 ]; then
     # In some cases we might encounter mypy errors that we do not
     # actually treat as such. So we provide a link to the dev
     # for ignoring them through code annotation
-    echo "If some of the errors reported are false positives bla bla I need to add this"
+    echo "If some of the errors reported are false positives "\
+         "and should be ignored, golanci-lint  provides a way to silence "\
+         "errors: https://golangci-lint.run/usage/false-positives/"\
+         "\nPlease use this only for errors that you are sure are"\
+         " false positives."
     exit 1
 fi
