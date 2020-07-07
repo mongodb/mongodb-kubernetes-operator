@@ -19,29 +19,28 @@ class DevConfig:
         self._config = config
 
     @property
-    def namespace(self):
+    def namespace(self) -> str:
         return self._config["namespace"]
 
     @property
-    def repo_url(self):
+    def repo_url(self) -> str:
         return self._config["repo_url"]
 
     @property
-    def operator_image(self):
+    def operator_image(self) -> str:
         return self._config["operator_image"]
 
     @property
-    def e2e_image(self):
+    def e2e_image(self) -> str:
         return self._config["e2e_image"]
 
     @property
-    def prestop_hook_image(self):
+    def prestop_hook_image(self) -> str:
         return self._config["prestop_hook_image"]
 
     @property
-    def testrunner_image(self):
+    def testrunner_image(self) -> str:
         return self._config["testrunner_image"]
-
 
 
 def load_config(config_file_path: str = None) -> DevConfig:
@@ -53,8 +52,6 @@ def load_config(config_file_path: str = None) -> DevConfig:
             return DevConfig(json.loads(f.read()))
     except FileNotFoundError:
         print(
-            "No DevConfig found. Please ensure that the configuration file exists at '{}'".format(config_file_path)
+            f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
         )
-        raise
-    except Exception:
         raise
