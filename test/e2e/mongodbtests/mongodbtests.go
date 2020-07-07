@@ -261,7 +261,8 @@ func Connect(mdb *mdbv1.MongoDB) error {
 // The MongoDB is up throughout the test.
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background()) //nolint		// start a go routine which will periodically check basic MongoDB connectivity
+		ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
+
 		// once all the test functions have been executed, the go routine will be cancelled
 		go func() { //nolint
 			defer cancel()
