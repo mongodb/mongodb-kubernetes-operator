@@ -21,12 +21,6 @@ const (
 	Running Phase = "Running"
 )
 
-const (
-	// LastVersionAnnotationKey should indicate which version of MongoDB was last
-	// configured
-	LastVersionAnnotationKey = "lastVersion"
-)
-
 // MongoDBSpec defines the desired state of MongoDB
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
@@ -51,6 +45,28 @@ type MongoDBSpec struct {
 type Security struct {
 	// +optional
 	Authentication Authentication `json:"authentication"`
+	// TLS configuration for both client-server and server-server communication
+	// +optional
+	TLS TLS `json:"tls"`
+}
+
+// TLS is the configuration used to set up TLS encryption
+type TLS struct {
+	Enabled bool `json:"enabled"`
+
+	// Optional configures if TLS should be required or optional for connections
+	// +optional
+	Optional bool `json:"optional"`
+
+	// ServerSecretName is the name of a secret containing a private key and certificate to use for TLS
+	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
+	// +optional
+	ServerSecretName string `json:"serverSecretName"`
+
+	// CAConfigMapName is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
+	// The certificate is expected to be available under the key "ca.crt"
+	// +optional
+	CAConfigMapName string `json:"caConfigMapName"`
 }
 
 type Authentication struct {
@@ -90,13 +106,6 @@ func (m *MongoDB) UpdateSuccess() {
 	m.Status.Phase = Running
 }
 
-func (m MongoDB) IsChangingVersion() bool {
-	if lastVersion, ok := m.Annotations[LastVersionAnnotationKey]; ok {
-		return (m.Spec.Version != lastVersion) && lastVersion != ""
-	}
-	return false
-}
-
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDB) MongoURI() string {
 	members := make([]string, m.Spec.Members)
@@ -115,6 +124,18 @@ func (m MongoDB) ServiceName() string {
 
 func (m MongoDB) ConfigMapName() string {
 	return m.Name + "-config"
+}
+
+// TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate
+// As the ConfigMap will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
+func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CAConfigMapName, Namespace: m.Namespace}
+}
+
+// TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
+// As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
+func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.ServerSecretName, Namespace: m.Namespace}
 }
 
 func (m MongoDB) NamespacedName() types.NamespacedName {

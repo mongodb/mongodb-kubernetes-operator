@@ -150,9 +150,9 @@ The MongoDB Community Kubernetes Operator supports the following features:
 - Reporting of MongoDB server state via the [MongoDB resource](/deploy/crds/mongodb.com_mongodb_crd.yaml) `status` field
 - Use of any of the available [Docker MongoDB images](https://hub.docker.com/_/mongo/)
 - Clients inside the Kubernetes cluster can connect to the replica set (no external connectivity)
+- TLS support for client/server communication
 
 ### Planned Features
-- TLS support for client/server communication
 - Server internal authentication via keyfile
 - Creating users with SCRAM-SHA authentication
 

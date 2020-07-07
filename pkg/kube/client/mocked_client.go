@@ -86,10 +86,6 @@ func (m *mockedClient) Update(_ context.Context, obj runtime.Object, _ ...k8sCli
 	if err != nil {
 		return err
 	}
-	switch v := obj.(type) {
-	case *appsv1.StatefulSet:
-		makeStatefulSetReady(v)
-	}
 	relevantMap[objKey] = obj
 	return nil
 }

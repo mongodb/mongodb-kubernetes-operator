@@ -197,8 +197,14 @@ type AutomationConfig struct {
 	Auth        Auth         `json:"auth"`
 	SSL         SSL          `json:"ssl"`
 
-	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
-	Options  Options                `json:"options"`
+	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
+	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
+	Options      Options                `json:"options"`
+}
+
+type ToolsVersion struct {
+	Version string                       `json:"version"`
+	URLs    map[string]map[string]string `json:"urls"`
 }
 
 type VersionManifest struct {
