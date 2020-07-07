@@ -37,6 +37,7 @@ def get_pods_namespaced(namespace: str) -> list:
         print("Exception when calling list_namespaced_pod: %s\n" % e)
     return pods.items
 
+
 def get_pod_namespaced(namespace: str, pod_name: str):
     corev1 = client.CoreV1Api()
     try:
@@ -44,7 +45,6 @@ def get_pod_namespaced(namespace: str, pod_name: str):
     except ApiException as e:
         print("Exception when calling read_namespaced_pod: %s\n" % e)
     return pod
-
 
 
 def get_pod_log_namespaced(namespace: str, pod_name: str, container_name: str) -> str:

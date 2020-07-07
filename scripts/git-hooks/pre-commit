@@ -57,8 +57,20 @@ function go_linting() {
     return 0
 }
 
+function black_formatting()
+{
+    # Black formatting of every python file that was changed
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+    do
+        black -q "$file"
+        git add "$file"
+    done
+}
+
+
 
 go_imports
+black_formatting
 mypy_check
 if [ $? -ne 0 ]; then
     echo "MyPy returned some errors, please correct them"
@@ -70,7 +82,7 @@ if [ $? -ne 0 ]; then
          "and should be ignored, mypy provides a way to silence "\
          "errors: https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"\
          "\nPlease use this only for errors that you are sure are"\
-         " false positives."
+         "false positives."
     exit 1
 fi
 go_linting
