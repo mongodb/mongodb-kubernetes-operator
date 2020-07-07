@@ -153,8 +153,7 @@ def create_test_runner_pod(
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace,
-            field_selector="metadata.name=={}".format(TEST_RUNNER_NAME),
+            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=20,
@@ -196,27 +195,19 @@ def _get_testrunner_pod_body(
             "containers": [
                 {
                     "name": "test-runner",
-                    "image": "{}/{}:{}".format(
-                        dev_config.repo_url, test_runner_image_name, tag
-                    ),
+                    "image": f"{dev_config.repo_url}/{test_runner_image_name}:{tag}",
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.operator_image, tag
-                        ),
+                        f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
                         "--preHookImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.prestop_hook_image, tag
-                        ),
+                        f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{tag}",
                         "--testImage",
-                        "{}/{}:{}".format(
-                            dev_config.repo_url, dev_config.e2e_image, tag
-                        ),
-                        "--test={}".format(test),
-                        "--namespace={}".format(dev_config.namespace),
-                        "--performCleanup={}".format(perform_cleanup),
+                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
+                        f"--test={test}",
+                        f"--namespace={dev_config.namespace}",
+                        f"--performCleanup={perform_cleanup}",
                     ],
                 }
             ],
@@ -233,7 +224,9 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
-        "--build-images", help="Build testrunner, e2e and prestop-hook images", action="store_true",
+        "--build-images",
+        help="Build testrunner, e2e and prestop-hook images",
+        action="store_true",
     )
     parser.add_argument(
         "--tag",
@@ -260,10 +253,11 @@ def build_and_push_images(args, dev_config):
     if args.install_operator:
         build_and_push_operator(
             dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, dev_config.operator_image, args.tag),
+            f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
             ".",
         )
         deploy_operator()
+
     if args.build_images:
         build_and_push_testrunner(
             dev_config.repo_url,
@@ -289,16 +283,12 @@ def prepare_and_run_testrunner(args, dev_config):
     _prepare_testrunner_environment(args.config_file)
 
     _ = create_test_runner_pod(
-        args.test,
-        args.config_file,
-        args.tag,
-        args.perform_cleanup,
-        test_runner_name,
+        args.test, args.config_file, args.tag, args.perform_cleanup, test_runner_name,
     )
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(
-        corev1, TEST_RUNNER_NAME, dev_config.namespace, 
+        corev1, TEST_RUNNER_NAME, dev_config.namespace,
     )
 
     # stream all of the pod output as the pod is running
@@ -322,21 +312,23 @@ def main():
         if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
-    test_runner_pod=k8s_request_data.get_pod_namespaced(dev_config.namespace,TEST_RUNNER_NAME)
+    test_runner_pod = k8s_request_data.get_pod_namespaced(
+        dev_config.namespace, TEST_RUNNER_NAME
+    )
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
-            lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
-            lambda pod: pod.status.phase == "Succeeded",
-            sleep_time=5,
-            timeout=50,
-            exceptions_to_ignore=ApiException,
+        lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
+        lambda pod: pod.status.phase == "Succeeded",
+        sleep_time=5,
+        timeout=50,
+        exceptions_to_ignore=ApiException,
     ):
         sys.exit(1)
 
-  #  if test_runner_pod.status.phase != "Succeeded":
-   #     sys.exit(1)
 
+#  if test_runner_pod.status.phase != "Succeeded":
+#     sys.exit(1)
 
 
 if __name__ == "__main__":
