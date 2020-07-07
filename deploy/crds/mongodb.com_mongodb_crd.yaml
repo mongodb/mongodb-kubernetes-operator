@@ -4,21 +4,21 @@ metadata:
   name: mongodb.mongodb.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.phase
-    description: Current state of the MongoDB deployment
-    name: Phase
-    type: string
-  - JSONPath: .status.version
-    description: Version of MongoDB server
-    name: Version
-    type: string
+    - JSONPath: .status.phase
+      description: Current state of the MongoDB deployment
+      name: Phase
+      type: string
+    - JSONPath: .status.version
+      description: Version of MongoDB server
+      name: Version
+      type: string
   group: mongodb.com
   names:
     kind: MongoDB
     listKind: MongoDBList
     plural: mongodb
     shortNames:
-    - mdb
+      - mdb
     singular: mongodb
   scope: Namespaced
   subresources:
@@ -49,65 +49,18 @@ spec:
             members:
               description: Members is the number of members in the replica set
               type: integer
-            security:
-              description: Security configures security features, such as TLS, and
-                authentication settings for a deployment
-              properties:
-                authentication:
-                  properties:
-                    enabled:
-                      description: Enabled specifies if authentication should be enabled
-                      type: boolean
-                    modes:
-                      description: Modes is an array specifying which authentication
-                        methods should be enabled
-                      items:
-                        enum:
-                        - SCRAM
-                        type: string
-                      type: array
-                  required:
-                  - enabled
-                  - modes
-                  type: object
-                tls:
-                  description: TLS configuration for both client-server and server-server
-                    communication
-                  properties:
-                    caConfigMapName:
-                      description: CAConfigMapName is the name of a ConfigMap containing
-                        the certificate for the CA which signed the server certificates
-                        The certificate is expected to be available under the key
-                        "ca.crt"
-                      type: string
-                    enabled:
-                      type: boolean
-                    optional:
-                      description: Optional configures if TLS should be required or
-                        optional for connections
-                      type: boolean
-                    serverSecretName:
-                      description: ServerSecretName is the name of a secret containing
-                        a private key and certificate to use for TLS The key and cert
-                        are expected to be PEM encoded and available at "tls.key"
-                        and "tls.crt"
-                      type: string
-                  required:
-                  - enabled
-                  type: object
-              type: object
             type:
               description: Type defines which type of MongoDB deployment the resource
                 should create
               enum:
-              - ReplicaSet
+                - ReplicaSet
               type: string
             version:
               description: Version defines which version of MongoDB will be used
               type: string
           required:
-          - type
-          - version
+            - type
+            - version
           type: object
         status:
           description: MongoDBStatus defines the observed state of MongoDB
@@ -117,12 +70,12 @@ spec:
             phase:
               type: string
           required:
-          - mongoUri
-          - phase
+            - mongoUri
+            - phase
           type: object
       type: object
   version: v1
   versions:
-  - name: v1
-    served: true
-    storage: true
+    - name: v1
+      served: true
+      storage: true
