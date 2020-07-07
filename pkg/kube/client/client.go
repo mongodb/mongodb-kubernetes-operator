@@ -99,7 +99,7 @@ func (c client) DeleteSecret(key k8sClient.ObjectKey) error {
 	return c.Delete(context.TODO(), &s)
 }
 
-// GetService provides a thin wrapper and Client.Client to access corev1.Service types
+// GetService provides a thin wrapper and client.Client to access corev1.Service types
 func (c client) GetService(objectKey k8sClient.ObjectKey) (corev1.Service, error) {
 	s := corev1.Service{}
 	if err := c.Get(context.TODO(), objectKey, &s); err != nil {
@@ -108,17 +108,17 @@ func (c client) GetService(objectKey k8sClient.ObjectKey) (corev1.Service, error
 	return s, nil
 }
 
-// UpdateService provides a thin wrapper and Client.Client to update corev1.Service types
+// UpdateService provides a thin wrapper and client.Client to update corev1.Service types
 func (c client) UpdateService(secret corev1.Service) error {
 	return c.Update(context.TODO(), &secret)
 }
 
-// CreateService provides a thin wrapper and Client.Client to create corev1.Service types
+// CreateService provides a thin wrapper and client.Client to create corev1.Service types
 func (c client) CreateService(s corev1.Service) error {
 	return c.Create(context.TODO(), &s)
 }
 
-// GetStatefulSet provides a thin wrapper and Client.Client to access appsv1.StatefulSet types
+// GetStatefulSet provides a thin wrapper and client.Client to access appsv1.StatefulSet types
 func (c client) GetStatefulSet(objectKey k8sClient.ObjectKey) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
 	if err := c.Get(context.TODO(), objectKey, &sts); err != nil {
@@ -127,17 +127,17 @@ func (c client) GetStatefulSet(objectKey k8sClient.ObjectKey) (appsv1.StatefulSe
 	return sts, nil
 }
 
-// UpdateStatefulSet provides a thin wrapper and Client.Client to update appsv1.StatefulSet types
+// UpdateStatefulSet provides a thin wrapper and client.Client to update appsv1.StatefulSet types
 func (c client) UpdateStatefulSet(sts appsv1.StatefulSet) error {
 	return c.Update(context.TODO(), &sts)
 }
 
-// CreateStatefulSet provides a thin wrapper and Client.Client to create appsv1.StatefulSet types
+// CreateStatefulSet provides a thin wrapper and client.Client to create appsv1.StatefulSet types
 func (c client) CreateStatefulSet(sts appsv1.StatefulSet) error {
 	return c.Create(context.TODO(), &sts)
 }
 
-// DeleteStatefulSet provides a thin wrapper and Client.Client to delete appsv1.StatefulSet types
+// DeleteStatefulSet provides a thin wrapper and client.Client to delete appsv1.StatefulSet types
 func (c client) DeleteStatefulSet(objectKey k8sClient.ObjectKey) error {
 	sts := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
