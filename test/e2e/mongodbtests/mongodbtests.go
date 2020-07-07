@@ -275,9 +275,11 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 				case <-ctx.Done():
 					t.Logf("context cancelled, no longer checking connectivity")
 					errs <- nil
+					return
 				case <-time.After(interval):
 					if err := Connect(mdb); err != nil {
 						errs <- err
+						return
 					} else {
 						t.Logf("Successfully connected to %s", mdb.Name)
 					}
