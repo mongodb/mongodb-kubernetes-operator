@@ -383,7 +383,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that all TLS volumes have been added.
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 6)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls",
 		VolumeSource: corev1.VolumeSource{
