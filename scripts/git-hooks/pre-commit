@@ -36,6 +36,7 @@ function mypy_check()
 }
 
 function go_linting() {
+    echo $PWD
     golangci-lint config path
     dirs_to_analyze=()
     for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
