@@ -45,7 +45,7 @@ def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
     for container in containers:
-        with open(f"logs/e2e/{name}-{container.name}.log", "w") as log_file:
+        with open("logs/e2e/{}-{}.log".format(name, container.name), mode="w", encoding="utf-8") as log_file:
             log_file.write(
                 k8s_request_data.get_pod_log_namespaced(namespace, name, container.name)
             )
@@ -70,10 +70,10 @@ def dump_all(namespace: str):
     if not os.path.exists("logs/e2e"):
         os.makedirs("logs/e2e")
 
-    with open("logs/e2e/diagnostics.txt", "w") as diagnostic_file:
+    with open("logs/e2e/diagnostics.txt", mode="w", encoding="utf-8") as diagnostic_file:
         dump_persistent_volume(diagnostic_file)
         dump_stateful_sets_namespaced(diagnostic_file, namespace)
         dump_pods_and_logs_namespaced(diagnostic_file, namespace)
 
-    with open("logs/e2e/crd.log", "w") as crd_log:
+    with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
