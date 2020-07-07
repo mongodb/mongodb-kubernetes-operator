@@ -4,21 +4,21 @@ metadata:
   name: mongodb.mongodb.com
 spec:
   additionalPrinterColumns:
-    - JSONPath: .status.phase
-      description: Current state of the MongoDB deployment
-      name: Phase
-      type: string
-    - JSONPath: .status.version
-      description: Version of MongoDB server
-      name: Version
-      type: string
+  - JSONPath: .status.phase
+    description: Current state of the MongoDB deployment
+    name: Phase
+    type: string
+  - JSONPath: .status.version
+    description: Version of MongoDB server
+    name: Version
+    type: string
   group: mongodb.com
   names:
     kind: MongoDB
     listKind: MongoDBList
     plural: mongodb
     shortNames:
-      - mdb
+    - mdb
     singular: mongodb
   scope: Namespaced
   subresources:
@@ -53,14 +53,14 @@ spec:
               description: Type defines which type of MongoDB deployment the resource
                 should create
               enum:
-                - ReplicaSet
+              - ReplicaSet
               type: string
             version:
               description: Version defines which version of MongoDB will be used
               type: string
           required:
-            - type
-            - version
+          - type
+          - version
           type: object
         status:
           description: MongoDBStatus defines the observed state of MongoDB
@@ -70,12 +70,12 @@ spec:
             phase:
               type: string
           required:
-            - mongoUri
-            - phase
+          - mongoUri
+          - phase
           type: object
       type: object
   version: v1
   versions:
-    - name: v1
-      served: true
-      storage: true
+  - name: v1
+    served: true
+    storage: true
