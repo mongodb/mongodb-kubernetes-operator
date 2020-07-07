@@ -268,6 +268,7 @@ func WaitForSetting(mdb *mdbv1.MongoDB, setting, expectedValue string) func(*tes
 				Decode(&result)
 
 			value := result.Map()["sslMode"]
+			t.Logf(`Waiting to reach "%s", currently "%s"`, expectedValue, value)
 			return value == expectedValue, nil
 		})
 
