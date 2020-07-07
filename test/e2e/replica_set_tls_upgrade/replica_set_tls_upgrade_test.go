@@ -37,7 +37,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Upgrade to TLS", mongodbtests.EnableTLS(&mdb, true))
-			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsUpdated(&mdb))
+			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("Wait for TLS to be enabled", mongodbtests.WaitForSetting(&mdb, "sslMode", "preferSSL"))
 		},
 	))
