@@ -1,0 +1,40 @@
+---
+#########################
+#########################
+## Golang Linter rules ##
+#########################
+#########################
+
+# configure golangci-lint
+# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+      - dupl
+      - gosec
+      - goconst
+      - golint
+      text: "underscore"
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - deadcode
+    - typecheck
+    - rowserrcheck
+    - gosec
+    - unconvert
+
+run:
+  modules-download-mode: 
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 5m
+  # default concurrency is a available CPU number
+  concurrency: 4
