@@ -156,7 +156,7 @@ def create_test_runner_pod(
             dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
-        timeout=20,
+        timeout=30,
         sleep_time=0.5,
     ):
         raise Exception(
@@ -335,7 +335,7 @@ def main():
         lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
         lambda pod: pod.status.phase == "Succeeded",
         sleep_time=5,
-        timeout=50,
+        timeout=60,
         exceptions_to_ignore=ApiException,
     ):
         sys.exit(1)
