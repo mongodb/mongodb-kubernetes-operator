@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -145,4 +146,13 @@ func (c client) DeleteStatefulSet(objectKey k8sClient.ObjectKey) error {
 		},
 	}
 	return c.Delete(context.TODO(), &sts)
+}
+
+func namespacedNameFromObject(obj runtime.Object) types.NamespacedName {
+	ns := reflect.ValueOf(obj).Elem().FieldByName("Namespace").String()
+	name := reflect.ValueOf(obj).Elem().FieldByName("Name").String()
+	return types.NamespacedName{
+		Name:      name,
+		Namespace: ns,
+	}
 }

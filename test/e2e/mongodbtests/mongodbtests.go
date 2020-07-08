@@ -113,8 +113,7 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 // on the value of `tries`.
 func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
 	return func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 		assert.NoError(t, err)
 
@@ -127,17 +126,17 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 		}
 		found := false
 		for !found && tries > 0 {
-			<-time.After(10 * time.Second)
-			var result bson.M
-			if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
-				continue
-			}
-			expected := primitive.M{"version": fcv}
-			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-				found = true
+			select {
+			case <-time.After(10 * time.Second):
+				var result bson.M
+				err = database.RunCommand(ctx, runCommand).Decode(&result)
+				expected := primitive.M{"version": fcv}
+				if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
+					found = true
+				}
 			}
 
-			tries--
+			tries -= 1
 		}
 
 		assert.True(t, found)
@@ -145,7 +144,7 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) f
 }
 
 // CreateMongoDBResource creates the MongoDB resource
-func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.Context) func(*testing.T) {
+func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
 	return func(t *testing.T) {
 		if err := f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx}); err != nil {
 			t.Fatal(err)
@@ -239,8 +238,7 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 // Connect performs a connectivity check by initializing a mongo client
 // and inserting a document into the MongoDB resource
 func Connect(mdb *mdbv1.MongoDB) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
@@ -261,14 +259,16 @@ func Connect(mdb *mdbv1.MongoDB) error {
 // The MongoDB is up throughout the test.
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
 	return func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background()) //nolint		// start a go routine which will periodically check basic MongoDB connectivity
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+
+		// start a go routine which will periodically check basic MongoDB connectivity
 		// once all the test functions have been executed, the go routine will be cancelled
-		go func() { //nolint
-			defer cancel()
+		go func() {
 			for {
 				select {
 				case <-ctx.Done():
-					t.Log("context cancelled, no longer checking connectivity") //nolint
+					t.Logf("context cancelled, no longer checking connectivity")
 					return
 				case <-time.After(interval):
 					if err := Connect(mdb); err != nil {
@@ -279,5 +279,6 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func
 				}
 			}
 		}()
+		testFunc()
 	}
 }

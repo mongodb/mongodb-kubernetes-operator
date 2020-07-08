@@ -11,8 +11,8 @@ type Health struct {
 
 type ProcessHealth struct {
 	IsInGoalState   bool  `json:"IsInGoalState"`
-	ExpectedToBeUp  bool  `json:"ExpectedToBeUp"`
 	LastMongoUpTime int64 `json:"LastMongoUpTime"`
+	ExpectedToBeUp  bool  `json:"ExpectedToBeUp"`
 }
 
 type MmsDirectorStatus struct {

@@ -12,6 +12,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
+// Change below variables to serve metrics on different host or port.
+var (
+	metricsHost               = "0.0.0.0"
+	metricsPort         int32 = 8383
+	operatorMetricsPort int32 = 8686
+)
+
 func configureLogger() (*zap.Logger, error) {
 	// TODO: configure non development logger
 	logger, err := zap.NewDevelopment()
