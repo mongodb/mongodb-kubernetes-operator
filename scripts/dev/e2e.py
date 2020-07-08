@@ -326,10 +326,6 @@ def main():
         if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
-    test_runner_pod = k8s_request_data.get_pod_namespaced(
-        dev_config.namespace, TEST_RUNNER_NAME
-    )
-
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
