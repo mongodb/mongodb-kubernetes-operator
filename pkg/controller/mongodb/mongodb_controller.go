@@ -535,7 +535,6 @@ func preStopHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 	)
 }
 
-// /var/lib/mongodb-mms-automation/keyfile
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
 	mongoDbCommand := []string{
 		"/bin/sh",
