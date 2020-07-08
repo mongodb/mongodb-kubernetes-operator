@@ -51,7 +51,7 @@ func downloadFile(opts downloadOptions) error {
 }
 
 func fetchFile(filePath, url string) error {
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //nolint
 	if err != nil {
 		return fmt.Errorf("error getting url: %s", err)
 	}
