@@ -39,7 +39,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 			t.Run("Create TLS Resources", mongodbtests.CreateTLSResources(&mdb, ctx))
 			t.Run("Upgrade to TLS", mongodbtests.EnableTLS(&mdb, true))
 			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
-			t.Run("Wait for TLS to be enabled", mongodbtests.WaitForSetting(&mdb, "sslMode", "preferSSL"))
+			t.Run("Wait for TLS to be enabled", mongodbtests.WaitForTLSMode(&mdb, "preferSSL"))
 		},
 	))
 
@@ -52,7 +52,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 		t.Run("MongoDB is reachable over TLS while making TLS required", mongodbtests.IsReachableOverTLSDuring(&mdb, time.Second*10,
 			func() {
 				t.Run("Make TLS required", mongodbtests.EnableTLS(&mdb, false))
-				t.Run("Wait for TLS to be required", mongodbtests.WaitForSetting(&mdb, "sslMode", "requireSSL"))
+				t.Run("Wait for TLS to be required", mongodbtests.WaitForTLSMode(&mdb, "requireSSL"))
 			},
 		))
 	}))

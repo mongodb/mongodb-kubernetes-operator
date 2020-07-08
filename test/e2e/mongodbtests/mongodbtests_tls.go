@@ -99,19 +99,7 @@ func BasicConnectivityTLSRequired(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // and inserting a document into the MongoDB resource over TLS
 func ConnectWithTLS(mdb *mdbv1.MongoDB) error {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-
-	// Read the CA certificate from test data
-	caPool := x509.NewCertPool()
-	caPEM, _ := ioutil.ReadFile("testdata/tls/ca.crt")
-	caPool.AppendCertsFromPEM(caPEM)
-
-	opts := options.Client().
-		SetTLSConfig(&tls.Config{
-			RootCAs: caPool,
-		}).
-		ApplyURI(mdb.MongoURI())
-
-	mongoClient, err := mongo.Connect(ctx, opts)
+	mongoClient, err := mongo.Connect(ctx, getClientTLSOptions().ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
 	}
@@ -124,6 +112,58 @@ func ConnectWithTLS(mdb *mdbv1.MongoDB) error {
 		}
 		return true, nil
 	})
+}
+
+// WaitForTLSMode will poll the admin database and wait for the TLS mode to reach a certain value.
+func WaitForTLSMode(mdb *mdbv1.MongoDB, expectedValue string) func(*testing.T) {
+	return func(t *testing.T) {
+		err := wait.Poll(time.Second*10, time.Minute*10, func() (done bool, err error) {
+			value, err := getAdminSetting(mdb.MongoURI(), "sslMode")
+			if err != nil {
+				return false, err
+			}
+
+			if value != expectedValue {
+				return false, nil
+			}
+
+			return true, nil
+		})
+
+		if err != nil {
+			t.Fatal(fmt.Sprintf(`Error waiting for TLS mode to reach "%s": %+v`, expectedValue, err))
+		}
+	}
+}
+
+// getAdminSetting will get a seting from the admin database.
+func getAdminSetting(url, key string) (interface{}, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	client, err := mongo.Connect(ctx, getClientTLSOptions().ApplyURI(url))
+	if err != nil {
+		return "", err
+	}
+
+	var result bson.D
+	client.
+		Database("admin").
+		RunCommand(ctx, bson.D{{"getParameter", 1}, {key, 1}}).
+		Decode(&result)
+
+	value := result.Map()[key]
+	return value, nil
+}
+
+func getClientTLSOptions() *options.ClientOptions {
+	// Read the CA certificate from test data
+	caPool := x509.NewCertPool()
+	caPEM, _ := ioutil.ReadFile("testdata/tls/ca.crt")
+	caPool.AppendCertsFromPEM(caPEM)
+
+	return options.Client().
+		SetTLSConfig(&tls.Config{
+			RootCAs: caPool,
+		})
 }
 
 // ConnectWithoutTLS will initialize a single MongoDB client and

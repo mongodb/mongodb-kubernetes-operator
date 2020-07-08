@@ -254,30 +254,6 @@ func Connect(mdb *mdbv1.MongoDB) error {
 	})
 }
 
-func WaitForSetting(mdb *mdbv1.MongoDB, setting, expectedValue string) func(*testing.T) {
-	return func(t *testing.T) {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
-		assert.NoError(t, err)
-
-		err = wait.Poll(time.Second*1, time.Second*500, func() (done bool, err error) {
-			var result bson.D
-			mongoClient.
-				Database("admin").
-				RunCommand(context.TODO(), bson.D{{"getParameter", 1}, {"sslMode", 1}}).
-				Decode(&result)
-
-			value := result.Map()["sslMode"]
-			t.Logf(`Waiting to reach "%s", currently "%s"`, expectedValue, value)
-			return value == expectedValue, nil
-		})
-
-		if err != nil {
-			t.Fatal(fmt.Sprintf("Error waiting for TLS setting to become enabled", err))
-		}
-	}
-}
-
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
