@@ -207,7 +207,7 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	sts.Status.UpdatedReplicas = 1
 	sts.Status.ReadyReplicas = 2
 	err = mgrClient.Update(context.TODO(), &sts)
-
+	assert.NoError(t, err)
 	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
 
 	// the request is requeued as the agents are still doing the upgrade
@@ -221,6 +221,7 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	sts.Status.UpdatedReplicas = 3
 	sts.Status.ReadyReplicas = 3
 	err = mgrClient.Update(context.TODO(), &sts)
+	assert.NoError(t, err)
 
 	// reconcilliation is successful
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -293,7 +294,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, currentAc.Version)
 
-	mdb.Spec.Members += 1
+	mdb.Spec.Members++
 	makeStatefulSetReady(mgr.GetClient(), mdb)
 
 	_ = mgr.GetClient().Update(context.TODO(), &mdb)

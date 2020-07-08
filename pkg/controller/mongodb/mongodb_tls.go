@@ -89,7 +89,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB, enabler aut
 
 	r.log.Debug("Completing TLS rollout")
 
-	mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
+	mdb.Annotations[tLSRolledOutAnnotationKey] = trueAnnotation
 	if err := r.ensureAutomationConfig(mdb, enabler); err != nil {
 		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
 	}
