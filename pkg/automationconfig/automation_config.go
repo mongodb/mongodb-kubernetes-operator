@@ -131,21 +131,21 @@ type Args26 struct {
 
 type Net struct {
 	Port int        `json:"port"`
-	SSL  MongoDBSSL `json:"ssl"`
+	SSL  MongoDBSSL `json:"tls"`
 }
 
 type SSLMode string
 
 const (
 	SSLModeDisabled  SSLMode = "disabled"
-	SSLModeAllowed   SSLMode = "allowSSL"
-	SSLModePreferred SSLMode = "preferSSL"
-	SSLModeRequired  SSLMode = "requireSSL"
+	SSLModeAllowed   SSLMode = "allowTLS"
+	SSLModePreferred SSLMode = "preferTLS"
+	SSLModeRequired  SSLMode = "requireTLS"
 )
 
 type MongoDBSSL struct {
 	Mode                               SSLMode `json:"mode"`
-	PEMKeyFile                         string  `json:"PEMKeyFile,omitempty"`
+	PEMKeyFile                         string  `json:"certificateKeyFile,omitempty"`
 	CAFile                             string  `json:"CAFile,omitempty"`
 	AllowConnectionsWithoutCertificate bool    `json:"allowConnectionsWithoutCertificates"`
 }
@@ -195,7 +195,7 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-	SSL         SSL          `json:"ssl"`
+	SSL         SSL          `json:"tls"`
 
 	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
 	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
