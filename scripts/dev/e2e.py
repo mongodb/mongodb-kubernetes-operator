@@ -163,7 +163,21 @@ def create_test_runner_pod(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
 
-    return corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
+    try:
+        corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
+    except ApiException as e:
+        if e.message.startswith("No API token found for service account"):
+            print(
+                "API token was not found for service account, retrying in 10 seconds..."
+            )
+            time.sleep(10)
+        try:
+            corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
+        except ApiException as e:
+            print(
+                "The API token was not found for two consecutive tries, aborting the test"
+            )
+            raise
 
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
@@ -282,7 +296,7 @@ def prepare_and_run_testrunner(args, dev_config):
     test_runner_name = dev_config.testrunner_image
     _prepare_testrunner_environment(args.config_file)
 
-    _ = create_test_runner_pod(
+    create_test_runner_pod(
         args.test, args.config_file, args.tag, args.perform_cleanup, test_runner_name,
     )
     corev1 = client.CoreV1Api()
@@ -325,10 +339,6 @@ def main():
         exceptions_to_ignore=ApiException,
     ):
         sys.exit(1)
-
-
-#  if test_runner_pod.status.phase != "Succeeded":
-#     sys.exit(1)
 
 
 if __name__ == "__main__":
