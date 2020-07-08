@@ -166,7 +166,7 @@ def create_test_runner_pod(
     try:
         corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
     except ApiException as e:
-        if e.message.startswith("No API token found for service account"):
+        if e.body["message"].startswith("No API token found for service account"):
             print(
                 "API token was not found for service account, retrying in 10 seconds..."
             )
