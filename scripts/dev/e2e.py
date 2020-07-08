@@ -171,13 +171,13 @@ def create_test_runner_pod(
                 "API token was not found for service account, retrying in 10 seconds..."
             )
             time.sleep(10)
-        try:
-            corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
-        except ApiException as e:
-            print(
-                "The API token was not found for two consecutive tries, aborting the test"
-            )
-            raise
+            try:
+                corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
+            except ApiException as e:
+                print(
+                    "The API token was not found for two consecutive tries, aborting the test"
+                )
+                raise
 
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
