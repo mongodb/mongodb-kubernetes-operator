@@ -1,9 +1,13 @@
 package setup
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -21,7 +25,6 @@ func InitTest(t *testing.T) (*f.Context, bool) {
 	if err := registerTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}
-
 	clean := os.Getenv(performCleanup)
 
 	return ctx, clean == "True"
@@ -35,4 +38,24 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 		}
 	}
 	return nil
+}
+
+func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context) (string, error) {
+	passwordKey := mdbu.PasswordSecretRef.Key
+	if passwordKey == "" {
+		passwordKey = "password"
+	}
+
+	password, err := generate.RandomFixedLengthStringOfSize(20)
+	if err != nil {
+		return "", err
+	}
+
+	passwordSecret := secret.Builder().
+		SetName(mdbu.PasswordSecretRef.Name).
+		SetNamespace(f.Global.OperatorNamespace).
+		SetField(passwordKey, password).
+		Build()
+
+	return password, f.Global.Client.Create(context.TODO(), &passwordSecret, &f.CleanupOptions{TestContext: ctx})
 }

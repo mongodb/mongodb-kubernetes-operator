@@ -112,8 +112,8 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 	})
 }
 
-func NewTestMongoDB(name string) mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
+	mdb := mdbv1.MongoDB{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: f.Global.OperatorNamespace,
@@ -123,6 +123,28 @@ func NewTestMongoDB(name string) mdbv1.MongoDB {
 			Type:                        "ReplicaSet",
 			Version:                     "4.0.6",
 			FeatureCompatibilityVersion: "4.0",
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
+			Users: []mdbv1.MongoDBUser{
+				{
+					Name: fmt.Sprintf("%s-user", name),
+					DB:   "admin",
+					PasswordSecretRef: mdbv1.SecretKeyReference{
+						Key:  fmt.Sprintf("%s-password", name),
+						Name: fmt.Sprintf("%s-password-secret", name),
+					},
+					Roles: []mdbv1.Role{
+						{
+							DB:   "admin",
+							Name: "readWriteAnyDatabase",
+						},
+					},
+				},
+			},
 		},
 	}
+	return mdb, mdb.Spec.Users[0]
 }

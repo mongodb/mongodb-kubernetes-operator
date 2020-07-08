@@ -25,8 +25,18 @@ func TestReplicaSet(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb0 := e2eutil.NewTestMongoDB("mdb0")
-	mdb1 := e2eutil.NewTestMongoDB("mdb1")
+	mdb0, user0 := e2eutil.NewTestMongoDB("mdb0")
+	mdb1, user1 := e2eutil.NewTestMongoDB("mdb1")
+
+	password0, err := setup.GeneratePasswordForUser(user0, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	password1, err := setup.GeneratePasswordForUser(user1, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Run("Create MongoDB Resource mdb0", mongodbtests.CreateMongoDBResource(&mdb0, ctx))
 	t.Run("Create MongoDB Resource mdb1", mongodbtests.CreateMongoDBResource(&mdb1, ctx))
 
@@ -42,8 +52,8 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
 	t.Run("mdb1: MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb1))
 
-	t.Run("mdb0: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb0))
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1))
+	t.Run("mdb0: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb0, user0.Name, password0))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1, user1.Name, password1))
 
 	t.Run("mdb0: Test Status Was Updated", mongodbtests.Status(&mdb0,
 		mdbv1.MongoDBStatus{
@@ -56,7 +66,7 @@ func TestReplicaSet(t *testing.T) {
 			Phase:    mdbv1.Running,
 		}))
 
-	t.Run("MongoDB is reachable while being scaled up", mongodbtests.IsReachableDuring(&mdb0, time.Second*10,
+	t.Run("MongoDB is reachable while being scaled up", mongodbtests.IsReachableDuring(&mdb0, time.Second*10, user0.Name, password0,
 		func() {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
@@ -80,5 +90,5 @@ func TestReplicaSet(t *testing.T) {
 	))
 
 	// One last check that mdb1 was not altered.
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1, user1.Name, password1))
 }

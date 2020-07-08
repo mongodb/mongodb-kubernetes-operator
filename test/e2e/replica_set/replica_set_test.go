@@ -23,7 +23,13 @@ func TestReplicaSet(t *testing.T) {
 	if shouldCleanup {
 		defer ctx.Cleanup()
 	}
-	mdb := e2eutil.NewTestMongoDB("mdb0")
+	mdb, user := e2eutil.NewTestMongoDB("mdb0")
+
+	password, err := setup.GeneratePasswordForUser(user, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
@@ -34,7 +40,7 @@ func TestReplicaSet(t *testing.T) {
 			Kind:    mdb.Kind,
 		})))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 		mdbv1.MongoDBStatus{
