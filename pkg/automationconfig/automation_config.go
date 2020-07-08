@@ -8,8 +8,8 @@ type ProcessType string
 
 const (
 	Mongod                ProcessType = "mongod"
-	DefaultMongoDBDataDir             = "/data"
-	DefaultAgentLogPath               = "/var/log/mongodb-mms-automation"
+	DefaultMongoDBDataDir string      = "/data"
+	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
 )
 
 type Auth struct {
@@ -182,7 +182,7 @@ type ClientCertificateMode string
 
 const (
 	ClientCertificateModeOptional ClientCertificateMode = "OPTIONAL"
-	ClientCertificateModeRequired                       = "REQUIRED"
+	ClientCertificateModeRequired ClientCertificateMode = "REQUIRED"
 )
 
 type SSL struct {

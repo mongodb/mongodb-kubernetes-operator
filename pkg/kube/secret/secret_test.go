@@ -46,7 +46,7 @@ func TestReadKey(t *testing.T) {
 	assert.Equal(t, "value2", value)
 	assert.NoError(t, err)
 
-	value, err = ReadKey(getter, "key3", nsName("namespace", "name"))
+	_, err = ReadKey(getter, "key3", nsName("namespace", "name"))
 	assert.Error(t, err)
 }
 

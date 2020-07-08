@@ -1,10 +1,11 @@
 package mongodb
 
 import (
-	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
