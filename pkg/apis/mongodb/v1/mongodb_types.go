@@ -40,6 +40,44 @@ type MongoDBSpec struct {
 	// Security configures security features, such as TLS, and authentication settings for a deployment
 	// +optional
 	Security Security `json:"security"`
+
+	// Users specifies the MongoDB users that should be configured in your deployment
+	// +required
+	Users []MongoDBUser `json:"users"`
+}
+
+type MongoDBUser struct {
+
+	// Name is the username of the user
+	Name string `json:"name"`
+
+	// DB is the database the user is stored in. Defaults to "admin"
+	// +optional
+	DB string `json:"db"`
+
+	// PasswordSecretRef is a reference to the secret containing this user's password
+	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
+
+	// Roles is an array of roles assigned to this user
+	Roles []Role `json:"roles"`
+}
+
+// SecretKeyReference is a reference to the secret containing the user's password
+type SecretKeyReference struct {
+	// Name is the name of the secret storing this user's password
+	Name string `json:"name"`
+
+	// Key is the key in the secret storing this password. Defaults to "password"
+	// +optional
+	Key string `json:"key"`
+}
+
+// Role is the database role this user should have
+type Role struct {
+	// DB is the database the role can act on
+	DB string `json:"db"`
+	// Name is the name of the role
+	Name string `json:"name"`
 }
 
 type Security struct {
@@ -70,9 +108,6 @@ type TLS struct {
 }
 
 type Authentication struct {
-	// Enabled specifies if authentication should be enabled
-	Enabled bool `json:"enabled"`
-
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
 }

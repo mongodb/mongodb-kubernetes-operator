@@ -3,6 +3,8 @@ package scram
 import (
 	"fmt"
 
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -11,9 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
+const (
+	defaultPasswordKey = "password"
+)
+
+// EnsureEnabler make sure that the agent password and keyfile exist in the secret and returns
 // the scram authEnabler configured with this values
-func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (automationconfig.AuthEnabler, error) {
+func EnsureEnabler(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.AuthEnabler, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
 		return authEnabler{}, fmt.Errorf("error generating password: %s", err)
@@ -24,6 +30,10 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 		return authEnabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
 	}
 
+	desiredUsers, err := mdbApiUserToAutomationConfigUser(getUpdateCreator, mdb)
+	if err != nil {
+		return authEnabler{}, err
+	}
 	agentSecret, err := getUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -36,6 +46,7 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 			return authEnabler{
 				agentPassword: generatedPassword,
 				agentKeyFile:  generatedContents,
+				users:         desiredUsers,
 			}, getUpdateCreator.CreateSecret(s)
 		}
 		return authEnabler{}, err
@@ -52,5 +63,48 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 	return authEnabler{
 		agentPassword: string(agentSecret.Data[AgentPasswordKey]),
 		agentKeyFile:  string(agentSecret.Data[AgentKeyfileKey]),
+		users:         desiredUsers,
 	}, getUpdateCreator.UpdateSecret(agentSecret)
+}
+
+func mdbApiUserToAutomationConfigUser(getter secret.Getter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
+	var usersWanted []automationconfig.MongoDBUser
+	for _, u := range mdb.Spec.Users {
+		passwordKey := u.PasswordSecretRef.Key
+		if passwordKey == "" {
+			passwordKey = defaultPasswordKey
+		}
+		password, err := secret.ReadKey(getter, passwordKey, types.NamespacedName{Name: u.PasswordSecretRef.Name, Namespace: mdb.Namespace})
+		if err != nil {
+			return nil, err
+		}
+		acUser, err := convertMongoDBUser(u, password)
+		if err != nil {
+			return nil, err
+		}
+		usersWanted = append(usersWanted, acUser)
+	}
+	return usersWanted, nil
+}
+
+func convertMongoDBUser(user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
+	acUser := automationconfig.MongoDBUser{
+		Username: user.Name,
+		Database: user.DB,
+	}
+	for _, role := range user.Roles {
+		acUser.Roles = append(acUser.Roles, automationconfig.Role{
+			Role:     role.Name,
+			Database: role.DB,
+		})
+	}
+	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(acUser.Username, password)
+	if err != nil {
+		return automationconfig.MongoDBUser{}, err
+	}
+	acUser.AuthenticationRestrictions = []string{}
+	acUser.Mechanisms = []string{}
+	acUser.ScramSha1Creds = sha1Creds
+	acUser.ScramSha256Creds = sha256Creds
+	return acUser, nil
 }

@@ -144,7 +144,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		r.log.Errorf("error reconciling MongoDB resource: %s", err)
+		r.log.Errorf("Error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -156,7 +156,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if err := r.ensureAutomationConfig(mdb, authEnabler); err != nil {
-		r.log.Warnf("error creating automation config config map: %s", err)
+		r.log.Warnf("Error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -189,7 +189,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
-		r.log.Warnf("error checking StatefulSet status: %+v", err)
+		r.log.Warnf("Error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -200,7 +200,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Warnf("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Warnf("Error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 

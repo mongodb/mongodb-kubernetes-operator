@@ -33,6 +33,12 @@ func init() {
 	os.Setenv("AGENT_IMAGE", "agent-image")
 }
 
+type noOpAuthEnabler struct{}
+
+func (n noOpAuthEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
+	return auth
+}
+
 func newTestReplicaSet() mdbv1.MongoDB {
 	return mdbv1.MongoDB{
 		ObjectMeta: metav1.ObjectMeta{
@@ -47,7 +53,7 @@ func newTestReplicaSet() mdbv1.MongoDB {
 	}
 }
 
-func newScramReplicaSet() mdbv1.MongoDB {
+func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDB {
 	return mdbv1.MongoDB{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
@@ -55,12 +61,12 @@ func newScramReplicaSet() mdbv1.MongoDB {
 			Annotations: map[string]string{},
 		},
 		Spec: mdbv1.MongoDBSpec{
+			Users:   users,
 			Members: 3,
 			Version: "4.2.2",
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
-					Enabled: true,
-					Modes:   []mdbv1.AuthMode{"SCRAM"},
+					Modes: []mdbv1.AuthMode{"SCRAM"},
 				},
 			},
 		},
@@ -83,6 +89,27 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 					CAConfigMapName:  "caConfigMap",
 					ServerSecretName: "serverSecret",
 				},
+			},
+		},
+	}
+}
+
+func defaultUser() mdbv1.MongoDBUser {
+	return mdbv1.MongoDBUser{
+		Name: "scram-user",
+		DB:   "admin",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "scram-user-password",
+			Key:  "password-1",
+		},
+		Roles: []mdbv1.Role{
+			{
+				Name: "clusterAdmin",
+				DB:   "admin",
+			},
+			{
+				Name: "userAdminAnyDatabase",
+				DB:   "admin",
 			},
 		},
 	}
@@ -383,7 +410,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that all TLS volumes have been added.
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 6)
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls",
 		VolumeSource: corev1.VolumeSource{
@@ -527,6 +554,47 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 			}, process.Args26.Net.SSL)
 		}
 	})
+}
+
+func TestReconcilliationFailsIfThereIsNoPassword(t *testing.T) {
+	mdb := newScramReplicaSet(defaultUser())
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationRetries(t, res, err)
+}
+
+func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
+	mdb := newScramReplicaSet(defaultUser())
+	mgr := client.NewManager(&mdb)
+
+	// create the secret storing the user's password
+	passwordSecret := secret.Builder().
+		SetName(mdb.Spec.Users[0].PasswordSecretRef.Name).
+		SetNamespace(mdb.Namespace).
+		SetField("password-1", "my-password123!").
+		Build()
+
+	_ = secret.CreateOrUpdate(mgr.Client, passwordSecret)
+
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	ac, err := getCurrentAutomationConfig(mgr.Client, mdb)
+	assert.NoError(t, err)
+
+	assert.Len(t, ac.Auth.Users, 1)
+	createdUser := ac.Auth.Users[0]
+	assert.NotNil(t, createdUser.ScramSha256Creds)
+	assert.NotNil(t, createdUser.ScramSha1Creds)
+	assert.Equal(t, "admin", createdUser.Database)
+	assert.Equal(t, "scram-user", createdUser.Username)
+	assert.Len(t, createdUser.Roles, 2)
+	assert.Equal(t, createdUser.Roles[0].Role, "clusterAdmin")
+	assert.Equal(t, createdUser.Roles[0].Database, "admin")
+	assert.Equal(t, createdUser.Roles[1].Role, "userAdminAnyDatabase")
+	assert.Equal(t, createdUser.Roles[1].Database, "admin")
 }
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the
