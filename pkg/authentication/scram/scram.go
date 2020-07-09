@@ -30,7 +30,7 @@ func EnsureEnabler(getUpdateCreator secret.GetUpdateCreator, secretNsName types.
 		return authEnabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
 	}
 
-	desiredUsers, err := mdbApiUserToAutomationConfigUser(getUpdateCreator, mdb)
+	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(getUpdateCreator, mdb)
 	if err != nil {
 		return authEnabler{}, err
 	}
@@ -67,7 +67,7 @@ func EnsureEnabler(getUpdateCreator secret.GetUpdateCreator, secretNsName types.
 	}, getUpdateCreator.UpdateSecret(agentSecret)
 }
 
-func mdbApiUserToAutomationConfigUser(getter secret.Getter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(getter secret.Getter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.Spec.Users {
 		passwordKey := u.PasswordSecretRef.Key
@@ -78,7 +78,7 @@ func mdbApiUserToAutomationConfigUser(getter secret.Getter, mdb mdbv1.MongoDB) (
 		if err != nil {
 			return nil, err
 		}
-		acUser, err := convertMongoDBUser(u, password)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(u, password)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func mdbApiUserToAutomationConfigUser(getter secret.Getter, mdb mdbv1.MongoDB) (
 	return usersWanted, nil
 }
 
-func convertMongoDBUser(user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Name,
 		Database: user.DB,
