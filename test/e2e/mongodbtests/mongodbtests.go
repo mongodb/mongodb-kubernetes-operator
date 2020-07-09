@@ -236,7 +236,8 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 }
 
 // connect performs a connectivity check by initializing a mongo client
-// and inserting a document into the MongoDB resource
+// and inserting a document into the MongoDB resource. Custom client
+// options can be passed, for example to configure TLS.
 func connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
 	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
