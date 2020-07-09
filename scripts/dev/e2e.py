@@ -164,7 +164,7 @@ def create_test_runner_pod(
         )
 
     if not k8s_conditions.call_eventually_succeeds(
-        corev1.create_namespaced_pod(dev_config.namespace, body=pod_body),
+        lambda: corev1.create_namespaced_pod(dev_config.namespace, body=pod_body),
         sleep_time=10,
         timeout=60,
         exceptions_to_ignore=ApiException,
