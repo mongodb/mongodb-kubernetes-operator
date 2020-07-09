@@ -99,7 +99,9 @@ func EnsureTLSIsRequired(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // send a single request. This function is used to ensure non-TLS
 // requests fail.
 func connectWithoutTLS(mdb *mdbv1.MongoDB) error {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
@@ -144,7 +146,9 @@ func WaitForTLSMode(mdb *mdbv1.MongoDB, expectedValue string) func(*testing.T) {
 
 // getAdminSetting will get a setting from the admin database.
 func getAdminSetting(url, key string) (interface{}, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	opts := options.Client().
 		SetTLSConfig(getClientTLSConfig()).
 		ApplyURI(url)
