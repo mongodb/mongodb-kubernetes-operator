@@ -21,12 +21,12 @@ type authEnabler struct {
 }
 
 func (s authEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	s.enableAuthentication(&auth)
+	enableAgentAuthentication(&auth, s.agentPassword, s.agentKeyFile, s.users)
 	enableDeploymentMechanisms(&auth)
 	return auth
 }
 
-func (s authEnabler) enableAuthentication(auth *automationconfig.Auth) {
+func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agentKeyFileContents string, users []automationconfig.MongoDBUser) {
 	auth.Disabled = false
 	auth.AuthoritativeSet = true
 	auth.KeyFile = automationAgentKeyFilePathInContainer
@@ -42,14 +42,14 @@ func (s authEnabler) enableAuthentication(auth *automationconfig.Auth) {
 	auth.AutoAuthMechanism = scram256
 
 	// the password for the Agent user
-	auth.AutoPwd = s.agentPassword
+	auth.AutoPwd = agentPassword
 
 	// the contents the keyfile should have, this file is owned and managed
 	// by the agent
-	auth.Key = s.agentKeyFile
+	auth.Key = agentKeyFileContents
 
 	// assign all the users that should be added to the deployment
-	auth.Users = s.users
+	auth.Users = users
 }
 
 func enableDeploymentMechanisms(auth *automationconfig.Auth) {
