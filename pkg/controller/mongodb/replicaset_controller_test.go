@@ -388,15 +388,15 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb := newTestReplicaSet()
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.SSL{
+		assert.Equal(t, automationconfig.TLS{
 			CAFilePath:            "",
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.SSL)
+		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBSSL{
-				Mode: automationconfig.SSLModeDisabled,
-			}, process.Args26.Net.SSL)
+			assert.Equal(t, automationconfig.MongoDBTLS{
+				Mode: automationconfig.TLSModeDisabled,
+			}, process.Args26.Net.TLS)
 		}
 	})
 
@@ -404,15 +404,15 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.SSL{
+		assert.Equal(t, automationconfig.TLS{
 			CAFilePath:            "",
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.SSL)
+		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBSSL{
-				Mode: automationconfig.SSLModeDisabled,
-			}, process.Args26.Net.SSL)
+			assert.Equal(t, automationconfig.MongoDBTLS{
+				Mode: automationconfig.TLSModeDisabled,
+			}, process.Args26.Net.TLS)
 		}
 	})
 
@@ -421,18 +421,18 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.SSL{
+		assert.Equal(t, automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.SSL)
+		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBSSL{
-				Mode:                               automationconfig.SSLModeRequired,
+			assert.Equal(t, automationconfig.MongoDBTLS{
+				Mode:                               automationconfig.TLSModeRequired,
 				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
 				CAFile:                             tlsCAMountPath + tlsCACertName,
 				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.SSL)
+			}, process.Args26.Net.TLS)
 		}
 	})
 
@@ -442,18 +442,18 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.SSL{
+		assert.Equal(t, automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.SSL)
+		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBSSL{
-				Mode:                               automationconfig.SSLModePreferred,
+			assert.Equal(t, automationconfig.MongoDBTLS{
+				Mode:                               automationconfig.TLSModePreferred,
 				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
 				CAFile:                             tlsCAMountPath + tlsCACertName,
 				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.SSL)
+			}, process.Args26.Net.TLS)
 		}
 	})
 }
