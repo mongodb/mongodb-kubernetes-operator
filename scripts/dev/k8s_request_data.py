@@ -38,7 +38,7 @@ def get_pods_namespaced(namespace: str) -> list:
     return pods.items
 
 
-def get_pod_namespaced(namespace: str, pod_name: str):
+def get_pod_namespaced(namespace: str, pod_name: str) -> client.CoreV1Api.V1Pod:
     corev1 = client.CoreV1Api()
     try:
         pod = corev1.read_namespaced_pod(name=pod_name, namespace=namespace)

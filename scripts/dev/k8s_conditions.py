@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Tuple, List, Optional
+from typing import Callable, Tuple, List, Optional, Any
 
 from kubernetes.client.rest import ApiException
 
@@ -75,7 +75,7 @@ def call_eventually_succeeds(
     return False
 
 
-def _ignore_error_codes(fn: Callable, codes: Optional[List[int]]):
+def _ignore_error_codes(fn: Callable, codes: Optional[List[int]]) -> Any:
     try:
         return fn()
     except ApiException as e:
@@ -83,16 +83,15 @@ def _ignore_error_codes(fn: Callable, codes: Optional[List[int]]):
             raise
 
 
-def ignore_if_already_exists(fn: Callable):
+def ignore_if_already_exists(fn: Callable) -> Any:
     """
     ignore_if_already_exists accepts a function and calls it,
     ignoring an Kubernetes API conflict errors
     """
-
     return _ignore_error_codes(fn, [409])
 
 
-def ignore_if_doesnt_exist(fn: Callable):
+def ignore_if_doesnt_exist(fn: Callable) -> Any:
     """
     ignore_if_doesnt_exist accepts a function and calls it,
     ignoring an Kubernetes API not found errors

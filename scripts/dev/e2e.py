@@ -11,7 +11,7 @@ import k8s_request_data
 import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict
-from dev_config import load_config
+from dev_config import load_config, DevConfig
 from kubernetes import client, config
 import argparse
 import time
@@ -38,7 +38,7 @@ def _load_testrunner_cluster_role_binding() -> Dict:
     return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
 
 
-def _prepare_testrunner_environment(config_file: str):
+def _prepare_testrunner_environment(config_file: str) -> None:
     """
     _prepare_testrunner_environment ensures the ServiceAccount,
     Role and ClusterRole and bindings are created for the test runner.
@@ -78,17 +78,19 @@ def _prepare_testrunner_environment(config_file: str):
     )
 
 
-def create_kube_config():
+def create_kube_config() -> None:
     """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
     as a ConfigMap."""
     corev1 = client.CoreV1Api()
     print("Creating kube-config ConfigMap")
 
     svc = corev1.read_namespaced_service("kubernetes", "default")
-    kube_config = os.getenv("KUBECONFIG")
-    with open(kube_config) as fd:
+    kube_config_path = os.getenv("KUBECONFIG")
+    assert kube_config_path is not None
+    with open(kube_config_path) as fd:
         kube_config = yaml.safe_load(fd.read())
 
+    assert kube_config is not None
     kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
     kube_config = yaml.safe_dump(kube_config)
     data = {"kubeconfig": kube_config}
@@ -101,26 +103,26 @@ def create_kube_config():
     )
 
 
-def build_and_push_testrunner(repo_url: str, tag: str, path: str):
+def build_and_push_testrunner(repo_url: str, tag: str, path: str) -> None:
     """
     build_and_push_testrunner builds and pushes the test runner
     image.
     """
-    return build_and_push_image(repo_url, tag, path, "testrunner")
+    build_and_push_image(repo_url, tag, path, "testrunner")
 
 
-def build_and_push_e2e(repo_url: str, tag: str, path: str):
+def build_and_push_e2e(repo_url: str, tag: str, path: str) -> None:
     """
     build_and_push_e2e builds and pushes the e2e image.
     """
-    return build_and_push_image(repo_url, tag, path, "e2e")
+    build_and_push_image(repo_url, tag, path, "e2e")
 
 
-def build_and_push_prehook(repo_url: str, tag: str, path: str):
+def build_and_push_prehook(repo_url: str, tag: str, path: str) -> None:
     """
     build_and_push_prehook builds and pushes the pre-stop-hook image.
     """
-    return build_and_push_image(repo_url, tag, path, "prehook")
+    build_and_push_image(repo_url, tag, path, "prehook")
 
 
 def _delete_testrunner_pod(config_file: str) -> None:
@@ -141,7 +143,7 @@ def create_test_runner_pod(
     tag: str,
     perform_cleanup: str,
     test_runner_image_name: str,
-):
+) -> None:
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
@@ -172,7 +174,9 @@ def create_test_runner_pod(
         raise Exception("Could not create test_runner pod!")
 
 
-def wait_for_pod_to_be_running(corev1: client.CoreV1Api, name: str, namespace: str):
+def wait_for_pod_to_be_running(
+    corev1: client.CoreV1Api, name: str, namespace: str
+) -> None:
     print("Waiting for pod to be running")
     if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(name, namespace),
@@ -221,7 +225,7 @@ def _get_testrunner_pod_body(
     }
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Name of the test to run")
     parser.add_argument(
@@ -254,7 +258,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def build_and_push_images(args, dev_config):
+def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> None:
     test_runner_name = dev_config.testrunner_image
     if args.install_operator:
         build_and_push_operator(
@@ -284,7 +288,7 @@ def build_and_push_images(args, dev_config):
         )
 
 
-def prepare_and_run_testrunner(args, dev_config):
+def prepare_and_run_testrunner(args: argparse.Namespace, dev_config: DevConfig) -> None:
     test_runner_name = dev_config.testrunner_image
     _prepare_testrunner_environment(args.config_file)
 
@@ -304,7 +308,7 @@ def prepare_and_run_testrunner(args, dev_config):
         print(line.decode("utf-8").rstrip())
 
 
-def main():
+def main() -> int:
     args = parse_args()
     config.load_kube_config()
 
@@ -326,9 +330,9 @@ def main():
         timeout=60,
         exceptions_to_ignore=ApiException,
     ):
-        sys.exit(1)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-
-    main()
+    sys.exit(main())

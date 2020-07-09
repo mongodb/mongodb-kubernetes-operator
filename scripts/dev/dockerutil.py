@@ -3,8 +3,10 @@ from dockerfile_generator import render
 import os
 import json
 
+from typing import Union, Any
 
-def build_image(repo_url: str, tag: str, path):
+
+def build_image(repo_url: str, tag: str, path: str) -> None:
     """
     build_image builds the image with the given tag
     """
@@ -14,7 +16,7 @@ def build_image(repo_url: str, tag: str, path):
     print("Successfully built image!")
 
 
-def push_image(tag: str):
+def push_image(tag: str) -> None:
     """
     push_image pushes the given tag. It uses
     the current docker environment
@@ -26,7 +28,7 @@ def push_image(tag: str):
         print("\r" + push_image_formatted(line), end="", flush=True)
 
 
-def push_image_formatted(line) -> str:
+def push_image_formatted(line: Any) -> str:
     try:
         line = json.loads(line.strip().decode("utf-8"))
     except ValueError:
@@ -50,7 +52,7 @@ def push_image_formatted(line) -> str:
     return ""
 
 
-def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str):
+def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str) -> None:
     """
     build_and_push_operator creates the Dockerfile for the operator
     and pushes it to the target repo
