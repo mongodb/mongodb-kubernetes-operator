@@ -3,8 +3,6 @@ package mongodb
 import (
 	"fmt"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
@@ -82,7 +80,7 @@ func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
 // completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
 // At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
 // The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
-func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB, enabler automationconfig.AuthEnabler) error {
+func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 	if !mdb.Spec.Security.TLS.Enabled || hasRolledOutTLS(mdb) {
 		return nil
 	}
@@ -90,7 +88,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB, enabler aut
 	r.log.Debug("Completing TLS rollout")
 
 	mdb.Annotations[tLSRolledOutAnnotationKey] = trueAnnotation
-	if err := r.ensureAutomationConfig(mdb, enabler); err != nil {
+	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
 	}
 

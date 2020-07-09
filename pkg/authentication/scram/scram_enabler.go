@@ -20,12 +20,12 @@ type authEnabler struct {
 }
 
 func (s authEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	s.enableAgentAuthentication(&auth)
+	enableAgentAuthentication(&auth, s.agentPassword, s.agentKeyFile)
 	enableDeploymentMechanisms(&auth)
 	return auth
 }
 
-func (s authEnabler) enableAgentAuthentication(auth *automationconfig.Auth) {
+func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agentKeyFileContents string) {
 	auth.Disabled = false
 	auth.AuthoritativeSet = true
 	auth.KeyFile = automationAgentKeyFilePathInContainer
@@ -41,11 +41,11 @@ func (s authEnabler) enableAgentAuthentication(auth *automationconfig.Auth) {
 	auth.AutoAuthMechanism = scram256
 
 	// the password for the Agent user
-	auth.AutoPwd = s.agentPassword
+	auth.AutoPwd = agentPassword
 
 	// the contents the keyfile should have, this file is owned and managed
 	// by the agent
-	auth.Key = s.agentKeyFile
+	auth.Key = agentKeyFileContents
 }
 
 func enableDeploymentMechanisms(auth *automationconfig.Auth) {

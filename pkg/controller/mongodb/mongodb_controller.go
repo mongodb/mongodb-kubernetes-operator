@@ -151,13 +151,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	authEnabler, err := getAuthenticationEnabler(r.client, mdb)
-	if err != nil {
-		r.log.Warnf("Error configuring authentication: %s", err)
-		return reconcile.Result{}, err
-	}
-
-	if err := r.ensureAutomationConfig(mdb, authEnabler); err != nil {
+	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
 		return reconcile.Result{}, err
 	}
@@ -217,7 +211,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	if err := r.completeTLSRollout(mdb, authEnabler); err != nil {
+	if err := r.completeTLSRollout(mdb); err != nil {
 		r.log.Warnf("Error completing TLS rollout: %+v", err)
 		return reconcile.Result{}, err
 	}
@@ -339,8 +333,8 @@ func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (
 	return newMdb.Status, nil
 }
 
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB, enabler automationconfig.AuthEnabler) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb, enabler)
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
+	cm, err := r.buildAutomationConfigConfigMap(mdb)
 	if err != nil {
 		return err
 	}
@@ -449,11 +443,16 @@ func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.Mongo
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB, enabler automationconfig.AuthEnabler) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+	}
+
+	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	if err != nil {
+		return corev1.ConfigMap{}, err
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
