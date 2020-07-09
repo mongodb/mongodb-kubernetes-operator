@@ -12,7 +12,6 @@ type builder struct {
 	serviceType           corev1.ServiceType
 	servicePort           corev1.ServicePort
 	labels                map[string]string
-	port                  int32
 	loadBalancerIP        string
 	publishNotReady       bool
 	ownerReferences       []metav1.OwnerReference

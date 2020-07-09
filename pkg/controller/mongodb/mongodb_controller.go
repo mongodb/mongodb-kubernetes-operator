@@ -60,8 +60,8 @@ const (
 
 	tlsCAMountPath     = "/var/lib/tls/ca/"
 	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/secret/"
-	tlsSecretCertName  = "tls.crt"
+	tlsSecretMountPath = "/var/lib/tls/secret/" //nolint
+	tlsSecretCertName  = "tls.crt"              //nolint
 	tlsSecretKeyName   = "tls.key"
 	tlsServerMountPath = "/var/lib/tls/server/"
 	tlsServerFileName  = "server.pem"
@@ -72,6 +72,8 @@ const (
 	// TLSRolledOutKey indicates if TLS has been fully rolled out
 	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
+
+	trueAnnotation = "true"
 )
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -261,14 +263,14 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
 		annotations := map[string]string{
-			hasLeftReadyStateAnnotationKey: "true",
+			hasLeftReadyStateAnnotationKey: trueAnnotation,
 		}
 		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 			return false, fmt.Errorf("failed setting %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
 		}
 	}
 
-	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == "true"
+	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == trueAnnotation
 	r.log.Infow("StatefulSet Readiness", "isReady", isReady, "hasPerformedUpgrade", hasPerformedUpgrade, "areEqual", areEqual)
 
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
@@ -357,10 +359,10 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	// The agent needs these to be in place before the config is updated.
 	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
 	if mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb) {
-		mode := automationconfig.SSLModeRequired
+		mode := automationconfig.TLSModeRequired
 		if mdb.Spec.Security.TLS.Optional {
-			// SSLModePreferred requires server-server connections to use TLS but makes it optional for clients.
-			mode = automationconfig.SSLModePreferred
+			// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
+			mode = automationconfig.TLSModePreferred
 		}
 
 		builder.SetTLS(

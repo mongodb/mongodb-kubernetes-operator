@@ -141,6 +141,18 @@ python scripts/dev/e2e.py --test <new-test>
 
 # Before Committing your code
 
-Please make sure you sign our Contributor Agreement
-[here](https://www.mongodb.com/legal/contributor-agreement). This will be
+## Set up pre-commit hooks
+To set up the pre-commit hooks, please create symbolic links from the provided [hooks](https://github.com/mongodb/mongodb-kubernetes-operator/tree/master/scripts/git-hooks):
+
+* Navigate to your `.git/hooks` directory: 
+
+	`cd .git/hooks`
+
+* Create a symlink for every file in the `scripts/git-hooks` directory: 
+
+	`ln -s -f  ../../scripts/git-hooks/* .`
+
+
+## Please make sure you sign our Contributor Agreement
+You can find it [here](https://www.mongodb.com/legal/contributor-agreement). This will be
 required when creating a PR against this repo!

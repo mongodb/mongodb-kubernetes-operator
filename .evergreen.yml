@@ -2,6 +2,13 @@ ignore:
   - "*.md"
 
 functions:
+  setup_virtualenv:
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/setup_virtualenv.sh
+
   clone:
     - command: subprocess.exec
       type: setup
@@ -82,39 +89,32 @@ functions:
         env:
           KUBECONFIG: ${workdir}/kube_config
 
+  black_formatting_test:
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/run_black_formatting_check.sh
+
+
   run_e2e_test:
     - command: subprocess.exec
       type: test
       params:
-        add_to_path:
-          - ${workdir}/bin
         working_dir: mongodb-kubernetes-operator
         env:
           KUBECONFIG: ${workdir}/kube_config
-        command: "pip3 install -r ./requirements.txt"
-
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: mongodb-kubernetes-operator
-        add_to_path:
-          - ${workdir}/bin
-        env:
-          KUBECONFIG: ${workdir}/kube_config
-        command: "python3 ./scripts/dev/e2e.py --test ${test} --tag ${version_id} --config_file ./scripts/ci/config.json"
+        include_expansions_in_env:
+          - version_id
+          - test
+        binary: scripts/ci/run_test.sh
 
   mypy_linting_test:
     - command: subprocess.exec
       type: test
       params:
         working_dir: mongodb-kubernetes-operator
-        command: "pip3 install mypy"
-
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: mongodb-kubernetes-operator
-        command: "find . -type f -name '*.py' -exec python3 -m mypy --ignore-missing-imports {} +"
+        binary: scripts/ci/run_mypy_check.sh
 
 
   build_and_push_image:
@@ -135,6 +135,7 @@ task_groups:
   max_hosts: 3
   setup_group:
     - func: clone
+    - func: setup_virtualenv
     - func: setup_kubernetes_environment
   setup_task:
     - func: create_kind_cluster
@@ -157,6 +158,7 @@ tasks:
     exec_timeout_secs: 600
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: build_and_push_image
         vars:
           image_type: operator
@@ -167,6 +169,7 @@ tasks:
     exec_timeout_secs: 600
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: build_and_push_image
         vars:
           image: quay.io/mongodb/community-operator-e2e:${version_id}
@@ -177,6 +180,7 @@ tasks:
     exec_timeout_secs: 600
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: build_and_push_image
         vars:
           image: quay.io/mongodb/community-operator-pre-stop-hook:${version_id}
@@ -187,20 +191,29 @@ tasks:
     exec_timeout_secs: 600
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: build_and_push_image
         vars:
           image: quay.io/mongodb/community-operator-testrunner:${version_id}
           image_type: testrunner
 
+  - name: black_formatting
+    commands:
+        - func: clone
+        - func: setup_virtualenv
+        - func: black_formatting_test
+
   - name: unit_tests
     commands:
       - func: clone
+      - func: setup_virtualenv
       - func: go_test
 
 
   - name: mypy_linting
     commands:
         - func: clone
+        - func: setup_virtualenv
         - func: mypy_linting_test
 
 
@@ -288,7 +301,7 @@ buildvariants:
       - ubuntu1604-build
     tasks:
       - name: mypy_linting
-
+      - name: black_formatting
 
   - name: init_test_run
     display_name: init_test_run
