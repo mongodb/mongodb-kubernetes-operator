@@ -78,7 +78,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(getter secret.Getter, md
 		if err != nil {
 			return nil, err
 		}
-		acUser, err := convertMongoDBUserToAutomationConfigUser(u, password)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(mdb.Name, u, password)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(getter secret.Getter, md
 	return usersWanted, nil
 }
 
-func convertMongoDBUserToAutomationConfigUser(user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(resourceName string, user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Name,
 		Database: user.DB,
@@ -98,7 +98,7 @@ func convertMongoDBUserToAutomationConfigUser(user mdbv1.MongoDBUser, password s
 			Database: role.DB,
 		})
 	}
-	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(acUser.Username, password)
+	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(resourceName, acUser.Username, password)
 	if err != nil {
 		return automationconfig.MongoDBUser{}, err
 	}

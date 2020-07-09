@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"hash"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/md5"
@@ -187,9 +185,9 @@ func computeScramCredentials(hashConstructor func() hash.Hash, iterationCount in
 
 // computeScram1AndScram256Credentials takes in a username and password, and generates SHA1 & SHA256 credentials
 // for that user. This should only be done if credentials do not already exist.
-func computeScram1AndScram256Credentials(mdb mdbv1.MongoDB, username, password string) (*automationconfig.ScramCreds, *automationconfig.ScramCreds, error) {
-	scram256Salt := getDeterministicSalt(mdb, sha256.New)
-	scram1Salt := getDeterministicSalt(mdb, sha1.New)
+func computeScram1AndScram256Credentials(resourceName, username, password string) (*automationconfig.ScramCreds, *automationconfig.ScramCreds, error) {
+	scram256Salt := getDeterministicSalt(resourceName, sha256.New)
+	scram1Salt := getDeterministicSalt(resourceName, sha1.New)
 
 	scram256Creds, err := computeCreds(username, password, scram256Salt, Sha256)
 	if err != nil {
@@ -204,7 +202,7 @@ func computeScram1AndScram256Credentials(mdb mdbv1.MongoDB, username, password s
 
 // getDeterministicSalt returns a deterministic salt based on the name of the resource.
 // the required number of characters will be taken based on the requirements for the SCRAM-SHA-1/MONGODB-CR algorithm
-func getDeterministicSalt(mdb mdbv1.MongoDB, hashConstructor func() hash.Hash) []byte {
-	sha256bytes32 := sha256.Sum256([]byte(fmt.Sprintf("%s-mongodbresource", mdb.Name)))
+func getDeterministicSalt(resourceName string, hashConstructor func() hash.Hash) []byte {
+	sha256bytes32 := sha256.Sum256([]byte(fmt.Sprintf("%s-mongodbresource", resourceName)))
 	return sha256bytes32[:hashConstructor().Size()-RFC5802MandatedSaltSize]
 }
