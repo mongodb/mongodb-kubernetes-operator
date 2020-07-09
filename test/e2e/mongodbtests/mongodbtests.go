@@ -280,5 +280,6 @@ func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, username, pas
 				}
 			}
 		}()
+		testFunc()
 	}
 }

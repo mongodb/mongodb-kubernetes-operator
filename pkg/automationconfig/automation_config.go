@@ -104,8 +104,8 @@ func newProcess(name, hostName, version, replSetName string, opts ...func(proces
 		Args26: Args26{
 			Net: Net{
 				Port: 27017,
-				SSL: MongoDBSSL{
-					Mode: SSLModeDisabled,
+				TLS: MongoDBTLS{
+					Mode: TLSModeDisabled,
 				},
 			},
 			Storage: Storage{
@@ -152,21 +152,21 @@ type Args26 struct {
 
 type Net struct {
 	Port int        `json:"port"`
-	SSL  MongoDBSSL `json:"ssl"`
+	TLS  MongoDBTLS `json:"tls"`
 }
 
-type SSLMode string
+type TLSMode string
 
 const (
-	SSLModeDisabled  SSLMode = "disabled"
-	SSLModeAllowed   SSLMode = "allowSSL"
-	SSLModePreferred SSLMode = "preferSSL"
-	SSLModeRequired  SSLMode = "requireSSL"
+	TLSModeDisabled  TLSMode = "disabled"
+	TLSModeAllowed   TLSMode = "allowTLS"
+	TLSModePreferred TLSMode = "preferTLS"
+	TLSModeRequired  TLSMode = "requireTLS"
 )
 
-type MongoDBSSL struct {
-	Mode                               SSLMode `json:"mode"`
-	PEMKeyFile                         string  `json:"PEMKeyFile,omitempty"`
+type MongoDBTLS struct {
+	Mode                               TLSMode `json:"mode"`
+	PEMKeyFile                         string  `json:"certificateKeyFile,omitempty"`
 	CAFile                             string  `json:"CAFile,omitempty"`
 	AllowConnectionsWithoutCertificate bool    `json:"allowConnectionsWithoutCertificates"`
 }
@@ -206,21 +206,21 @@ const (
 	ClientCertificateModeRequired ClientCertificateMode = "REQUIRED"
 )
 
-type SSL struct {
-	CAFilePath            string                `json:"CAFilePath"`
-	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
-}
-
 type AutomationConfig struct {
 	Version     int          `json:"version"`
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
-	SSL         SSL          `json:"ssl"`
+	TLS         TLS          `json:"tls"`
 
 	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
 	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
 	Options      Options                `json:"options"`
+}
+
+type TLS struct {
+	CAFilePath            string                `json:"CAFilePath"`
+	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
 }
 
 type ToolsVersion struct {
