@@ -2,12 +2,14 @@ package client
 
 import (
 	"context"
+
+	"testing"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 )
 
 func TestMockedClient(t *testing.T) {

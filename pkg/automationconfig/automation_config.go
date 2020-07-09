@@ -8,8 +8,8 @@ type ProcessType string
 
 const (
 	Mongod                ProcessType = "mongod"
-	DefaultMongoDBDataDir             = "/data"
-	DefaultAgentLogPath               = "/var/log/mongodb-mms-automation"
+	DefaultMongoDBDataDir string      = "/data"
+	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
 )
 
 type Auth struct {
@@ -182,7 +182,7 @@ type ClientCertificateMode string
 
 const (
 	ClientCertificateModeOptional ClientCertificateMode = "OPTIONAL"
-	ClientCertificateModeRequired                       = "REQUIRED"
+	ClientCertificateModeRequired ClientCertificateMode = "REQUIRED"
 )
 
 type SSL struct {
@@ -197,8 +197,14 @@ type AutomationConfig struct {
 	Auth        Auth         `json:"auth"`
 	SSL         SSL          `json:"ssl"`
 
-	Versions []MongoDbVersionConfig `json:"mongoDbVersions"`
-	Options  Options                `json:"options"`
+	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
+	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
+	Options      Options                `json:"options"`
+}
+
+type ToolsVersion struct {
+	Version string                       `json:"version"`
+	URLs    map[string]map[string]string `json:"urls"`
 }
 
 type VersionManifest struct {

@@ -9,7 +9,7 @@ def build_image(repo_url: str, tag: str, path):
     build_image builds the image with the given tag
     """
     client = docker.from_env()
-    print("Building image: {}".format(tag))
+    print(f"Building image: {tag}")
     client.images.build(tag=tag, path=path)
     print("Successfully built image!")
 
@@ -20,7 +20,7 @@ def push_image(tag: str):
     the current docker environment
     """
     client = docker.from_env()
-    print("Pushing image: {}".format(tag))
+    print(f"Pushing image: {tag}")
     progress = ""
     for line in client.images.push(tag, stream=True):
         print("\r" + push_image_formatted(line), end="", flush=True)
@@ -55,10 +55,10 @@ def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str):
     build_and_push_operator creates the Dockerfile for the operator
     and pushes it to the target repo
     """
-    dockerfile_text = render(image_type)
-    with open("{}/Dockerfile".format(path), "w") as f:
+    dockerfile_text = render(image_type, ["."], "")
+    with open(f"{path}/Dockerfile", "w") as f:
         f.write(dockerfile_text)
 
     build_image(repo_url, tag, path)
-    os.remove("{}/Dockerfile".format(path))
+    os.remove(f"{path}/Dockerfile")
     push_image(tag)

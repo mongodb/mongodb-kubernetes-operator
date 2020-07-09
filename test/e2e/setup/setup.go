@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	skipCleanup = "SKIP_CLEANUP"
+	performCleanup = "PERFORM_CLEANUP"
 )
 
 func InitTest(t *testing.T) (*f.Context, bool) {
@@ -22,12 +22,13 @@ func InitTest(t *testing.T) (*f.Context, bool) {
 		t.Fatal(err)
 	}
 
-	skip := os.Getenv(skipCleanup)
+	clean := os.Getenv(performCleanup)
 
-	return ctx, skip != "True"
+	return ctx, clean == "True"
 }
 
 func registerTypesWithFramework(newTypes ...runtime.Object) error {
+
 	for _, newType := range newTypes {
 		if err := f.AddToFrameworkScheme(apis.AddToScheme, newType); err != nil {
 			return fmt.Errorf("failed to add custom resource type %s to framework scheme: %v", newType.GetObjectKind(), err)
