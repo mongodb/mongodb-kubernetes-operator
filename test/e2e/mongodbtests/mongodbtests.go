@@ -194,7 +194,7 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 // a basic MongoDB connectivity test
 func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := Connect(mdb); err != nil {
+		if err := connect(mdb, options.Client()); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 	}
@@ -235,11 +235,11 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 	}
 }
 
-// Connect performs a connectivity check by initializing a mongo client
+// connect performs a connectivity check by initializing a mongo client
 // and inserting a document into the MongoDB resource
-func Connect(mdb *mdbv1.MongoDB) error {
+func connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Minute)
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func Connect(mdb *mdbv1.MongoDB) error {
 // The MongoDB is up throughout the test.
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
 	return isReachableDuring(mdb, interval, testFunc, func() error {
-		return Connect(mdb)
+		return connect(mdb, options.Client())
 	})
 }
 
