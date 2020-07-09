@@ -154,7 +154,7 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.Context) func(*testing.T) 
 	}
 }
 
-func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
+func BasicFunctionality(mdb *mdbv1.MongoDB, username, password string) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
@@ -165,7 +165,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 				Version: mdbv1.SchemeGroupVersion.Version,
 				Kind:    mdb.Kind,
 			})))
-		t.Run("Test Basic Connectivity", BasicConnectivity(mdb, "", ""))
+		t.Run("Test Basic Connectivity", BasicConnectivity(mdb, username, password))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb.MongoURI(),
