@@ -89,7 +89,7 @@ func (c client) CreateSecret(secret corev1.Secret) error {
 
 // DeleteSecret provides a thin wrapper and client.Client to delete corev1.Secret types
 func (c client) DeleteSecret(key k8sClient.ObjectKey) error {
-	s := corev1.Service{
+	s := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      key.Name,
 			Namespace: key.Namespace,
@@ -108,13 +108,13 @@ func (c client) GetService(objectKey k8sClient.ObjectKey) (corev1.Service, error
 }
 
 // UpdateService provides a thin wrapper and client.Client to update corev1.Service types
-func (c client) UpdateService(secret corev1.Service) error {
-	return c.Update(context.TODO(), &secret)
+func (c client) UpdateService(service corev1.Service) error {
+	return c.Update(context.TODO(), &service)
 }
 
 // CreateService provides a thin wrapper and client.Client to create corev1.Service types
-func (c client) CreateService(s corev1.Service) error {
-	return c.Create(context.TODO(), &s)
+func (c client) CreateService(service corev1.Service) error {
+	return c.Create(context.TODO(), &service)
 }
 
 // GetStatefulSet provides a thin wrapper and client.Client to access appsv1.StatefulSet types
