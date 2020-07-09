@@ -172,7 +172,7 @@ def create_test_runner_pod(
         raise Exception("Could not create test_runner pod!")
 
 
-def wait_for_pod_to_be_running(corev1, name, namespace):
+def wait_for_pod_to_be_running(corev1: client.CoreV1Api, name: str, namespace: str):
     print("Waiting for pod to be running")
     if not k8s_conditions.wait(
         lambda: corev1.read_namespaced_pod(name, namespace),
