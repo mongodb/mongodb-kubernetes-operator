@@ -9,7 +9,6 @@ import (
 	"hash"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/md5"
 
 	"github.com/xdg/stringprep"
@@ -51,17 +50,6 @@ func computeCreds(username, password string, salt []byte, name string) (*automat
 	}
 	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
 	return computeScramCredentials(hashConstructor, iterations, base64EncodedSalt, password)
-}
-
-// generateSalt will create a salt for use with computeCreds based on the given hashConstructor.
-// sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
-func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
-	saltSize := hashConstructor().Size() - RFC5802MandatedSaltSize
-	salt, err := generate.RandomFixedLengthStringOfSize(saltSize)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(salt), nil
 }
 
 func generateSaltedPassword(hashConstructor func() hash.Hash, password string, salt []byte, iterationCount int) ([]byte, error) {
