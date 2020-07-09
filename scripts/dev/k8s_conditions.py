@@ -45,6 +45,31 @@ def wait(
     return False
 
 
+def call_eventually_succeeds(
+    fn, sleep_time=SLEEP_TIME, timeout=INFINITY, exceptions_to_ignore=None
+) -> bool:
+    """
+    call_eventually_succeeds is similar to wait but for when we don't care about the returned value of fn
+    (it can even not return anything).
+
+    It periodically calls fn and if the call raises an exception contained in  exceptions_to_ignore, it tries
+    again after a sleep until it either succeeds or we reach timeout
+    """
+    start_time = _current_milliseconds()
+    end = start_time + (timeout * 1000)
+
+    while _current_milliseconds() < end or timeout <= 0:
+        try:
+            fn()
+            return True
+        except exceptions_to_ignore:
+            pass
+
+        time.sleep(sleep_time)
+
+    return False
+
+
 def _ignore_error_codes(fn, codes):
     try:
         return fn()

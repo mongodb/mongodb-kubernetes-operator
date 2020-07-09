@@ -163,21 +163,13 @@ def create_test_runner_pod(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
 
-    try:
-        corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
-    except ApiException as e:
-        if "No API token found for service account" in e.body:
-            print(
-                "API token was not found for service account, retrying in 10 seconds..."
-            )
-            time.sleep(10)
-            try:
-                corev1.create_namespaced_pod(dev_config.namespace, body=pod_body)
-            except ApiException as e:
-                print(
-                    "The API token was not found for two consecutive tries, aborting the test"
-                )
-                raise
+    if not k8s_conditions.call_eventually_succeeds(
+        corev1.create_namespaced_pod(dev_config.namespace, body=pod_body),
+        sleep_time=10,
+        timeout=60,
+        exceptions_to_ignore=ApiException,
+    ):
+        raise Exception("Could not create test_runner pod!")
 
 
 def wait_for_pod_to_be_running(corev1, name, namespace):
