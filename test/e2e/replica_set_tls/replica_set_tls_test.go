@@ -36,7 +36,7 @@ func TestReplicaSetTLS(t *testing.T) {
 			Kind:    mdb.Kind,
 		})))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-	t.Run("Wait for TLS to be enabled", mongodbtests.WaitForTLSMode(&mdb, "sslMode", "requireSSL"))
+	t.Run("Wait for TLS to be enabled", mongodbtests.WaitForTLSMode(&mdb, "requireSSL"))
 	t.Run("Test Basic TLS Connectivity", mongodbtests.BasicConnectivityWithTLS(&mdb))
 	t.Run("Test TLS required", mongodbtests.EnsureTLSIsRequired(&mdb))
 	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
