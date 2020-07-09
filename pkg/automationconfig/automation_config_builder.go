@@ -15,8 +15,6 @@ const (
 type Builder struct {
 	processes         []Process
 	replicaSets       []ReplicaSet
-	version           int
-	auth              Auth
 	members           int
 	domain            string
 	name              string
@@ -163,8 +161,8 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		return AutomationConfig{}, err
 	}
 
-	if bytes.Compare(newAcBytes, currentAcBytes) != 0 {
-		currentAc.Version += 1
+	if !bytes.Equal(newAcBytes, currentAcBytes) {
+		currentAc.Version++
 	}
 	return currentAc, nil
 }

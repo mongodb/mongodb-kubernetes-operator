@@ -8,7 +8,6 @@ import (
 type builder struct {
 	data            map[string][]byte
 	labels          map[string]string
-	stringData      map[string]string
 	name            string
 	namespace       string
 	ownerReferences []metav1.OwnerReference

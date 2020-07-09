@@ -35,6 +35,28 @@ function mypy_check()
     return $exit_status
 }
 
+function go_linting() {
+    dirs_to_analyze=()
+    for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+    do
+        dirs_to_analyze+=("$(dirname "${file}")" )
+    done
+    dirs_to_analyze=($(echo "${dirs_to_analyze[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    if [ ${#dirs_to_analyze[@]} -ne 0 ]; then
+        echo "Running golangci-lint on staged files"
+        local exit_status=0
+        for file in $dirs_to_analyze
+        do
+            if ! golangci-lint run "${file}"; then
+                exit_status=1
+            fi
+        done
+        return $exit_status
+    fi
+
+    return 0
+}
+
 function black_formatting()
 {
     # Black formatting of every python file that was changed
@@ -61,5 +83,19 @@ if [ $? -ne 0 ]; then
          "errors: https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"\
          "\nPlease use this only for errors that you are sure are"\
          "false positives."
+    exit 1
+fi
+go_linting
+if [ $? -ne 0 ]; then
+    echo "Golancli-lint returned some errors, please correct them"
+    echo "Commit aborted"
+    # In some cases we might encounter mypy errors that we do not
+    # actually treat as such. So we provide a link to the dev
+    # for ignoring them through code annotation
+    echo "If some of the errors reported are false positives "\
+         "and should be ignored, golanci-lint  provides a way to silence "\
+         "errors: https://golangci-lint.run/usage/false-positives/"\
+         "\nPlease use this only for errors that you are sure are"\
+         " false positives."
     exit 1
 fi

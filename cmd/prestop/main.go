@@ -18,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var logger *zap.SugaredLogger
-
 const (
 	agentStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	logFilePathEnv         = "PRE_STOP_HOOK_LOG_PATH"
@@ -107,31 +105,30 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 	defer ticker.Stop()
 
 	totalTime := time.Duration(0)
-	for {
-		select {
-		case <-ticker.C:
-			if totalTime > pollingDuration {
-				return agenthealth.Health{}, fmt.Errorf("agenth health status not ready after waiting %s", pollingDuration.String())
-			}
-			totalTime += pollingInterval
+	for range ticker.C {
+		if totalTime > pollingDuration {
+			break
+		}
+		totalTime += pollingInterval
 
-			health, err := getAgentHealthStatus()
-			if err != nil {
-				return agenthealth.Health{}, err
-			}
+		health, err := getAgentHealthStatus()
+		if err != nil {
+			return agenthealth.Health{}, err
+		}
 
-			status, ok := health.Healthiness[getHostname()]
-			if !ok {
-				return agenthealth.Health{}, fmt.Errorf("couldn't find status for hostname %s", getHostname())
-			}
+		status, ok := health.Healthiness[getHostname()]
+		if !ok {
+			return agenthealth.Health{}, fmt.Errorf("couldn't find status for hostname %s", getHostname())
+		}
 
-			// We determine if the file has been updated by checking if the process is not in goal state.
-			// As the agent is currently executing a plan, the process should not be in goal state.
-			if !status.IsInGoalState {
-				return health, nil
-			}
+		// We determine if the file has been updated by checking if the process is not in goal state.
+		// As the agent is currently executing a plan, the process should not be in goal state.
+		if !status.IsInGoalState {
+			return health, nil
 		}
 	}
+	return agenthealth.Health{}, fmt.Errorf("agenth health status not ready after waiting %s", pollingDuration.String())
+
 }
 
 // getAgentHealthStatus returns an instance of agenthealth.Health read
