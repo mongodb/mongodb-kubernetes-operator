@@ -32,7 +32,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb, user.Name, password))
 
 	t.Run("Test FeatureCompatibilityVersion is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3))
 	// Upgrade version to 4.2.6 while keeping the FCV set to 4.0
