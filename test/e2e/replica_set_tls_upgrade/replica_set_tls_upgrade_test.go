@@ -45,14 +45,12 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	t.Run("Test Basic TLS Connectivity", tlstests.BasicConnectivityWithTLS(&mdb))
 
 	// Make TLS required
-	t.Run("MongoDB is reachable while making TLS required", mongodbtests.IsReachableDuring(&mdb, time.Second*10, func() {
-		t.Run("MongoDB is reachable over TLS while making TLS required", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
-			func() {
-				t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
-				t.Run("Wait for TLS to be required", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-			},
-		))
-	}))
+	t.Run("MongoDB is reachable over TLS while making TLS required", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
+		func() {
+			t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
+			t.Run("Wait for TLS to be required", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
+		},
+	))
 
 	// Ensure MongoDB is reachable only over TLS
 	t.Run("Test Basic TLS Connectivity", tlstests.BasicConnectivityWithTLS(&mdb))
