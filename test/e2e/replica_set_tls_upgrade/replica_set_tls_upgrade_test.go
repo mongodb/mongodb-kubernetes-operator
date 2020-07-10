@@ -22,6 +22,10 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	}
 
 	mdb := e2eutil.NewTestMongoDB("mdb0")
+	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
+		t.Fatalf("Failed to set up TLS resources: %+v", err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
@@ -36,7 +40,6 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	// Enable TLS as optional
 	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
-			t.Run("Create TLS Resources", mongodbtests.CreateTLSResources(&mdb, ctx))
 			t.Run("Upgrade to TLS", mongodbtests.EnableTLS(&mdb, true))
 			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("Wait for TLS to be enabled", mongodbtests.WaitForTLSMode(&mdb, "preferSSL"))

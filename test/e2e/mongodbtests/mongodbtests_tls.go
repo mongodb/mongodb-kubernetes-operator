@@ -9,59 +9,14 @@ import (
 	"testing"
 	"time"
 
-	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
-
-// CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
-// The certificates and keys are stored in testdata/tls
-func CreateTLSResources(mdb *mdbv1.MongoDB, ctx *f.TestCtx) func(*testing.T) {
-	return func(t *testing.T) {
-		tlsConfig := e2eutil.NewTestTLSConfig(false)
-
-		// Create CA ConfigMap
-		ca, err := ioutil.ReadFile("testdata/tls/ca.crt")
-		assert.NoError(t, err)
-
-		configMap := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tlsConfig.CAConfigMapName,
-				Namespace: mdb.Namespace,
-			},
-			Data: map[string]string{
-				"ca.crt": string(ca),
-			},
-		}
-		err = f.Global.Client.Create(context.TODO(), &configMap, &f.CleanupOptions{TestContext: ctx})
-
-		// Create server key and certificate secret
-		cert, err := ioutil.ReadFile("testdata/tls/server.crt")
-		assert.NoError(t, err)
-		key, err := ioutil.ReadFile("testdata/tls/server.key")
-		assert.NoError(t, err)
-
-		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tlsConfig.ServerSecretName,
-				Namespace: mdb.Namespace,
-			},
-			Data: map[string][]byte{
-				"tls.crt": cert,
-				"tls.key": key,
-			},
-		}
-		err = f.Global.Client.Create(context.TODO(), &secret, &f.CleanupOptions{TestContext: ctx})
-	}
-}
 
 // EnableTLS will upgrade an existing TLS cluster to use TLS.
 func EnableTLS(mdb *mdbv1.MongoDB, optional bool) func(*testing.T) {

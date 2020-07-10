@@ -25,7 +25,10 @@ func TestReplicaSetTLS(t *testing.T) {
 	mdb := e2eutil.NewTestMongoDB("mdb0")
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	t.Run("Create TLS Resources", mongodbtests.CreateTLSResources(&mdb, ctx))
+	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
+		t.Fatalf("Failed to set up TLS resources: %+v", err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
