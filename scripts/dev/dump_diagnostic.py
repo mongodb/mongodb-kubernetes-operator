@@ -67,17 +67,16 @@ def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> No
             dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
-def dump_configmaps_namespaced(namespace: str) -> None:
-    configmaps = k8s_request_data.get_configmaps_namespaced(namespace)
-    if configmaps is not None:
-        for configmap_item in configmaps:
-            name = configmap_item.metadata.name
-            with open(
-                f"logs/e2e/ConfigMap-{name}.txt", mode="w", encoding="utf-8"
-            ) as log_file:
-                configmap = k8s_request_data.get_configmap_namespaced(namespace, name)
-                if configmap is not None:
-                    log_file.write(yaml.dump(clean_nones(configmap)))
+def dump_configmap_key_namespaced(
+    namespace: str, key: str, configmap_name: str
+) -> None:
+    configmap = k8s_request_data.get_configmap_namespaced(namespace, configmap_name)
+    if configmap is not None:
+        with open(
+            f"logs/e2e/{configmap_name}-{key}.log", mode="w", encoding="utf-8",
+        ) as log_file:
+            if key in configmap["data"]:
+                log_file.write(configmap["data"][key])
 
 
 def dump_all(namespace: str) -> None:
@@ -100,4 +99,4 @@ def dump_all(namespace: str) -> None:
     with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
 
-    dump_configmaps_namespaced(namespace)
+    dump_configmap_key_namespaced(namespace, "automation-config", "mdb0-config")
