@@ -26,20 +26,23 @@ def header(msg: str) -> str:
 
 def dump_crd(crd_log: TextIO) -> None:
     crd = k8s_request_data.get_crds()
-    crd_log.write(header("CRD"))
-    crd_log.write(yaml.dump(clean_nones(crd)))
+    if crd is not None:
+        crd_log.write(header("CRD"))
+        crd_log.write(yaml.dump(clean_nones(crd)))
 
 
 def dump_persistent_volume(diagnostic_file: TextIO) -> None:
-    diagnostic_file.write(header("Persistent Volumes"))
     pv = k8s_request_data.get_persistent_volumes()
-    diagnostic_file.write(yaml.dump(clean_nones(pv)))
+    if pv is not None:
+        diagnostic_file.write(header("Persistent Volumes"))
+        diagnostic_file.write(yaml.dump(clean_nones(pv)))
 
 
 def dump_stateful_sets_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
-    diagnostic_file.write(header("Stateful Sets"))
     sst = k8s_request_data.get_stateful_sets_namespaced(namespace)
-    diagnostic_file.write(yaml.dump(clean_nones(sst)))
+    if sst is not None:
+        diagnostic_file.write(header("Stateful Sets"))
+        diagnostic_file.write(yaml.dump(clean_nones(sst)))
 
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None:
@@ -47,28 +50,34 @@ def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None
         with open(
             f"logs/e2e/{name}-{container.name}.log", mode="w", encoding="utf-8",
         ) as log_file:
-            log_file.write(
-                k8s_request_data.get_pod_log_namespaced(namespace, name, container.name)
+            log = k8s_request_data.get_pod_log_namespaced(
+                namespace, name, container.name
             )
+            if log is not None:
+                log_file.write(log)
 
 
 def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
     pods = k8s_request_data.get_pods_namespaced(namespace)
-    for pod in pods:
-        name = pod.metadata.name
-        diagnostic_file.write(header(f"Pod {name}"))
-        diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
-        dump_pod_log_namespaced(namespace, name, pod.spec.containers)
+    if pods is not None:
+        for pod in pods:
+            name = pod.metadata.name
+            diagnostic_file.write(header(f"Pod {name}"))
+            diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
+            dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
 def dump_configmaps_namespaced(namespace: str) -> None:
     configmaps = k8s_request_data.get_configmaps_namespaced(namespace)
-    for configmap in configmaps:
-        name = configmap.metadata.name
-        with open(
-            f"logs/e2e/ConfigMap-{name}.txt", mode="w", encoding="utf-8"
-        ) as log_file:
-            log_file.write(yaml.dump(clean_nones(configmap.to_dict())))
+    if configmaps is not None:
+        for configmap_item in configmaps:
+            name = configmap_item.metadata.name
+            with open(
+                f"logs/e2e/ConfigMap-{name}.txt", mode="w", encoding="utf-8"
+            ) as log_file:
+                configmap = k8s_request_data.get_configmap_namespaced(namespace, name)
+                if configmap is not None:
+                    log_file.write(yaml.dump(clean_nones(configmap)))
 
 
 def dump_all(namespace: str) -> None:
