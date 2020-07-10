@@ -112,7 +112,7 @@ func WaitForTLSMode(mdb *v1.MongoDB, expectedValue string) func(*testing.T) {
 }
 
 // getAdminSetting will get a setting from the admin database.
-func getAdminSetting(url, key string) (interface{}, error) {
+func getAdminSetting(uri, key string) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -121,7 +121,7 @@ func getAdminSetting(url, key string) (interface{}, error) {
 		return nil, err
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().SetTLSConfig(tlsConfig).ApplyURI(url))
+	client, err := mongo.Connect(ctx, options.Client().SetTLSConfig(tlsConfig).ApplyURI(uri))
 	if err != nil {
 		return "", err
 	}
