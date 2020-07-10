@@ -17,7 +17,7 @@ import (
 
 // MockedManager exists to unit test the reconciliation loops and wrap the mocked client
 type MockedManager struct {
-	client k8sClient.Client
+	Client Client
 }
 
 func NewManager(obj runtime.Object) *MockedManager {
@@ -25,7 +25,7 @@ func NewManager(obj runtime.Object) *MockedManager {
 	if obj != nil {
 		_ = c.Create(context.TODO(), obj)
 	}
-	return &MockedManager{client: c}
+	return &MockedManager{Client: NewClient(c)}
 }
 
 func (m *MockedManager) Add(_ manager.Runnable) error {
@@ -68,7 +68,7 @@ func (m *MockedManager) GetAPIReader() k8sClient.Reader {
 
 // GetClient returns a client configured with the Config
 func (m *MockedManager) GetClient() k8sClient.Client {
-	return m.client
+	return m.Client
 }
 
 func (m *MockedManager) GetEventRecorderFor(_ string) record.EventRecorder {
