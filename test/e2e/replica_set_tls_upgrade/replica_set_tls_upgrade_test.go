@@ -56,5 +56,5 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 
 	// Ensure MongoDB is reachable only over TLS
 	t.Run("Test Basic TLS Connectivity", tlstests.BasicConnectivityWithTLS(&mdb))
-	t.Run("Test TLS required", tlstests.EnsureTLSIsRequired(&mdb))
+	t.Run("Test TLS Required For Connectivity", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
 }

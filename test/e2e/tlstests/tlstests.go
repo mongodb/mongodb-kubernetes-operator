@@ -47,9 +47,9 @@ func BasicConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 	}
 }
 
-// EnsureTLSIsRequired will send a single non-TLS query
+// ConnectivityWithoutTLSShouldFail will send a single non-TLS query
 // and expect it to fail.
-func EnsureTLSIsRequired(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := connectWithoutTLS(mdb)
 		assert.Error(t, err, "expected connectivity test to fail without TLS")
