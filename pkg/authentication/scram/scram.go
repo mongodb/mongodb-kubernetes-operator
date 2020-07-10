@@ -67,18 +67,18 @@ func EnsureEnabler(getUpdateCreator secret.GetUpdateCreator, secretNsName types.
 	}, getUpdateCreator.UpdateSecret(agentSecret)
 }
 
-func convertMongoDBResourceUsersToAutomationConfigUsers(getter secret.Getter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.Spec.Users {
 		passwordKey := u.PasswordSecretRef.Key
 		if passwordKey == "" {
 			passwordKey = defaultPasswordKey
 		}
-		password, err := secret.ReadKey(getter, passwordKey, types.NamespacedName{Name: u.PasswordSecretRef.Name, Namespace: mdb.Namespace})
+		password, err := secret.ReadKey(secretGetUpdateCreator, passwordKey, types.NamespacedName{Name: u.PasswordSecretRef.Name, Namespace: mdb.Namespace})
 		if err != nil {
 			return nil, err
 		}
-		acUser, err := convertMongoDBUserToAutomationConfigUser(mdb.Name, u, password)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreator, mdb, u, password)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(getter secret.Getter, md
 	return usersWanted, nil
 }
 
-func convertMongoDBUserToAutomationConfigUser(resourceName string, user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Name,
 		Database: user.DB,
@@ -98,7 +98,7 @@ func convertMongoDBUserToAutomationConfigUser(resourceName string, user mdbv1.Mo
 			Database: role.DB,
 		})
 	}
-	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(resourceName, acUser.Username, password)
+	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(secretGetUpdateCreator, mdb, acUser.Username, password)
 	if err != nil {
 		return automationconfig.MongoDBUser{}, err
 	}

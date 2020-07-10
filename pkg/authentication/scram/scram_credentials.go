@@ -8,8 +8,13 @@ import (
 	"fmt"
 	"hash"
 
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/md5"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/xdg/stringprep"
 )
@@ -171,26 +176,72 @@ func computeScramCredentials(hashConstructor func() hash.Hash, iterationCount in
 	return &automationconfig.ScramCreds{IterationCount: iterationCount, Salt: base64EncodedSalt, StoredKey: storedKey, ServerKey: serverKey}, nil
 }
 
+func ensureSalts(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, username string) ([]byte, []byte, error) {
+	secretName := fmt.Sprintf("%s-%s-salts", mdb.Name, username)
+	var sha256Salt, sha1Salt []byte
+
+	s, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secretName, Namespace: mdb.Namespace})
+	if err == nil {
+		_, hasSha1Salt := s.Data["sha1-salt"]
+		_, hasSha256Salt := s.Data["sha256-salt"]
+		if hasSha1Salt && hasSha256Salt {
+			return s.Data["sha1-salt"], s.Data["sha256-salt"], nil
+		}
+	}
+
+	if err != nil && !apiErrors.IsNotFound(err) {
+		return nil, nil, err
+	}
+
+	sha256Salt, err = generateSalt(sha256.New)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sha1Salt, err = generateSalt(sha1.New)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	saltSecret := secret.Builder().
+		SetName(secretName).
+		SetNamespace(mdb.Namespace).
+		SetField("sha1-salt", string(sha1Salt)).
+		SetField("sha256-salt", string(sha256Salt)).
+		Build()
+
+	if err := getUpdateCreator.CreateSecret(saltSecret); err != nil {
+		return nil, nil, err
+	}
+
+	return sha1Salt, sha256Salt, nil
+}
+
 // computeScram1AndScram256Credentials takes in a username and password, and generates SHA1 & SHA256 credentials
 // for that user. This should only be done if credentials do not already exist.
-func computeScram1AndScram256Credentials(resourceName, username, password string) (*automationconfig.ScramCreds, *automationconfig.ScramCreds, error) {
-	scram256Salt := getDeterministicSalt(resourceName, sha256.New)
-	scram1Salt := getDeterministicSalt(resourceName, sha1.New)
-
-	scram256Creds, err := computeCreds(username, password, scram256Salt, Sha256)
+func computeScram1AndScram256Credentials(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, username, password string) (*automationconfig.ScramCreds, *automationconfig.ScramCreds, error) {
+	sha1Salt, sha256Salt, err := ensureSalts(getUpdateCreator, mdb, username)
+	if err != nil {
+		return nil, nil, err
+	}
+	scram256Creds, err := computeCreds(username, password, sha256Salt, Sha256)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating scramSha256 creds: %s", err)
 	}
-	scram1Creds, err := computeCreds(username, password, scram1Salt, Sha1)
+	scram1Creds, err := computeCreds(username, password, sha1Salt, Sha1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating scramSha1Creds: %s", err)
 	}
 	return scram1Creds, scram256Creds, nil
 }
 
-// getDeterministicSalt returns a deterministic salt based on the name of the resource.
-// the required number of characters will be taken based on the requirements for the SCRAM-SHA-1/MONGODB-CR algorithm
-func getDeterministicSalt(resourceName string, hashConstructor func() hash.Hash) []byte {
-	sha256bytes32 := sha256.Sum256([]byte(fmt.Sprintf("%s-mongodbresource", resourceName)))
-	return sha256bytes32[:hashConstructor().Size()-RFC5802MandatedSaltSize]
+// generateSalt will create a salt for use with ComputeScramShaCreds based on the given hashConstructor.
+// sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
+func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
+	saltSize := hashConstructor().Size() - RFC5802MandatedSaltSize
+	salt, err := generate.RandomFixedLengthStringOfSize(saltSize)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(salt), nil
 }
