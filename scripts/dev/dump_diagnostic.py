@@ -2,6 +2,8 @@ import os
 import shutil
 import yaml
 from typing import Dict, TextIO
+import json
+from pprint import pprint
 import k8s_request_data
 
 
@@ -76,7 +78,7 @@ def dump_configmap_key_namespaced(
             f"logs/e2e/{configmap_name}-{key}.log", mode="w", encoding="utf-8",
         ) as log_file:
             if key in configmap["data"]:
-                log_file.write(configmap["data"][key])
+                pprint(json.loads(configmap["data"][key]), log_file)
 
 
 def dump_all(namespace: str) -> None:
