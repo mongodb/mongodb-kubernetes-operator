@@ -1,9 +1,17 @@
 package setup
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -35,4 +43,46 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 		}
 	}
 	return nil
+}
+
+// CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
+// The certificates and keys are stored in testdata/tls
+func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
+	tlsConfig := e2eutil.NewTestTLSConfig(false)
+
+	// Create CA ConfigMap
+	ca, err := ioutil.ReadFile("testdata/tls/ca.crt")
+	if err != nil {
+		return nil
+	}
+
+	caConfigMap := configmap.Builder().
+		SetName(tlsConfig.CAConfigMapName).
+		SetNamespace(namespace).
+		SetField("ca.crt", string(ca)).
+		Build()
+
+	err = f.Global.Client.Create(context.TODO(), &caConfigMap, &f.CleanupOptions{TestContext: ctx})
+	if err != nil {
+		return err
+	}
+
+	// Create server key and certificate secret
+	cert, err := ioutil.ReadFile("testdata/tls/server.crt")
+	if err != nil {
+		return err
+	}
+	key, err := ioutil.ReadFile("testdata/tls/server.key")
+	if err != nil {
+		return err
+	}
+
+	certKeySecret := secret.Builder().
+		SetName(tlsConfig.ServerSecretName).
+		SetNamespace(namespace).
+		SetField("tls.crt", string(cert)).
+		SetField("tls.key", string(key)).
+		Build()
+
+	return f.Global.Client.Create(context.TODO(), &certKeySecret, &f.CleanupOptions{TestContext: ctx})
 }

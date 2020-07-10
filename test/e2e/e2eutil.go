@@ -126,3 +126,12 @@ func NewTestMongoDB(name string) mdbv1.MongoDB {
 		},
 	}
 }
+
+func NewTestTLSConfig(optional bool) mdbv1.TLS {
+	return mdbv1.TLS{
+		Enabled:          true,
+		Optional:         optional,
+		ServerSecretName: "test-tls-secret",
+		CAConfigMapName:  "test-tls-ca",
+	}
+}

@@ -147,6 +147,8 @@ task_groups:
     - e2e_test_feature_compatibility_version
     - e2e_test_feature_compatibility_version_upgrade
     - e2e_test_replica_set_multiple
+    - e2e_test_replica_set_tls
+    - e2e_test_replica_set_tls_upgrade
   teardown_task:
     - func: upload_e2e_logs
 
@@ -256,6 +258,18 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_multiple
+
+  - name: e2e_test_replica_set_tls
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: replica_set_tls
+
+  - name: e2e_test_replica_set_tls_upgrade
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: replica_set_tls_upgrade
 
 buildvariants:
   - name: go_unit_tests
