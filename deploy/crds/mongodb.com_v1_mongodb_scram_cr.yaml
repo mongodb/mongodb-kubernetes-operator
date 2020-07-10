@@ -1,0 +1,12 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-scram-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      enabled: true
+      modes: ["SCRAM"]

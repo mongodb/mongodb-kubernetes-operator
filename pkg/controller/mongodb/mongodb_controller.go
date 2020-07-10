@@ -341,7 +341,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAC automationconfig.AutomationConfig) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, enabler automationconfig.AuthEnabler) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
 	builder := automationconfig.NewBuilder().
@@ -349,10 +349,11 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.Spec.Members).
-		SetPreviousAutomationConfig(currentAC).
+		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
+		SetAuthEnabler(enabler).
 		SetToolsVersion(dummyToolsVersionConfig())
 
 	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
@@ -428,14 +429,14 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm := corev1.ConfigMap{}
-	currentAc := automationconfig.AutomationConfig{}
-	if err := client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm); err != nil {
+func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentCm, err := getUpdater.GetConfigMap(types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace})
+	if err != nil {
 		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
-
 	}
+
+	currentAc := automationconfig.AutomationConfig{}
 	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
@@ -443,9 +444,15 @@ func getCurrentAutomationConfig(client mdbClient.Client, mdb mdbv1.MongoDB) (aut
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+
 	manifest, err := r.manifestProvider()
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+	}
+
+	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	if err != nil {
+		return corev1.ConfigMap{}, err
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
@@ -453,7 +460,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC)
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, enabler)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -614,6 +621,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				buildTLSPodSpecModification(mdb),
+				buildScramPodSpecModification(mdb),
 			),
 		),
 	)

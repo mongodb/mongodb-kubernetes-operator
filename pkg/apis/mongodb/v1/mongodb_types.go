@@ -37,12 +37,14 @@ type MongoDBSpec struct {
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 
-	// Security configures security features, such as TLS, for a deployment
+	// Security configures security features, such as TLS, and authentication settings for a deployment
 	// +optional
 	Security Security `json:"security"`
 }
 
 type Security struct {
+	// +optional
+	Authentication Authentication `json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
@@ -66,6 +68,17 @@ type TLS struct {
 	// +optional
 	CAConfigMapName string `json:"caConfigMapName"`
 }
+
+type Authentication struct {
+	// Enabled specifies if authentication should be enabled
+	Enabled bool `json:"enabled"`
+
+	// Modes is an array specifying which authentication methods should be enabled
+	Modes []AuthMode `json:"modes"`
+}
+
+// +kubebuilder:validation:Enum=SCRAM
+type AuthMode string
 
 // MongoDBStatus defines the observed state of MongoDB
 type MongoDBStatus struct {
@@ -127,6 +140,10 @@ func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
 
 func (m MongoDB) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
+}
+
+func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: "agent-scram-credentials", Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.
