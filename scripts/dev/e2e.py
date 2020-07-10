@@ -85,12 +85,17 @@ def create_kube_config() -> None:
     print("Creating kube-config ConfigMap")
 
     svc = corev1.read_namespaced_service("kubernetes", "default")
+
     kube_config_path = os.getenv("KUBECONFIG")
-    assert kube_config_path is not None
+    if kube_config_path is None:
+        raise ValueError("kube_config_path must not be None")
+
     with open(kube_config_path) as fd:
         kube_config = yaml.safe_load(fd.read())
 
-    assert kube_config is not None
+    if kube_config is None:
+        raise ValueError("kube_config_path must not be None")
+
     kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
     kube_config = yaml.safe_dump(kube_config)
     data = {"kubeconfig": kube_config}

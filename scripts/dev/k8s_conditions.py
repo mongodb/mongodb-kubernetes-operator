@@ -54,10 +54,9 @@ def call_eventually_succeeds(
     exceptions_to_ignore: Optional[Tuple[BaseException]] = None,
 ) -> bool:
     """
-    call_eventually_succeeds is similar to wait but for when we don't care about the returned value of fn
-    (it can even not return anything).
+    call_eventually_succeeds is similar to wait but in this case we ignore the value returned by the call to fn()
 
-    It periodically calls fn and if the call raises an exception contained in  exceptions_to_ignore, it tries
+    It periodically calls fn and if the call raises an exception contained in exceptions_to_ignore, it tries
     again after a sleep until it either succeeds or we reach timeout
     """
     start_time = _current_milliseconds()
