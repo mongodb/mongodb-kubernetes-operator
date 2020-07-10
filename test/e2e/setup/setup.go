@@ -7,9 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -54,16 +56,13 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 		return nil
 	}
 
-	configMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tlsConfig.CAConfigMapName,
-			Namespace: namespace,
-		},
-		Data: map[string]string{
-			"ca.crt": string(ca),
-		},
-	}
-	err = f.Global.Client.Create(context.TODO(), &configMap, &f.CleanupOptions{TestContext: ctx})
+	caConfigMap := configmap.Builder().
+		SetName(tlsConfig.CAConfigMapName).
+		SetNamespace(namespace).
+		SetField("ca.crt", string(ca)).
+		Build()
+
+	err = f.Global.Client.Create(context.TODO(), &caConfigMap, &f.CleanupOptions{TestContext: ctx})
 	if err != nil {
 		return err
 	}
@@ -78,15 +77,12 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 		return err
 	}
 
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tlsConfig.ServerSecretName,
-			Namespace: namespace,
-		},
-		Data: map[string][]byte{
-			"tls.crt": cert,
-			"tls.key": key,
-		},
-	}
-	return f.Global.Client.Create(context.TODO(), &secret, &f.CleanupOptions{TestContext: ctx})
+	certKeySecret := secret.Builder().
+		SetName(tlsConfig.ServerSecretName).
+		SetNamespace(namespace).
+		SetField("tls.crt", string(cert)).
+		SetField("tls.key", string(key)).
+		Build()
+
+	return f.Global.Client.Create(context.TODO(), &certKeySecret, &f.CleanupOptions{TestContext: ctx})
 }
