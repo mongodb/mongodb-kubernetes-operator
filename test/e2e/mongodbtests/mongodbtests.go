@@ -195,7 +195,7 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 // a basic MongoDB connectivity test
 func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := connect(mdb, options.Client()); err != nil {
+		if err := Connect(mdb, options.Client()); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 	}
@@ -236,10 +236,10 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 	}
 }
 
-// connect performs a connectivity check by initializing a mongo client
+// Connect performs a connectivity check by initializing a mongo client
 // and inserting a document into the MongoDB resource. Custom client
 // options can be passed, for example to configure TLS.
-func connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
+func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
@@ -261,12 +261,12 @@ func connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
 func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
-	return isReachableDuring(mdb, interval, testFunc, func() error {
-		return connect(mdb, options.Client())
+	return IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
+		return Connect(mdb, options.Client())
 	})
 }
 
-func isReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
+func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
 

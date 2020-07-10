@@ -1,4 +1,4 @@
-package mongodbtests
+package tlstests
 
 import (
 	"context"
@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,9 +20,9 @@ import (
 )
 
 // EnableTLS will upgrade an existing TLS cluster to use TLS.
-func EnableTLS(mdb *mdbv1.MongoDB, optional bool) func(*testing.T) {
+func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *v1.MongoDB) {
 			db.Spec.Security.TLS = e2eutil.NewTestTLSConfig(optional)
 		})
 		if err != nil {
@@ -32,10 +33,15 @@ func EnableTLS(mdb *mdbv1.MongoDB, optional bool) func(*testing.T) {
 
 // BasicConnectivityWithTLS returns a test function which performs
 // a basic MongoDB connectivity test over TLS
-func BasicConnectivityWithTLS(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func BasicConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		opts := options.Client().SetTLSConfig(getClientTLSConfig())
-		if err := connect(mdb, opts); err != nil {
+		tlsConfig, err := getClientTLSConfig()
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+
+		if err := mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig)); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %+v", err))
 		}
 	}
@@ -43,7 +49,7 @@ func BasicConnectivityWithTLS(mdb *mdbv1.MongoDB) func(t *testing.T) {
 
 // EnsureTLSIsRequired will send a single non-TLS query
 // and expect it to fail.
-func EnsureTLSIsRequired(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func EnsureTLSIsRequired(mdb *v1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := connectWithoutTLS(mdb)
 		assert.Error(t, err, "expected connectivity test to fail without TLS")
@@ -53,7 +59,7 @@ func EnsureTLSIsRequired(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // connectWithoutTLS will initialize a single MongoDB client and
 // send a single request. This function is used to ensure non-TLS
 // requests fail.
-func connectWithoutTLS(mdb *mdbv1.MongoDB) error {
+func connectWithoutTLS(mdb *v1.MongoDB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -70,15 +76,19 @@ func connectWithoutTLS(mdb *mdbv1.MongoDB) error {
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableOverTLSDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
-	return isReachableDuring(mdb, interval, testFunc, func() error {
-		opts := options.Client().SetTLSConfig(getClientTLSConfig())
-		return connect(mdb, opts)
+func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+	return mongodbtests.IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
+		tlsConfig, err := getClientTLSConfig()
+		if err != nil {
+			return err
+		}
+
+		return mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig))
 	})
 }
 
 // WaitForTLSMode will poll the admin database and wait for the TLS mode to reach a certain value.
-func WaitForTLSMode(mdb *mdbv1.MongoDB, expectedValue string) func(*testing.T) {
+func WaitForTLSMode(mdb *v1.MongoDB, expectedValue string) func(*testing.T) {
 	return func(t *testing.T) {
 		err := wait.Poll(time.Second*10, time.Minute*10, func() (done bool, err error) {
 			value, err := getAdminSetting(mdb.MongoURI(), "sslMode")
@@ -104,11 +114,12 @@ func getAdminSetting(url, key string) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	opts := options.Client().
-		SetTLSConfig(getClientTLSConfig()).
-		ApplyURI(url)
+	tlsConfig, err := getClientTLSConfig()
+	if err != nil {
+		return nil, err
+	}
 
-	client, err := mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(ctx, options.Client().SetTLSConfig(tlsConfig).ApplyURI(url))
 	if err != nil {
 		return "", err
 	}
@@ -123,13 +134,17 @@ func getAdminSetting(url, key string) (interface{}, error) {
 	return value, nil
 }
 
-func getClientTLSConfig() *tls.Config {
+func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data
+	caPEM, err := ioutil.ReadFile("testdata/tls/ca.crt")
+	if err != nil {
+		return nil, err
+	}
+
 	caPool := x509.NewCertPool()
-	caPEM, _ := ioutil.ReadFile("testdata/tls/ca.crt")
 	caPool.AppendCertsFromPEM(caPEM)
 
 	return &tls.Config{
 		RootCAs: caPool,
-	}
+	}, nil
 }

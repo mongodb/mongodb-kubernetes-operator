@@ -3,12 +3,13 @@ package setup
 import (
 	"context"
 	"fmt"
-	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"testing"
+
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -45,48 +46,47 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
 func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
-		tlsConfig := e2eutil.NewTestTLSConfig(false)
+	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
-		// Create CA ConfigMap
-		ca, err := ioutil.ReadFile("testdata/tls/ca.crt")
-		if err != nil {
-			return nil
-		}
-
-		configMap := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tlsConfig.CAConfigMapName,
-				Namespace: namespace,
-			},
-			Data: map[string]string{
-				"ca.crt": string(ca),
-			},
-		}
-		err = f.Global.Client.Create(context.TODO(), &configMap, &f.CleanupOptions{TestContext: ctx})
-		if err != nil {
-			return err
-		}
-
-		// Create server key and certificate secret
-		cert, err := ioutil.ReadFile("testdata/tls/server.crt")
-		if err != nil {
-			return err
-		}
-		key, err := ioutil.ReadFile("testdata/tls/server.key")
-		if err != nil {
-			return err
-		}
-
-		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      tlsConfig.ServerSecretName,
-				Namespace: namespace,
-			},
-			Data: map[string][]byte{
-				"tls.crt": cert,
-				"tls.key": key,
-			},
-		}
-		return f.Global.Client.Create(context.TODO(), &secret, &f.CleanupOptions{TestContext: ctx})
+	// Create CA ConfigMap
+	ca, err := ioutil.ReadFile("testdata/tls/ca.crt")
+	if err != nil {
+		return nil
 	}
+
+	configMap := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tlsConfig.CAConfigMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"ca.crt": string(ca),
+		},
+	}
+	err = f.Global.Client.Create(context.TODO(), &configMap, &f.CleanupOptions{TestContext: ctx})
+	if err != nil {
+		return err
+	}
+
+	// Create server key and certificate secret
+	cert, err := ioutil.ReadFile("testdata/tls/server.crt")
+	if err != nil {
+		return err
+	}
+	key, err := ioutil.ReadFile("testdata/tls/server.key")
+	if err != nil {
+		return err
+	}
+
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tlsConfig.ServerSecretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"tls.crt": cert,
+			"tls.key": key,
+		},
+	}
+	return f.Global.Client.Create(context.TODO(), &secret, &f.CleanupOptions{TestContext: ctx})
 }
