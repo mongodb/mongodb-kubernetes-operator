@@ -22,7 +22,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb := e2eutil.NewTestMongoDB("mdb0")
+	mdb := e2eutil.NewTestMongoDB("mdb-tls")
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
 		t.Fatalf("Failed to set up TLS resources: %+v", err)
 	}

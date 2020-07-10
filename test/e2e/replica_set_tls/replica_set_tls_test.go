@@ -21,7 +21,7 @@ func TestReplicaSetTLS(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb := e2eutil.NewTestMongoDB("mdb0")
+	mdb := e2eutil.NewTestMongoDB("mdb-tls")
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
