@@ -295,7 +295,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	assert.Equal(t, 1, currentAc.Version)
 
 	mdb.Spec.Members++
-	makeStatefulSetReady(mgr.GetClient(), mdb)
+	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
 	_ = mgr.GetClient().Update(context.TODO(), &mdb)
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -333,7 +333,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	c := mgr.Client
 
 	scramNsName := mdb.ScramCredentialsNamespacedName()
-	_ = secret.CreateOrUpdate(c,
+	err := secret.CreateOrUpdate(c,
 		secret.Builder().
 			SetName(scramNsName.Name).
 			SetNamespace(scramNsName.Namespace).
@@ -341,6 +341,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 			SetField(scram.AgentKeyfileKey, "my-keyfile").
 			Build(),
 	)
+	assert.NoError(t, err)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -576,7 +577,8 @@ func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
 		SetField("password-1", "my-password123!").
 		Build()
 
-	_ = secret.CreateOrUpdate(mgr.Client, passwordSecret)
+	err := secret.CreateOrUpdate(mgr.Client, passwordSecret)
+	assert.NoError(t, err)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -600,10 +602,12 @@ func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
-func makeStatefulSetReady(c k8sClient.Client, mdb mdbv1.MongoDB) {
+func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
 	sts := appsv1.StatefulSet{}
-	_ = c.Get(context.TODO(), mdb.NamespacedName(), &sts)
+	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
+	assert.NoError(t, err)
 	sts.Status.ReadyReplicas = int32(mdb.Spec.Members)
 	sts.Status.UpdatedReplicas = int32(mdb.Spec.Members)
-	_ = c.Update(context.TODO(), &sts)
+	err = c.Update(context.TODO(), &sts)
+	assert.NoError(t, err)
 }
