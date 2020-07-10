@@ -139,11 +139,23 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 					Roles: []mdbv1.Role{
 						{
 							DB:   "admin",
-							Name: "readWriteAnyDatabase",
+							Name: "clusterAdmin",
 						},
 						{
 							DB:   "admin",
-							Name: "clusterManager", // required to update FCV
+							Name: "readAnyDatabase",
+						},
+						{
+							DB:   "admin",
+							Name: "userAdminAnyDatabase",
+						},
+						{
+							DB:   "local",
+							Name: "readWrite",
+						},
+						{
+							DB:   "admin",
+							Name: "readWrite",
 						},
 					},
 				},
