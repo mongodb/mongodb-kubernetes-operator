@@ -65,7 +65,9 @@ def dump_configmaps_namespaced(namespace: str) -> None:
     configmaps = k8s_request_data.get_configmaps_namespaced(namespace)
     for configmap in configmaps:
         name = configmap.metadata.name
-        with open(f"logs/e2e/ConfigMap-{name}", mode="w", encoding="utf-8") as log_file:
+        with open(
+            f"logs/e2e/ConfigMap-{name}.txt", mode="w", encoding="utf-8"
+        ) as log_file:
             log_file.write(yaml.dump(clean_nones(configmap.to_dict())))
 
 
