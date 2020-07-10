@@ -45,9 +45,7 @@ def dump_stateful_sets_namespaced(diagnostic_file: TextIO, namespace: str) -> No
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None:
     for container in containers:
         with open(
-            "logs/e2e/{}-{}.log".format(name, container.name),
-            mode="w",
-            encoding="utf-8",
+            f"logs/e2e/{name}-{container.name}.log", mode="w", encoding="utf-8",
         ) as log_file:
             log_file.write(
                 k8s_request_data.get_pod_log_namespaced(namespace, name, container.name)
@@ -61,6 +59,14 @@ def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> No
         diagnostic_file.write(header(f"Pod {name}"))
         diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
         dump_pod_log_namespaced(namespace, name, pod.spec.containers)
+
+
+def dump_configmaps_namespaced(namespace: str) -> None:
+    configmaps = k8s_request_data.get_configmaps_namespaced(namespace)
+    for configmap in configmaps:
+        name = configmap.metadata.name
+        with open(f"logs/e2e/ConfigMap-{name}", mode="w", encoding="utf-8") as log_file:
+            log_file.write(yaml.dump(clean_nones(configmap.to_dict())))
 
 
 def dump_all(namespace: str) -> None:
@@ -82,3 +88,5 @@ def dump_all(namespace: str) -> None:
 
     with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
+
+    dump_configmaps_namespaced(namespace)

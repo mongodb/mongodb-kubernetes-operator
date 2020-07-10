@@ -29,6 +29,15 @@ def get_stateful_sets_namespaced(namespace: str) -> dict:
     return sst.to_dict()
 
 
+def get_configmaps_namespaced(namespace: str) -> list:
+    corev1 = client.CoreV1Api()
+    try:
+        config_maps = corev1.list_namespaced_config_map(namespace, pretty="true")
+    except ApiException as e:
+        print("Exception when calling list_namespaced_config_map: %s\n" % e)
+    return config_maps.items
+
+
 def get_pods_namespaced(namespace: str) -> list:
     corev1 = client.CoreV1Api()
     try:
