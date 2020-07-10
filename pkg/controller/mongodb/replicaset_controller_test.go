@@ -359,7 +359,14 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 }
 
 func TestScramIsConfigured(t *testing.T) {
-	mdb := newScramReplicaSet()
+	AssertReplicaSetIsConfiguredWithScram(t, newScramReplicaSet())
+}
+
+func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
+	AssertReplicaSetIsConfiguredWithScram(t, newTestReplicaSet())
+}
+
+func AssertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
 	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -381,7 +388,6 @@ func TestScramIsConfigured(t *testing.T) {
 		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
 }
-
 func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := client.NewManager(&mdb)

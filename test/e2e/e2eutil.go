@@ -138,24 +138,12 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 					},
 					Roles: []mdbv1.Role{
 						{
-							DB:   "admin",
+							DB:   "testing",
+							Name: "readWrite",
+						},
+						{
+							DB:   "testing",
 							Name: "clusterAdmin",
-						},
-						{
-							DB:   "admin",
-							Name: "readAnyDatabase",
-						},
-						{
-							DB:   "admin",
-							Name: "userAdminAnyDatabase",
-						},
-						{
-							DB:   "local",
-							Name: "readWrite",
-						},
-						{
-							DB:   "admin",
-							Name: "readWrite",
 						},
 					},
 				},
