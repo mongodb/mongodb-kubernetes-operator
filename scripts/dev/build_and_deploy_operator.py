@@ -41,7 +41,7 @@ def load_yaml_from_file(path: str) -> Dict:
         return yaml.full_load(f.read())
 
 
-def _ensure_crds():
+def _ensure_crds() -> None:
     """
     ensure_crds makes sure that all the required CRDs have been created
     """
@@ -74,15 +74,15 @@ def _ensure_crds():
     print("Ensured CRDs")
 
 
-def build_and_push_operator(repo_url: str, tag: str, path: str):
+def build_and_push_operator(repo_url: str, tag: str, path: str) -> None:
     """
     build_and_push_operator creates the Dockerfile for the operator
     and pushes it to the target repo
     """
-    return build_and_push_image(repo_url, tag, path, "operator")
+    build_and_push_image(repo_url, tag, path, "operator")
 
 
-def deploy_operator():
+def deploy_operator() -> None:
     """
     deploy_operator ensures the CRDs are created, and als creates all the required ServiceAccounts, Roles
     and RoleBindings for the operator, and then creates the operator deployment.

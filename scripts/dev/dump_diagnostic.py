@@ -1,12 +1,11 @@
 import os
 import shutil
 import yaml
-import typing
-
+from typing import Dict, TextIO
 import k8s_request_data
 
 
-def clean_nones(value):
+def clean_nones(value: Dict) -> Dict:
     """
     Recursively remove all None values from dictionaries and lists, and returns
     the result as a new dictionary or list.
@@ -25,25 +24,25 @@ def header(msg: str) -> str:
     return f"\n{dashes}\n{msg}\n{dashes}\n"
 
 
-def dump_crd(crd_log: typing.TextIO):
+def dump_crd(crd_log: TextIO) -> None:
     crd = k8s_request_data.get_crds()
     crd_log.write(header("CRD"))
     crd_log.write(yaml.dump(clean_nones(crd)))
 
 
-def dump_persistent_volume(diagnostic_file: typing.TextIO):
+def dump_persistent_volume(diagnostic_file: TextIO) -> None:
     diagnostic_file.write(header("Persistent Volumes"))
     pv = k8s_request_data.get_persistent_volumes()
     diagnostic_file.write(yaml.dump(clean_nones(pv)))
 
 
-def dump_stateful_sets_namespaced(diagnostic_file: typing.TextIO, namespace: str):
+def dump_stateful_sets_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
     diagnostic_file.write(header("Stateful Sets"))
     sst = k8s_request_data.get_stateful_sets_namespaced(namespace)
     diagnostic_file.write(yaml.dump(clean_nones(sst)))
 
 
-def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
+def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None:
     for container in containers:
         with open(
             "logs/e2e/{}-{}.log".format(name, container.name),
@@ -55,7 +54,7 @@ def dump_pod_log_namespaced(namespace: str, name: str, containers: list):
             )
 
 
-def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str):
+def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
     pods = k8s_request_data.get_pods_namespaced(namespace)
     for pod in pods:
         name = pod.metadata.name
@@ -64,7 +63,7 @@ def dump_pods_and_logs_namespaced(diagnostic_file: typing.TextIO, namespace: str
         dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
-def dump_all(namespace: str):
+def dump_all(namespace: str) -> None:
 
     if os.path.exists("logs"):
         shutil.rmtree("logs")

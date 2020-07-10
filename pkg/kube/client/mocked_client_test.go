@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"

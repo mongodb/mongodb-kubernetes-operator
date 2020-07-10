@@ -15,7 +15,7 @@ class DevConfig:
     DevConfig is a wrapper around the developer configuration file
     """
 
-    def __init__(self, config):
+    def __init__(self, config: Dict):
         self._config = config
 
     @property
