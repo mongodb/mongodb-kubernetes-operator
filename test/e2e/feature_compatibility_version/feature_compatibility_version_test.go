@@ -34,7 +34,7 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
 		},
 	))
-	t.Run("Test Basic Connectivity after upgrade has completed", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("Test Basic Connectivity after upgrade has completed", mongodbtests.Connectivity(&mdb))
 	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3))
 
 	// Downgrade version back to 4.0.6, checks that the FeatureCompatibilityVersion stayed at 4.0

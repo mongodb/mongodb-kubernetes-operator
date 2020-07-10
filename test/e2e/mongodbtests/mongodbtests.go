@@ -190,9 +190,9 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// BasicConnectivity returns a test function which performs
+// Connectivity returns a test function which performs
 // a basic MongoDB connectivity test
-func BasicConnectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func Connectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		if err := Connect(mdb, options.Client()); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))

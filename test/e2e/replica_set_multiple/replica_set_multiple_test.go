@@ -33,8 +33,8 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: Basic tests", mongodbtests.BasicFunctionality(&mdb0))
 	t.Run("mdb1: Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
-	t.Run("mdb0: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb0))
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1))
+	t.Run("mdb0: Test Basic Connectivity", mongodbtests.Connectivity(&mdb0))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1))
 
 	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
 	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
@@ -63,5 +63,5 @@ func TestReplicaSet(t *testing.T) {
 	))
 
 	// One last check that mdb1 was not altered.
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1))
 }

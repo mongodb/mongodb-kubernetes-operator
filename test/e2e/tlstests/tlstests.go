@@ -31,9 +31,9 @@ func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
 	}
 }
 
-// BasicConnectivityWithTLS returns a test function which performs
+// ConnectivityWithTLS returns a test function which performs
 // a basic MongoDB connectivity test over TLS
-func BasicConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		tlsConfig, err := getClientTLSConfig()
 		if err != nil {

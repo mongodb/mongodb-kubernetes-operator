@@ -31,6 +31,6 @@ func TestReplicaSetTLS(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-	t.Run("Test Basic TLS Connectivity", tlstests.BasicConnectivityWithTLS(&mdb))
+	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
 	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
 }
