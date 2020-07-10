@@ -141,6 +141,10 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 							DB:   "admin",
 							Name: "readWriteAnyDatabase",
 						},
+						{
+							DB:   "admin",
+							Name: "clusterManager", // required to update FCV
+						},
 					},
 				},
 			},
