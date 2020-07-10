@@ -10,8 +10,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestMain(m *testing.M) {
@@ -34,12 +32,6 @@ func TestReplicaSetTLS(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("Stateful Set has OwnerReference", mongodbtests.StatefulSetHasOwnerReference(&mdb,
-		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-			Group:   mdbv1.SchemeGroupVersion.Group,
-			Version: mdbv1.SchemeGroupVersion.Version,
-			Kind:    mdb.Kind,
-		})))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
 	t.Run("Test Basic TLS Connectivity", tlstests.BasicConnectivityWithTLS(&mdb))

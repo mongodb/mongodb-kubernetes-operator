@@ -30,31 +30,11 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Create MongoDB Resource mdb0", mongodbtests.CreateMongoDBResource(&mdb0, ctx))
 	t.Run("Create MongoDB Resource mdb1", mongodbtests.CreateMongoDBResource(&mdb1, ctx))
 
-	t.Run("mdb0: Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb0))
-	t.Run("mdb1: Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb1))
+	t.Run("mdb0: Basic tests", mongodbtests.BasicFunctionality(&mdb0))
+	t.Run("mdb1: Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
 	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
 	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
-
-	t.Run("mdb0: Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb0))
-	t.Run("mdb1: Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb1))
-
-	t.Run("mdb0: MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
-	t.Run("mdb1: MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb1))
-
-	t.Run("mdb0: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb0))
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb1))
-
-	t.Run("mdb0: Test Status Was Updated", mongodbtests.Status(&mdb0,
-		mdbv1.MongoDBStatus{
-			MongoURI: mdb0.MongoURI(),
-			Phase:    mdbv1.Running,
-		}))
-	t.Run("mdb1: Test Status Was Updated", mongodbtests.Status(&mdb1,
-		mdbv1.MongoDBStatus{
-			MongoURI: mdb1.MongoURI(),
-			Phase:    mdbv1.Running,
-		}))
 
 	t.Run("MongoDB is reachable while being scaled up", mongodbtests.IsReachableDuring(&mdb0, time.Second*10,
 		func() {
