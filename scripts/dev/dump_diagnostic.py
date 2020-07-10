@@ -1,7 +1,7 @@
 import os
 import shutil
 import yaml
-from typing import Dict, TextIO
+from typing import Dict, TextIO, List
 import json
 from pprint import pprint
 import k8s_request_data
@@ -69,16 +69,17 @@ def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> No
             dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
-def dump_configmap_key_namespaced(
-    namespace: str, key: str, configmap_name: str
+def dump_configmap_keys_namespaced(
+    namespace: str, keys: List[str], configmap_name: str
 ) -> None:
     configmap = k8s_request_data.get_configmap_namespaced(namespace, configmap_name)
     if configmap is not None:
-        with open(
-            f"logs/e2e/{configmap_name}-{key}.log", mode="w", encoding="utf-8",
-        ) as log_file:
-            if key in configmap["data"]:
-                pprint(json.loads(configmap["data"][key]), log_file)
+        for key in keys:
+            with open(
+                f"logs/e2e/{configmap_name}-{key}.log", mode="w", encoding="utf-8",
+            ) as log_file:
+                if key in configmap["data"]:
+                    pprint(json.loads(configmap["data"][key]), log_file)
 
 
 def dump_all(namespace: str) -> None:
@@ -101,4 +102,4 @@ def dump_all(namespace: str) -> None:
     with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
 
-    dump_configmap_key_namespaced(namespace, "automation-config", "mdb0-config")
+    dump_configmap_keys_namespaced(namespace, ["automation-config"], "mdb0-config")
