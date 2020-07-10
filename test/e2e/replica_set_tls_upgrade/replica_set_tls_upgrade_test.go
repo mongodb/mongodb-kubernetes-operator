@@ -6,7 +6,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/tlstests"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -29,15 +28,8 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
-	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
-	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
-		mdbv1.MongoDBStatus{
-			MongoURI: mdb.MongoURI(),
-			Phase:    mdbv1.Running,
-		}))
 
 	// Enable TLS as optional
 	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
