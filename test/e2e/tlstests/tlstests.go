@@ -91,6 +91,8 @@ func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, testFunc 
 func WaitForTLSMode(mdb *v1.MongoDB, expectedValue string) func(*testing.T) {
 	return func(t *testing.T) {
 		err := wait.Poll(time.Second*10, time.Minute*10, func() (done bool, err error) {
+			// Once we upgrade the tests to 4.2 we will have to change this to "tlsMode".
+			// We will also have to change the values we check for.
 			value, err := getAdminSetting(mdb.MongoURI(), "sslMode")
 			if err != nil {
 				return false, err
