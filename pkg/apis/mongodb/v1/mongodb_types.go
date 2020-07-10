@@ -143,21 +143,20 @@ func (m *MongoDB) UpdateSuccess() {
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDB) MongoURI() string {
-	members := make([]string, m.Spec.Members)
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	for i := 0; i < m.Spec.Members; i++ {
-		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
-	}
-	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
+	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
 }
 
 func (m MongoDB) SCRAMMongoURI(username, password string) string {
-	members := make([]string, m.Spec.Members)
+	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(m.Hosts(), ","))
+}
+
+func (m MongoDB) Hosts() []string {
+	hosts := make([]string, m.Spec.Members)
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
 	for i := 0; i < m.Spec.Members; i++ {
-		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
 	}
-	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(members, ","))
+	return hosts
 }
 
 // ServiceName returns the name of the Service that should be created for
