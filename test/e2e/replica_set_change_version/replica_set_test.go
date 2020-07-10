@@ -27,8 +27,8 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	mdb := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	// Upgrade version to 4.0.8
 	t.Run("MongoDB is reachable while version is upgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10,

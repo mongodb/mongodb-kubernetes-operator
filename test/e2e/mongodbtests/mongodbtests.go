@@ -165,7 +165,6 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 				Version: mdbv1.SchemeGroupVersion.Version,
 				Kind:    mdb.Kind,
 			})))
-		t.Run("Test Basic Connectivity", BasicConnectivity(mdb))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb.MongoURI(),
