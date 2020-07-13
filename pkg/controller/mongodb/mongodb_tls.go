@@ -111,12 +111,12 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
-	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CAConfigMapName)
+	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
-	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.ServerSecretName)
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.CertificateKeySecret.Name)
 	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
