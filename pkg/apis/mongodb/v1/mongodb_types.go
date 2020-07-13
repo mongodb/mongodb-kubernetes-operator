@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,20 +63,12 @@ type TLS struct {
 	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
-	CertificateKeySecret CertificateKeySecret `json:"certificateKeySecretRef"`
+	CertificateKeySecret corev1.LocalObjectReference `json:"certificateKeySecretRef"`
 
 	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaConfigMap CAConfigMap `json:"caConfigMapRef"`
-}
-
-type CertificateKeySecret struct {
-	Name string `json:"name"`
-}
-
-type CAConfigMap struct {
-	Name string `json:"name"`
+	CaConfigMap corev1.LocalObjectReference `json:"caConfigMapRef"`
 }
 
 type Authentication struct {

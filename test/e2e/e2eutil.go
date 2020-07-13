@@ -131,10 +131,10 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	return mdbv1.TLS{
 		Enabled:  true,
 		Optional: optional,
-		CertificateKeySecret: mdbv1.CertificateKeySecret{
+		CertificateKeySecret: corev1.LocalObjectReference{
 			Name: "test-tls-secret",
 		},
-		CaConfigMap: mdbv1.CAConfigMap{
+		CaConfigMap: corev1.LocalObjectReference{
 			Name: "test-tls-ca",
 		},
 	}
