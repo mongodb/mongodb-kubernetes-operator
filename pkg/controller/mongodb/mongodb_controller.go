@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -450,7 +452,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	enabler, err := scram.EnsureEnabler(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}

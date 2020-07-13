@@ -1,25 +1,19 @@
-package scram
+package scramcredentials
 
 import (
 	"crypto/hmac"
+	"crypto/md5"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
-	"hash"
-
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/md5"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/xdg/stringprep"
+	"hash"
 )
 
 const (
+	RFC5802MandatedSaltSize = 4
+
 	clientKeyInput = "Client Key" // specified in RFC 5802
 	serverKeyInput = "Server Key" // specified in RFC 5802
 
@@ -27,34 +21,53 @@ const (
 	scramSha1Iterations   = 10000
 	scramSha256Iterations = 15000
 
-	RFC5802MandatedSaltSize = 4
-	Sha256                  = "SCRAM-SHA-256"
+	sha256mechanismName = "SCRAM-SHA-256"
 	// MONGODB-CR is an umbrella term for SCRAM-SHA-1 and MONGODB-CR for legacy reasons, once MONGODB-CR
 	// is enabled, users can auth with SCRAM-SHA-1 credentials
-	Sha1 = "MONGODB-CR"
+	sha1MechanismName = "MONGODB-CR"
 )
+
+type ScramCreds struct {
+	IterationCount int    `json:"iterationCount"`
+	Salt           string `json:"salt"`
+	ServerKey      string `json:"serverKey"`
+	StoredKey      string `json:"storedKey"`
+}
+
+func ComputeScramSha256Creds(username, password string, salt []byte) (ScramCreds, error) {
+	return computeCreds(username, password, salt, sha256mechanismName)
+}
+
+func ComputeScramSha1Creds(username, password string, salt []byte) (ScramCreds, error) {
+	return computeCreds(username, password, salt, sha1MechanismName)
+}
 
 // computeCreds takes a plain text password and a specified mechanism name and generates
 // the ScramShaCreds which will be embedded into a MongoDBUser.
-func computeCreds(username, password string, salt []byte, name string) (*automationconfig.ScramCreds, error) {
+func computeCreds(username, password string, salt []byte, name string) (ScramCreds, error) {
 	var hashConstructor func() hash.Hash
 	iterations := 0
-	if name == Sha256 {
-		hashConstructor = sha256.New
+	if name == sha256mechanismName {
+		hashConstructor = sha1.New
 		iterations = scramSha256Iterations
-	} else if name == Sha1 {
+	} else if name == sha1MechanismName {
 		hashConstructor = sha1.New
 		iterations = scramSha1Iterations
 
 		// MONGODB-CR/SCRAM-SHA-1 requires the hash of the password being passed computeScramCredentials
-		// instead of the plain text password. Generated the same was that Ops Manager does.
-		// See: https://github.com/10gen/mms/blob/a941f11a81fba4f85a9890eaf27605bd344af2a8/server/src/main/com/xgen/svc/mms/deployment/auth/AuthUser.java#L290
-		password = md5.Hex(username + ":mongo:" + password)
+		// instead of the plain text password.
+		password = md5Hex(username + ":mongo:" + password)
 	} else {
-		return nil, fmt.Errorf("unrecognized SCRAM-SHA format %s", name)
+		return ScramCreds{}, fmt.Errorf("unrecognized SCRAM-SHA format %s", name)
 	}
 	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
 	return computeScramCredentials(hashConstructor, iterations, base64EncodedSalt, password)
+}
+
+func md5Hex(s string) string {
+	h := md5.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func generateSaltedPassword(hashConstructor func() hash.Hash, password string, salt []byte, iterationCount int) ([]byte, error) {
@@ -167,81 +180,11 @@ func generateB64EncodedSecrets(hashConstructor func() hash.Hash, password, b64En
 }
 
 // password should be encrypted in the case of SCRAM-SHA-1 and unencrypted in the case of SCRAM-SHA-256
-func computeScramCredentials(hashConstructor func() hash.Hash, iterationCount int, base64EncodedSalt string, password string) (*automationconfig.ScramCreds, error) {
+func computeScramCredentials(hashConstructor func() hash.Hash, iterationCount int, base64EncodedSalt string, password string) (ScramCreds, error) {
 	storedKey, serverKey, err := generateB64EncodedSecrets(hashConstructor, password, base64EncodedSalt, iterationCount)
 	if err != nil {
-		return nil, fmt.Errorf("error generating SCRAM-SHA keys: %s", err)
+		return ScramCreds{}, fmt.Errorf("error generating SCRAM-SHA keys: %s", err)
 	}
 
-	return &automationconfig.ScramCreds{IterationCount: iterationCount, Salt: base64EncodedSalt, StoredKey: storedKey, ServerKey: serverKey}, nil
-}
-
-func ensureSalts(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, username string) ([]byte, []byte, error) {
-	secretName := fmt.Sprintf("%s-%s-salts", mdb.Name, username)
-	var sha256Salt, sha1Salt []byte
-
-	s, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secretName, Namespace: mdb.Namespace})
-	if err == nil {
-		_, hasSha1Salt := s.Data["sha1-salt"]
-		_, hasSha256Salt := s.Data["sha256-salt"]
-		if hasSha1Salt && hasSha256Salt {
-			return s.Data["sha1-salt"], s.Data["sha256-salt"], nil
-		}
-	}
-
-	if err != nil && !apiErrors.IsNotFound(err) {
-		return nil, nil, err
-	}
-
-	sha256Salt, err = generateSalt(sha256.New)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sha1Salt, err = generateSalt(sha1.New)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	saltSecret := secret.Builder().
-		SetName(secretName).
-		SetNamespace(mdb.Namespace).
-		SetField("sha1-salt", string(sha1Salt)).
-		SetField("sha256-salt", string(sha256Salt)).
-		Build()
-
-	if err := getUpdateCreator.CreateSecret(saltSecret); err != nil {
-		return nil, nil, err
-	}
-
-	return sha1Salt, sha256Salt, nil
-}
-
-// computeScram1AndScram256Credentials takes in a username and password, and generates SHA1 & SHA256 credentials
-// for that user. This should only be done if credentials do not already exist.
-func computeScram1AndScram256Credentials(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, username, password string) (*automationconfig.ScramCreds, *automationconfig.ScramCreds, error) {
-	sha1Salt, sha256Salt, err := ensureSalts(getUpdateCreator, mdb, username)
-	if err != nil {
-		return nil, nil, err
-	}
-	scram256Creds, err := computeCreds(username, password, sha256Salt, Sha256)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error generating scramSha256 creds: %s", err)
-	}
-	scram1Creds, err := computeCreds(username, password, sha1Salt, Sha1)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error generating scramSha1Creds: %s", err)
-	}
-	return scram1Creds, scram256Creds, nil
-}
-
-// generateSalt will create a salt for use with ComputeScramShaCreds based on the given hashConstructor.
-// sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
-func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
-	saltSize := hashConstructor().Size() - RFC5802MandatedSaltSize
-	salt, err := generate.RandomFixedLengthStringOfSize(saltSize)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(salt), nil
+	return ScramCreds{IterationCount: iterationCount, Salt: base64EncodedSalt, StoredKey: storedKey, ServerKey: serverKey}, nil
 }
