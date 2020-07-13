@@ -58,8 +58,9 @@ type TLS struct {
 	// +optional
 	Optional bool `json:"optional"`
 
-	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS
-	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
+	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS.
+	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt".
+	// This is the same format used for the standard "kubernetes.io/tls" Secret type.
 	// +optional
 	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
 
