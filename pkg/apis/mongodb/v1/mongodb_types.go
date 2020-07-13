@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"k8s.io/apimachinery/pkg/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,12 +61,20 @@ type TLS struct {
 	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
-	CertificateKeySecret corev1.LocalObjectReference `json:"certificateKeySecretRef"`
+	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
 
 	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaConfigMap corev1.LocalObjectReference `json:"caConfigMapRef"`
+	CaConfigMap LocalObjectReference `json:"caConfigMapRef"`
+}
+
+// LocalObjectReference is a reference to another Kubernetes object by name.
+// TODO: Replace with a type from the K8s API. CoreV1 has an equivalent
+// 	"LocalObjectReference" type but it contains a TODO in its
+// 	description that we don't want in our CRD.
+type LocalObjectReference struct {
+	Name string `json:"name"`
 }
 
 type Authentication struct {
