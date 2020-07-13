@@ -57,7 +57,7 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 	}
 
 	caConfigMap := configmap.Builder().
-		SetName(tlsConfig.CAConfigMapName).
+		SetName(tlsConfig.CaConfigMap.Name).
 		SetNamespace(namespace).
 		SetField("ca.crt", string(ca)).
 		Build()
@@ -78,7 +78,7 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 	}
 
 	certKeySecret := secret.Builder().
-		SetName(tlsConfig.ServerSecretName).
+		SetName(tlsConfig.CertificateKeySecret.Name).
 		SetNamespace(namespace).
 		SetField("tls.crt", string(cert)).
 		SetField("tls.key", string(key)).

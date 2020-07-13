@@ -58,15 +58,23 @@ type TLS struct {
 	// +optional
 	Optional bool `json:"optional"`
 
-	// ServerSecretName is the name of a secret containing a private key and certificate to use for TLS
+	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt"
 	// +optional
-	ServerSecretName string `json:"serverSecretName"`
+	CertificateKeySecret CertificateKeySecret `json:"certificateKeySecretRef"`
 
-	// CAConfigMapName is the name of a ConfigMap containing the certificate for the CA which signed the server certificates
+	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CAConfigMapName string `json:"caConfigMapName"`
+	CaConfigMap CAConfigMap `json:"caConfigMapRef"`
+}
+
+type CertificateKeySecret struct {
+	Name string `json:"name"`
+}
+
+type CAConfigMap struct {
+	Name string `json:"name"`
 }
 
 type Authentication struct {
@@ -129,13 +137,13 @@ func (m MongoDB) ConfigMapName() string {
 // TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate
 // As the ConfigMap will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
 func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: m.Spec.Security.TLS.CAConfigMapName, Namespace: m.Namespace}
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CaConfigMap.Name, Namespace: m.Namespace}
 }
 
 // TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
 // As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
 func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: m.Spec.Security.TLS.ServerSecretName, Namespace: m.Namespace}
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: m.Namespace}
 }
 
 func (m MongoDB) NamespacedName() types.NamespacedName {
