@@ -7,7 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
@@ -38,6 +43,26 @@ func newTestReplicaSet() mdbv1.MongoDB {
 		Spec: mdbv1.MongoDBSpec{
 			Members: 3,
 			Version: "4.2.2",
+		},
+	}
+}
+
+func newScramReplicaSet() mdbv1.MongoDB {
+	return mdbv1.MongoDB{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "my-rs",
+			Namespace:   "my-ns",
+			Annotations: map[string]string{},
+		},
+		Spec: mdbv1.MongoDBSpec{
+			Members: 3,
+			Version: "4.2.2",
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Enabled: true,
+					Modes:   []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
 		},
 	}
 }
@@ -274,34 +299,81 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	assert.Equal(t, currentAc.Version, 1)
 }
 
+func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
+	mdb := newScramReplicaSet()
+	mgr := client.NewManager(&mdb)
+
+	c := mgr.Client
+
+	scramNsName := mdb.ScramCredentialsNamespacedName()
+	_ = secret.CreateOrUpdate(c,
+		secret.Builder().
+			SetName(scramNsName.Name).
+			SetNamespace(scramNsName.Namespace).
+			SetField(scram.AgentPasswordKey, "my-pass").
+			SetField(scram.AgentKeyfileKey, "my-keyfile").
+			Build(),
+	)
+
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(c, mdb)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
+	assert.False(t, currentAc.Auth.Disabled)
+
+	assert.Equal(t, "my-keyfile", currentAc.Auth.Key)
+	assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
+	assert.Equal(t, "my-pass", currentAc.Auth.AutoPwd)
+
+}
+
+func TestScramIsConfigured(t *testing.T) {
+	mdb := newScramReplicaSet()
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	t.Run("Automation Config is configured with SCRAM", func(t *testing.T) {
+		assert.NoError(t, err)
+		assert.NotEmpty(t, currentAc.Auth.Key)
+		assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
+		assert.NotEmpty(t, currentAc.Auth.AutoPwd)
+		assert.False(t, currentAc.Auth.Disabled)
+	})
+	t.Run("Secret with credentials was created", func(t *testing.T) {
+		secretNsName := mdb.ScramCredentialsNamespacedName()
+		s, err := mgr.Client.GetSecret(secretNsName)
+		assert.NoError(t, err)
+		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
+		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
+	})
+}
+
 func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := client.NewManager(&mdb)
 
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.Security.TLS.ServerSecretName,
-			Namespace: mdb.Namespace,
-		},
-		Data: map[string][]byte{
-			"tls.crt": []byte("CERT"),
-			"tls.key": []byte("KEY"),
-		},
-	}
-	err := mgr.GetClient().Create(context.TODO(), &secret)
-	assert.NoError(t, err)
+	s := secret.Builder().
+		SetName(mdb.Spec.Security.TLS.ServerSecretName).
+		SetNamespace(mdb.Namespace).
+		SetField("tls.crt", "CERT").
+		SetField("tls.key", "KEY").
+		Build()
 
-	configMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      mdb.Spec.Security.TLS.CAConfigMapName,
-			Namespace: mdb.Namespace,
-		},
-		Data: map[string]string{
-			"ca.crt": "CERT",
-		},
-	}
-	err = mgr.GetClient().Create(context.TODO(), &configMap)
-	assert.NoError(t, err)
+	mgr.GetClient().Create(context.TODO(), &s)
+
+	configMap := configmap.Builder().
+		SetName(mdb.Spec.Security.TLS.CAConfigMapName).
+		SetNamespace(mdb.Namespace).
+		SetField("ca.crt", "CERT").
+		Build()
+
+	mgr.GetClient().Create(context.TODO(), &configMap)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -379,7 +451,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		assert.NoError(t, err)
 		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
 
-		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{})
+		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{}, noOpAuthEnabler{})
 		assert.NoError(t, err)
 		return ac
 	}

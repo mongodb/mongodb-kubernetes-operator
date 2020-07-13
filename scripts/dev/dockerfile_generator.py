@@ -39,7 +39,7 @@ def unit_test_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def python_formatting_params(files_to_add, script) -> DockerParameters:
+def python_formatting_params(files_to_add: List[str], script: str) -> DockerParameters:
     return {
         "base_image": "python:slim",
         "files_to_add": files_to_add,

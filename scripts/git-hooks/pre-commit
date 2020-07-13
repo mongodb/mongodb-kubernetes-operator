@@ -28,7 +28,7 @@ function mypy_check()
         echo "Analyzing $file ..."
         # We ignore missing import otherwise mypy will complain
         # about 3rd party libraries not providing type hints
-        if ! mypy --ignore-missing-imports "${file}"; then
+        if ! mypy --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports "${file}"; then
             exit_status=1
         fi
     done
