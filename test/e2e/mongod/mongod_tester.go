@@ -7,6 +7,10 @@ import (
 	"io/ioutil"
 	"testing"
 
+	f "github.com/operator-framework/operator-sdk/pkg/test"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/connectivity"
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,7 +44,7 @@ func (tt Tester) BasicConnectivity(opts ...connectivity.Modification) func(t *te
 		}
 
 		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
-			collection := tt.mongoClient.Database("testing").Collection("numbers")
+			collection := tt.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 			if err != nil {
 				t.Logf("error inserting document: %s", err)
@@ -63,16 +67,26 @@ func NewTester(opts ...*options.ClientOptions) *Tester {
 	return t
 }
 
-func FromMongoDBResource(mdb mdbv1.MongoDB, username, password string, opts ...*options.ClientOptions) (*Tester, error) {
+func FromMongoDBResource(mdb mdbv1.MongoDB, opts ...*options.ClientOptions) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
-	clientOpts = append(clientOpts, WithScram(username, password))
 	if mdb.Spec.Security.TLS.Enabled {
 		certPool, err := getClientTLSConfig()
 		if err != nil {
 			return nil, err
 		}
 		clientOpts = append(clientOpts, WithTLS(certPool))
+	}
+
+	users := mdb.Spec.Users
+	if len(users) == 1 {
+		user := users[0]
+		s := corev1.Secret{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: f.Global.OperatorNamespace}, &s)
+		if err != nil {
+			return nil, err
+		}
+		clientOpts = append(clientOpts, WithScram(user.Name, string(s.Data[user.PasswordSecretRef.Key])))
 	}
 
 	// add any additional options

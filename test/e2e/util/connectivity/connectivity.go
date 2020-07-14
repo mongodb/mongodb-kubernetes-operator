@@ -19,6 +19,8 @@ type Options struct {
 	IntervalTime   time.Duration
 	TimeoutTime    time.Duration
 	ContextTimeout time.Duration
+	Database       string
+	Collection     string
 }
 
 type Modification func(options *Options)
@@ -38,5 +40,17 @@ func TimeoutTime(timeoutTime time.Duration) Modification {
 func ContextTimeout(contextTimeout time.Duration) Modification {
 	return func(connectivityOptions *Options) {
 		connectivityOptions.ContextTimeout = contextTimeout
+	}
+}
+
+func Database(database string) Modification {
+	return func(connectivityOptions *Options) {
+		connectivityOptions.Database = database
+	}
+}
+
+func Collection(collection string) Modification {
+	return func(connectivityOptions *Options) {
+		connectivityOptions.Collection = collection
 	}
 }
