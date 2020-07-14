@@ -34,7 +34,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 
-	t.Run("Test FeatureCompatibilityVersion is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3))
+	t.Run("Test FeatureCompatibilityVersion is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3, user.Name, password))
 	// Upgrade version to 4.2.6 while keeping the FCV set to 4.0
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
@@ -43,7 +43,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 			t.Run("Test Basic Connectivity after upgrade has completed", mongodbtests.Connectivity(&mdb, user.Name, password))
 		},
 	))
-	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3))
+	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.0", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.0", 3, user.Name, password))
 
 	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
 		func() {

@@ -111,11 +111,11 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 // set to `version`. The FCV parameter is not signaled as a non Running state, for
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
-func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
+func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
 		assert.NoError(t, err)
 
 		database := mongoClient.Database("admin")

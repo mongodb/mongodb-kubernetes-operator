@@ -49,9 +49,9 @@ func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 
 // ConnectivityWithoutTLSShouldFail will send a single non-TLS query
 // and expect it to fail.
-func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := connectWithoutTLS(mdb)
+		err := connectWithoutTLS(mdb, username, password)
 		assert.Error(t, err, "expected connectivity test to fail without TLS")
 	}
 }
@@ -59,11 +59,11 @@ func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB) func(t *testing.T) {
 // connectWithoutTLS will initialize a single MongoDB client and
 // send a single request. This function is used to ensure non-TLS
 // requests fail.
-func connectWithoutTLS(mdb *v1.MongoDB) error {
+func connectWithoutTLS(mdb *v1.MongoDB, username, password string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
 	if err != nil {
 		return err
 	}
