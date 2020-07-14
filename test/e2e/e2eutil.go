@@ -137,6 +137,7 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 						Name: fmt.Sprintf("%s-password-secret", name),
 					},
 					Roles: []mdbv1.Role{
+						// roles on testing db for general connectivity
 						{
 							DB:   "testing",
 							Name: "readWrite",
@@ -145,6 +146,7 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 							DB:   "testing",
 							Name: "clusterAdmin",
 						},
+						// admin roles for reading FCV
 						{
 							DB:   "admin",
 							Name: "readWrite",
