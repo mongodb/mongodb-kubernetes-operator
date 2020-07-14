@@ -3,11 +3,9 @@ package replica_set
 import (
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongod"
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/connectivity"
-
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongotester"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
@@ -29,16 +27,13 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongod.FromMongoDBResource(t, mdb)
+	tester, err := mongotester.FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", tester.BasicConnectivity(
-		connectivity.Database("testing"),
-		connectivity.Collection("numbers"),
-	))
+	t.Run("Test Basic Connectivity", tester.Connectivity())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }

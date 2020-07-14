@@ -7,6 +7,8 @@ func New(modifications ...Modification) Options {
 		IntervalTime:   1 * time.Second,
 		TimeoutTime:    30 * time.Second,
 		ContextTimeout: 10 * time.Minute,
+		Database:       "testing",
+		Collection:     "numbers",
 	}
 	for _, mod := range modifications {
 		mod(&defaultConnectivity)

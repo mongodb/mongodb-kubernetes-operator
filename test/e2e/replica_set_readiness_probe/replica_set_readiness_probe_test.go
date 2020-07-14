@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongotester"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -32,20 +34,25 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tester, err := mongotester.FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
-		func() {
-			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members)))
-			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
-			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
-				mdbv1.MongoDBStatus{
-					MongoURI: mdb.MongoURI(),
-					Phase:    mdbv1.Running,
-				}))
-		},
-	))
+	t.Run("MongoDB is reachable", func(t *testing.T) {
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
+		t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members)))
+		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+			mdbv1.MongoDBStatus{
+				MongoURI: mdb.MongoURI(),
+				Phase:    mdbv1.Running,
+			}))
+	})
+
 }

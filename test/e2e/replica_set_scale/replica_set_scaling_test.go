@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongotester"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -29,30 +31,34 @@ func TestReplicaSetScale(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tester, err := mongotester.FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
-		func() {
-			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
-			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
-			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
-			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
-				mdbv1.MongoDBStatus{
-					MongoURI: mdb.MongoURI(),
-					Phase:    mdbv1.Running,
-				}))
-			t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
-			t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
-			t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
-			t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
-				mdbv1.MongoDBStatus{
-					MongoURI: mdb.MongoURI(),
-					Phase:    mdbv1.Running,
-				}))
-		},
-	))
+	t.Run("MongoDB is reachable", func(t *testing.T) {
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
+		t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
+		t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
+		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+			mdbv1.MongoDBStatus{
+				MongoURI: mdb.MongoURI(),
+				Phase:    mdbv1.Running,
+			}))
+		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
+		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
+		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+			mdbv1.MongoDBStatus{
+				MongoURI: mdb.MongoURI(),
+				Phase:    mdbv1.Running,
+			}))
+	})
 }
