@@ -22,17 +22,23 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb := e2eutil.NewTestMongoDB("mdb-tls")
+	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
+
+	password, err := setup.GeneratePasswordForUser(user, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
 		t.Fatalf("Failed to set up TLS resources: %+v", err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 
 	// Enable TLS as optional
-	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
+	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
 			t.Run("Upgrade to TLS", tlstests.EnableTLS(&mdb, true))
 			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
@@ -41,7 +47,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	))
 
 	// Ensure MongoDB is reachable both with and without TLS
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
 
 	// Make TLS required

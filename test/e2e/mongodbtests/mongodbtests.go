@@ -192,9 +192,13 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 
 // Connectivity returns a test function which performs
 // a basic MongoDB connectivity test
-func Connectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func Connectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := Connect(mdb, options.Client()); err != nil {
+		if err := Connect(mdb, options.Client().SetAuth(options.Credential{
+			AuthMechanism: "SCRAM-SHA-256",
+			Username:      username,
+			Password:      password,
+		})); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 	}
@@ -259,9 +263,13 @@ func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
 	return IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
-		return Connect(mdb, options.Client())
+		return Connect(mdb, options.Client().SetAuth(options.Credential{
+			AuthMechanism: "SCRAM-SHA-256",
+			Username:      username,
+			Password:      password,
+		}))
 	})
 }
 
