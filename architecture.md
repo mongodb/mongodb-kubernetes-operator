@@ -16,7 +16,7 @@ You create and update MongoDB resources by defining a MongoDB resource definitio
 1. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod. 
 1. Creates one [init container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) and two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
 
-   - An init container which copies the `cmd/prestop` binary to the main `mongod` container. [This pre-stop hook](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/) is used during [version upgrades](#example-mongodb-version-upgrade).
+   - An init container which copies the `cmd/versionhook` binary to the main `mongod` container. This is used as a [pre-stop hook](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/) for [version upgrades](#example-mongodb-version-upgrade).
 
    - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
 

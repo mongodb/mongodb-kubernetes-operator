@@ -14,8 +14,7 @@ import (
 )
 
 func init() {
-
-	os.Setenv(preStopHookImageEnv, "pre-stop-hook-image")
+	os.Setenv(versionUpgradeHookImageEnv, "version-upgrade-hook-image")
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
@@ -62,7 +61,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Len(t, mongodContainer.VolumeMounts, 3)
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
-	assert.Equal(t, preStopHookName, initContainer.Name)
-	assert.Equal(t, "pre-stop-hook-image", initContainer.Image)
+	assert.Equal(t, versionUpgradeHookName, initContainer.Name)
+	assert.Equal(t, "version-upgrade-hook-image", initContainer.Image)
 	assert.Len(t, initContainer.VolumeMounts, 1)
 }

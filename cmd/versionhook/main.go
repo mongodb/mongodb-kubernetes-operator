@@ -20,7 +20,7 @@ import (
 
 const (
 	agentStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	logFilePathEnv         = "PRE_STOP_HOOK_LOG_PATH"
+	logFilePathEnv         = "POD_DELETER_LOG_PATH"
 
 	defaultNamespace = "default"
 

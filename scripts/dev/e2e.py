@@ -123,11 +123,11 @@ def build_and_push_e2e(repo_url: str, tag: str, path: str) -> None:
     build_and_push_image(repo_url, tag, path, "e2e")
 
 
-def build_and_push_prehook(repo_url: str, tag: str, path: str) -> None:
+def build_and_push_version_upgrade_hook(repo_url: str, tag: str, path: str) -> None:
     """
-    build_and_push_prehook builds and pushes the pre-stop-hook image.
+    build_and_push_version_upgrade_hook builds and pushes the pod-deleter image.
     """
-    build_and_push_image(repo_url, tag, path, "prehook")
+    build_and_push_image(repo_url, tag, path, "versionhook")
 
 
 def _delete_testrunner_pod(config_file: str) -> None:
@@ -216,8 +216,8 @@ def _get_testrunner_pod_body(
                         "./runner",
                         "--operatorImage",
                         f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
-                        "--preHookImage",
-                        f"{dev_config.repo_url}/{dev_config.prestop_hook_image}:{tag}",
+                        "--versionUpgradeHookImage",
+                        f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{tag}",
                         "--testImage",
                         f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
                         f"--test={test}",
@@ -240,7 +240,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--build-images",
-        help="Build testrunner, e2e and prestop-hook images",
+        help="Build testrunner, e2e and version upgrade hook images",
         action="store_true",
     )
     parser.add_argument(
@@ -284,10 +284,10 @@ def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> No
             "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
             ".",
         )
-        build_and_push_prehook(
+        build_and_push_version_upgrade_hook(
             dev_config.repo_url,
             "{}/{}:{}".format(
-                dev_config.repo_url, dev_config.prestop_hook_image, args.tag
+                dev_config.repo_url, dev_config.version_upgrade_hook_image, args.tag
             ),
             ".",
         )
