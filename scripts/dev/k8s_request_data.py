@@ -1,7 +1,7 @@
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 
-from typing import Optional
+from typing import Optional, List
 
 
 def get_crds() -> Optional[dict]:
@@ -12,6 +12,19 @@ def get_crds() -> Optional[dict]:
         print("Exception when calling list_custom_resource_definition: %s\n" % e)
         return None
     return crd.to_dict()
+
+
+def get_all_mongodb_namespaced(namespace: str) -> Optional[List]:
+    customv1 = client.CustomObjectsApi()
+    try:
+        return list(
+            customv1.list_namespaced_custom_object(
+                "mongodb.com", "v1", namespace, "mongodb", pretty=True
+            )["items"]
+        )
+    except ApiException as e:
+        print("Exception when calling get_namespaced_custom_object %s\n" % e)
+    return None
 
 
 def get_persistent_volumes() -> Optional[dict]:
@@ -60,6 +73,7 @@ def get_pod_namespaced(namespace: str, pod_name: str) -> Optional[client.V1Pod]:
         pod = corev1.read_namespaced_pod(name=pod_name, namespace=namespace)
     except ApiException as e:
         print("Exception when calling read_namespaced_pod: %s\n" % e)
+        return None
     return pod
 
 
