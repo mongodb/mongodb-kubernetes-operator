@@ -29,7 +29,7 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongod.FromMongoDBResource(mdb)
+	tester, err := mongod.FromMongoDBResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}

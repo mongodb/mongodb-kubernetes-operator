@@ -67,14 +67,16 @@ func NewTester(opts ...*options.ClientOptions) *Tester {
 	return t
 }
 
-func FromMongoDBResource(mdb mdbv1.MongoDB, opts ...*options.ClientOptions) (*Tester, error) {
+func FromMongoDBResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOptions) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
+	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
 	if mdb.Spec.Security.TLS.Enabled {
 		certPool, err := getClientTLSConfig()
 		if err != nil {
 			return nil, err
 		}
+		t.Logf("Configuring TLS for MongoDB: %s", mdb.NamespacedName())
 		clientOpts = append(clientOpts, WithTLS(certPool))
 	}
 
@@ -86,6 +88,7 @@ func FromMongoDBResource(mdb mdbv1.MongoDB, opts ...*options.ClientOptions) (*Te
 		if err != nil {
 			return nil, err
 		}
+		t.Logf("Configuring SCRAM username: %s and password from secret %s for MongoDB: %s", user.Name, user.PasswordSecretRef.Name, mdb.NamespacedName())
 		clientOpts = append(clientOpts, WithScram(user.Name, string(s.Data[user.PasswordSecretRef.Key])))
 	}
 
