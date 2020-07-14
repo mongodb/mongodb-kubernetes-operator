@@ -85,6 +85,9 @@ def dump_configmap_keys_namespaced(
 
 def dump_automation_configs(namespace: str) -> None:
     mongodb_resources = k8s_request_data.get_all_mongodb_namespaced(namespace)
+    if mongodb_resources is None:
+        print("No MongoDB resources found, not dumping any automation configs")
+        return
     for mdb in mongodb_resources:
         name = mdb["metadata"]["name"]
         dump_configmap_keys_namespaced(

@@ -1,10 +1,10 @@
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
-def get_crds() -> Optional[dict]:
+def get_crds() -> Optional[Dict]:
     crdv1 = client.ApiextensionsV1beta1Api()
     try:
         crd = crdv1.list_custom_resource_definition(pretty="true")
@@ -27,7 +27,7 @@ def get_all_mongodb_namespaced(namespace: str) -> Optional[List]:
     return None
 
 
-def get_persistent_volumes() -> Optional[dict]:
+def get_persistent_volumes() -> Optional[Dict]:
     corev1 = client.CoreV1Api()
     try:
         pv = corev1.list_persistent_volume(pretty="true")
@@ -37,7 +37,7 @@ def get_persistent_volumes() -> Optional[dict]:
     return pv.to_dict()
 
 
-def get_stateful_sets_namespaced(namespace: str) -> Optional[dict]:
+def get_stateful_sets_namespaced(namespace: str) -> Optional[Dict]:
     av1beta1 = client.AppsV1Api()
     try:
         sst = av1beta1.list_namespaced_stateful_set(namespace, pretty="true")
@@ -47,7 +47,7 @@ def get_stateful_sets_namespaced(namespace: str) -> Optional[dict]:
     return sst.to_dict()
 
 
-def get_configmap_namespaced(namespace: str, name: str) -> Optional[dict]:
+def get_configmap_namespaced(namespace: str, name: str) -> Optional[Dict]:
     corev1 = client.CoreV1Api()
     try:
         config_map = corev1.read_namespaced_config_map(name, namespace, pretty="true")
@@ -57,7 +57,7 @@ def get_configmap_namespaced(namespace: str, name: str) -> Optional[dict]:
     return config_map.to_dict()
 
 
-def get_pods_namespaced(namespace: str) -> Optional[list]:
+def get_pods_namespaced(namespace: str) -> Optional[List]:
     corev1 = client.CoreV1Api()
     try:
         pods = corev1.list_namespaced_pod(namespace)
