@@ -145,10 +145,31 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 							DB:   "testing",
 							Name: "clusterAdmin",
 						},
+						{
+							DB:   "admin",
+							Name: "readWrite",
+						},
+						{
+							DB:   "admin",
+							Name: "clusterAdmin",
+						},
 					},
 				},
 			},
 		},
 	}
 	return mdb, mdb.Spec.Users[0]
+}
+
+func NewTestTLSConfig(optional bool) mdbv1.TLS {
+	return mdbv1.TLS{
+		Enabled:  true,
+		Optional: optional,
+		CertificateKeySecret: mdbv1.LocalObjectReference{
+			Name: "test-tls-secret",
+		},
+		CaConfigMap: mdbv1.LocalObjectReference{
+			Name: "test-tls-ca",
+		},
+	}
 }

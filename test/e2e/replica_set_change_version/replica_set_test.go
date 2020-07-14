@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -33,16 +32,9 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
-	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Test Basic Connectivity", mongodbtests.BasicConnectivity(&mdb, user.Name, password))
-	t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
-		mdbv1.MongoDBStatus{
-			MongoURI: mdb.MongoURI(),
-			Phase:    mdbv1.Running,
-		}))
 
 	// Upgrade version to 4.0.8
 	t.Run("MongoDB is reachable while version is upgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
