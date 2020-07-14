@@ -4,11 +4,13 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/xdg/stringprep"
 	"hash"
+
+	"github.com/xdg/stringprep"
 )
 
 const (
@@ -20,11 +22,6 @@ const (
 	// using the default MongoDB values for the number of iterations depending on mechanism
 	scramSha1Iterations   = 10000
 	scramSha256Iterations = 15000
-
-	sha256mechanismName = "SCRAM-SHA-256"
-	// MONGODB-CR is an umbrella term for SCRAM-SHA-1 and MONGODB-CR for legacy reasons, once MONGODB-CR
-	// is enabled, users can auth with SCRAM-SHA-1 credentials
-	sha1MechanismName = "MONGODB-CR"
 )
 
 type ScramCreds struct {
@@ -34,34 +31,15 @@ type ScramCreds struct {
 	StoredKey      string `json:"storedKey"`
 }
 
-func ComputeScramSha256Creds(username, password string, salt []byte) (ScramCreds, error) {
-	return computeCreds(username, password, salt, sha256mechanismName)
+func ComputeScramSha256Creds(password string, salt []byte) (ScramCreds, error) {
+	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
+	return computeScramCredentials(sha256.New, scramSha256Iterations, base64EncodedSalt, password)
 }
 
 func ComputeScramSha1Creds(username, password string, salt []byte) (ScramCreds, error) {
-	return computeCreds(username, password, salt, sha1MechanismName)
-}
-
-// computeCreds takes a plain text password and a specified mechanism name and generates
-// the ScramShaCreds which will be embedded into a MongoDBUser.
-func computeCreds(username, password string, salt []byte, name string) (ScramCreds, error) {
-	var hashConstructor func() hash.Hash
-	iterations := 0
-	if name == sha256mechanismName {
-		hashConstructor = sha1.New
-		iterations = scramSha256Iterations
-	} else if name == sha1MechanismName {
-		hashConstructor = sha1.New
-		iterations = scramSha1Iterations
-
-		// MONGODB-CR/SCRAM-SHA-1 requires the hash of the password being passed computeScramCredentials
-		// instead of the plain text password.
-		password = md5Hex(username + ":mongo:" + password)
-	} else {
-		return ScramCreds{}, fmt.Errorf("unrecognized SCRAM-SHA format %s", name)
-	}
 	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
-	return computeScramCredentials(hashConstructor, iterations, base64EncodedSalt, password)
+	password = md5Hex(username + ":mongo:" + password)
+	return computeScramCredentials(sha1.New, scramSha1Iterations, base64EncodedSalt, password)
 }
 
 func md5Hex(s string) string {

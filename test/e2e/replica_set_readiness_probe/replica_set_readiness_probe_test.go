@@ -26,17 +26,17 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb0")
-	password, err := setup.GeneratePasswordForUser(user, ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	mdb, _ := e2eutil.NewTestMongoDB("mdb0")
+	//password, err := setup.GeneratePasswordForUser(user, ctx)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
+	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members)))
 			t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))

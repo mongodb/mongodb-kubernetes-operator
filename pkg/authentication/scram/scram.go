@@ -193,7 +193,7 @@ func computeScram1AndScram256Credentials(getUpdateCreateDeleter secret.GetUpdate
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
-	scram256Creds, err := scramcredentials.ComputeScramSha256Creds(username, password, sha256Salt)
+	scram256Creds, err := scramcredentials.ComputeScramSha256Creds(password, sha256Salt)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha256 creds: %s", err)
 	}

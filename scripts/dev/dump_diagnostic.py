@@ -1,7 +1,8 @@
 import os
 import shutil
 import yaml
-from typing import Dict, TextIO
+from typing import Dict, TextIO, List
+import json
 import k8s_request_data
 
 
@@ -26,41 +27,60 @@ def header(msg: str) -> str:
 
 def dump_crd(crd_log: TextIO) -> None:
     crd = k8s_request_data.get_crds()
-    crd_log.write(header("CRD"))
-    crd_log.write(yaml.dump(clean_nones(crd)))
+    if crd is not None:
+        crd_log.write(header("CRD"))
+        crd_log.write(yaml.dump(clean_nones(crd)))
 
 
 def dump_persistent_volume(diagnostic_file: TextIO) -> None:
-    diagnostic_file.write(header("Persistent Volumes"))
     pv = k8s_request_data.get_persistent_volumes()
-    diagnostic_file.write(yaml.dump(clean_nones(pv)))
+    if pv is not None:
+        diagnostic_file.write(header("Persistent Volumes"))
+        diagnostic_file.write(yaml.dump(clean_nones(pv)))
 
 
 def dump_stateful_sets_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
-    diagnostic_file.write(header("Stateful Sets"))
     sst = k8s_request_data.get_stateful_sets_namespaced(namespace)
-    diagnostic_file.write(yaml.dump(clean_nones(sst)))
+    if sst is not None:
+        diagnostic_file.write(header("Stateful Sets"))
+        diagnostic_file.write(yaml.dump(clean_nones(sst)))
 
 
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None:
     for container in containers:
         with open(
-            "logs/e2e/{}-{}.log".format(name, container.name),
-            mode="w",
-            encoding="utf-8",
+            f"logs/e2e/{name}-{container.name}.log", mode="w", encoding="utf-8",
         ) as log_file:
-            log_file.write(
-                k8s_request_data.get_pod_log_namespaced(namespace, name, container.name)
+            log = k8s_request_data.get_pod_log_namespaced(
+                namespace, name, container.name
             )
+            if log is not None:
+                log_file.write(log)
 
 
 def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> None:
     pods = k8s_request_data.get_pods_namespaced(namespace)
-    for pod in pods:
-        name = pod.metadata.name
-        diagnostic_file.write(header(f"Pod {name}"))
-        diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
-        dump_pod_log_namespaced(namespace, name, pod.spec.containers)
+    if pods is not None:
+        for pod in pods:
+            name = pod.metadata.name
+            diagnostic_file.write(header(f"Pod {name}"))
+            diagnostic_file.write(yaml.dump(clean_nones(pod.to_dict())))
+            dump_pod_log_namespaced(namespace, name, pod.spec.containers)
+
+
+def dump_configmap_keys_namespaced(
+    namespace: str, keys: List[str], configmap_name: str
+) -> None:
+    configmap = k8s_request_data.get_configmap_namespaced(namespace, configmap_name)
+    if configmap is not None:
+        for key in keys:
+            with open(
+                f"logs/e2e/{configmap_name}-{key}.json", mode="w", encoding="utf-8",
+            ) as log_file:
+                if key in configmap["data"]:
+                    log_file.write(
+                        json.dumps(json.loads(configmap["data"][key]), indent=4)
+                    )
 
 
 def dump_all(namespace: str) -> None:
@@ -82,3 +102,5 @@ def dump_all(namespace: str) -> None:
 
     with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
+
+    dump_configmap_keys_namespaced(namespace, ["automation-config"], "mdb0-config")

@@ -111,11 +111,11 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 // set to `version`. The FCV parameter is not signaled as a non Running state, for
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
-func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, username, password, fcv string, tries int) func(t *testing.T) {
+func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
+		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
 		assert.NoError(t, err)
 
 		database := mongoClient.Database("admin")
@@ -154,7 +154,7 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.Context) func(*testing.T) 
 	}
 }
 
-func BasicFunctionality(mdb *mdbv1.MongoDB, username, password string) func(*testing.T) {
+func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
@@ -165,7 +165,6 @@ func BasicFunctionality(mdb *mdbv1.MongoDB, username, password string) func(*tes
 				Version: mdbv1.SchemeGroupVersion.Version,
 				Kind:    mdb.Kind,
 			})))
-		t.Run("Test Basic Connectivity", BasicConnectivity(mdb, username, password))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb.MongoURI(),
@@ -191,11 +190,11 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// BasicConnectivity returns a test function which performs
+// Connectivity returns a test function which performs
 // a basic MongoDB connectivity test
-func BasicConnectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing.T) {
+func Connectivity(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := Connect(mdb, username, password); err != nil {
+		if err := Connect(mdb, options.Client()); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
 		}
 	}
@@ -237,11 +236,12 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 }
 
 // Connect performs a connectivity check by initializing a mongo client
-// and inserting a document into the MongoDB resource
-func Connect(mdb *mdbv1.MongoDB, username, password string) error {
+// and inserting a document into the MongoDB resource. Custom client
+// options can be passed, for example to configure TLS.
+func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
+	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
 	if err != nil {
 		return err
 	}
@@ -259,20 +259,26 @@ func Connect(mdb *mdbv1.MongoDB, username, password string) error {
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
+func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+	return IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
+		return Connect(mdb, options.Client())
+	})
+}
+
+func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
 		defer cancel()
 
+		// once all the test functions have been executed, the go routine will be cancelled
 		go func() { //nolint
-			// once all the test functions have been executed, the go routine will be cancelled
 			for {
 				select {
 				case <-ctx.Done():
 					t.Log("context cancelled, no longer checking connectivity") //nolint
 					return
 				case <-time.After(interval):
-					if err := Connect(mdb, username, password); err != nil {
+					if err := connectFunc(); err != nil {
 						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
 					} else {
 						t.Logf("Successfully connected to %s", mdb.Name)

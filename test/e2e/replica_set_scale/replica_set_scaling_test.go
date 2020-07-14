@@ -23,18 +23,12 @@ func TestReplicaSetScale(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb0")
-
-	password, err := setup.GeneratePasswordForUser(user, ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	mdb, _ := e2eutil.NewTestMongoDB("mdb0")
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Config Map Was Correctly Created", mongodbtests.AutomationConfigConfigMapExists(&mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
+	t.Run("MongoDB is reachable", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb))
