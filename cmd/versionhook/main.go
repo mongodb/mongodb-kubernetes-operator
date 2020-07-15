@@ -20,7 +20,6 @@ import (
 
 const (
 	agentStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	logFilePathEnv         = "VERSION_UPGRADE_HOOK_LOG_PATH"
 
 	defaultNamespace = "default"
 
@@ -29,14 +28,14 @@ const (
 )
 
 func main() {
-	fmt.Println("Calling version change post-start hook!")
-
-	if err := ensureEnvironmentVariables(logFilePathEnv, agentStatusFilePathEnv); err != nil {
-		zap.S().Fatal("Not all required environment variables are present: %s", err)
-		os.Exit(1)
-	}
-
 	logger := setupLogger()
+
+	logger.Info("Running version change post-start hook")
+
+	if statusPath := os.Getenv(agentStatusFilePathEnv); statusPath == "" {
+		logger.Fatalf(`Required environment variable "%s" not set`, agentStatusFilePathEnv)
+		return
+	}
 
 	logger.Info("Waiting for agent health status...")
 	health, err := waitForAgentHealthStatus()
@@ -78,25 +77,8 @@ func main() {
 	}
 }
 
-func ensureEnvironmentVariables(requiredEnvVars ...string) error {
-	var missingEnvVars []string
-	for _, envVar := range requiredEnvVars {
-		if val := os.Getenv(envVar); val == "" {
-			missingEnvVars = append(missingEnvVars, envVar)
-		}
-	}
-	if len(missingEnvVars) > 0 {
-		return fmt.Errorf("missing envars: %s", strings.Join(missingEnvVars, ","))
-	}
-	return nil
-}
-
 func setupLogger() *zap.SugaredLogger {
-	cfg := zap.NewDevelopmentConfig()
-	cfg.OutputPaths = []string{
-		os.Getenv(logFilePathEnv),
-	}
-	log, err := cfg.Build()
+	log, err := zap.NewDevelopment()
 	if err != nil {
 		zap.S().Errorf("Error building logger config: %s", err)
 		os.Exit(1)

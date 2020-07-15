@@ -42,10 +42,9 @@ import (
 )
 
 const (
-	agentImageEnv                    = "AGENT_IMAGE"
-	versionUpgradeHookImageEnv       = "VERSION_UPGRADE_HOOK_IMAGE"
-	agentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
-	versionUpgradeHookLogFilePathEnv = "VERSION_UPGRADE_HOOK_LOG_PATH"
+	agentImageEnv                = "AGENT_IMAGE"
+	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
+	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -563,10 +562,6 @@ exec mongod -f /data/automation-mongod.conf ;
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
 				Value: "/healthstatus/agent-health-status.json",
-			},
-			corev1.EnvVar{
-				Name:  versionUpgradeHookLogFilePathEnv,
-				Value: "/hooks/version-upgrade-hook.log",
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
