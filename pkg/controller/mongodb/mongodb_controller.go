@@ -528,7 +528,7 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
-		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade-hook"}),
+		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
 		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
@@ -541,7 +541,7 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 		"-c",
 		`
 # run post-start hook to handle version changes
-/hooks/version-upgrade-hook
+/hooks/version-upgrade
 
 # wait for config to be created by the agent
 while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
