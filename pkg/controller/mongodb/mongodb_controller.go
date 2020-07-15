@@ -540,15 +540,17 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
-# start mongod with this configuration
-mongod -f /data/automation-mongod.conf ;
+		`
+# run post-start hook to handle version changes.
+# during a version change, mongod will be stopped and the
+# container will be restarted, at which points this hook runs.
+/hooks/version-upgrade-hook
 
-# start the pre-stop-hook to restart the Pod when needed
-# If the Pod does not require to be restarted, the pre-stop-hook will
-# exit(0) for Kubernetes to restart the container.
-/hooks/version-upgrade-hook;
+# wait for config to be created by the agent
+while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+
+# start mongod with this configuration
+exec mongod -f /data/automation-mongod.conf ;
 `,
 	}
 
