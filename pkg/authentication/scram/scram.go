@@ -146,6 +146,7 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDB
 	existingSha1Salt := s.Data[sha1SaltKey]
 	existingSha256Salt := s.Data[sha256SaltKey]
 
+	// TODO: the value written to the secret is not in the form that can be used by computeScramShaCredentials
 	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, existingSha1Salt, existingSha256Salt)
 	if err != nil {
 		return false, err

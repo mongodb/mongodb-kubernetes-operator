@@ -133,12 +133,12 @@ func TestEnsureScramCredentials(t *testing.T) {
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newGetter(scramCredentialsSecret, differentPasswordSecret), user, mdb)
 		assert.NoError(t, err)
-		assert.NotEqual(t, "ZRc7UfzR9P_-4qsp8PE", scram1Creds.Salt)
+		assert.NotEqual(t, "UzNjdWsyUm51L01sYmV3enhybW1WQT09Cg==", scram1Creds.Salt)
 		assert.NotEqual(t, "Bs4sePK0cdMy6n", scram1Creds.StoredKey)
 		assert.NotEqual(t, "eP6_p76ql_h8iiH", scram1Creds.ServerKey)
 		assert.Equal(t, 10000, scram1Creds.IterationCount)
 
-		assert.NotEqual(t, "nyAbfVeXCWsLKoxOl", scram256Creds.Salt)
+		assert.NotEqual(t, "Gy4ZNMr-SYEsEpAEZv", scram256Creds.Salt)
 		assert.NotEqual(t, "sMEAesMtaSYyaD7", scram256Creds.StoredKey)
 		assert.NotEqual(t, "IgXDX8uTN2JzN510NFlq", scram256Creds.ServerKey)
 		assert.Equal(t, 15000, scram256Creds.IterationCount)
@@ -199,12 +199,12 @@ func buildMongoDBAndUser(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 }
 
 func assertScram256CredsCredentialsValidity(t *testing.T, scram1Creds, scram256Creds scramcredentials.ScramCreds) {
-	assert.Equal(t, "ZRc7UfzR9P_-4qsp8PE", scram1Creds.Salt)
+	assert.Equal(t, "UzNjdWsyUm51L01sYmV3enhybW1WQT09Cg==", scram1Creds.Salt)
 	assert.Equal(t, "Bs4sePK0cdMy6n", scram1Creds.StoredKey)
 	assert.Equal(t, "eP6_p76ql_h8iiH", scram1Creds.ServerKey)
 	assert.Equal(t, 10000, scram1Creds.IterationCount)
 
-	assert.Equal(t, "nyAbfVeXCWsLKoxOl", scram256Creds.Salt)
+	assert.Equal(t, "ajdf1E1QTsNAQdBEodB4vzQOFuvcw9K6PmouVg==", scram256Creds.Salt)
 	assert.Equal(t, "sMEAesMtaSYyaD7", scram256Creds.StoredKey)
 	assert.Equal(t, "IgXDX8uTN2JzN510NFlq", scram256Creds.ServerKey)
 	assert.Equal(t, 15000, scram256Creds.IterationCount)
@@ -214,10 +214,10 @@ func validScramCredentialsSecret(objectKey types.NamespacedName, username string
 	return secret.Builder(). // valid secret
 					SetName(scramCredentialsSecretName(objectKey.Name, username)).
 					SetNamespace(objectKey.Namespace).
-					SetField(sha1SaltKey, "ZRc7UfzR9P_-4qsp8PE").
+					SetField(sha1SaltKey, "UzNjdWsyUm51L01sYmV3enhybW1WQT09Cg==").
 					SetField(sha1StoredKeyKey, "Bs4sePK0cdMy6n").
 					SetField(sha1ServerKeyKey, "eP6_p76ql_h8iiH").
-					SetField(sha256SaltKey, "nyAbfVeXCWsLKoxOl").
+					SetField(sha256SaltKey, "ajdf1E1QTsNAQdBEodB4vzQOFuvcw9K6PmouVg==").
 					SetField(sha256StoredKeyKey, "sMEAesMtaSYyaD7").
 					SetField(sha256ServerKeyKey, "IgXDX8uTN2JzN510NFlq").
 					Build()
