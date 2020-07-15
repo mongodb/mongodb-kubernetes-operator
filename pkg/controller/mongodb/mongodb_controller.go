@@ -540,9 +540,7 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 		"/bin/sh",
 		"-c",
 		`
-# run post-start hook to handle version changes.
-# during a version change, mongod will be stopped and the
-# container will be restarted, at which points this hook runs.
+# run post-start hook to handle version changes
 /hooks/version-upgrade-hook
 
 # wait for config to be created by the agent
