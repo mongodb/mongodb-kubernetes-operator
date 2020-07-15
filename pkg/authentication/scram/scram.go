@@ -1,16 +1,14 @@
 package scram
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"time"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
-	corev1 "k8s.io/api/core/v1"
+	"reflect"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -21,11 +19,22 @@ import (
 
 const (
 	defaultPasswordKey = "password"
-	sha1SaltKey        = "sha1-salt"
-	sha256SaltKey      = "sha256-salt"
-	day                = time.Hour * 24
-	expireTime         = day * 10
+
+	sha1SaltKey   = "sha1-salt"
+	sha256SaltKey = "sha256-salt"
+
+	sha1ServerKey   = "sha-1-server-key"
+	sha256ServerKey = "sha-256-server-key"
+
+	sha1StoredKey   = "sha-1-stored-key"
+	sha256StoredKey = "sha-256-stored-key"
+
+	scramCredsSecretName = "scram-credentials" //nolint
 )
+
+func scramCredentialsSecretName(mdbName, username string) string {
+	return fmt.Sprintf("%s-%s-%s", mdbName, username, scramCredsSecretName)
+}
 
 // EnsureEnabler make sure that the agent password and keyfile exist in the secret and returns
 // the scram authEnabler configured with this values
@@ -77,48 +86,86 @@ func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, s
 	}, secretGetUpdateCreateDeleter.UpdateSecret(agentSecret)
 }
 
-func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
-	var usersWanted []automationconfig.MongoDBUser
-	for _, u := range mdb.Spec.Users {
-		passwordKey := u.PasswordSecretRef.Key
-		if passwordKey == "" {
-			passwordKey = defaultPasswordKey
-		}
-		password, err := secret.ReadKey(secretGetUpdateCreateDeleter, passwordKey, types.NamespacedName{Name: u.PasswordSecretRef.Name, Namespace: mdb.Namespace})
-		if err != nil {
-			return nil, err
-		}
-		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb, u, password)
-		if err != nil {
-			return nil, err
-		}
-		usersWanted = append(usersWanted, acUser)
+func ensureScramCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+	passwordKey := user.PasswordSecretRef.Key
+	if passwordKey == "" {
+		passwordKey = defaultPasswordKey
 	}
-	return usersWanted, nil
+	password, err := secret.ReadKey(c, passwordKey, types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace})
+	if err != nil {
+		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
+		if errors.IsNotFound(err) {
+			return readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+		}
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
+	}
+
+	needToGenerateNewCredentials, err := needToGenerateNewCredentials(c, user, mdb, password)
+	if err != nil {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
+	}
+
+	// there are no changes required, we can re-use the same credentials.
+	if !needToGenerateNewCredentials {
+		return readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+	}
+
+	// the password has changed, or we are generating it for the first time
+	sha1Creds, sha256Creds, err := generateScramShaCredentials(user, password)
+	if err != nil {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
+	}
+
+	// create or update our credentials secret for this user
+	if err := createScramCredentialsSecret(c, mdb.NamespacedName(), user.Name, sha1Creds, sha256Creds); err != nil {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
+	}
+
+	return sha1Creds, sha256Creds, nil
 }
 
-// convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
-// that can be added directly to the AutomationConfig.
-func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB, user mdbv1.MongoDBUser, password string) (automationconfig.MongoDBUser, error) {
-	acUser := automationconfig.MongoDBUser{
-		Username: user.Name,
-		Database: user.DB,
-	}
-	for _, role := range user.Roles {
-		acUser.Roles = append(acUser.Roles, automationconfig.Role{
-			Role:     role.Name,
-			Database: role.DB,
-		})
-	}
-	sha1Creds, sha256Creds, err := computeScram1AndScram256Credentials(secretGetUpdateCreateDeleter, mdb, acUser.Username, password)
+func needToGenerateNewCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB, password string) (bool, error) {
+	s, err := c.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdb.Name, user.Name), Namespace: mdb.Namespace})
 	if err != nil {
-		return automationconfig.MongoDBUser{}, err
+		// haven't generated credentials yet, so we are changing password
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
 	}
-	acUser.AuthenticationRestrictions = []string{}
-	acUser.Mechanisms = []string{}
-	acUser.ScramSha1Creds = &sha1Creds
-	acUser.ScramSha256Creds = &sha256Creds
-	return acUser, nil
+
+	existingSha1Salt := s.Data[sha1SaltKey]
+	existingSha256Salt := s.Data[sha256SaltKey]
+
+	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, existingSha1Salt, existingSha256Salt)
+	if err != nil {
+		return false, err
+	}
+
+	existingSha1Creds, existingSha256Creds, err := readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+	if err != nil {
+		return false, err
+	}
+
+	sha1CredsAreTheSame := reflect.DeepEqual(sha1Creds, existingSha1Creds)
+	sha256CredsAreTheSame := reflect.DeepEqual(sha256Creds, existingSha256Creds)
+
+	return !sha1CredsAreTheSame || !sha256CredsAreTheSame, nil
+}
+
+// generateSalts generates 2 different salts. The first is for the sha1 algorithm
+// the second is for sha256
+func generateSalts() ([]byte, []byte, error) {
+	sha1Salt, err := generateSalt(sha1.New)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sha256Salt, err := generateSalt(sha256.New)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sha1Salt, sha256Salt, nil
 }
 
 // generateSalt will create a salt for use with ComputeScramShaCreds based on the given hashConstructor.
@@ -132,74 +179,109 @@ func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
 	return []byte(salt), nil
 }
 
-// ensureSalts makes sure that salts exist to be used with credential generation for the given user.
-func ensureSalts(getUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB, username string) ([]byte, []byte, error) {
-	secretName := fmt.Sprintf("%s-%s-salts", mdb.Name, username)
-	var sha256Salt, sha1Salt []byte
-
-	s, err := getUpdateCreateDeleter.GetSecret(types.NamespacedName{Name: secretName, Namespace: mdb.Namespace})
-	if err == nil {
-		// the secret exists and is fine, let's return the salts contained within
-		if !secretHasExpired(s) {
-			sha1Salt, hasSha1Salt := s.Data[sha1SaltKey]
-			sha256Salt, hasSha256Salt := s.Data[sha256SaltKey]
-			if hasSha1Salt && hasSha256Salt {
-				return sha1Salt, sha256Salt, nil
-			}
-		}
-
-		// the secret has expired, let's delete it and re-generate a new salt + credentials
-		if err := getUpdateCreateDeleter.DeleteSecret(types.NamespacedName{Name: s.Name, Namespace: s.Namespace}); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, nil, err
-	}
-
-	sha256Salt, err = generateSalt(sha256.New)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sha1Salt, err = generateSalt(sha1.New)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	saltSecret := secret.Builder().
-		SetName(secretName).
-		SetNamespace(mdb.Namespace).
-		SetField(sha1SaltKey, string(sha1Salt)).
-		SetField(sha256SaltKey, string(sha256Salt)).
-		Build()
-
-	if err := getUpdateCreateDeleter.CreateSecret(saltSecret); err != nil {
-		return nil, nil, err
-	}
-
-	return sha1Salt, sha256Salt, nil
-}
-
-func secretHasExpired(s corev1.Secret) bool {
-	return s.CreationTimestamp.Add(expireTime).Before(time.Now())
-}
-
-// computeScram1AndScram256Credentials takes in a username and password, and generates SHA1 & SHA256 credentials
-// for that user. This should only be done if credentials do not already exist.
-func computeScram1AndScram256Credentials(getUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB, username, password string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
-	sha1Salt, sha256Salt, err := ensureSalts(getUpdateCreateDeleter, mdb, username)
+// generateScramShaCredentials creates a new set of credentials using randomly generated salts. The first returned element is
+// sha1 credentials, the second is sha256 credentials
+func generateScramShaCredentials(user mdbv1.MongoDBUser, password string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+	sha1Salt, sha256Salt, err := generateSalts()
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
-	scram256Creds, err := scramcredentials.ComputeScramSha256Creds(password, sha256Salt)
+
+	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, sha1Salt, sha256Salt)
 	if err != nil {
-		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha256 creds: %s", err)
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
+	return sha1Creds, sha256Creds, nil
+}
+
+// computeScramShaCredentials computes ScramSha 1 & 256 credentials using the provided salts
+func computeScramShaCredentials(username, password string, sha1Salt, sha256Salt []byte) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	scram1Creds, err := scramcredentials.ComputeScramSha1Creds(username, password, sha1Salt)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha1Creds: %s", err)
 	}
+
+	scram256Creds, err := scramcredentials.ComputeScramSha256Creds(password, sha256Salt)
+	if err != nil {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha256Creds: %s", err)
+	}
+
 	return scram1Creds, scram256Creds, nil
+}
+
+func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey types.NamespacedName, username string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
+	scramCredsSecret := secret.Builder().
+		SetName(scramCredentialsSecretName(mdbObjectKey.Name, username)).
+		SetNamespace(mdbObjectKey.Namespace).
+		SetField(sha1SaltKey, sha1Creds.Salt).
+		SetField(sha1StoredKey, sha1Creds.StoredKey).
+		SetField(sha1ServerKey, sha1Creds.ServerKey).
+		SetField(sha256SaltKey, sha256Creds.Salt).
+		SetField(sha256StoredKey, sha256Creds.StoredKey).
+		SetField(sha256ServerKey, sha256Creds.ServerKey).
+		Build()
+	return secretCreator.CreateSecret(scramCredsSecret)
+}
+
+func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.NamespacedName, username string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+	credentialsSecret, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdbObjectKey.Name, username), Namespace: mdbObjectKey.Namespace})
+	if err != nil {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
+	}
+
+	if !secret.HasAllKeys(credentialsSecret, sha1SaltKey, sha1ServerKey, sha1ServerKey, sha256SaltKey, sha256ServerKey, sha256StoredKey) {
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("credentials secret did not have all of the required keys")
+	}
+
+	scramSha1Creds := scramcredentials.ScramCreds{
+		IterationCount: 10000,
+		Salt:           string(credentialsSecret.Data[sha1SaltKey]),
+		ServerKey:      string(credentialsSecret.Data[sha1ServerKey]),
+		StoredKey:      string(credentialsSecret.Data[sha1StoredKey]),
+	}
+
+	scramSha256Creds := scramcredentials.ScramCreds{
+		IterationCount: 15000,
+		Salt:           string(credentialsSecret.Data[sha256SaltKey]),
+		ServerKey:      string(credentialsSecret.Data[sha256ServerKey]),
+		StoredKey:      string(credentialsSecret.Data[sha256StoredKey]),
+	}
+
+	return scramSha1Creds, scramSha256Creds, nil
+}
+
+func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
+	var usersWanted []automationconfig.MongoDBUser
+	for _, u := range mdb.Spec.Users {
+		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb, u)
+		if err != nil {
+			return nil, err
+		}
+		usersWanted = append(usersWanted, acUser)
+	}
+	return usersWanted, nil
+}
+
+// convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
+// that can be added directly to the AutomationConfig.
+func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB, user mdbv1.MongoDBUser) (automationconfig.MongoDBUser, error) {
+	acUser := automationconfig.MongoDBUser{
+		Username: user.Name,
+		Database: user.DB,
+	}
+	for _, role := range user.Roles {
+		acUser.Roles = append(acUser.Roles, automationconfig.Role{
+			Role:     role.Name,
+			Database: role.DB,
+		})
+	}
+	sha1Creds, sha256Creds, err := ensureScramCredentials(secretGetUpdateCreateDeleter, user, mdb)
+	if err != nil {
+		return automationconfig.MongoDBUser{}, err
+	}
+	acUser.AuthenticationRestrictions = []string{}
+	acUser.Mechanisms = []string{}
+	acUser.ScramSha1Creds = &sha1Creds
+	acUser.ScramSha256Creds = &sha256Creds
+	return acUser, nil
 }
