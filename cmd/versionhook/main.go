@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	fmt.Println("Calling pre-stop hook!")
+	fmt.Println("Calling version change post-start hook!")
 
 	if err := ensureEnvironmentVariables(logFilePathEnv, agentStatusFilePathEnv); err != nil {
 		zap.S().Fatal("Not all required environment variables are present: %s", err)
@@ -41,7 +41,15 @@ func main() {
 	logger.Info("Waiting for agent health status...")
 	health, err := waitForAgentHealthStatus()
 	if err != nil {
-		logger.Errorf("Error getting the agent health file: %s", err)
+		// If the pod has just restarted then the status file will not exist.
+		// In that case we return and let mongod start again.
+		if os.IsNotExist(err) {
+			logger.Info("Agent health status file not found, mongod will start")
+		} else {
+			logger.Errorf("Error getting the agent health file: %s", err)
+		}
+
+		return
 	}
 
 	shouldDelete, err := shouldDeletePod(health)
@@ -63,10 +71,10 @@ func main() {
 		// is killed by Kubernetes, bringing the new container image
 		// into play.
 		var quit = make(chan struct{})
-		logger.Info("A Pod killed itself, waiting...")
+		logger.Info("Pod killed itself, waiting...")
 		<-quit
 	} else {
-		logger.Info("Pod should not be deleted, container will restart...")
+		logger.Info("Pod should not be deleted, mongod started")
 	}
 }
 
