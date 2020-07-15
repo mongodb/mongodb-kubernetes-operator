@@ -7,6 +7,8 @@ import (
 	"hash"
 	"reflect"
 
+	"go.uber.org/zap"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -23,11 +25,11 @@ const (
 	sha1SaltKey   = "sha1-salt"
 	sha256SaltKey = "sha256-salt"
 
-	sha1ServerKey   = "sha-1-server-key"
-	sha256ServerKey = "sha-256-server-key"
+	sha1ServerKeyKey   = "sha-1-server-key"
+	sha256ServerKeyKey = "sha-256-server-key"
 
-	sha1StoredKey   = "sha-1-stored-key"
-	sha256StoredKey = "sha-256-stored-key"
+	sha1StoredKeyKey   = "sha-1-stored-key"
+	sha256StoredKeyKey = "sha-256-stored-key"
 
 	scramCredsSecretName = "scram-credentials" //nolint
 )
@@ -86,28 +88,33 @@ func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, s
 	}, secretGetUpdateCreateDeleter.UpdateSecret(agentSecret)
 }
 
-func ensureScramCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	passwordKey := user.PasswordSecretRef.Key
 	if passwordKey == "" {
 		passwordKey = defaultPasswordKey
 	}
-	password, err := secret.ReadKey(c, passwordKey, types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace})
+	password, err := secret.ReadKey(getUpdateCreator, passwordKey, types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace})
 	if err != nil {
 		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
 		if errors.IsNotFound(err) {
-			return readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+			zap.S().Debugf("password secret was not found,reading from credentials from secret/%s", scramCredentialsSecretName(mdb.Name, user.Name))
+			return readExistingCredentials(getUpdateCreator, mdb.NamespacedName(), user.Name)
 		}
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
-	needToGenerateNewCredentials, err := needToGenerateNewCredentials(c, user, mdb, password)
+	// we should only need to generate new credentials in two situations.
+	// 1. We are creating the credentials for the first time
+	// 2. We are changing the password
+	needToGenerateNewCredentials, err := needToGenerateNewCredentials(getUpdateCreator, user, mdb, password)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
 	// there are no changes required, we can re-use the same credentials.
 	if !needToGenerateNewCredentials {
-		return readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+		zap.S().Debugf("Credentials have not changed, using credentials stored in: secret/%s", scramCredentialsSecretName(mdb.Name, user.Name))
+		return readExistingCredentials(getUpdateCreator, mdb.NamespacedName(), user.Name)
 	}
 
 	// the password has changed, or we are generating it for the first time
@@ -117,15 +124,17 @@ func ensureScramCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.MongoDBU
 	}
 
 	// create or update our credentials secret for this user
-	if err := createScramCredentialsSecret(c, mdb.NamespacedName(), user.Name, sha1Creds, sha256Creds); err != nil {
+	zap.S().Debugf("Generating new credentials and storing in secret/%s", scramCredentialsSecretName(mdb.Name, user.Name))
+	if err := createScramCredentialsSecret(getUpdateCreator, mdb.NamespacedName(), user.Name, sha1Creds, sha256Creds); err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
+	zap.S().Debugf("Successfully generated SCRAM credentials")
 	return sha1Creds, sha256Creds, nil
 }
 
-func needToGenerateNewCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB, password string) (bool, error) {
-	s, err := c.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdb.Name, user.Name), Namespace: mdb.Namespace})
+func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB, password string) (bool, error) {
+	s, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdb.Name, user.Name), Namespace: mdb.Namespace})
 	if err != nil {
 		// haven't generated credentials yet, so we are changing password
 		if errors.IsNotFound(err) {
@@ -142,7 +151,7 @@ func needToGenerateNewCredentials(c secret.GetUpdateCreateDeleter, user mdbv1.Mo
 		return false, err
 	}
 
-	existingSha1Creds, existingSha256Creds, err := readExistingCredentials(c, mdb.NamespacedName(), user.Name)
+	existingSha1Creds, existingSha256Creds, err := readExistingCredentials(secretGetter, mdb.NamespacedName(), user.Name)
 	if err != nil {
 		return false, err
 	}
@@ -214,11 +223,11 @@ func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey typ
 		SetName(scramCredentialsSecretName(mdbObjectKey.Name, username)).
 		SetNamespace(mdbObjectKey.Namespace).
 		SetField(sha1SaltKey, sha1Creds.Salt).
-		SetField(sha1StoredKey, sha1Creds.StoredKey).
-		SetField(sha1ServerKey, sha1Creds.ServerKey).
+		SetField(sha1StoredKeyKey, sha1Creds.StoredKey).
+		SetField(sha1ServerKeyKey, sha1Creds.ServerKey).
 		SetField(sha256SaltKey, sha256Creds.Salt).
-		SetField(sha256StoredKey, sha256Creds.StoredKey).
-		SetField(sha256ServerKey, sha256Creds.ServerKey).
+		SetField(sha256StoredKeyKey, sha256Creds.StoredKey).
+		SetField(sha256ServerKeyKey, sha256Creds.ServerKey).
 		Build()
 	return secretCreator.CreateSecret(scramCredsSecret)
 }
@@ -229,22 +238,22 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
-	if !secret.HasAllKeys(credentialsSecret, sha1SaltKey, sha1ServerKey, sha1ServerKey, sha256SaltKey, sha256ServerKey, sha256StoredKey) {
+	if !secret.HasAllKeys(credentialsSecret, sha1SaltKey, sha1ServerKeyKey, sha1ServerKeyKey, sha256SaltKey, sha256ServerKeyKey, sha256StoredKeyKey) {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("credentials secret did not have all of the required keys")
 	}
 
 	scramSha1Creds := scramcredentials.ScramCreds{
 		IterationCount: 10000,
 		Salt:           string(credentialsSecret.Data[sha1SaltKey]),
-		ServerKey:      string(credentialsSecret.Data[sha1ServerKey]),
-		StoredKey:      string(credentialsSecret.Data[sha1StoredKey]),
+		ServerKey:      string(credentialsSecret.Data[sha1ServerKeyKey]),
+		StoredKey:      string(credentialsSecret.Data[sha1StoredKeyKey]),
 	}
 
 	scramSha256Creds := scramcredentials.ScramCreds{
 		IterationCount: 15000,
 		Salt:           string(credentialsSecret.Data[sha256SaltKey]),
-		ServerKey:      string(credentialsSecret.Data[sha256ServerKey]),
-		StoredKey:      string(credentialsSecret.Data[sha256StoredKey]),
+		ServerKey:      string(credentialsSecret.Data[sha256ServerKeyKey]),
+		StoredKey:      string(credentialsSecret.Data[sha256StoredKeyKey]),
 	}
 
 	return scramSha1Creds, scramSha256Creds, nil
