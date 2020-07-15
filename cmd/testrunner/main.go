@@ -219,7 +219,7 @@ func withEnvVar(key, val string) func(obj runtime.Object) {
 	}
 }
 
-// withVersionUpgradeHookImage sets the value of the POD_DELETER_IMAGE
+// withVersionUpgradeHookImage sets the value of the VERSION_UPGRADE_HOOK_IMAGE
 // EnvVar from first container to `image`. The EnvVar is updated
 // if it exists. Or appended if there is no EnvVar with this `Name`.
 func withVersionUpgradeHookImage(image string) func(runtime.Object) {
