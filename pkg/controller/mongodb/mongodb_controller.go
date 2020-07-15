@@ -564,7 +564,7 @@ mongod -f /data/automation-mongod.conf ;
 			},
 			corev1.EnvVar{
 				Name:  versionUpgradeHookLogFilePathEnv,
-				Value: "/hooks/pod-deleter.log",
+				Value: "/hooks/version-upgrade-hook.log",
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
