@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +41,15 @@ type MongoDBSpec struct {
 	// Security configures security features, such as TLS, and authentication settings for a deployment
 	// +optional
 	Security Security `json:"security"`
+
+	// +optional
+	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulset,omitempty"`
+}
+
+// StatefulSetConfiguration holds the optional custom StatefulSet
+// that should be merged into the operator created one.
+type StatefulSetConfiguration struct {
+	Spec appsv1.StatefulSetSpec `json:"spec"`
 }
 
 type Security struct {

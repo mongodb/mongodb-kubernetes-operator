@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/kylelemons/godebug/pretty"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -243,6 +244,8 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 // is currently ready.
 func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
 	stsFunc := buildStatefulSetModificationFunction(mdb)
+	fmt.Fprintf(os.Stderr, "\n\nExisting STS Spec: %+v\n\n", existingStatefulSet.Spec)
+	spec1 := existingStatefulSet.Spec
 	stsCopy := existingStatefulSet.DeepCopyObject()
 	stsFunc(existingStatefulSet)
 	stsCopyBytes, err := json.Marshal(stsCopy)
@@ -255,6 +258,9 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 		return false, err
 	}
 
+	fmt.Fprintf(os.Stderr, "\n\nModified STS Spec: %+v\n\n", existingStatefulSet.Spec)
+
+	fmt.Fprintf(os.Stderr, "\n\nDifferences: %+v", pretty.Compare(spec1, existingStatefulSet.Spec))
 	//comparison is done with bytes instead of reflect.DeepEqual as there are
 	//some issues with nil/empty maps not being compared correctly otherwise
 	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
@@ -293,13 +299,17 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
 	set := appsv1.StatefulSet{}
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
+
+	newMdb := &mdbv1.MongoDB{}
+	_ = r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb)
+	fmt.Fprintf(os.Stderr, "\n\nSPEC: %+v\n\n", mdb.Spec.StatefulSetConfiguration.Spec)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	fmt.Println("resource: ", mdb)
 	buildStatefulSetModificationFunction(mdb)(&set)
+	fmt.Fprintf(os.Stderr, "\n\nSPEC: %+v\n\n", set.Spec)
 	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
@@ -575,6 +585,7 @@ mongod -f /data/automation-mongod.conf ;
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modification {
+
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -627,6 +638,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				buildScramPodSpecModification(mdb),
 			),
 		),
+		statefulset.WithStatefulSetSpec(mdb.Spec.StatefulSetConfiguration.Spec),
 	)
 }
 

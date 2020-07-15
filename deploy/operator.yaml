@@ -15,7 +15,7 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          image: quay.io/mongodb/mongodb-kubernetes-operator:0.0.7
+          image: localhost:5000/mongodb-kubernetes-operator
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
