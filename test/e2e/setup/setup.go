@@ -89,6 +89,7 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 	return f.Global.Client.Create(context.TODO(), &certKeySecret, &f.CleanupOptions{TestContext: ctx})
 }
 
+// GeneratePasswordForUser will create a secret with a password for the given user
 func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
 	if passwordKey == "" {

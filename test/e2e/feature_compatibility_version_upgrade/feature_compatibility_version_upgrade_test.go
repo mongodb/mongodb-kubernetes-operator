@@ -58,5 +58,5 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 		},
 	))
 
-	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.2", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.2", 3))
+	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.2", mongodbtests.HasFeatureCompatibilityVersion(&mdb, "4.2", 3, user.Name, password))
 }

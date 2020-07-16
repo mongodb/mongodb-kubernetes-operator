@@ -23,7 +23,6 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
-
 	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)

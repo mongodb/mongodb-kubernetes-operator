@@ -39,22 +39,22 @@ func scramCredentialsSecretName(mdbName, username string) string {
 	return fmt.Sprintf("%s-%s-%s", mdbName, username, scramCredsSecretName)
 }
 
-// EnsureEnabler make sure that the agent password and keyfile exist in the secret and returns
-// the scram authEnabler configured with this values
-func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.AuthEnabler, error) {
+// EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
+// an automation config modification function with these values
+func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
-		return authEnabler{}, fmt.Errorf("error generating password: %s", err)
+		return automationconfig.NOOP(), fmt.Errorf("error generating password: %s", err)
 	}
 
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
-		return authEnabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
+		return automationconfig.NOOP(), fmt.Errorf("error generating keyfile contents: %s", err)
 	}
 
 	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter, mdb)
 	if err != nil {
-		return authEnabler{}, err
+		return automationconfig.NOOP(), err
 	}
 	agentSecret, err := secretGetUpdateCreateDeleter.GetSecret(secretNsName)
 	if err != nil {
@@ -65,13 +65,10 @@ func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, s
 				SetField(AgentPasswordKey, generatedPassword).
 				SetField(AgentKeyfileKey, generatedContents).
 				Build()
-			return authEnabler{
-				agentPassword: generatedPassword,
-				agentKeyFile:  generatedContents,
-				users:         desiredUsers,
-			}, secretGetUpdateCreateDeleter.CreateSecret(s)
+			return automationConfigModification(generatedPassword, generatedContents, desiredUsers), secretGetUpdateCreateDeleter.CreateSecret(s)
 		}
-		return authEnabler{}, err
+
+		return automationconfig.NOOP(), err
 	}
 
 	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
@@ -82,11 +79,7 @@ func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, s
 		agentSecret.Data[AgentKeyfileKey] = []byte(generatedContents)
 	}
 
-	return authEnabler{
-		agentPassword: string(agentSecret.Data[AgentPasswordKey]),
-		agentKeyFile:  string(agentSecret.Data[AgentKeyfileKey]),
-		users:         desiredUsers,
-	}, secretGetUpdateCreateDeleter.UpdateSecret(agentSecret)
+	return automationConfigModification(string(agentSecret.Data[AgentPasswordKey]), string(agentSecret.Data[AgentKeyfileKey]), desiredUsers), secret.CreateOrUpdate(secretGetUpdateCreateDeleter, agentSecret)
 }
 
 // ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials

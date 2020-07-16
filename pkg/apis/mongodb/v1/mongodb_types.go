@@ -47,7 +47,6 @@ type MongoDBSpec struct {
 }
 
 type MongoDBUser struct {
-
 	// Name is the username of the user
 	Name string `json:"name"`
 
@@ -160,6 +159,8 @@ func (m MongoDB) MongoURI() string {
 	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
 }
 
+// TODO: this is a temporary function which will be used in the e2e tests
+// which will be removed in the following PR to clean up our mongo client testing
 func (m MongoDB) SCRAMMongoURI(username, password string) string {
 	members := make([]string, m.Spec.Members)
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable

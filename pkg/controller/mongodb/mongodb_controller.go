@@ -343,7 +343,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, enabler automationconfig.AuthEnabler) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
 	builder := automationconfig.NewBuilder().
@@ -355,25 +355,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
-		SetAuthEnabler(enabler).
+		AddModifications(modifications...).
 		SetToolsVersion(dummyToolsVersionConfig())
-
-	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
-	// The agent needs these to be in place before the config is updated.
-	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-	if mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb) {
-		mode := automationconfig.TLSModeRequired
-		if mdb.Spec.Security.TLS.Optional {
-			// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
-			mode = automationconfig.TLSModePreferred
-		}
-
-		builder.SetTLS(
-			tlsCAMountPath+tlsCACertName,
-			tlsServerMountPath+tlsServerFileName,
-			mode,
-		)
-	}
 
 	newAc, err := builder.Build()
 	if err != nil {
@@ -452,17 +435,19 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	enabler, err := scram.EnsureEnabler(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
+	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
+
+	tlsModification := getTLSConfigModification(mdb)
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, enabler)
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}

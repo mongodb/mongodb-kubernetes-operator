@@ -198,13 +198,13 @@ func TestEnsureEnabler(t *testing.T) {
 	t.Run("Should fail if there is no password present for the user", func(t *testing.T) {
 		mdb, _ := buildMongoDBAndUser("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureEnabler(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
 		assert.Error(t, err)
 	})
 	t.Run("Agent Credentials Secret should be created if there are no users", func(t *testing.T) {
 		mdb := buildMongoDB("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureEnabler(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
 		assert.NoError(t, err)
 
 		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
@@ -225,7 +225,7 @@ func TestEnsureEnabler(t *testing.T) {
 			Build()
 
 		s := newMockedSecretGetUpdateCreateDeleter(agentPasswordSecret)
-		_, err := EnsureEnabler(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
 		assert.NoError(t, err)
 
 		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
@@ -239,7 +239,7 @@ func TestEnsureEnabler(t *testing.T) {
 	t.Run("Agent Credentials Secret should be created", func(t *testing.T) {
 		mdb := buildMongoDB("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureEnabler(s, mdb.NamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.NamespacedName(), mdb)
 		assert.NoError(t, err)
 	})
 }
