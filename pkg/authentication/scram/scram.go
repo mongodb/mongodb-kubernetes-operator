@@ -33,7 +33,7 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 				SetField(AgentPasswordKey, generatedPassword).
 				SetField(AgentKeyfileKey, generatedContents).
 				Build()
-			return automationConfigModification(generatedPassword, generatedContents), getUpdateCreator.CreateSecret(s)
+			return automationConfigModification(generatedPassword, generatedContents, []automationconfig.MongoDBUser{}), getUpdateCreator.CreateSecret(s)
 		}
 
 		return automationconfig.NOOP(), err
@@ -50,5 +50,6 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 	return automationConfigModification(
 		string(agentSecret.Data[AgentPasswordKey]),
 		string(agentSecret.Data[AgentKeyfileKey]),
+		[]automationconfig.MongoDBUser{},
 	), getUpdateCreator.UpdateSecret(agentSecret)
 }

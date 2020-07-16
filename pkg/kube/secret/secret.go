@@ -98,3 +98,14 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) err
 	}
 	return getUpdateCreator.UpdateSecret(newSecret)
 }
+
+// HasAllKeys returns true if the provided secret contains an element for every
+// key provided. False if a single element is absent
+func HasAllKeys(secret corev1.Secret, keys ...string) bool {
+	for _, key := range keys {
+		if _, ok := secret.Data[key]; !ok {
+			return false
+		}
+	}
+	return true
+}

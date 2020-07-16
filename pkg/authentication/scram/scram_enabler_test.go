@@ -8,7 +8,7 @@ import (
 )
 
 func TestScramAutomationConfig(t *testing.T) {
-	modificationFunc := automationConfigModification("password", "keyfilecontents")
+	modificationFunc := automationConfigModification("password", "keyfilecontents", []automationconfig.MongoDBUser{})
 	config := automationconfig.AutomationConfig{}
 
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
