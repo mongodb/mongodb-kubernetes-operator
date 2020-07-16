@@ -73,7 +73,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 }
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
-// THe config is only updated after the certs and keys have been rolled out to all pods.
+// The config is only updated after the certs and keys have been rolled out to all pods.
 // The agent needs these to be in place before the config is updated.
 // Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
 func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
