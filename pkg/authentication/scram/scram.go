@@ -12,16 +12,16 @@ import (
 )
 
 // EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
-// the scram authEnabler configured with this values
-func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (automationconfig.AuthEnabler, error) {
+// an automation config modification function with these values
+func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName) (automationconfig.Modification, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
-		return authEnabler{}, fmt.Errorf("error generating password: %s", err)
+		return automationconfig.NOOP(), fmt.Errorf("error generating password: %s", err)
 	}
 
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
-		return authEnabler{}, fmt.Errorf("error generating keyfile contents: %s", err)
+		return automationconfig.NOOP(), fmt.Errorf("error generating keyfile contents: %s", err)
 	}
 
 	agentSecret, err := getUpdateCreator.GetSecret(secretNsName)
@@ -33,12 +33,10 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 				SetField(AgentPasswordKey, generatedPassword).
 				SetField(AgentKeyfileKey, generatedContents).
 				Build()
-			return authEnabler{
-				agentPassword: generatedPassword,
-				agentKeyFile:  generatedContents,
-			}, getUpdateCreator.CreateSecret(s)
+			return automationConfigModification(generatedPassword, generatedContents, []automationconfig.MongoDBUser{}), getUpdateCreator.CreateSecret(s)
 		}
-		return authEnabler{}, err
+
+		return automationconfig.NOOP(), err
 	}
 
 	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
@@ -49,8 +47,9 @@ func EnsureAgentSecret(getUpdateCreator secret.GetUpdateCreator, secretNsName ty
 		agentSecret.Data[AgentKeyfileKey] = []byte(generatedContents)
 	}
 
-	return authEnabler{
-		agentPassword: string(agentSecret.Data[AgentPasswordKey]),
-		agentKeyFile:  string(agentSecret.Data[AgentKeyfileKey]),
-	}, getUpdateCreator.UpdateSecret(agentSecret)
+	return automationConfigModification(
+		string(agentSecret.Data[AgentPasswordKey]),
+		string(agentSecret.Data[AgentKeyfileKey]),
+		[]automationconfig.MongoDBUser{},
+	), getUpdateCreator.UpdateSecret(agentSecret)
 }

@@ -14,16 +14,11 @@ const (
 	AgentKeyfileKey                       = "keyfile"
 )
 
-type authEnabler struct {
-	agentPassword string
-	agentKeyFile  string
-	users         []automationconfig.MongoDBUser
-}
-
-func (s authEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	enableAgentAuthentication(&auth, s.agentPassword, s.agentKeyFile, s.users)
-	enableDeploymentMechanisms(&auth)
-	return auth
+func automationConfigModification(agentPassword, agentKeyFile string, users []automationconfig.MongoDBUser) automationconfig.Modification {
+	return func(config *automationconfig.AutomationConfig) {
+		enableAgentAuthentication(&config.Auth, agentPassword, agentKeyFile, users)
+		enableDeploymentMechanisms(&config.Auth)
+	}
 }
 
 func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agentKeyFileContents string, users []automationconfig.MongoDBUser) {

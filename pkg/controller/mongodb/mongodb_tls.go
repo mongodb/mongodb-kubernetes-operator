@@ -3,6 +3,8 @@ package mongodb
 import (
 	"fmt"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
@@ -68,6 +70,39 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 	}
 
 	return true, nil
+}
+
+// getTLSConfigModification creates a modification function which enables TLS in the automation config.
+// THe config is only updated after the certs and keys have been rolled out to all pods.
+// The agent needs these to be in place before the config is updated.
+// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+	if !(mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb)) {
+		return automationconfig.NOOP()
+	}
+
+	caCertificatePath := tlsCAMountPath + tlsCACertName
+	certificateKeyPath := tlsServerMountPath + tlsServerFileName
+
+	mode := automationconfig.TLSModeRequired
+	if mdb.Spec.Security.TLS.Optional {
+		// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
+		mode = automationconfig.TLSModePreferred
+	}
+
+	return func(config *automationconfig.AutomationConfig) {
+		// Configure CA certificate for agent
+		config.TLS.CAFilePath = caCertificatePath
+
+		for i, _ := range config.Processes {
+			config.Processes[i].Args26.Net.TLS = automationconfig.MongoDBTLS{
+				Mode:                               mode,
+				CAFile:                             caCertificatePath,
+				PEMKeyFile:                         certificateKeyPath,
+				AllowConnectionsWithoutCertificate: true,
+			}
+		}
+	}
 }
 
 // hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
