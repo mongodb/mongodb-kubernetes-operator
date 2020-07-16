@@ -29,6 +29,16 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
+const (
+	testSha1Salt      = "zEt5uDSnr/l9paFPsQzhAA=="
+	testSha1ServerKey = "LEm/fv4gM0Y/XizbUoz/hULRnX0="
+	testSha1StoredKey = "0HzXK7NtK40HXVn6zOqrNKVl+MY="
+
+	testSha256Salt      = "qRr+7VgicfVcFjwZhu8u5JSE5ZeVBUP1A+lM4A=="
+	testSha256ServerKey = "C9FIUhP6mqwe/2SJIheGBpOIqlxuq9Nh3fs+t+R/3zk="
+	testSha256StoredKey = "7M7dUSY0sHTOXdNnoPSVbXg9Flon1b3t8MINGI8Tst0="
+)
+
 type secretGetter struct {
 	secrets map[client.ObjectKey]corev1.Secret
 }
@@ -135,42 +145,23 @@ func TestEnsureScramCredentials(t *testing.T) {
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb)
 		assert.NoError(t, err)
-		assert.NotEqual(t, "nxBSYyZZIBZxStyt", scram1Creds.Salt)
+		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
 		assert.NotEmpty(t, scram1Creds.Salt)
-		assert.NotEqual(t, "MyZ6M67oK1EmwXH0wrlMm2oGF/A=", scram1Creds.StoredKey)
+		assert.NotEqual(t, testSha1StoredKey, scram1Creds.StoredKey)
 		assert.NotEmpty(t, scram1Creds.StoredKey)
-		assert.NotEqual(t, "0o75SaMBt7uMGkjXddfhMEMbfbs=", scram1Creds.ServerKey)
+		assert.NotEqual(t, testSha1StoredKey, scram1Creds.ServerKey)
 		assert.NotEmpty(t, scram1Creds.ServerKey)
 		assert.Equal(t, 10000, scram1Creds.IterationCount)
 
-		assert.NotEqual(t, "lE--XcnhjEWM5ZjeVK1CoAN-F7_s", scram256Creds.Salt)
+		assert.NotEqual(t, testSha256Salt, scram256Creds.Salt)
 		assert.NotEmpty(t, scram256Creds.Salt)
-		assert.NotEqual(t, "bsRzKAsJ8/tCdAN5VNWQmBtuMo/EKwsVqXfPkADgc/k=", scram256Creds.StoredKey)
+		assert.NotEqual(t, testSha256StoredKey, scram256Creds.StoredKey)
 		assert.NotEmpty(t, scram256Creds.StoredKey)
-		assert.NotEqual(t, "HcvqR84CnQIM5JafNtAG9XJMHIB1I5DZs1Y63Pd84Tk=", scram256Creds.ServerKey)
+		assert.NotEqual(t, testSha256ServerKey, scram256Creds.ServerKey)
 		assert.NotEmpty(t, scram256Creds.ServerKey)
 		assert.Equal(t, 15000, scram256Creds.IterationCount)
 	})
 
-	t.Run("Changing password results in different credentials being returned", func(t *testing.T) {
-		differentPasswordSecret := secret.Builder().
-			SetName(user.PasswordSecretRef.Name).
-			SetNamespace(mdb.Namespace).
-			SetField(user.PasswordSecretRef.Key, "TDg_DESiScDrJV6").
-			Build()
-		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb)
-		assert.NoError(t, err)
-		assert.NotEqual(t, "UzNjdWsyUm51L01sYmV3enhybW1WQT09Cg==", scram1Creds.Salt)
-		assert.NotEqual(t, "Bs4sePK0cdMy6n", scram1Creds.StoredKey)
-		assert.NotEqual(t, "eP6_p76ql_h8iiH", scram1Creds.ServerKey)
-		assert.Equal(t, 10000, scram1Creds.IterationCount)
-
-		assert.NotEqual(t, "lE--XcnhjEWM5ZjeVK1CoAN-F7_s", scram256Creds.Salt)
-		assert.NotEqual(t, "sMEAesMtaSYyaD7", scram256Creds.StoredKey)
-		assert.NotEqual(t, "IgXDX8uTN2JzN510NFlq", scram256Creds.ServerKey)
-		assert.Equal(t, 15000, scram256Creds.IterationCount)
-	})
 }
 
 func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
@@ -311,14 +302,14 @@ func buildMongoDBAndUser(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 }
 
 func assertScramCredsCredentialsValidity(t *testing.T, scram1Creds, scram256Creds scramcredentials.ScramCreds) {
-	assert.Equal(t, "nxBSYyZZIBZxStyt", scram1Creds.Salt)
-	assert.Equal(t, "MyZ6M67oK1EmwXH0wrlMm2oGF/A=", scram1Creds.StoredKey)
-	assert.Equal(t, "0o75SaMBt7uMGkjXddfhMEMbfbs=", scram1Creds.ServerKey)
+	assert.Equal(t, testSha1Salt, scram1Creds.Salt)
+	assert.Equal(t, testSha1StoredKey, scram1Creds.StoredKey)
+	assert.Equal(t, testSha1ServerKey, scram1Creds.ServerKey)
 	assert.Equal(t, 10000, scram1Creds.IterationCount)
 
-	assert.Equal(t, "lE--XcnhjEWM5ZjeVK1CoAN-F7_s", scram256Creds.Salt)
-	assert.Equal(t, "bsRzKAsJ8/tCdAN5VNWQmBtuMo/EKwsVqXfPkADgc/k=", scram256Creds.StoredKey)
-	assert.Equal(t, "HcvqR84CnQIM5JafNtAG9XJMHIB1I5DZs1Y63Pd84Tk=", scram256Creds.ServerKey)
+	assert.Equal(t, testSha256Salt, scram256Creds.Salt)
+	assert.Equal(t, testSha256StoredKey, scram256Creds.StoredKey)
+	assert.Equal(t, testSha256ServerKey, scram256Creds.ServerKey)
 	assert.Equal(t, 15000, scram256Creds.IterationCount)
 }
 
@@ -326,12 +317,12 @@ func validScramCredentialsSecret(objectKey types.NamespacedName, username string
 	return secret.Builder(). // valid secret
 					SetName(scramCredentialsSecretName(objectKey.Name, username)).
 					SetNamespace(objectKey.Namespace).
-					SetField(sha1SaltKey, "nxBSYyZZIBZxStyt").
-					SetField(sha1StoredKeyKey, "MyZ6M67oK1EmwXH0wrlMm2oGF/A=").
-					SetField(sha1ServerKeyKey, "0o75SaMBt7uMGkjXddfhMEMbfbs=").
-					SetField(sha256SaltKey, "lE--XcnhjEWM5ZjeVK1CoAN-F7_s").
-					SetField(sha256StoredKeyKey, "bsRzKAsJ8/tCdAN5VNWQmBtuMo/EKwsVqXfPkADgc/k=").
-					SetField(sha256ServerKeyKey, "HcvqR84CnQIM5JafNtAG9XJMHIB1I5DZs1Y63Pd84Tk=").
+					SetField(sha1SaltKey, testSha1Salt).
+					SetField(sha1StoredKeyKey, testSha1StoredKey).
+					SetField(sha1ServerKeyKey, testSha1ServerKey).
+					SetField(sha256SaltKey, testSha256Salt).
+					SetField(sha256StoredKeyKey, testSha256StoredKey).
+					SetField(sha256ServerKeyKey, testSha256ServerKey).
 					Build()
 }
 
