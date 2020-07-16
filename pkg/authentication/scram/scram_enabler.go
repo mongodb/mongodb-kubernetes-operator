@@ -14,15 +14,11 @@ const (
 	AgentKeyfileKey                       = "keyfile"
 )
 
-type authEnabler struct {
-	agentPassword string
-	agentKeyFile  string
-}
-
-func (s authEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	enableAgentAuthentication(&auth, s.agentPassword, s.agentKeyFile)
-	enableDeploymentMechanisms(&auth)
-	return auth
+func automationConfigModification(agentPassword, agentKeyFile string) automationconfig.Modification {
+	return func(config *automationconfig.AutomationConfig) {
+		enableAgentAuthentication(&config.Auth, agentPassword, agentKeyFile)
+		enableDeploymentMechanisms(&config.Auth)
+	}
 }
 
 func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agentKeyFileContents string) {

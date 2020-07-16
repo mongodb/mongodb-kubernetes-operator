@@ -14,29 +14,23 @@ const (
 	scramShaOption = "SCRAM"
 )
 
-// noOpAuthEnabler performs no changes, leaving authentication settings untouched
-type noOpAuthEnabler struct{}
-
-func (n noOpAuthEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	return auth
-}
-
-// getAuthenticationEnabler returns a type that is able to configure the automation config's
-// authentication settings
-func getAuthenticationEnabler(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) (automationconfig.AuthEnabler, error) {
+// getAuthConfigModification returns a modification function that
+// configures the automation config's authentication settings
+func getAuthConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
 	if !mdb.Spec.Security.Authentication.Enabled {
-		return noOpAuthEnabler{}, nil
+		return automationconfig.NOOP(), nil
 	}
 
 	// currently, just enable auth if it's in the list as there is only one option
 	if contains.AuthMode(mdb.Spec.Security.Authentication.Modes, scramShaOption) {
 		enabler, err := scram.EnsureAgentSecret(getUpdateCreator, mdb.ScramCredentialsNamespacedName())
 		if err != nil {
-			return noOpAuthEnabler{}, err
+			return automationconfig.NOOP(), err
 		}
 		return enabler, nil
 	}
-	return noOpAuthEnabler{}, nil
+
+	return automationconfig.NOOP(), nil
 }
 
 // buildScramPodSpecModification will add the keyfile volume to the podTemplateSpec
