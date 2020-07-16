@@ -228,3 +228,19 @@ func TestTLSIsEnabled(t *testing.T) {
 		SetTLS("/path", "/path", TLSModeRequired)
 	assert.True(t, builder.isTLSEnabled())
 }
+
+func TestModifications(t *testing.T) {
+	incrementVersion := func(config *AutomationConfig) {
+		config.Version += 1
+	}
+
+	ac, err := NewBuilder().
+		AddModification(incrementVersion).
+		AddModification(incrementVersion).
+		AddModification(incrementVersion).
+		AddModification(NOOP()).
+		Build()
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, ac.Version)
+}

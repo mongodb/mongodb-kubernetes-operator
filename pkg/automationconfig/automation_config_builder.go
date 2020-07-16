@@ -17,6 +17,12 @@ type AuthEnabler interface {
 	EnableAuth(auth Auth) Auth
 }
 
+type Modification func(*AutomationConfig)
+
+func NOOP() Modification {
+	return func(config *AutomationConfig) {}
+}
+
 type Builder struct {
 	enabler           AuthEnabler
 	processes         []Process
@@ -32,15 +38,17 @@ type Builder struct {
 	tlsCertAndKeyFile string
 	tlsMode           TLSMode
 	// MongoDB installable versions
-	versions     []MongoDbVersionConfig
-	toolsVersion ToolsVersion
+	versions      []MongoDbVersionConfig
+	toolsVersion  ToolsVersion
+	modifications []Modification
 }
 
 func NewBuilder() *Builder {
 	return &Builder{
-		processes:   []Process{},
-		replicaSets: []ReplicaSet{},
-		versions:    []MongoDbVersionConfig{},
+		processes:     []Process{},
+		replicaSets:   []ReplicaSet{},
+		versions:      []MongoDbVersionConfig{},
+		modifications: []Modification{},
 	}
 }
 
@@ -109,6 +117,12 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 	b.previousAC = previousAC
 	return b
 }
+
+func (b *Builder) AddModification(mod Modification) *Builder {
+	b.modifications = append(b.modifications, mod)
+	return b
+}
+
 func (b *Builder) Build() (AutomationConfig, error) {
 	hostnames := make([]string, b.members)
 	for i := 0; i < b.members; i++ {
@@ -160,6 +174,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	// Agent needs to trust the certificate presented by the server
 	if b.isTLSEnabled() {
 		currentAc.TLS.CAFilePath = b.tlsCAFile
+	}
+
+	// Apply all modifications
+	for _, modification := range b.modifications {
+		modification(&currentAc)
 	}
 
 	// Here we compare the bytes of the two automationconfigs,
