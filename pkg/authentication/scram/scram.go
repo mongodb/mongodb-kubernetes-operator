@@ -97,7 +97,7 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user mdbv1
 	if err != nil {
 		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
 		if errors.IsNotFound(err) {
-			zap.S().Debugf("password secret was not found,reading from credentials from secret/%s", scramCredentialsSecretName(mdb.Name, user.Name))
+			zap.S().Debugf("password secret was not found, reading from credentials from secret/%s", scramCredentialsSecretName(mdb.Name, user.Name))
 			return readExistingCredentials(getUpdateCreator, mdb.NamespacedName(), user.Name)
 		}
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
@@ -138,6 +138,7 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDB
 	if err != nil {
 		// haven't generated credentials yet, so we are changing password
 		if errors.IsNotFound(err) {
+			zap.S().Debugf("No existing credentials found, generating new credentials")
 			return true, nil
 		}
 		return false, err
@@ -146,7 +147,7 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDB
 	existingSha1Salt := s.Data[sha1SaltKey]
 	existingSha256Salt := s.Data[sha256SaltKey]
 
-	// TODO: the value written to the secret is not in the form that can be used by computeScramShaCredentials
+	// regenerate credentials using the existing salts in order to see if the password has changed.
 	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, existingSha1Salt, existingSha256Salt)
 	if err != nil {
 		return false, err
