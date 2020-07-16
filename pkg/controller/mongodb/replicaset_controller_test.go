@@ -459,8 +459,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 			mdb,
 			versionConfig,
 			automationconfig.AutomationConfig{},
-			noOpAuthEnabler{},
-			tlsAutomationConfigModification(mdb),
+			getTLSConfigModification(mdb),
 		)
 		assert.NoError(t, err)
 		return ac

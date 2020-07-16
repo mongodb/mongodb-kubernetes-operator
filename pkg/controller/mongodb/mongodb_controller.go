@@ -439,7 +439,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, err
 	}
 
-	tlsModification := tlsAutomationConfigModification(mdb)
+	tlsModification := getTLSConfigModification(mdb)
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
