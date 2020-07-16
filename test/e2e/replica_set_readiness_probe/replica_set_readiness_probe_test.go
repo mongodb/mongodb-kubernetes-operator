@@ -29,7 +29,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
-	password, err := setup.GeneratePasswordForUser(user, ctx)
+	_, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
+	t.Run("Test Basic Connectivity", tester.Connectivity())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()

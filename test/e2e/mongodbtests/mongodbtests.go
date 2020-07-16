@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
@@ -104,43 +102,6 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 		err = json.Unmarshal([]byte(currentCm.Data[mongodb.AutomationConfigKey]), &currentAc)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, currentAc.Version)
-	}
-}
-
-// HasFeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
-// set to `version`. The FCV parameter is not signaled as a non Running state, for
-// this reason, this function checks the value of the parameter many times, based
-// on the value of `tries`.
-func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, username, password string) func(t *testing.T) {
-	return func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
-		assert.NoError(t, err)
-
-		database := mongoClient.Database("admin")
-		assert.NotNil(t, database)
-
-		runCommand := bson.D{
-			primitive.E{Key: "getParameter", Value: 1},
-			primitive.E{Key: "featureCompatibilityVersion", Value: 1},
-		}
-		found := false
-		for !found && tries > 0 {
-			<-time.After(10 * time.Second)
-			var result bson.M
-			if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
-				continue
-			}
-			expected := primitive.M{"version": fcv}
-			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-				found = true
-			}
-
-			tries--
-		}
-
-		assert.True(t, found)
 	}
 }
 

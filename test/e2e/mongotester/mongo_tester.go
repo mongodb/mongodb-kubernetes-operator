@@ -31,12 +31,11 @@ type Tester struct {
 	tls         tls.Config
 }
 
-func NewTester(tlsConfig tls.Config, opts ...*options.ClientOptions) *Tester {
+func NewTester(opts ...*options.ClientOptions) *Tester {
 	t := &Tester{}
 	for _, opt := range opts {
 		t.clientOpts = append(t.clientOpts, opt)
 	}
-	t.tls = tlsConfig
 	return t
 }
 
@@ -45,15 +44,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
 
-	var tlsConfig tls.Config
-	if mdb.Spec.Security.TLS.Enabled {
-		tlsConfig, err := getClientTLSConfig()
-		if err != nil {
-			return nil, err
-		}
-		t.Logf("Configuring TLS for MongoDB: %s", mdb.NamespacedName())
-		clientOpts = append(clientOpts, WithTLS(tlsConfig))
-	}
+	// TODO: configure TLS
 
 	users := mdb.Spec.Users
 	if len(users) == 1 {
@@ -70,11 +61,11 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	// add any additional options
 	clientOpts = append(clientOpts, opts...)
 
-	return NewTester(tlsConfig, clientOpts...), nil
+	return NewTester(clientOpts...), nil
 }
 
 func (m *Tester) Connectivity(opts ...*options.ClientOptions) func(t *testing.T) {
-	connectivityOpts := connectivity.New()
+	connectivityOpts := connectivity.Defaults() // TODO: configure Connectivity Options
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
@@ -95,8 +86,8 @@ func (m *Tester) Connectivity(opts ...*options.ClientOptions) func(t *testing.T)
 // set to `version`. The FCV parameter is not signaled as a non Running state, for
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
-func (m *Tester) HasFeatureCompatibilityVersion(fcv string, tries int, opts ...connectivity.Modification) func(t *testing.T) {
-	connectivityOpts := connectivity.New(opts...)
+func (m *Tester) HasFeatureCompatibilityVersion(fcv string, tries int) func(t *testing.T) {
+	connectivityOpts := connectivity.Defaults()
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()

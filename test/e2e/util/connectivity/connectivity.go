@@ -3,17 +3,21 @@ package connectivity
 import "time"
 
 func New(modifications ...Modification) Options {
-	defaultConnectivity := Options{
+	defaultConnectivity := Defaults()
+	for _, mod := range modifications {
+		mod(&defaultConnectivity)
+	}
+	return defaultConnectivity
+}
+
+func Defaults() Options {
+	return Options{
 		IntervalTime:   1 * time.Second,
 		TimeoutTime:    30 * time.Second,
 		ContextTimeout: 10 * time.Minute,
 		Database:       "testing",
 		Collection:     "numbers",
 	}
-	for _, mod := range modifications {
-		mod(&defaultConnectivity)
-	}
-	return defaultConnectivity
 }
 
 type Options struct {
