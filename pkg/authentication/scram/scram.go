@@ -89,6 +89,8 @@ func EnsureEnabler(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, s
 	}, secretGetUpdateCreateDeleter.UpdateSecret(agentSecret)
 }
 
+// ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials
+// secret corresponding to user of the given MongoDB deployment.
 func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	passwordKey := user.PasswordSecretRef.Key
 	if passwordKey == "" {
@@ -134,6 +136,8 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user mdbv1
 	return sha1Creds, sha256Creds, nil
 }
 
+// needToGenerateNewCredentials determines if it is required to generate new credentials or not.
+// this will be the case if we are either changing password, or are generating credentials for the first time.
 func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDBUser, mdb mdbv1.MongoDB, password string) (bool, error) {
 	s, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdb.Name, user.Name), Namespace: mdb.Namespace})
 	if err != nil {
@@ -148,8 +152,8 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDB
 	existingSha1Salt := s.Data[sha1SaltKey]
 	existingSha256Salt := s.Data[sha256SaltKey]
 
-	// the salts are stored as encoded strings, we need to decode them before we use them for
-	// generation
+	// the salts are stored encoded, we need to decode them before we use them for
+	// salt generation
 	decodedSha1Salt, err := base64.StdEncoding.DecodeString(string(existingSha1Salt))
 	if err != nil {
 		return false, err
@@ -191,7 +195,7 @@ func generateSalts() ([]byte, []byte, error) {
 	return sha1Salt, sha256Salt, nil
 }
 
-// generateSalt will create a salt for use with ComputeScramShaCreds based on the given hashConstructor.
+// generateSalt will create a salt which can be used to compute Scram Sha credentials based on the given hashConstructor.
 // sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
 func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
 	saltSize := hashConstructor().Size() - scramcredentials.RFC5802MandatedSaltSize
@@ -201,6 +205,8 @@ func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
 		return nil, err
 	}
 	shaBytes32 := sha256.Sum256([]byte(salt))
+
+	// the algorithms expect a salt of a specific size.
 	return shaBytes32[:saltSize], nil
 }
 
@@ -234,6 +240,8 @@ func computeScramShaCredentials(username, password string, sha1Salt, sha256Salt 
 	return scram1Creds, scram256Creds, nil
 }
 
+// createScramCredentialsSecret will create a Secret that contains all of the fields required to read these credentials
+// back in the future.
 func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey types.NamespacedName, username string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
 	scramCredsSecret := secret.Builder().
 		SetName(scramCredentialsSecretName(mdbObjectKey.Name, username)).
@@ -248,12 +256,14 @@ func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey typ
 	return secretCreator.CreateSecret(scramCredsSecret)
 }
 
+// readExistingCredentials reads the existing set of credentials for both ScramSha 1 & 256
 func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.NamespacedName, username string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	credentialsSecret, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdbObjectKey.Name, username), Namespace: mdbObjectKey.Namespace})
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
+	// we should really never hit this situation. It would only be possible if the secret storing credentials is manually edited.
 	if !secret.HasAllKeys(credentialsSecret, sha1SaltKey, sha1ServerKeyKey, sha1ServerKeyKey, sha256SaltKey, sha256ServerKeyKey, sha256StoredKeyKey) {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("credentials secret did not have all of the required keys")
 	}
@@ -275,6 +285,7 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 	return scramSha1Creds, scramSha256Creds, nil
 }
 
+// convertMongoDBResourceUsersToAutomationConfigUsers returns a list of users that are able to be set in the AutomationConfig
 func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.Spec.Users {
