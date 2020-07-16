@@ -40,6 +40,43 @@ type MongoDBSpec struct {
 	// Security configures security features, such as TLS, and authentication settings for a deployment
 	// +optional
 	Security Security `json:"security"`
+
+	// Users specifies the MongoDB users that should be configured in your deployment
+	// +required
+	Users []MongoDBUser `json:"users"`
+}
+
+type MongoDBUser struct {
+	// Name is the username of the user
+	Name string `json:"name"`
+
+	// DB is the database the user is stored in. Defaults to "admin"
+	// +optional
+	DB string `json:"db"`
+
+	// PasswordSecretRef is a reference to the secret containing this user's password
+	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
+
+	// Roles is an array of roles assigned to this user
+	Roles []Role `json:"roles"`
+}
+
+// SecretKeyReference is a reference to the secret containing the user's password
+type SecretKeyReference struct {
+	// Name is the name of the secret storing this user's password
+	Name string `json:"name"`
+
+	// Key is the key in the secret storing this password. Defaults to "password"
+	// +optional
+	Key string `json:"key"`
+}
+
+// Role is the database role this user should have
+type Role struct {
+	// DB is the database the role can act on
+	DB string `json:"db"`
+	// Name is the name of the role
+	Name string `json:"name"`
 }
 
 type Security struct {
@@ -123,6 +160,17 @@ func (m MongoDB) MongoURI() string {
 		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
 	}
 	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
+}
+
+// TODO: this is a temporary function which will be used in the e2e tests
+// which will be removed in the following PR to clean up our mongo client testing
+func (m MongoDB) SCRAMMongoURI(username, password string) string {
+	members := make([]string, m.Spec.Members)
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	for i := 0; i < m.Spec.Members; i++ {
+		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+	}
+	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(members, ","))
 }
 
 // ServiceName returns the name of the Service that should be created for

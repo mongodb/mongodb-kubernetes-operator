@@ -10,3 +10,13 @@ spec:
     authentication:
       enabled: true
       modes: ["SCRAM"]
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef:
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin

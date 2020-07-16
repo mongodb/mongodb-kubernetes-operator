@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
@@ -85,4 +87,25 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
 		Build()
 
 	return f.Global.Client.Create(context.TODO(), &certKeySecret, &f.CleanupOptions{TestContext: ctx})
+}
+
+// GeneratePasswordForUser will create a secret with a password for the given user
+func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context) (string, error) {
+	passwordKey := mdbu.PasswordSecretRef.Key
+	if passwordKey == "" {
+		passwordKey = "password"
+	}
+
+	password, err := generate.RandomFixedLengthStringOfSize(20)
+	if err != nil {
+		return "", err
+	}
+
+	passwordSecret := secret.Builder().
+		SetName(mdbu.PasswordSecretRef.Name).
+		SetNamespace(f.Global.OperatorNamespace).
+		SetField(passwordKey, password).
+		Build()
+
+	return password, f.Global.Client.Create(context.TODO(), &passwordSecret, &f.CleanupOptions{TestContext: ctx})
 }
