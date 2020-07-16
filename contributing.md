@@ -31,7 +31,7 @@ by the operator and mounted in the Agent's Pod.
 
 * MongoDB image: Docker image that includes the MongoDB server.
 
-* Pre-stop Hook: This image includes a binary that helps orchestrate the
+* Version upgrade post-start hook image: This image includes a binary that helps orchestrate the
   restarts of the MongoDB Replica Set members, in particular, when dealing with
   version upgrades, which requires a very precise set of operations to allow for
   seamless upgrades and downgrades, with no downtime.

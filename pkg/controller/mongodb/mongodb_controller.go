@@ -43,14 +43,13 @@ import (
 
 const (
 	agentImageEnv                = "AGENT_IMAGE"
-	preStopHookImageEnv          = "PRE_STOP_HOOK_IMAGE"
+	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	preStopHookLogFilePathEnv    = "PRE_STOP_HOOK_LOG_PATH"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
 	mongodbName                    = "mongod"
-	preStopHookName                = "mongod-prehook"
+	versionUpgradeHookName         = "mongod-posthook"
 	dataVolumeName                 = "data-volume"
 	versionManifestFilePath        = "/usr/local/version_manifest.json"
 	readinessProbePath             = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
@@ -511,11 +510,11 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 	)
 }
 
-func preStopHookInit(volumeMount []corev1.VolumeMount) container.Modification {
+func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
-		container.WithName(preStopHookName),
-		container.WithCommand([]string{"cp", "pre-stop-hook", "/hooks/pre-stop-hook"}),
-		container.WithImage(os.Getenv(preStopHookImageEnv)),
+		container.WithName(versionUpgradeHookName),
+		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
+		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 	)
@@ -525,15 +524,15 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
-# start mongod with this configuration
-mongod -f /data/automation-mongod.conf ;
+		`
+# run post-start hook to handle version changes
+/hooks/version-upgrade
 
-# start the pre-stop-hook to restart the Pod when needed
-# If the Pod does not require to be restarted, the pre-stop-hook will
-# exit(0) for Kubernetes to restart the container.
-/hooks/pre-stop-hook ;
+# wait for config to be created by the agent
+while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+
+# start mongod with this configuration
+exec mongod -f /data/automation-mongod.conf ;
 `,
 	}
 
@@ -546,10 +545,6 @@ mongod -f /data/automation-mongod.conf ;
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
 				Value: "/healthstatus/agent-health-status.json",
-			},
-			corev1.EnvVar{
-				Name:  preStopHookLogFilePathEnv,
-				Value: "/hooks/pre-stop-hook.log",
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
@@ -604,7 +599,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
+				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				buildTLSPodSpecModification(mdb),
 				buildScramPodSpecModification(mdb),
 			),

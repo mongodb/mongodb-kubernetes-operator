@@ -3,6 +3,6 @@
     "repo_url": "quay.io/mongodb",
     "operator_image": "community-operator-dev",
     "e2e_image": "community-operator-e2e",
-    "prestop_hook_image": "community-operator-pre-stop-hook",
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
     "testrunner_image": "community-operator-testrunner"
 }
