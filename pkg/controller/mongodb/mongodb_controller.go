@@ -341,7 +341,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, enabler automationconfig.AuthEnabler, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
 	builder := automationconfig.NewBuilder().
@@ -353,7 +353,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
-		SetAuthEnabler(enabler).
 		AddModifications(modifications...).
 		SetToolsVersion(dummyToolsVersionConfig())
 
@@ -434,7 +433,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	enabler, err := getAuthenticationEnabler(r.client, mdb)
+	authModification, err := getAuthConfigModification(r.client, mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -446,7 +445,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, enabler, tlsModification)
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
