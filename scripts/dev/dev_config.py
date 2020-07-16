@@ -35,8 +35,8 @@ class DevConfig:
         return self._config["e2e_image"]
 
     @property
-    def prestop_hook_image(self) -> str:
-        return self._config["prestop_hook_image"]
+    def version_upgrade_hook_image(self) -> str:
+        return self._config["version_upgrade_hook_image"]
 
     @property
     def testrunner_image(self) -> str:

@@ -184,8 +184,8 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image
         vars:
-          image: quay.io/mongodb/community-operator-pre-stop-hook:${version_id}
-          image_type: prehook
+          image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook:${version_id}
+          image_type: versionhook
 
   - name: build_testrunner_image
     priority: 60
