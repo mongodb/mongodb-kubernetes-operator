@@ -184,10 +184,12 @@ func generateSalts() ([]byte, []byte, error) {
 func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
 	saltSize := hashConstructor().Size() - scramcredentials.RFC5802MandatedSaltSize
 	salt, err := generate.RandomFixedLengthStringOfSize(saltSize)
+
 	if err != nil {
 		return nil, err
 	}
-	return []byte(salt), nil
+	shaBytes := sha256.Sum256([]byte(salt))
+	return shaBytes[:saltSize], nil
 }
 
 // generateScramShaCredentials creates a new set of credentials using randomly generated salts. The first returned element is
