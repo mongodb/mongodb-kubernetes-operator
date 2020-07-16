@@ -125,7 +125,7 @@ def build_and_push_e2e(repo_url: str, tag: str, path: str) -> None:
 
 def build_and_push_version_upgrade_hook(repo_url: str, tag: str, path: str) -> None:
     """
-    build_and_push_version_upgrade_hook builds and pushes the pod-deleter image.
+    build_and_push_version_upgrade_hook builds and pushes the version upgrade hook image.
     """
     build_and_push_image(repo_url, tag, path, "versionhook")
 
