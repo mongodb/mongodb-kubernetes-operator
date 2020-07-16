@@ -6,6 +6,10 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 )
 
+const (
+	scramShaOption = "SCRAM"
+)
+
 // buildScramPodSpecModification will add the keyfile volume to the podTemplateSpec
 // the keyfile is owned by the agent, and is required to have 0600 permissions.
 func buildScramPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification {

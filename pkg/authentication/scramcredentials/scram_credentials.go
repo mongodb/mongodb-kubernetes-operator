@@ -3,7 +3,7 @@ package scramcredentials
 import (
 	"crypto/hmac"
 	"crypto/md5"
-	"crypto/sha1"
+	"crypto/sha1" //nolint
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"

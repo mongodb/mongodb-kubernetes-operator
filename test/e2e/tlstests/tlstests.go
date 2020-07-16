@@ -33,7 +33,7 @@ func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
 
 // ConnectivityWithTLS returns a test function which performs
 // a basic MongoDB connectivity test over TLS
-func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithTLS(mdb *v1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
 		tlsConfig, err := getClientTLSConfig()
 		if err != nil {
@@ -41,7 +41,11 @@ func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 			return
 		}
 
-		if err := mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig)); err != nil {
+		if err := mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig).SetAuth(options.Credential{
+			AuthMechanism: "SCRAM-SHA-256",
+			Username:      username,
+			Password:      password,
+		})); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %+v", err))
 		}
 	}
@@ -76,14 +80,20 @@ func connectWithoutTLS(mdb *v1.MongoDB, username, password string) error {
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
 	return mongodbtests.IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
 		tlsConfig, err := getClientTLSConfig()
 		if err != nil {
 			return err
 		}
 
-		return mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig))
+		return mongodbtests.Connect(mdb, options.Client().
+			SetTLSConfig(tlsConfig).
+			SetAuth(options.Credential{
+				AuthMechanism: "SCRAM-SHA-256",
+				Username:      username,
+				Password:      password,
+			}))
 	})
 }
 

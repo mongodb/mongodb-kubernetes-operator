@@ -83,6 +83,18 @@ def dump_configmap_keys_namespaced(
                     )
 
 
+def dump_automation_configs(namespace: str) -> None:
+    mongodb_resources = k8s_request_data.get_all_mongodb_namespaced(namespace)
+    if mongodb_resources is None:
+        print("No MongoDB resources found, not dumping any automation configs")
+        return
+    for mdb in mongodb_resources:
+        name = mdb["metadata"]["name"]
+        dump_configmap_keys_namespaced(
+            namespace, ["automation-config"], f"{name}-config"
+        )
+
+
 def dump_all(namespace: str) -> None:
 
     if os.path.exists("logs"):
@@ -103,4 +115,4 @@ def dump_all(namespace: str) -> None:
     with open("logs/e2e/crd.log", mode="w", encoding="utf-8") as crd_log:
         dump_crd(crd_log)
 
-    dump_configmap_keys_namespaced(namespace, ["automation-config"], "mdb0-config")
+    dump_automation_configs(namespace)

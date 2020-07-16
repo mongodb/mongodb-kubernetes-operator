@@ -45,14 +45,13 @@ import (
 
 const (
 	agentImageEnv                = "AGENT_IMAGE"
-	preStopHookImageEnv          = "PRE_STOP_HOOK_IMAGE"
+	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	preStopHookLogFilePathEnv    = "PRE_STOP_HOOK_LOG_PATH"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
 	mongodbName                    = "mongod"
-	preStopHookName                = "mongod-prehook"
+	versionUpgradeHookName         = "mongod-posthook"
 	dataVolumeName                 = "data-volume"
 	versionManifestFilePath        = "/usr/local/version_manifest.json"
 	readinessProbePath             = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
@@ -343,7 +342,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return configmap.CreateOrUpdate(r.client, cm)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, enabler automationconfig.AuthEnabler) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
 
 	builder := automationconfig.NewBuilder().
@@ -355,25 +354,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
-		SetAuthEnabler(enabler).
+		AddModifications(modifications...).
 		SetToolsVersion(dummyToolsVersionConfig())
-
-	// Enable TLS in the automation config after the certs and keys have been rolled out to all pods.
-	// The agent needs these to be in place before the config is updated.
-	// The agents will handle the gradual enabling of TLS as recommended in: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-	if mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb) {
-		mode := automationconfig.TLSModeRequired
-		if mdb.Spec.Security.TLS.Optional {
-			// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
-			mode = automationconfig.TLSModePreferred
-		}
-
-		builder.SetTLS(
-			tlsCAMountPath+tlsCACertName,
-			tlsServerMountPath+tlsServerFileName,
-			mode,
-		)
-	}
 
 	newAc, err := builder.Build()
 	if err != nil {
@@ -452,17 +434,19 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	enabler, err := scram.EnsureEnabler(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
+	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
+
+	tlsModification := getTLSConfigModification(mdb)
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, enabler)
+	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -528,11 +512,11 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 	)
 }
 
-func preStopHookInit(volumeMount []corev1.VolumeMount) container.Modification {
+func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
-		container.WithName(preStopHookName),
-		container.WithCommand([]string{"cp", "pre-stop-hook", "/hooks/pre-stop-hook"}),
-		container.WithImage(os.Getenv(preStopHookImageEnv)),
+		container.WithName(versionUpgradeHookName),
+		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
+		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 	)
@@ -542,15 +526,15 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 	mongoDbCommand := []string{
 		"/bin/sh",
 		"-c",
-		// we execute the pre-stop hook once the mongod has been gracefully shut down by the agent.
-		`while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
-# start mongod with this configuration
-mongod -f /data/automation-mongod.conf ;
+		`
+# run post-start hook to handle version changes
+/hooks/version-upgrade
 
-# start the pre-stop-hook to restart the Pod when needed
-# If the Pod does not require to be restarted, the pre-stop-hook will
-# exit(0) for Kubernetes to restart the container.
-/hooks/pre-stop-hook ;
+# wait for config to be created by the agent
+while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+
+# start mongod with this configuration
+exec mongod -f /data/automation-mongod.conf ;
 `,
 	}
 
@@ -563,10 +547,6 @@ mongod -f /data/automation-mongod.conf ;
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
 				Value: "/healthstatus/agent-health-status.json",
-			},
-			corev1.EnvVar{
-				Name:  preStopHookLogFilePathEnv,
-				Value: "/hooks/pre-stop-hook.log",
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
@@ -621,7 +601,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(preStopHookName, preStopHookInit([]corev1.VolumeMount{hooksVolumeMount})),
+				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				buildTLSPodSpecModification(mdb),
 				buildScramPodSpecModification(mdb),
 			),

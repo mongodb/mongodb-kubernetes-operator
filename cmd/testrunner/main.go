@@ -30,34 +30,34 @@ import (
 )
 
 type flags struct {
-	deployDir      string
-	namespace      string
-	operatorImage  string
-	preHookImage   string
-	testImage      string
-	test           string
-	performCleanup string
+	deployDir               string
+	namespace               string
+	operatorImage           string
+	versionUpgradeHookImage string
+	testImage               string
+	test                    string
+	performCleanup          string
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, preHookImage, testImage, test, performCleanup *string
+	var namespace, deployDir, operatorImage, versionUpgradeHookImage, testImage, test, performCleanup *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
-	preHookImage = flag.String("preHookImage", "quay.io/mongodb/community-operator-prehook:latest", "the prestophook image")
+	versionUpgradeHookImage = flag.String("versionUpgradeHookImage", "quay.io/mongodb/community-operator-pre-stop-hook:latest", "the version upgrade post-start hook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
 	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
 	performCleanup = flag.String("performCleanup", "1", "specifies whether to performing a cleanup the context or not")
 	flag.Parse()
 
 	return flags{
-		deployDir:      *deployDir,
-		namespace:      *namespace,
-		operatorImage:  *operatorImage,
-		preHookImage:   *preHookImage,
-		testImage:      *testImage,
-		test:           *test,
-		performCleanup: *performCleanup,
+		deployDir:               *deployDir,
+		namespace:               *namespace,
+		operatorImage:           *operatorImage,
+		versionUpgradeHookImage: *versionUpgradeHookImage,
+		testImage:               *testImage,
+		test:                    *test,
+		performCleanup:          *performCleanup,
 	}
 }
 
@@ -174,7 +174,7 @@ func deployOperator(f flags, c client.Client) error {
 		&appsv1.Deployment{},
 		withNamespace(f.namespace),
 		withOperatorImage(f.operatorImage),
-		withPreHookImage(f.preHookImage)); err != nil {
+		withVersionUpgradeHookImage(f.versionUpgradeHookImage)); err != nil {
 		return fmt.Errorf("error building operator deployment: %v", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
@@ -219,25 +219,25 @@ func withEnvVar(key, val string) func(obj runtime.Object) {
 	}
 }
 
-// withPreHookImage sets the value of the PRE_STOP_HOOK_IMAGE
+// withVersionUpgradeHookImage sets the value of the VERSION_UPGRADE_HOOK_IMAGE
 // EnvVar from first container to `image`. The EnvVar is updated
 // if it exists. Or appended if there is no EnvVar with this `Name`.
-func withPreHookImage(image string) func(runtime.Object) {
+func withVersionUpgradeHookImage(image string) func(runtime.Object) {
 	return func(obj runtime.Object) {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
-			preHookEnv := corev1.EnvVar{
-				Name:  "PRE_STOP_HOOK_IMAGE",
+			versionUpgradeHookEnv := corev1.EnvVar{
+				Name:  "VERSION_UPGRADE_HOOK_IMAGE",
 				Value: image,
 			}
 			found := false
 			for idx := range dep.Spec.Template.Spec.Containers[0].Env {
-				if dep.Spec.Template.Spec.Containers[0].Env[idx].Name == preHookEnv.Name {
-					dep.Spec.Template.Spec.Containers[0].Env[idx].Value = preHookEnv.Value
+				if dep.Spec.Template.Spec.Containers[0].Env[idx].Name == versionUpgradeHookEnv.Name {
+					dep.Spec.Template.Spec.Containers[0].Env[idx].Value = versionUpgradeHookEnv.Value
 					found = true
 				}
 			}
 			if !found {
-				dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, preHookEnv)
+				dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, versionUpgradeHookEnv)
 			}
 		}
 	}

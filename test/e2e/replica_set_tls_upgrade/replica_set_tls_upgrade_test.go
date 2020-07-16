@@ -23,7 +23,6 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
-
 	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -48,10 +47,10 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 
 	// Ensure MongoDB is reachable both with and without TLS
 	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
+	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb, user.Name, password))
 
 	// Make TLS required
-	t.Run("MongoDB is reachable over TLS while making TLS required", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
+	t.Run("MongoDB is reachable over TLS while making TLS required", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
 			t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
 			t.Run("Wait for TLS to be required", tlstests.WaitForTLSMode(&mdb, "requireSSL", user.Name, password))
@@ -59,6 +58,6 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	))
 
 	// Ensure MongoDB is reachable only over TLS
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
+	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb, user.Name, password))
 	t.Run("Test TLS Required For Connectivity", tlstests.ConnectivityWithoutTLSShouldFail(&mdb, user.Name, password))
 }

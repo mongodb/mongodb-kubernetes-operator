@@ -489,7 +489,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		assert.NoError(t, err)
 		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
 
-		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{}, noOpAuthEnabler{})
+		ac, err := buildAutomationConfig(
+			mdb,
+			versionConfig,
+			automationconfig.AutomationConfig{},
+			getTLSConfigModification(mdb),
+		)
 		assert.NoError(t, err)
 		return ac
 	}

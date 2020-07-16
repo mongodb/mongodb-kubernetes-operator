@@ -37,6 +37,7 @@ func TestReplicaSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Run("Create MongoDB Resource mdb0", mongodbtests.CreateMongoDBResource(&mdb0, ctx))
 	t.Run("Create MongoDB Resource mdb1", mongodbtests.CreateMongoDBResource(&mdb1, ctx))
 

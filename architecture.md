@@ -16,7 +16,7 @@ You create and update MongoDB resources by defining a MongoDB resource definitio
 1. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod. 
 1. Creates one [init container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) and two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
 
-   - An init container which copies the `cmd/prestop` binary to the main `mongod` container. [This pre-stop hook](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/) is used during [version upgrades](#example-mongodb-version-upgrade).
+   - An init container which copies the `cmd/versionhook` binary to the main `mongod` container. This is run before `mongod` starts to handle [version upgrades](#example-mongodb-version-upgrade).
 
    - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
 
@@ -61,7 +61,7 @@ When you update the MongoDB version in your resource definition and reapply it t
 
 1. The MongoDB Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://docs.mongodb.com/manual/reference/method/db.shutdownServer/#db.shutdownServer).
 
-1. A pre-stop hook on the database container checks the state of the MongoDB Agent. If the MongoDB Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
+1. Kubernetes will restart the `mongod` container causing the version change hook to run and check the state of the MongoDB Agent. If the MongoDB Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
 
 1. The Kubernetes Controller downloads the target version of MongoDB from its default docker registry and restarts the pod with the target version of `mongod` in the database container.
 
