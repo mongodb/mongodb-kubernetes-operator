@@ -3,6 +3,7 @@ package scram
 import (
 	"crypto/sha1" //nolint
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"hash"
 	"reflect"
@@ -147,8 +148,19 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, user mdbv1.MongoDB
 	existingSha1Salt := s.Data[sha1SaltKey]
 	existingSha256Salt := s.Data[sha256SaltKey]
 
+	// the salts are stored as encoded strings, we need to decode them before we use them for
+	// generation
+	decodedSha1Salt, err := base64.StdEncoding.DecodeString(string(existingSha1Salt))
+	if err != nil {
+		return false, err
+	}
+	decodedSha256Salt, err := base64.StdEncoding.DecodeString(string(existingSha256Salt))
+	if err != nil {
+		return false, err
+	}
+
 	// regenerate credentials using the existing salts in order to see if the password has changed.
-	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, existingSha1Salt, existingSha256Salt)
+	sha1Creds, sha256Creds, err := computeScramShaCredentials(user.Name, password, decodedSha1Salt, decodedSha256Salt)
 	if err != nil {
 		return false, err
 	}
@@ -176,6 +188,12 @@ func generateSalts() ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	zap.S().Debugf("FROM GENERATION!")
+	zap.S().Debugf("SHA1SALT LEN: %s", len(sha1Salt))
+
+	zap.S().Debugf("SHA256SALT LEN: %s", len(sha256Salt))
+
 	return sha1Salt, sha256Salt, nil
 }
 
@@ -183,13 +201,13 @@ func generateSalts() ([]byte, []byte, error) {
 // sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
 func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
 	saltSize := hashConstructor().Size() - scramcredentials.RFC5802MandatedSaltSize
-	salt, err := generate.RandomFixedLengthStringOfSize(saltSize)
+	salt, err := generate.RandomFixedLengthStringOfSize(100)
 
 	if err != nil {
 		return nil, err
 	}
-	shaBytes := sha256.Sum256([]byte(salt))
-	return shaBytes[:saltSize], nil
+	shaBytes32 := sha256.Sum256([]byte(salt))
+	return shaBytes32[:saltSize], nil
 }
 
 // generateScramShaCredentials creates a new set of credentials using randomly generated salts. The first returned element is
@@ -259,6 +277,11 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 		ServerKey:      string(credentialsSecret.Data[sha256ServerKeyKey]),
 		StoredKey:      string(credentialsSecret.Data[sha256StoredKeyKey]),
 	}
+
+	zap.S().Debugf("FROM SECRET!")
+	zap.S().Debugf("SHA1SALT LEN: %s", len(scramSha1Creds.Salt))
+
+	zap.S().Debugf("SHA256SALT LEN: %s", len(scramSha256Creds.ServerKey))
 
 	return scramSha1Creds, scramSha256Creds, nil
 }
