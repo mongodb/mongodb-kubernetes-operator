@@ -24,19 +24,16 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler           AuthEnabler
-	processes         []Process
-	replicaSets       []ReplicaSet
-	members           int
-	domain            string
-	name              string
-	fcv               string
-	topology          Topology
-	mongodbVersion    string
-	previousAC        AutomationConfig
-	tlsCAFile         string
-	tlsCertAndKeyFile string
-	tlsMode           TLSMode
+	enabler        AuthEnabler
+	processes      []Process
+	replicaSets    []ReplicaSet
+	members        int
+	domain         string
+	name           string
+	fcv            string
+	topology       Topology
+	mongodbVersion string
+	previousAC     AutomationConfig
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
 	toolsVersion  ToolsVersion
@@ -82,17 +79,6 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 	return b
 }
 
-func (b *Builder) SetTLS(caFile, certAndKeyFile string, mode TLSMode) *Builder {
-	b.tlsCAFile = caFile
-	b.tlsCertAndKeyFile = certAndKeyFile
-	b.tlsMode = mode
-	return b
-}
-
-func (b *Builder) isTLSEnabled() bool {
-	return b.tlsCAFile != "" && b.tlsCertAndKeyFile != "" && b.tlsMode != TLSModeDisabled
-}
-
 func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
 	b.toolsVersion = version
 	return b
@@ -118,8 +104,8 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 	return b
 }
 
-func (b *Builder) AddModification(mod Modification) *Builder {
-	b.modifications = append(b.modifications, mod)
+func (b *Builder) AddModifications(mod ...Modification) *Builder {
+	b.modifications = append(b.modifications, mod...)
 	return b
 }
 
@@ -134,11 +120,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	for i, h := range hostnames {
 		opts := []func(*Process){
 			withFCV(b.fcv),
-		}
-
-		// Configure TLS for mongod if enabled
-		if b.isTLSEnabled() {
-			opts = append(opts, withTLS(b.tlsCAFile, b.tlsCertAndKeyFile, b.tlsMode))
 		}
 
 		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
@@ -168,12 +149,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
-	}
-
-	// Set up TLS between agent and server
-	// Agent needs to trust the certificate presented by the server
-	if b.isTLSEnabled() {
-		currentAc.TLS.CAFilePath = b.tlsCAFile
 	}
 
 	// Apply all modifications
@@ -210,17 +185,5 @@ func toHostName(name string, index int) string {
 func withFCV(fcv string) func(*Process) {
 	return func(process *Process) {
 		process.FeatureCompatibilityVersion = fcv
-	}
-}
-
-// withTLS enables TLS for the mongod process
-func withTLS(caFile, tlsKeyFile string, mode TLSMode) func(*Process) {
-	return func(process *Process) {
-		process.Args26.Net.TLS = MongoDBTLS{
-			Mode:                               mode,
-			CAFile:                             caFile,
-			PEMKeyFile:                         tlsKeyFile,
-			AllowConnectionsWithoutCertificate: true,
-		}
 	}
 }

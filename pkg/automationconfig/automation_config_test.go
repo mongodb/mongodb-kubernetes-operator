@@ -176,69 +176,14 @@ func TestVersionManifest_BuildsForVersion(t *testing.T) {
 	assert.Empty(t, version.Builds)
 }
 
-func TestTLS(t *testing.T) {
-	caPath := "/path/to/ca"
-	certAndKeyPath := "/path/to/cert"
-	mode := TLSModeRequired
-
-	ac, err := NewBuilder().
-		SetName("my-rs").
-		SetDomain("my-ns.svc.cluster.local").
-		SetMongoDBVersion("4.2.0").
-		SetMembers(3).
-		SetFCV("4.0").
-		SetTLS(caPath, certAndKeyPath, mode).
-		Build()
-
-	assert.NoError(t, err)
-	assert.Len(t, ac.Processes, 3)
-
-	// Ensure every process has TLS configured
-	for _, p := range ac.Processes {
-		assert.Equal(t, mode, p.Args26.Net.TLS.Mode)
-		assert.Equal(t, caPath, p.Args26.Net.TLS.CAFile)
-		assert.Equal(t, certAndKeyPath, p.Args26.Net.TLS.PEMKeyFile)
-		assert.True(t, p.Args26.Net.TLS.AllowConnectionsWithoutCertificate)
-	}
-
-	// Ensure the CA was configured as trusted for the agent
-	assert.Equal(t, caPath, ac.TLS.CAFilePath)
-	assert.Equal(t, ClientCertificateModeOptional, ac.TLS.ClientCertificateMode)
-}
-
-func TestTLSIsEnabled(t *testing.T) {
-	// TLS should only be considered enabled if both a CA cert, a cert-key file and a non-disabled mode are set
-	builder := NewBuilder().
-		SetTLS("", "", TLSModeRequired)
-	assert.False(t, builder.isTLSEnabled())
-
-	builder = NewBuilder().
-		SetTLS("/path", "", TLSModeRequired)
-	assert.False(t, builder.isTLSEnabled())
-
-	builder = NewBuilder().
-		SetTLS("", "/path", TLSModeRequired)
-	assert.False(t, builder.isTLSEnabled())
-
-	builder = NewBuilder().
-		SetTLS("/path", "/path", TLSModeDisabled)
-	assert.False(t, builder.isTLSEnabled())
-
-	builder = NewBuilder().
-		SetTLS("/path", "/path", TLSModeRequired)
-	assert.True(t, builder.isTLSEnabled())
-}
-
 func TestModifications(t *testing.T) {
 	incrementVersion := func(config *AutomationConfig) {
 		config.Version += 1
 	}
 
 	ac, err := NewBuilder().
-		AddModification(incrementVersion).
-		AddModification(incrementVersion).
-		AddModification(incrementVersion).
-		AddModification(NOOP()).
+		AddModifications(incrementVersion, incrementVersion, incrementVersion).
+		AddModifications(NOOP()).
 		Build()
 
 	assert.NoError(t, err)
