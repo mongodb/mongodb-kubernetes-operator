@@ -245,8 +245,6 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	stsCopy := existingStatefulSet.DeepCopyObject()
 	stsFunc(existingStatefulSet)
 
-	//PrettyPrint(stsCopy)
-	//PrettyPrint(existingStatefulSet)
 	stsCopyBytes, err := json.Marshal(stsCopy)
 	if err != nil {
 		return false, err
@@ -281,14 +279,6 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 
 	return areEqual && isReady, nil
 }
-func PrettyPrint(v interface{}) (err error) {
-	b, err := json.MarshalIndent(v, "", "  ")
-	if err == nil {
-		fmt.Println(string(b))
-	}
-	return
-}
-
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 	svc := buildService(mdb)
