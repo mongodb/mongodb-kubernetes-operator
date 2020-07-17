@@ -369,7 +369,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		SetField("tls.key", "KEY").
 		Build()
 
-	mgr.GetClient().Create(context.TODO(), &s)
+	err := mgr.GetClient().Create(context.TODO(), &s)
+	assert.NoError(t, err)
 
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
@@ -377,7 +378,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		SetField("ca.crt", "CERT").
 		Build()
 
-	mgr.GetClient().Create(context.TODO(), &configMap)
+	err = mgr.GetClient().Create(context.TODO(), &configMap)
+	assert.NoError(t, err)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
