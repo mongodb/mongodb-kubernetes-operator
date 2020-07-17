@@ -6,10 +6,3 @@ spec:
   members: 3
   type: ReplicaSet
   version: "4.2.6"
-  statefulset:
-    spec:
-      volumeClaimTemplates:
-      - metadata:
-          name: data-volume-example-mongodb-0
-        spec:
-          storageClassName: manual

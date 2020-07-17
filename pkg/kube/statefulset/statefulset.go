@@ -3,7 +3,10 @@ package statefulset
 import (
 	"fmt"
 	"os"
+	"sort"
 
+	"github.com/imdario/mergo"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -180,6 +183,10 @@ func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
 	}
 }
 
+func NOOP() Modification {
+	return func(sts *appsv1.StatefulSet) {}
+}
+
 func WithName(name string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Name = name
@@ -253,9 +260,73 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 	}
 }
 
-func MergeStsSpecs(original, modification appsv1.StatefulSet) {
-	fmt.Fprintf(os.Stderr, "Original: %+v", original)
-	fmt.Fprintf(os.Stderr, "modification: %+v", modification)
+func createVolumeClaimMap(volumeMounts []corev1.PersistentVolumeClaim) map[string]corev1.PersistentVolumeClaim {
+	mountMap := make(map[string]corev1.PersistentVolumeClaim)
+	for _, m := range volumeMounts {
+		mountMap[m.Name] = m
+	}
+	return mountMap
+}
+
+func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
+	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
+	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
+	var mergedVolumes []corev1.PersistentVolumeClaim
+	for _, defaultMount := range defaultMountsMap {
+		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
+			// needs merge
+			if err := mergo.Merge(&defaultMount, overrideMount, mergo.WithAppendSlice, mergo.WithOverride); err != nil {
+				return nil, err
+			}
+		}
+		mergedVolumes = append(mergedVolumes, defaultMount)
+	}
+	for _, overrideMount := range overrideMountsMap {
+		if _, ok := defaultMountsMap[overrideMount.Name]; ok {
+			// already merged
+			continue
+		}
+		mergedVolumes = append(mergedVolumes, overrideMount)
+	}
+	sort.SliceStable(mergedVolumes, func(i, j int) bool {
+		return mergedVolumes[i].Name < mergedVolumes[j].Name
+	})
+	return mergedVolumes, nil
+}
+
+func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (appsv1.StatefulSetSpec, error) {
+
+	fmt.Fprintf(os.Stderr, "\n\nDefaultSpec: %+v\n\n", defaultSpec)
+
+	fmt.Fprintf(os.Stderr, "\n\nOverrideSpec: %+v\n\n", overrideSpec)
+
+	// PodTemplateSpec needs to be manually merged
+	mergedPodTemplateSpec, err := podtemplatespec.MergePodTemplateSpecs(defaultSpec.Template, overrideSpec.Template)
+	if err != nil {
+		return appsv1.StatefulSetSpec{}, err
+	}
+	defaultSpec.Template = mergedPodTemplateSpec
+	// VolumeClaimTemplates needs to be manually merged
+	mergedVolumeClaimTemplates, err := mergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
+
+	defaultSpec.VolumeClaimTemplates = mergedVolumeClaimTemplates
+	// Merging the rest with mergo
+
+	if err := mergo.Merge(&defaultSpec, overrideSpec, mergo.WithOverride); err != nil {
+		return appsv1.StatefulSetSpec{}, err
+	}
+	fmt.Fprintf(os.Stderr, "\n\nAfterMerge: %+v\n\n", defaultSpec)
+	return defaultSpec, nil
+}
+
+func WithCustomSpecs(spec appsv1.StatefulSetSpec) Modification {
+	return func(set *appsv1.StatefulSet) {
+		m, err := mergeStatefulSetSpecs(set.Spec, spec)
+		if err != nil {
+			return
+		}
+		set.Spec = m
+	}
 }
 
 func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {

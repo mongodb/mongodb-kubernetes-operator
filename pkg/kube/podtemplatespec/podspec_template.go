@@ -1,6 +1,7 @@
 package podtemplatespec
 
 import (
+	"github.com/imdario/mergo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -220,6 +221,124 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 
 		container.VolumeMounts = append(container.VolumeMounts, volumeMounts...)
 	}
+}
+
+func mergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {
+	defaultMountsMap := createMountsMap(defaultMounts)
+	overrideMountsMap := createMountsMap(overrideMounts)
+	mergedVolumeMounts := []corev1.VolumeMount{}
+	for _, defaultMount := range defaultMounts {
+		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
+			// needs merge
+			if err := mergo.Merge(&defaultMount, overrideMount, mergo.WithAppendSlice); err != nil {
+				return nil, err
+			}
+		}
+		mergedVolumeMounts = append(mergedVolumeMounts, defaultMount)
+	}
+	for _, overrideMount := range overrideMounts {
+		if _, ok := defaultMountsMap[overrideMount.Name]; ok {
+			// already merged
+			continue
+		}
+		mergedVolumeMounts = append(mergedVolumeMounts, overrideMount)
+	}
+	return mergedVolumeMounts, nil
+}
+
+func createMountsMap(volumeMounts []corev1.VolumeMount) map[string]corev1.VolumeMount {
+	mountMap := make(map[string]corev1.VolumeMount)
+	for _, m := range volumeMounts {
+		mountMap[m.Name] = m
+	}
+	return mountMap
+}
+
+func mergeContainers(defaultContainers, overrideContainers []corev1.Container) ([]corev1.Container, error) {
+
+	defaultMap := createContainerMap(defaultContainers)
+	overrideMap := createContainerMap(overrideContainers)
+	mergedContainers := []corev1.Container{}
+	for _, defaultContainer := range defaultContainers {
+		if overrideContainer, ok := overrideMap[defaultContainer.Name]; ok {
+			// Merge
+			// Merge mounts
+			mergedMounts, err := mergeVolumeMounts(defaultContainer.VolumeMounts, overrideContainer.VolumeMounts)
+			if err != nil {
+				return nil, err
+			}
+			if err := mergo.Merge(&defaultContainer, overrideContainer, mergo.WithOverride); err != nil {
+				return nil, err
+			}
+			// completely override any resources that were provided
+			// this prevents issues with custom requests giving errors due
+			// to the defaulted limits
+			defaultContainer.Resources = overrideContainer.Resources
+			defaultContainer.VolumeMounts = mergedMounts
+		}
+		// Need to add it
+		mergedContainers = append(mergedContainers, defaultContainer)
+	}
+
+	// Look for overrideContainers that were not merged
+	for _, overrideContainer := range overrideContainers {
+		if _, ok := defaultMap[overrideContainer.Name]; ok {
+			continue
+		}
+		// Need to add it
+		mergedContainers = append(mergedContainers, overrideContainer)
+	}
+
+	return defaultContainers, nil
+}
+
+func createContainerMap(containers []corev1.Container) map[string]corev1.Container {
+	containerMap := make(map[string]corev1.Container)
+	for _, c := range containers {
+		containerMap[c.Name] = c
+	}
+	return containerMap
+}
+
+func mergeAffinity(defaultAffinity, overrideAffinity *corev1.Affinity) (*corev1.Affinity, error) {
+	if defaultAffinity == nil {
+		return overrideAffinity, nil
+	}
+	if overrideAffinity == nil {
+		return defaultAffinity, nil
+	}
+	mergedAffinity := defaultAffinity.DeepCopy()
+	if err := mergo.Merge(mergedAffinity, *overrideAffinity, mergo.WithOverride); err != nil {
+		return nil, err
+	}
+	return mergedAffinity, nil
+}
+
+func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
+	mergedContainers, err := mergeContainers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	mergedInitContainers, err := mergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
+	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	mergedPodTemplateSpec.Spec.Containers = mergedContainers
+	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
+	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
+	return mergedPodTemplateSpec, nil
 }
 
 // findContainerByName will find either a container or init container by name in a pod template spec
