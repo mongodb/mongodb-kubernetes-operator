@@ -79,9 +79,13 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 			Version: "4.2.2",
 			Security: mdbv1.Security{
 				TLS: mdbv1.TLS{
-					Enabled:          true,
-					CAConfigMapName:  "caConfigMap",
-					ServerSecretName: "serverSecret",
+					Enabled: true,
+					CaConfigMap: mdbv1.LocalObjectReference{
+						Name: "caConfigMap",
+					},
+					CertificateKeySecret: mdbv1.LocalObjectReference{
+						Name: "certificateKeySecret",
+					},
 				},
 			},
 		},
@@ -359,7 +363,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mgr := client.NewManager(&mdb)
 
 	s := secret.Builder().
-		SetName(mdb.Spec.Security.TLS.ServerSecretName).
+		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
 		SetNamespace(mdb.Namespace).
 		SetField("tls.crt", "CERT").
 		SetField("tls.key", "KEY").
@@ -368,7 +372,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mgr.GetClient().Create(context.TODO(), &s)
 
 	configMap := configmap.Builder().
-		SetName(mdb.Spec.Security.TLS.CAConfigMapName).
+		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
 		SetNamespace(mdb.Namespace).
 		SetField("ca.crt", "CERT").
 		Build()
@@ -396,7 +400,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mdb.Spec.Security.TLS.CAConfigMapName,
+					Name: mdb.Spec.Security.TLS.CaConfigMap.Name,
 				},
 			},
 		},
@@ -405,7 +409,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.Spec.Security.TLS.ServerSecretName,
+				SecretName: mdb.Spec.Security.TLS.CertificateKeySecret.Name,
 			},
 		},
 	})
@@ -451,7 +455,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		assert.NoError(t, err)
 		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
 
-		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{}, noOpAuthEnabler{})
+		ac, err := buildAutomationConfig(
+			mdb,
+			versionConfig,
+			automationconfig.AutomationConfig{},
+			getTLSConfigModification(mdb),
+		)
 		assert.NoError(t, err)
 		return ac
 	}

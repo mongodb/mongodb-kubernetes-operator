@@ -3,6 +3,8 @@ package mongodb
 import (
 	"fmt"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
@@ -70,6 +72,39 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 	return true, nil
 }
 
+// getTLSConfigModification creates a modification function which enables TLS in the automation config.
+// The config is only updated after the certs and keys have been rolled out to all pods.
+// The agent needs these to be in place before the config is updated.
+// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+	if !(mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb)) {
+		return automationconfig.NOOP()
+	}
+
+	caCertificatePath := tlsCAMountPath + tlsCACertName
+	certificateKeyPath := tlsServerMountPath + tlsServerFileName
+
+	mode := automationconfig.TLSModeRequired
+	if mdb.Spec.Security.TLS.Optional {
+		// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
+		mode = automationconfig.TLSModePreferred
+	}
+
+	return func(config *automationconfig.AutomationConfig) {
+		// Configure CA certificate for agent
+		config.TLS.CAFilePath = caCertificatePath
+
+		for i, _ := range config.Processes {
+			config.Processes[i].Args26.Net.TLS = automationconfig.MongoDBTLS{
+				Mode:                               mode,
+				CAFile:                             caCertificatePath,
+				PEMKeyFile:                         certificateKeyPath,
+				AllowConnectionsWithoutCertificate: true,
+			}
+		}
+	}
+}
+
 // hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
 // These must be mounted before TLS can be enabled in the automation config.
 func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
@@ -111,12 +146,12 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
-	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CAConfigMapName)
+	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
-	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.ServerSecretName)
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.CertificateKeySecret.Name)
 	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
