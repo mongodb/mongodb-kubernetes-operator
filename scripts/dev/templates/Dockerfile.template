@@ -8,10 +8,6 @@ FROM {{base_image}}
 {% block packages -%}
 {% endblock -%}
 
-ARG quay_expiration=never
-# Providing the quay.expires-after configures quay to delete this image after the provided amount of time
-LABEL maintainer="support@mongodb.com" quay.expires-after=${quay_expiration}
-
 ENV OPERATOR_SDK_VERSION v0.17.0
 ENV GO111MODULE=on
 ENV GOPATH ""
