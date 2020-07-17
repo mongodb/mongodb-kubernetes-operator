@@ -50,9 +50,9 @@ func WithPeriodSeconds(periodSeconds int) Modification {
 		probe.PeriodSeconds = int32(periodSeconds)
 	}
 }
-func WithTimeoutSeconds(initialDelaySeconds int) Modification {
+func WithTimeoutSeconds(timeoutSeconds int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.InitialDelaySeconds = int32(initialDelaySeconds)
+		probe.TimeoutSeconds = int32(timeoutSeconds)
 	}
 }
 
