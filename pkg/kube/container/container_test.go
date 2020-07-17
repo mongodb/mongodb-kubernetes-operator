@@ -2,7 +2,6 @@ package container
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -70,7 +69,7 @@ func TestContainer(t *testing.T) {
 	assert.Equal(t, int32(10), liveNessProbe.PeriodSeconds)
 	assert.Equal(t, "liveness-exec", liveNessProbe.Exec.Command[0])
 
-	assert.True(t, reflect.DeepEqual(c.Resources, resourcerequirements.Defaults()))
+	assert.Equal(t, c.Resources, resourcerequirements.Defaults())
 
 	assert.Len(t, c.Command, 1)
 	assert.Equal(t, "container-cmd", c.Command[0])
