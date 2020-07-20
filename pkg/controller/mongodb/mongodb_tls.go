@@ -101,17 +101,20 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) error {
-	data, err := secret.ReadStringData(getUpdateCreator, mdb.TLSSecretNamespacedName())
+	cert, err := secret.ReadKey(getUpdateCreator, tlsSecretCertName, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return err
 	}
 
-	combined := fmt.Sprintf("%s%s", data[tlsSecretCertName], data[tlsSecretKeyName])
+	key, err := secret.ReadKey(getUpdateCreator, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return err
+	}
 
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
-		SetField(tlsOperatorSecretFileName, combined).
+		SetField(tlsOperatorSecretFileName, cert+key).
 		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
 		Build()
 
