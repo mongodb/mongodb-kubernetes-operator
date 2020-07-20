@@ -169,6 +169,4 @@ Reviewers, please ensure that the CLA has been signed by referring to [the contr
 
 ## License
 
-The source code of this Operator is available under the Apache v2 license.
-
-The MongoDB Agent binary in the agent/ directory may be used under the "Free for Commercial Use" license found in agent/LICENSE.
+Please see the [LICENSE](LICENSE) file.
