@@ -128,6 +128,7 @@ functions:
           - quay_password
           - image
           - image_type
+          - expire_after
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
@@ -164,6 +165,7 @@ tasks:
         vars:
           image_type: operator
           image: quay.io/mongodb/community-operator-dev:${version_id}
+          expire_after: 10h
 
   - name: build_e2e_image
     priority: 60
@@ -175,6 +177,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-e2e:${version_id}
           image_type: e2e
+          expire_after: 10h
 
   - name: build_prehook_image
     priority: 60
@@ -186,6 +189,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook:${version_id}
           image_type: versionhook
+          expire_after: 10h
 
   - name: build_testrunner_image
     priority: 60
@@ -197,6 +201,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-testrunner:${version_id}
           image_type: testrunner
+          expire_after: 10h
 
   - name: black_formatting
     commands:

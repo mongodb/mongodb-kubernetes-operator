@@ -22,7 +22,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
@@ -91,7 +91,7 @@ type ManifestProvider func() (automationconfig.VersionManifest, error)
 func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
 	return &ReplicaSetReconciler{
-		client:           mdbClient.NewClient(mgrClient),
+		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
 		manifestProvider: manifestProvider,
 		log:              zap.S(),
@@ -121,7 +121,7 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client           mdbClient.Client
+	client           kubernetesClient.Client
 	scheme           *runtime.Scheme
 	manifestProvider func() (automationconfig.VersionManifest, error)
 	log              *zap.SugaredLogger
@@ -246,6 +246,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	stsFunc := buildStatefulSetModificationFunction(mdb)
 	stsCopy := existingStatefulSet.DeepCopyObject()
 	stsFunc(existingStatefulSet)
+
 	stsCopyBytes, err := json.Marshal(stsCopy)
 	if err != nil {
 		return false, err
