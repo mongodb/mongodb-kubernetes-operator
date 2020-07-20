@@ -39,25 +39,25 @@ const (
 	testSha256StoredKey = "7M7dUSY0sHTOXdNnoPSVbXg9Flon1b3t8MINGI8Tst0="
 )
 
-type secretGetter struct {
+type mockSecretGetUpdateCreateDeleter struct {
 	secrets map[client.ObjectKey]corev1.Secret
 }
 
-func (c secretGetter) DeleteSecret(objectKey client.ObjectKey) error {
+func (c mockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey) error {
 	delete(c.secrets, objectKey)
 	return nil
 }
 
-func (c secretGetter) UpdateSecret(s corev1.Secret) error {
+func (c mockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret) error {
 	c.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	return nil
 }
 
-func (c secretGetter) CreateSecret(secret corev1.Secret) error {
+func (c mockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) error {
 	return c.UpdateSecret(secret)
 }
 
-func (c secretGetter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
+func (c mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if s, ok := c.secrets[objectKey]; !ok {
 		return corev1.Secret{}, notFoundError()
 	} else {
@@ -66,12 +66,12 @@ func (c secretGetter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, erro
 }
 
 func newMockedSecretGetUpdateCreateDeleter(secrets ...corev1.Secret) secret.GetUpdateCreateDeleter {
-	g := secretGetter{}
-	g.secrets = make(map[client.ObjectKey]corev1.Secret)
+	mockSecretGetUpdateCreateDeleter := mockSecretGetUpdateCreateDeleter{}
+	mockSecretGetUpdateCreateDeleter.secrets = make(map[client.ObjectKey]corev1.Secret)
 	for _, s := range secrets {
-		g.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
+		mockSecretGetUpdateCreateDeleter.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	}
-	return g
+	return mockSecretGetUpdateCreateDeleter
 }
 func notFoundError() error {
 	return &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
