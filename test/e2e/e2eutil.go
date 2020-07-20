@@ -162,6 +162,10 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 							DB:   "admin",
 							Name: "clusterAdmin",
 						},
+						{
+							DB:   "admin",
+							Name: "clusterMonitor",
+						},
 					},
 				},
 			},

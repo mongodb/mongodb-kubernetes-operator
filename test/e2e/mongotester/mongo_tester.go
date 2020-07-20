@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/connectivity"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -27,7 +26,7 @@ import (
 
 var tlsConfig *tls.Config = nil
 
-func init() {
+func initTls() {
 	var err error
 	tlsConfig, err = getClientTLSConfig()
 	if err != nil {
@@ -43,6 +42,7 @@ type Tester struct {
 }
 
 func NewTester(opts ...*options.ClientOptions) *Tester {
+	initTls()
 	t := &Tester{}
 	for _, opt := range opts {
 		t.clientOpts = append(t.clientOpts, opt)
@@ -55,15 +55,15 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
 
-	if mdb.Spec.Security.TLS.Enabled {
-		tlsConfig, err := getClientTLSConfig()
-		if err != nil {
-			return nil, err
-		}
-		clientOpts = append(clientOpts, &options.ClientOptions{
-			TLSConfig: tlsConfig,
-		})
-	}
+	//if mdb.Spec.Security.TLS.Enabled {
+	//	tlsConfig, err := getClientTLSConfig()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	clientOpts = append(clientOpts, &options.ClientOptions{
+	//		TLSConfig: tlsConfig,
+	//	})
+	//}
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		user := users[0]
@@ -91,7 +91,7 @@ func (m *Tester) ConnectivityFails(opts ...*options.ClientOptions) func(t *testi
 }
 
 func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOptions) func(t *testing.T) {
-	connectivityOpts := connectivity.Defaults() // TODO: configure ConnectivitySucceeds Options
+	connectivityOpts := defaults()
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
@@ -104,7 +104,9 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 		_, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 		if err != nil && shouldSucceed {
 			t.Fatal(err)
-		} else {
+			return
+		}
+		if err == nil && !shouldSucceed {
 			t.Fatal(fmt.Sprintf("Was successfully able to connect, when we should not have been able to!"))
 		}
 	}
@@ -115,7 +117,8 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
 func (m *Tester) HasFeatureCompatibilityVersion(fcv string, tries int) func(t *testing.T) {
-	connectivityOpts := connectivity.Defaults()
+	//connectivityOpts := connectivity.Defaults()
+	connectivityOpts := defaults()
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
@@ -149,18 +152,18 @@ func (m *Tester) HasFeatureCompatibilityVersion(fcv string, tries int) func(t *t
 }
 
 // WaitForTLSMode will poll the admin database and wait for the TLS mode to reach a certain value.
-func (m *Tester) WaitForTLSMode(expectedValue string) func(*testing.T) {
+func (m *Tester) WaitForTLSMode(expectedValue string, opts ...*options.ClientOptions) func(*testing.T) {
 	return func(t *testing.T) {
-		if err := m.ensureClient(); err != nil {
+		if err := m.ensureClient(opts...); err != nil {
 			t.Fatal(err)
 		}
-
 		err := wait.Poll(time.Second*10, time.Minute*10, func() (done bool, err error) {
 			// Once we upgrade the tests to 4.2 we will have to change this to "tlsMode".
 			// We will also have to change the values we check for.
 			value, err := m.getAdminSetting("sslMode")
 			if err != nil {
-				return false, err
+				t.Logf("error getting admin setting: %s", err)
+				return false, nil
 			}
 
 			if value != expectedValue {
@@ -192,7 +195,7 @@ func (m *Tester) getAdminSetting(key string) (interface{}, error) {
 
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
 // with the defined interval. A cancel function is returned, which can be called to stop testing connectivity.
-func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration, opts ...connectivity.Modification) func() {
+func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration) func() {
 	ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
 	// once all the test functions have been executed, the go routine will be cancelled
 	t.Logf("Starting background connectivity test")
@@ -269,4 +272,23 @@ func getClientTLSConfig() (*tls.Config, error) {
 	return &tls.Config{
 		RootCAs: caPool,
 	}, nil
+}
+
+func defaults() connectivityOpts {
+	return connectivityOpts{
+		IntervalTime:   1 * time.Second,
+		TimeoutTime:    30 * time.Second,
+		ContextTimeout: 10 * time.Minute,
+		Database:       "testing",
+		Collection:     "numbers",
+	}
+}
+
+type connectivityOpts struct {
+	Retries        int
+	IntervalTime   time.Duration
+	TimeoutTime    time.Duration
+	ContextTimeout time.Duration
+	Database       string
+	Collection     string
 }
