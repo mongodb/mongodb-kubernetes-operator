@@ -39,8 +39,9 @@ func scramCredentialsSecretName(mdbName, username string) string {
 	return fmt.Sprintf("%s-%s-%s", mdbName, username, scramCredsSecretName)
 }
 
-// EnsureAgentSecret make sure that the agent password and keyfile exist in the secret and returns
-// an automation config modification function with these values
+// EnsureScram will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
+// The agent password and keyfile contents will be configured and stored in a secret.
+// the user credentials will be generated if not present, or existing credentials will be read.
 func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
@@ -71,6 +72,7 @@ func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, sec
 		return automationconfig.NOOP(), err
 	}
 
+	// ensure that we have both a password and keyfile contents for the Automation Agent
 	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
 		agentSecret.Data[AgentPasswordKey] = []byte(generatedPassword)
 	}
