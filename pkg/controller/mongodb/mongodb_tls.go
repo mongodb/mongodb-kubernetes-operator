@@ -18,14 +18,12 @@ import (
 )
 
 const (
-	tlsCAMountPath     = "/var/lib/tls/ca/"
-	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/server/" //nolint
-	tlsSecretFileName  = "server.pem"
-	tlsSecretCertName  = "tls.crt" //nolint
-	tlsSecretKeyName   = "tls.key"
-	tlsServerMountPath = "/var/lib/tls/server/"
-	tlsServerFileName  = "server.pem"
+	tlsCAMountPath             = "/var/lib/tls/ca/"
+	tlsCACertName              = "ca.crt"
+	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
+	tlsOperatorSecretFileName  = "server.pem"
+	tlsSecretCertName          = "tls.crt" //nolint
+	tlsSecretKeyName           = "tls.key"
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
@@ -107,12 +105,12 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		return err
 	}
 
-	combined := fmt.Sprintf("%s%s", data["tls.crt"], data["tls.key"])
+	combined := fmt.Sprintf("%s%s", data[tlsSecretCertName], data[tlsSecretKeyName])
 
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
-		SetField(tlsSecretFileName, combined).
+		SetField(tlsOperatorSecretFileName, combined).
 		Build()
 
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
@@ -121,7 +119,7 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 // tlsConfigModification will enable TLS in the automation config.
 func tlsConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
 	caCertificatePath := tlsCAMountPath + tlsCACertName
-	certificateKeyPath := tlsSecretMountPath + tlsSecretFileName
+	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName
 
 	mode := automationconfig.TLSModeRequired
 	if mdb.Spec.Security.TLS.Optional {
@@ -187,7 +185,7 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
 	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.TLSOperatorSecretNamespacedName().Name)
-	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
 	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
