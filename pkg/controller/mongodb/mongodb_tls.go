@@ -84,8 +84,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), nil
 	}
 
-	err := ensureTLSSecret(getUpdateCreator, mdb)
-	if err != nil {
+	if err := ensureTLSSecret(getUpdateCreator, mdb); err != nil {
 		return automationconfig.NOOP(), err
 	}
 
@@ -94,9 +93,9 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 	// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
 	if hasRolledOutTLS(mdb) {
 		return tlsConfigModification(mdb), nil
-	} else {
-		return automationconfig.NOOP(), nil
 	}
+
+	return automationconfig.NOOP(), nil
 }
 
 // ensureTLSSecret will create or update the operator-managed Secret containing
