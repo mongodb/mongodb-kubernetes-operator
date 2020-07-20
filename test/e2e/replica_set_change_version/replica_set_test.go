@@ -40,7 +40,7 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", tester.Connectivity())
+	t.Run("Test Basic ConnectivitySucceeds", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	// Upgrade version to 4.0.8

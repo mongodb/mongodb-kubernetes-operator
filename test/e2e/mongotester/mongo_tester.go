@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -23,6 +24,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var tlsConfig *tls.Config = nil
+
+func init() {
+	var err error
+	tlsConfig, err = getClientTLSConfig()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
 type Tester struct {
 	mongoClient *mongo.Client
@@ -44,8 +55,15 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
 
-	// TODO: configure TLS
-
+	if mdb.Spec.Security.TLS.Enabled {
+		tlsConfig, err := getClientTLSConfig()
+		if err != nil {
+			return nil, err
+		}
+		clientOpts = append(clientOpts, &options.ClientOptions{
+			TLSConfig: tlsConfig,
+		})
+	}
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		user := users[0]
@@ -64,8 +82,16 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	return NewTester(clientOpts...), nil
 }
 
-func (m *Tester) Connectivity(opts ...*options.ClientOptions) func(t *testing.T) {
-	connectivityOpts := connectivity.Defaults() // TODO: configure Connectivity Options
+func (m *Tester) ConnectivitySucceeds(opts ...*options.ClientOptions) func(t *testing.T) {
+	return m.connectivityCheck(true, opts...)
+}
+
+func (m *Tester) ConnectivityFails(opts ...*options.ClientOptions) func(t *testing.T) {
+	return m.connectivityCheck(false, opts...)
+}
+
+func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOptions) func(t *testing.T) {
+	connectivityOpts := connectivity.Defaults() // TODO: configure ConnectivitySucceeds Options
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
@@ -76,8 +102,10 @@ func (m *Tester) Connectivity(opts ...*options.ClientOptions) func(t *testing.T)
 
 		collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 		_, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil {
+		if err != nil && shouldSucceed {
 			t.Fatal(err)
+		} else {
+			t.Fatal(fmt.Sprintf("Was successfully able to connect, when we should not have been able to!"))
 		}
 	}
 }
@@ -175,14 +203,16 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 			case <-ctx.Done():
 				return
 			case <-time.After(interval):
-				m.Connectivity()(t)
+				m.ConnectivitySucceeds()(t)
 			}
 		}
 	}()
 
 	return func() {
 		cancel()
-		t.Log("Context cancelled, no longer checking connectivity")
+		if t != nil {
+			t.Log("Context cancelled, no longer checking connectivity")
+		}
 	}
 }
 
@@ -214,9 +244,15 @@ func WithHosts(hosts []string) *options.ClientOptions {
 	}
 }
 
-func WithTLS(tlsConfig *tls.Config) *options.ClientOptions {
+func WithTls() *options.ClientOptions {
 	return &options.ClientOptions{
 		TLSConfig: tlsConfig,
+	}
+}
+
+func WithoutTls() *options.ClientOptions {
+	return &options.ClientOptions{
+		TLSConfig: nil,
 	}
 }
 

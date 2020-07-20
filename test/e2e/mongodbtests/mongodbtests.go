@@ -151,7 +151,7 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// Connectivity returns a test function which performs
+// ConnectivitySucceeds returns a test function which performs
 // a basic MongoDB connectivity test
 func Connectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
