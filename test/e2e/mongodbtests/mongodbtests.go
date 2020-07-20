@@ -97,11 +97,11 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 
 func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentCm := corev1.ConfigMap{}
+		currentSecret := corev1.Secret{}
 		currentAc := automationconfig.AutomationConfig{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentCm)
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 		assert.NoError(t, err)
-		err = json.Unmarshal([]byte(currentCm.Data[mongodb.AutomationConfigKey]), &currentAc)
+		err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, currentAc.Version)
 	}
