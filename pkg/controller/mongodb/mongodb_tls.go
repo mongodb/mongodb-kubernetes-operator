@@ -3,6 +3,8 @@ package mongodb
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -111,6 +113,7 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
 		SetField(tlsOperatorSecretFileName, combined).
+		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
 		Build()
 
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
