@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -31,12 +32,6 @@ import (
 
 func init() {
 	os.Setenv("AGENT_IMAGE", "agent-image")
-}
-
-type noOpAuthEnabler struct{}
-
-func (n noOpAuthEnabler) EnableAuth(auth automationconfig.Auth) automationconfig.Auth {
-	return auth
 }
 
 func newTestReplicaSet() mdbv1.MongoDB {
@@ -151,13 +146,13 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	cm := corev1.ConfigMap{}
-	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &cm)
+	s := corev1.Secret{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &s)
 	assert.NoError(t, err)
-	assert.Equal(t, mdb.Namespace, cm.Namespace)
-	assert.Equal(t, mdb.ConfigMapName(), cm.Name)
-	assert.Contains(t, cm.Data, AutomationConfigKey)
-	assert.NotEmpty(t, cm.Data[AutomationConfigKey])
+	assert.Equal(t, mdb.Namespace, s.Namespace)
+	assert.Equal(t, mdb.AutomationConfigSecretName(), s.Name)
+	assert.Contains(t, s.Data, AutomationConfigKey)
+	assert.NotEmpty(t, s.Data[AutomationConfigKey])
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
@@ -184,6 +179,21 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
+
+	acVolume, err := getVolumeByName(sts, "automation-config")
+	assert.NoError(t, err)
+	assert.NotNil(t, acVolume.Secret, "automation config should be stored in a secret!")
+	assert.Nil(t, acVolume.ConfigMap, "automation config should be stored in a secret, not a config map!")
+
+}
+
+func getVolumeByName(sts appsv1.StatefulSet, volumeName string) (corev1.Volume, error) {
+	for _, v := range sts.Spec.Template.Spec.Volumes {
+		if v.Name == volumeName {
+			return v, nil
+		}
+	}
+	return corev1.Volume{}, fmt.Errorf("volume with name %s, not found", volumeName)
 }
 
 func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
@@ -403,7 +413,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		SetField("tls.key", "KEY").
 		Build()
 
-	mgr.GetClient().Create(context.TODO(), &s)
+	err := mgr.GetClient().Create(context.TODO(), &s)
+	assert.NoError(t, err)
 
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
@@ -411,7 +422,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		SetField("ca.crt", "CERT").
 		Build()
 
-	mgr.GetClient().Create(context.TODO(), &configMap)
+	err = mgr.GetClient().Create(context.TODO(), &configMap)
+	assert.NoError(t, err)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -613,6 +625,19 @@ func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
 	assert.Equal(t, createdUser.Roles[0].Database, "admin")
 	assert.Equal(t, createdUser.Roles[1].Role, "userAdminAnyDatabase")
 	assert.Equal(t, createdUser.Roles[1].Database, "admin")
+
+}
+
+func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
+	assert.NoError(t, err)
+	assert.Equal(t, false, result.Requeue)
+	assert.Equal(t, time.Duration(0), result.RequeueAfter)
+}
+
+func assertReconciliationRetries(t *testing.T, result reconcile.Result, err error) {
+	errorHappened := err != nil && !result.Requeue
+	isExplicitlyRequeuing := result.Requeue || result.RequeueAfter > 0
+	assert.True(t, errorHappened || isExplicitlyRequeuing)
 }
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the

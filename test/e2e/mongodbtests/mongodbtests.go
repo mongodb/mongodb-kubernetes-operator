@@ -81,25 +81,25 @@ func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-func AutomationConfigConfigMapExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
+func AutomationConfigSecretExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		cm, err := e2eutil.WaitForConfigMapToExist(mdb.ConfigMapName(), time.Second*5, time.Minute*1)
+		s, err := e2eutil.WaitForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1)
 		assert.NoError(t, err)
 
-		t.Logf("ConfigMap %s/%s was successfully created", mdb.ConfigMapName(), mdb.Namespace)
-		assert.Contains(t, cm.Data, mongodb.AutomationConfigKey)
+		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
+		assert.Contains(t, s.Data, mongodb.AutomationConfigKey)
 
-		t.Log("The ConfigMap contained the automation config")
+		t.Log("The Secret contained the automation config")
 	}
 }
 
 func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentCm := corev1.ConfigMap{}
+		currentSecret := corev1.Secret{}
 		currentAc := automationconfig.AutomationConfig{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &currentCm)
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 		assert.NoError(t, err)
-		err = json.Unmarshal([]byte(currentCm.Data[mongodb.AutomationConfigKey]), &currentAc)
+		err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, currentAc.Version)
 	}
@@ -117,7 +117,7 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDB, ctx *f.Context) func(*testing.T) 
 
 func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 	return func(t *testing.T) {
-		t.Run("Config Map Was Correctly Created", AutomationConfigConfigMapExists(mdb))
+		t.Run("Config Map Was Correctly Created", AutomationConfigSecretExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
 		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,

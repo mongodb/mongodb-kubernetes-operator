@@ -175,7 +175,7 @@ func (m MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m MongoDB) ConfigMapName() string {
+func (m MongoDB) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
 

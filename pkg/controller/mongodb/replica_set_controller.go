@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
@@ -22,8 +24,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
@@ -77,6 +78,14 @@ const (
 	trueAnnotation = "true"
 )
 
+func init() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		os.Exit(1)
+	}
+	zap.ReplaceGlobals(logger)
+}
+
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -91,7 +100,7 @@ type ManifestProvider func() (automationconfig.VersionManifest, error)
 func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
 	mgrClient := mgr.GetClient()
 	return &ReplicaSetReconciler{
-		client:           mdbClient.NewClient(mgrClient),
+		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
 		manifestProvider: manifestProvider,
 		log:              zap.S(),
@@ -121,7 +130,7 @@ var _ reconcile.Reconciler = &ReplicaSetReconciler{}
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client           mdbClient.Client
+	client           kubernetesClient.Client
 	scheme           *runtime.Scheme
 	manifestProvider func() (automationconfig.VersionManifest, error)
 	log              *zap.SugaredLogger
@@ -246,6 +255,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	stsFunc := buildStatefulSetModificationFunction(mdb)
 	stsCopy := existingStatefulSet.DeepCopyObject()
 	stsFunc(existingStatefulSet)
+
 	stsCopyBytes, err := json.Marshal(stsCopy)
 	if err != nil {
 		return false, err
@@ -335,11 +345,11 @@ func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb)
+	s, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
 		return err
 	}
-	return configmap.CreateOrUpdate(r.client, cm)
+	return secret.CreateOrUpdate(r.client, s)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -413,50 +423,51 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm, err := getUpdater.GetConfigMap(types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace})
+func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
+
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+		return corev1.Secret{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
 	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	tlsModification := getTLSConfigModification(mdb)
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
-	return configmap.Builder().
-		SetName(mdb.ConfigMapName()).
+	return secret.Builder().
+		SetName(mdb.AutomationConfigSecretName()).
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
@@ -577,7 +588,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
-	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
+	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")

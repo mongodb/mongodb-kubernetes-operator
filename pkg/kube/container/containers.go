@@ -2,6 +2,7 @@ package container
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
 	corev1 "k8s.io/api/core/v1"
@@ -132,8 +133,29 @@ func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
 	volumesMountsCopy := make([]corev1.VolumeMount, len(volumeMounts))
 	copy(volumesMountsCopy, volumeMounts)
 	return func(container *corev1.Container) {
-		container.VolumeMounts = volumesMountsCopy
+		merged := map[string]corev1.VolumeMount{}
+		for _, ex := range container.VolumeMounts {
+			merged[volumeMountToString(ex)] = ex
+		}
+		for _, des := range volumesMountsCopy {
+			merged[volumeMountToString(des)] = des
+		}
+
+		var final []corev1.VolumeMount
+		for _, v := range merged {
+			final = append(final, v)
+		}
+		sort.SliceStable(final, func(i, j int) bool {
+			a := final[i]
+			b := final[j]
+			return volumeMountToString(a) < volumeMountToString(b)
+		})
+		container.VolumeMounts = final
 	}
+}
+
+func volumeMountToString(v corev1.VolumeMount) string {
+	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "-")
 }
 
 // WithPorts sets the container's Ports

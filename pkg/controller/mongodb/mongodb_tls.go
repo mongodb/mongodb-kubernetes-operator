@@ -94,7 +94,7 @@ func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
 		// Configure CA certificate for agent
 		config.TLS.CAFilePath = caCertificatePath
 
-		for i, _ := range config.Processes {
+		for i := range config.Processes {
 			config.Processes[i].Args26.Net.TLS = automationconfig.MongoDBTLS{
 				Mode:                               mode,
 				CAFile:                             caCertificatePath,
