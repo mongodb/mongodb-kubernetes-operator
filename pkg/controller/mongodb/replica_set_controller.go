@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
@@ -23,7 +25,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
@@ -76,6 +77,14 @@ const (
 
 	trueAnnotation = "true"
 )
+
+func init() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		os.Exit(1)
+	}
+	zap.ReplaceGlobals(logger)
+}
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -336,11 +345,11 @@ func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb)
+	s, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
 		return err
 	}
-	return configmap.CreateOrUpdate(r.client, cm)
+	return secret.CreateOrUpdate(r.client, s)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -414,50 +423,51 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm, err := getUpdater.GetConfigMap(types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace})
+func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
+
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+		return corev1.Secret{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
 	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	tlsModification := getTLSConfigModification(mdb)
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
-	return configmap.Builder().
-		SetName(mdb.ConfigMapName()).
+	return secret.Builder().
+		SetName(mdb.AutomationConfigSecretName()).
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
@@ -578,7 +588,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
-	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
+	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")

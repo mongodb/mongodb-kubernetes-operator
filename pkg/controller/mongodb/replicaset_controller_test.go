@@ -145,13 +145,13 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	cm := corev1.ConfigMap{}
-	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace}, &cm)
+	s := corev1.Secret{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &s)
 	assert.NoError(t, err)
-	assert.Equal(t, mdb.Namespace, cm.Namespace)
-	assert.Equal(t, mdb.ConfigMapName(), cm.Name)
-	assert.Contains(t, cm.Data, AutomationConfigKey)
-	assert.NotEmpty(t, cm.Data[AutomationConfigKey])
+	assert.Equal(t, mdb.Namespace, s.Namespace)
+	assert.Equal(t, mdb.AutomationConfigSecretName(), s.Name)
+	assert.Contains(t, s.Data, AutomationConfigKey)
+	assert.NotEmpty(t, s.Data[AutomationConfigKey])
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
