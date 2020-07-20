@@ -141,7 +141,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		for _, process := range ac.Processes {
 			assert.Equal(t, automationconfig.MongoDBTLS{
 				Mode:                               automationconfig.TLSModeRequired,
-				PEMKeyFile:                         tlsOperatorSecretMountPath + tlsOperatorSecretMountPath,
+				PEMKeyFile:                         tlsOperatorSecretMountPath + tlsOperatorSecretFileName,
 				CAFile:                             tlsCAMountPath + tlsCACertName,
 				AllowConnectionsWithoutCertificate: true,
 			}, process.Args26.Net.TLS)
