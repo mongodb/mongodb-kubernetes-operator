@@ -57,19 +57,11 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	tlsCAMountPath     = "/var/lib/tls/ca/"
-	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/secret/" //nolint
-	tlsSecretCertName  = "tls.crt"              //nolint
-	tlsSecretKeyName   = "tls.key"
-	tlsServerMountPath = "/var/lib/tls/server/"
-	tlsServerFileName  = "server.pem"
-
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
 	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
-	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
+	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
+	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
 
 	trueAnnotation = "true"
@@ -438,7 +430,10 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, err
 	}
 
-	tlsModification := getTLSConfigModification(mdb)
+	tlsModification, err := getTLSConfigModification(r.client, mdb)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
