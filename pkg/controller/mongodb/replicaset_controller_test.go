@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -178,6 +179,21 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
+
+	acVolume, err := getVolumeByName(sts, "automation-config")
+	assert.NoError(t, err)
+	assert.NotNil(t, acVolume.Secret, "automation config should be stored in a secret!")
+	assert.Nil(t, acVolume.ConfigMap, "automation config should be stored in a secret, not a config map!")
+
+}
+
+func getVolumeByName(sts appsv1.StatefulSet, volumeName string) (corev1.Volume, error) {
+	for _, v := range sts.Spec.Template.Spec.Volumes {
+		if v.Name == volumeName {
+			return v, nil
+		}
+	}
+	return corev1.Volume{}, fmt.Errorf("volume with name %s, not found", volumeName)
 }
 
 func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
