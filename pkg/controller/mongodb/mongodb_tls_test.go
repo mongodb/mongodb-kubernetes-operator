@@ -23,7 +23,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := client.NewManager(&mdb)
 
-	createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
+	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
+	assert.NoError(t, err)
 
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -79,7 +80,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	createAC := func(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		createTLSSecretAndConfigMap(client, mdb)
+		err := createTLSSecretAndConfigMap(client, mdb)
+		assert.NoError(t, err)
 
 		manifest, err := mockManifestProvider(mdb.Spec.Version)()
 		assert.NoError(t, err)
@@ -172,9 +174,10 @@ func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		createTLSSecretAndConfigMap(client, mdb)
+		err := createTLSSecretAndConfigMap(client, mdb)
+		assert.NoError(t, err)
 
-		_, err := getTLSConfigModification(client, mdb)
+		_, err = getTLSConfigModification(client, mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contain the
@@ -187,14 +190,16 @@ func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		createTLSSecretAndConfigMap(client, mdb)
+		err := createTLSSecretAndConfigMap(client, mdb)
+		assert.NoError(t, err)
 
 		// Create operator-managed secret
 		s := secret.Builder().
 			SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
+			SetField(tlsSecretFileName, "CERTKEY").
 			Build()
-		err := client.CreateSecret(s)
+		err = client.CreateSecret(s)
 		assert.NoError(t, err)
 
 		_, err = getTLSConfigModification(client, mdb)
@@ -207,7 +212,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 	})
 }
 
-func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) {
+func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) error {
 	s := secret.Builder().
 		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
 		SetNamespace(mdb.Namespace).
@@ -215,7 +220,10 @@ func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) {
 		SetField("tls.key", "KEY").
 		Build()
 
-	c.Create(context.TODO(), &s)
+	err := c.Create(context.TODO(), &s)
+	if err != nil {
+		return err
+	}
 
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
@@ -223,5 +231,10 @@ func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) {
 		SetField("ca.crt", "CERT").
 		Build()
 
-	c.Create(context.TODO(), &configMap)
+	err = c.Create(context.TODO(), &configMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
