@@ -197,7 +197,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		s := secret.Builder().
 			SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
-			SetField(tlsOperatorSecretFileName, "CERTKEY").
+			SetField(tlsOperatorSecretFileName, "").
 			Build()
 		err = client.CreateSecret(s)
 		assert.NoError(t, err)
