@@ -181,10 +181,6 @@ func Apply(funcs ...Modification) func(*appsv1.StatefulSet) {
 	}
 }
 
-func NOOP() Modification {
-	return func(sts *appsv1.StatefulSet) {}
-}
-
 func WithName(name string) Modification {
 	return func(sts *appsv1.StatefulSet) {
 		sts.Name = name
@@ -270,10 +266,10 @@ func MergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, 
 	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
 	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
 	var mergedVolumes []corev1.PersistentVolumeClaim
-	for _, defaultMount := range defaultMountsMap {
+	for idx, defaultMount := range defaultMountsMap {
 		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
 			// needs merge
-			if err := mergo.Merge(&defaultMount, overrideMount, mergo.WithAppendSlice, mergo.WithOverride); err != nil {
+			if err := mergo.Merge(defaultMountsMap[idx], overrideMount, mergo.WithAppendSlice, mergo.WithOverride); err != nil {
 				return nil, err
 			}
 		}
@@ -302,6 +298,9 @@ func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (ap
 
 	// VolumeClaimTemplates needs to be manually merged
 	mergedVolumeClaimTemplates, err := MergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
+	if err != nil {
+		return appsv1.StatefulSetSpec{}, err
+	}
 
 	// Merging the rest with mergo
 	if err := mergo.Merge(&defaultSpec, overrideSpec, mergo.WithOverride); err != nil {
