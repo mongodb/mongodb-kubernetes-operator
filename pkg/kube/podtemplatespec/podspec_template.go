@@ -227,10 +227,10 @@ func MergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]co
 	defaultMountsMap := createMountsMap(defaultMounts)
 	overrideMountsMap := createMountsMap(overrideMounts)
 	mergedVolumeMounts := []corev1.VolumeMount{}
-	for _, defaultMount := range defaultMounts {
+	for idx, defaultMount := range defaultMounts {
 		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
 			// needs merge
-			if err := mergo.Merge(&defaultMount, overrideMount, mergo.WithAppendSlice); err != nil {
+			if err := mergo.Merge(defaultMounts[idx], overrideMount, mergo.WithAppendSlice); err != nil {
 				return nil, err
 			}
 		}
@@ -258,28 +258,28 @@ func MergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 	defaultMap := createContainerMap(defaultContainers)
 	customMap := createContainerMap(customContainers)
 	mergedContainers := []corev1.Container{}
-	for _, defaultContainer := range defaultContainers {
+	for idx, defaultContainer := range defaultContainers {
 		if customContainer, ok := customMap[defaultContainer.Name]; ok {
-			// Merge
+			// The container is present in both maps, so we need to merge
 			// Merge mounts
 			mergedMounts, err := MergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
 			if err != nil {
 				return nil, err
 			}
-			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil {
+			if err := mergo.Merge(&defaultContainers[idx], customContainer, mergo.WithOverride); err != nil {
 				return nil, err
 			}
-			// completely custom any resources that were provided
+			// completely override any resources that were provided
 			// this prevents issues with custom requests giving errors due
 			// to the defaulted limits
 			defaultContainer.Resources = customContainer.Resources
 			defaultContainer.VolumeMounts = mergedMounts
 		}
-		// Need to add it
+		// The default container was not modified by the override, so just add it
 		mergedContainers = append(mergedContainers, defaultContainer)
 	}
 
-	// Look for customContainers that were not merged
+	// Look for customContainers that were not merged into existing ones
 	for _, customContainer := range customContainers {
 		if _, ok := defaultMap[customContainer.Name]; ok {
 			continue
@@ -315,21 +315,25 @@ func mergeAffinity(defaultAffinity, overrideAffinity *corev1.Affinity) (*corev1.
 
 func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
 
+	// Containers need to be merged manually
 	mergedContainers, err := MergeContainers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	// InitContainers need to be merged manually
 	mergedInitContainers, err := MergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	// Affinity needs to be merged manually
 	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	// Everything else can be merged with mergo
 	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
 	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 		return corev1.PodTemplateSpec{}, err

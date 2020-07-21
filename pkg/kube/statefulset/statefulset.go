@@ -299,14 +299,16 @@ func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (ap
 	if err != nil {
 		return appsv1.StatefulSetSpec{}, err
 	}
+
 	// VolumeClaimTemplates needs to be manually merged
 	mergedVolumeClaimTemplates, err := MergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
 
 	// Merging the rest with mergo
-
 	if err := mergo.Merge(&defaultSpec, overrideSpec, mergo.WithOverride); err != nil {
 		return appsv1.StatefulSetSpec{}, err
 	}
+
+	// Assigning merged vales AFTER the merge with mergo or they would be overwritten
 	defaultSpec.Template = mergedPodTemplateSpec
 	defaultSpec.VolumeClaimTemplates = mergedVolumeClaimTemplates
 	return defaultSpec, nil
