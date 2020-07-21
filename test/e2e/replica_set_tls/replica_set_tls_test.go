@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongotester"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -29,7 +29,7 @@ func TestReplicaSetTLS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongotester.FromResource(t, mdb)
+	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestReplicaSetTLS(t *testing.T) {
 	}
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tester.WaitForTLSMode("requireSSL", mongotester.WithTls()))
-	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(mongotester.WithTls()))
-	t.Run("Test TLS required", tester.ConnectivityFails(mongotester.WithoutTls()))
+	t.Run("Wait for TLS to be enabled", tester.WaitForTLSMode("requireSSL", WithTls()))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 }
