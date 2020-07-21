@@ -114,7 +114,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 
 			successfulCheck := (err != nil && !shouldSucceed) || (err == nil && shouldSucceed)
 			if successfulCheck {
-				t.Logf("Connectivity check was successful after %d attempts", attempts)
+				t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
 				return true, nil
 			}
 
