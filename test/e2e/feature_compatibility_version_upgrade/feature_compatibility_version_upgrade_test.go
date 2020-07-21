@@ -48,7 +48,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
-		t.Run("Test Basic ConnectivitySucceeds after upgrade has completed", tester.ConnectivitySucceeds())
+		t.Run("Test Basic Connectivity after upgrade has completed", tester.ConnectivitySucceeds())
 	})
 
 	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.0", tester.HasFeatureCompatibilityVersion("4.0", 3))
