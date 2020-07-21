@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -30,10 +31,8 @@ func (w ResourceWatcher) Add(watchedName, dependentName types.NamespacedName) {
 	}
 
 	// Check if resource is already being watched.
-	for _, existingName := range existing {
-		if dependentName == existingName {
-			return
-		}
+	if contains.NamespacedName(existing, dependentName) {
+		return
 	}
 
 	w.watched[watchedName] = append(existing, dependentName)
