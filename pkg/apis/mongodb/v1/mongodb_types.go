@@ -21,6 +21,10 @@ const (
 	Running Phase = "Running"
 )
 
+const (
+	defaultPasswordKey = "password"
+)
+
 // MongoDBSpec defines the desired state of MongoDB
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
@@ -59,6 +63,21 @@ type MongoDBUser struct {
 
 	// Roles is an array of roles assigned to this user
 	Roles []Role `json:"roles"`
+}
+
+func (m MongoDBUser) GetPasswordSecretKey() string {
+	if m.PasswordSecretRef.Key == "" {
+		return defaultPasswordKey
+	}
+	return m.PasswordSecretRef.Key
+}
+
+func (m MongoDBUser) GetPasswordSecretName() string {
+	return m.PasswordSecretRef.Name
+}
+
+func (m MongoDBUser) GetUserName() string {
+	return m.Name
 }
 
 // SecretKeyReference is a reference to the secret containing the user's password
@@ -197,7 +216,7 @@ func (m MongoDB) NamespacedName() types.NamespacedName {
 }
 
 func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: "agent-scram-credentials", Namespace: m.Namespace}
+	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.

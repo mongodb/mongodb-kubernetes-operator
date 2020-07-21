@@ -123,12 +123,12 @@ func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *
 func TestEnsureScramCredentials(t *testing.T) {
 	mdb, user := buildMongoDBAndUser("mdb-0")
 	t.Run("Fails when there is no password secret, and no credentials secret", func(t *testing.T) {
-		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb)
+		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb.NamespacedName())
 		assert.Error(t, err)
 	})
 	t.Run("Existing credentials are used when password does not exist, but credentials secret has been created", func(t *testing.T) {
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb)
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
 	})
@@ -143,7 +143,7 @@ func TestEnsureScramCredentials(t *testing.T) {
 			Build()
 
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb)
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
 		assert.NotEmpty(t, scram1Creds.Salt)
@@ -174,7 +174,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 			SetField(user.PasswordSecretRef.Key, "TDg_DESiScDrJV6").
 			Build()
 
-		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb, user)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb.NamespacedName(), user)
 
 		assert.NoError(t, err)
 		assert.Equal(t, user.Name, acUser.Username)
@@ -189,7 +189,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 	})
 
 	t.Run("If there is no password secret, the creation fails", func(t *testing.T) {
-		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb, user)
+		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb.NamespacedName(), user)
 		assert.Error(t, err)
 	})
 }
