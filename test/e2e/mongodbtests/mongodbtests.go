@@ -290,12 +290,12 @@ func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration,
 	}
 }
 
-func StatefulSetHasExpectedContainers(mdb *mdbv1.MongoDB, containers []corev1.Container) func(*testing.T) {
+func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToHaveExpectedContainers(t, mdb, containers, time.Second*5, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToHaveExpectedContainerCondition(t, mdb, containerName, condition, time.Second*5, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("StatefulSet %s/%s has the expected containers!", mdb.Namespace, mdb.Name)
+		t.Logf("StatefulSet %s/%s has the expected container value!", mdb.Namespace, mdb.Name)
 	}
 }

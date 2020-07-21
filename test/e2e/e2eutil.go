@@ -1,9 +1,7 @@
 package e2eutil
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -11,7 +9,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,14 +74,11 @@ func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, st
 	})
 }
 
-// WaitForStatefulSetToHaveExpectedContainers waits until the statefulSet has the exptected Containers
-func WaitForStatefulSetToHaveExpectedContainers(t *testing.T, mdb *mdbv1.MongoDB, containers []corev1.Container, retryInterval, timeout time.Duration) error {
+// WaitForStatefulSetToHaveExpectedContainerValue waits until the passed
+func WaitForStatefulSetToHaveExpectedContainerCondition(t *testing.T, mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		currentStsContainersBytes, err := json.Marshal(sts.Spec.Template.Spec.Containers)
-		assert.NoError(t, err)
-		expectedContainersBytes, err := json.Marshal(containers)
-		assert.NoError(t, err)
-		return bytes.Equal(currentStsContainersBytes, expectedContainersBytes)
+		idx := findIndexByName(containerName, sts.Spec.Template.Spec.Containers)
+		return idx != -1 && condition(sts.Spec.Template.Spec.Containers[idx])
 	})
 }
 
@@ -188,4 +182,13 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 			Name: "test-tls-ca",
 		},
 	}
+}
+
+func findIndexByName(name string, containers []corev1.Container) int {
+	for idx, c := range containers {
+		if c.Name == name {
+			return idx
+		}
+	}
+	return -1
 }

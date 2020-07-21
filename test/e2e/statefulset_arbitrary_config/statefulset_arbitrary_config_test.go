@@ -18,15 +18,6 @@ func TestMain(m *testing.M) {
 	f.MainEntry(m)
 }
 
-func findIndexByName(name string, containers []corev1.Container) int {
-	for idx, c := range containers {
-		if c.Name == name {
-			return idx
-		}
-	}
-	return -1
-}
-
 func TestStatefulSetArbitraryConfig(t *testing.T) {
 	ctx, shouldCleanup := setup.InitTest(t)
 
@@ -49,15 +40,13 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	originalSts := &appsv1.StatefulSet{}
 	err = f.Global.Client.Get(context.TODO(), mdb.NamespacedName(), originalSts)
 	assert.NoError(t, err)
-	expectedContainers := originalSts.Spec.Template.Spec.Containers
+
 	overrideSpec := v1.StatefulSetConfiguration{}
 	overrideSpec.Spec.Template.Spec.Containers = []corev1.Container{
 		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
 
-	idx := findIndexByName("mongodb-agent", expectedContainers)
-	expectedContainers[idx].ReadinessProbe.TimeoutSeconds = 100
 	e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDB) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetHasExpectedContainers(&mdb, expectedContainers))
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(mdb, "mongodb-agent", func(container corev1.Container) { return container.ReadinessProbe.TimeoutSeconds == 100 }))
 
 }
