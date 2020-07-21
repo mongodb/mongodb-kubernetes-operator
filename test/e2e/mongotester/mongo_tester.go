@@ -30,23 +30,22 @@ var tlsConfig *tls.Config = nil
 type Tester struct {
 	mongoClient *mongo.Client
 	clientOpts  []*options.ClientOptions
-	mdb         *mdbv1.MongoDB
-	tls         tls.Config
 }
 
 func NewTester(opts ...*options.ClientOptions) (*Tester, error) {
 	t := &Tester{}
-	for _, opt := range opts {
-		t.clientOpts = append(t.clientOpts, opt)
-	}
+	t.clientOpts = append(t.clientOpts, opts...)
 	return t, initTls()
 }
 
 // initTls loads in the tls configuration fixture
 func initTls() error {
-	var err error = nil
+	var err error
 	tlsConfig, err = getClientTLSConfig()
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
@@ -106,7 +105,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 			return
 		}
 		if err == nil && !shouldSucceed {
-			t.Fatal(fmt.Sprintf("Was successfully able to connect, when we should not have been able to!"))
+			t.Fatal("Was successfully able to connect, when we should not have been able to!")
 		}
 	}
 }
@@ -160,11 +159,12 @@ func (m *Tester) WaitForTLSMode(expectedValue string, opts ...*options.ClientOpt
 			// We will also have to change the values we check for.
 			value, err := m.getAdminSetting("sslMode")
 			if err != nil {
-				t.Logf("error getting admin setting: %s", err)
+				t.Logf("Error getting admin setting: %s", err)
 				return false, nil
 			}
 
 			if value != expectedValue {
+				t.Logf("Waiting for %s to have a value of %s", value, expectedValue)
 				return false, nil
 			}
 
@@ -182,7 +182,7 @@ func (m *Tester) getAdminSetting(key string) (interface{}, error) {
 	var result bson.D
 	err := m.mongoClient.
 		Database("admin").
-		RunCommand(context.TODO(), bson.D{{"getParameter", 1}, {key, 1}}).
+		RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
 		Decode(&result)
 	if err != nil {
 		return nil, err
