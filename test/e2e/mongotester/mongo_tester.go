@@ -98,11 +98,10 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 			t.Fatal(err)
 		}
 
-		t.Logf("Performing connectivity check")
-		i := 1
+		attempts := 0
+		// There can be a short time before the user can auth as the user
 		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
-			t.Logf("Connection attempt: %d", i)
-			i++
+			attempts++
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 			if err != nil && shouldSucceed {
@@ -113,13 +112,12 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 				return false, nil
 			}
 
-			if err != nil && !shouldSucceed {
+			successfulCheck := (err != nil && !shouldSucceed) || (err == nil && shouldSucceed)
+			if successfulCheck {
+				t.Logf("Connectivity check was successful after %d attempts", attempts)
 				return true, nil
 			}
 
-			if err == nil && shouldSucceed {
-				return true, nil
-			}
 			return false, nil
 		})
 
