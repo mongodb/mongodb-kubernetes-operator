@@ -19,6 +19,7 @@ require (
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/spf13/cobra v0.0.7 // indirect
 	github.com/stretchr/testify v1.4.0
+	github.com/xdg/stringprep v1.0.0
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.14.1
 	google.golang.org/appengine v1.6.6 // indirect
