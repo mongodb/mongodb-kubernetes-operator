@@ -293,15 +293,12 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	set := appsv1.StatefulSet{}
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
 
-	newMdb := &mdbv1.MongoDB{}
-	_ = r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
 	buildStatefulSetModificationFunction(mdb)(&set)
-	fmt.Fprintf(os.Stderr, "\n\nSPEC: %+v\n\n", set.Spec)
 	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}

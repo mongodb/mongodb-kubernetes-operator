@@ -1,8 +1,6 @@
 package statefulset
 
 import (
-	"fmt"
-	"os"
 	"sort"
 
 	"github.com/imdario/mergo"
@@ -268,7 +266,7 @@ func createVolumeClaimMap(volumeMounts []corev1.PersistentVolumeClaim) map[strin
 	return mountMap
 }
 
-func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
+func MergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
 	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
 	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
 	var mergedVolumes []corev1.PersistentVolumeClaim
@@ -296,26 +294,21 @@ func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, 
 
 func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (appsv1.StatefulSetSpec, error) {
 
-	fmt.Fprintf(os.Stderr, "\n\nDefaultSpec: %+v\n\n", defaultSpec)
-
-	fmt.Fprintf(os.Stderr, "\n\nOverrideSpec: %+v\n\n", overrideSpec)
-
 	// PodTemplateSpec needs to be manually merged
 	mergedPodTemplateSpec, err := podtemplatespec.MergePodTemplateSpecs(defaultSpec.Template, overrideSpec.Template)
 	if err != nil {
 		return appsv1.StatefulSetSpec{}, err
 	}
-	defaultSpec.Template = mergedPodTemplateSpec
 	// VolumeClaimTemplates needs to be manually merged
-	mergedVolumeClaimTemplates, err := mergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
+	mergedVolumeClaimTemplates, err := MergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
 
-	defaultSpec.VolumeClaimTemplates = mergedVolumeClaimTemplates
 	// Merging the rest with mergo
 
 	if err := mergo.Merge(&defaultSpec, overrideSpec, mergo.WithOverride); err != nil {
 		return appsv1.StatefulSetSpec{}, err
 	}
-	fmt.Fprintf(os.Stderr, "\n\nAfterMerge: %+v\n\n", defaultSpec)
+	defaultSpec.Template = mergedPodTemplateSpec
+	defaultSpec.VolumeClaimTemplates = mergedVolumeClaimTemplates
 	return defaultSpec, nil
 }
 
