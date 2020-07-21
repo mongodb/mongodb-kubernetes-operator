@@ -293,12 +293,10 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
 	set := appsv1.StatefulSet{}
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
-
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
-
 	buildStatefulSetModificationFunction(mdb)(&set)
 	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
@@ -477,7 +475,6 @@ func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyTy
 func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
 	buildStatefulSetModificationFunction(mdb)(&sts)
-
 	return sts, nil
 }
 
@@ -556,7 +553,6 @@ exec mongod -f /data/automation-mongod.conf ;
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modification {
-
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -609,9 +605,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				buildScramPodSpecModification(mdb),
 			),
 		),
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.Spec),
 	)
-
 }
 
 func getDomain(service, namespace, clusterName string) string {
