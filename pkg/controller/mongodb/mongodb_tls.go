@@ -121,13 +121,13 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 	}
 
 	r.log.Debug("Completing TLS rollout")
-
-	mdb.Annotations[tLSRolledOutAnnotationKey] = trueAnnotation
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
 	}
-
-	if err := r.setAnnotations(mdb.NamespacedName(), mdb.Annotations); err != nil {
+	mdbAnnotations := map[string]string{
+		tLSRolledOutAnnotationKey: trueAnnotation,
+	}
+	if err := r.setAnnotations(mdb.NamespacedName(), mdbAnnotations); err != nil {
 		return fmt.Errorf("error setting TLS annotation: %+v", err)
 	}
 
