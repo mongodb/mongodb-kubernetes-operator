@@ -296,6 +296,6 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName strin
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("StatefulSet %s/%s has the expected container value!", mdb.Namespace, mdb.Name)
+		t.Logf("StatefulSet %s/%s - container %s satisfies the given condition!", mdb.Namespace, mdb.Name, containerName)
 	}
 }
