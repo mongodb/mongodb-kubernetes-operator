@@ -2,6 +2,7 @@ package podtemplatespec
 
 import (
 	"github.com/imdario/mergo"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -150,6 +151,11 @@ func WithFsGroup(fsGroup int) Modification {
 // WithImagePullSecrets adds an ImagePullSecrets local reference with the given name
 func WithImagePullSecrets(name string) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		for _, v := range podTemplateSpec.Spec.ImagePullSecrets {
+			if v.Name == name {
+				return
+			}
+		}
 		podTemplateSpec.Spec.ImagePullSecrets = append(podTemplateSpec.Spec.ImagePullSecrets, corev1.LocalObjectReference{
 			Name: name,
 		})
@@ -214,12 +220,11 @@ func WithAnnotations(annotations map[string]string) Modification {
 // WithVolumeMounts will add volume mounts to a container or init container by name
 func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		container := findContainerByName(containerName, podTemplateSpec)
-		if container == nil {
+		c := findContainerByName(containerName, podTemplateSpec)
+		if c == nil {
 			return
 		}
-
-		container.VolumeMounts = append(container.VolumeMounts, volumeMounts...)
+		container.WithVolumeMounts(volumeMounts)(c)
 	}
 }
 

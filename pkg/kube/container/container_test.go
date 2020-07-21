@@ -1,7 +1,10 @@
 package container
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -27,6 +30,13 @@ func TestContainer(t *testing.T) {
 			probes.WithFailureThreshold(10),
 			probes.WithPeriodSeconds(5),
 		)),
+		WithLivenessProbe(probes.Apply(
+			probes.WithExecCommand([]string{"liveness-exec"}),
+			probes.WithFailureThreshold(15),
+			probes.WithPeriodSeconds(10),
+		)),
+		WithResourceRequirements(resourcerequirements.Defaults()),
+		WithCommand([]string{"container-cmd"}),
 		WithEnvs(
 			[]corev1.EnvVar{
 				{
@@ -53,6 +63,16 @@ func TestContainer(t *testing.T) {
 	assert.Equal(t, int32(10), readinessProbe.FailureThreshold)
 	assert.Equal(t, int32(5), readinessProbe.PeriodSeconds)
 	assert.Equal(t, "exec", readinessProbe.Exec.Command[0])
+
+	liveNessProbe := c.LivenessProbe
+	assert.Equal(t, int32(15), liveNessProbe.FailureThreshold)
+	assert.Equal(t, int32(10), liveNessProbe.PeriodSeconds)
+	assert.Equal(t, "liveness-exec", liveNessProbe.Exec.Command[0])
+
+	assert.Equal(t, c.Resources, resourcerequirements.Defaults())
+
+	assert.Len(t, c.Command, 1)
+	assert.Equal(t, "container-cmd", c.Command[0])
 
 	lifeCycle := c.Lifecycle
 	assert.NotNil(t, lifeCycle)
@@ -133,6 +153,58 @@ func TestMergeEnvs(t *testing.T) {
 		assert.NotNil(t, envVar.ValueFrom)
 		assert.Equal(t, "f_key", envVar.ValueFrom.SecretKeyRef.Key)
 	})
+}
+
+func TestWithVolumeMounts(t *testing.T) {
+	c := New(
+		WithVolumeMounts(
+			[]corev1.VolumeMount{
+				{
+					Name:      "name-0",
+					MountPath: "mount-path-0",
+					SubPath:   "sub-path-0",
+				},
+				{
+					Name:      "name-1",
+					MountPath: "mount-path-1",
+					SubPath:   "sub-path-1",
+				},
+				{
+					Name:      "name-2",
+					MountPath: "mount-path-2",
+					SubPath:   "sub-path-2",
+				},
+			},
+		),
+	)
+
+	newVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "name-0",
+			MountPath: "mount-path-0",
+			SubPath:   "sub-path-0",
+		},
+		{
+			Name:      "name-4",
+			MountPath: "mount-path-4",
+			SubPath:   "sub-path-4",
+		},
+		{
+			Name:      "name-3",
+			MountPath: "mount-path-3",
+			SubPath:   "sub-path-3",
+		},
+	}
+
+	WithVolumeMounts(newVolumeMounts)(&c)
+
+	assert.Len(t, c.VolumeMounts, 5, "duplicates should have been removed")
+	for i, v := range c.VolumeMounts {
+		assert.Equal(t, fmt.Sprintf("name-%d", i), v.Name, "Volumes should be sorted but were not!")
+		assert.Equal(t, fmt.Sprintf("mount-path-%d", i), v.MountPath, "Volumes should be sorted but were not!")
+		assert.Equal(t, fmt.Sprintf("sub-path-%d", i), v.SubPath, "Volumes should be sorted but were not!")
+	}
+
 }
 
 func boolRef(b bool) *bool {

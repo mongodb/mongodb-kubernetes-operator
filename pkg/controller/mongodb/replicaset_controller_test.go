@@ -541,6 +541,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	})
 }
 
+func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
+	assert.NoError(t, err)
+	assert.Equal(t, false, result.Requeue)
+	assert.Equal(t, time.Duration(0), result.RequeueAfter)
+}
+
 // makeStatefulSetReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
 func makeStatefulSetReady(c k8sClient.Client, mdb mdbv1.MongoDB) {
