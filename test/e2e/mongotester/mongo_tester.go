@@ -98,14 +98,33 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 			t.Fatal(err)
 		}
 
-		collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
-		_, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil && shouldSucceed {
-			t.Fatal(err)
-			return
-		}
-		if err == nil && !shouldSucceed {
-			t.Fatal("Was successfully able to connect, when we should not have been able to!")
+		t.Logf("Performing connectivity check")
+		i := 1
+		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+			t.Logf("Connection attempt: %d", i)
+			i++
+			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
+			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+			if err != nil && shouldSucceed {
+				return false, nil
+			}
+			if err == nil && !shouldSucceed {
+				t.Logf("Was successfully able to connect, when we should not have been able to!")
+				return false, nil
+			}
+
+			if err != nil && !shouldSucceed {
+				return true, nil
+			}
+
+			if err == nil && shouldSucceed {
+				return true, nil
+			}
+			return false, nil
+		})
+
+		if err != nil {
+			t.Fatal(fmt.Errorf("error during connectivity check: %s", err))
 		}
 	}
 }
