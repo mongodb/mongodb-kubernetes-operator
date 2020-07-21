@@ -232,10 +232,10 @@ func MergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]co
 	defaultMountsMap := createMountsMap(defaultMounts)
 	overrideMountsMap := createMountsMap(overrideMounts)
 	mergedVolumeMounts := []corev1.VolumeMount{}
-	for idx, defaultMount := range defaultMounts {
+	for _, defaultMount := range defaultMounts {
 		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
 			// needs merge
-			if err := mergo.Merge(defaultMounts[idx], overrideMount, mergo.WithAppendSlice); err != nil {
+			if err := mergo.Merge(&defaultMount, overrideMount, mergo.WithAppendSlice); err != nil { //nolint
 				return nil, err
 			}
 		}
@@ -263,7 +263,7 @@ func MergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 	defaultMap := createContainerMap(defaultContainers)
 	customMap := createContainerMap(customContainers)
 	mergedContainers := []corev1.Container{}
-	for idx, defaultContainer := range defaultContainers {
+	for _, defaultContainer := range defaultContainers {
 		if customContainer, ok := customMap[defaultContainer.Name]; ok {
 			// The container is present in both maps, so we need to merge
 			// Merge mounts
@@ -271,7 +271,7 @@ func MergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 			if err != nil {
 				return nil, err
 			}
-			if err := mergo.Merge(&defaultContainers[idx], customContainer, mergo.WithOverride); err != nil {
+			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
 				return nil, err
 			}
 			// completely override any resources that were provided
