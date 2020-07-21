@@ -130,7 +130,7 @@ MongoDB Replica Set and asserts that the deployed server can be connected to.
 You can start with `replica_set` test as an starting point to write a new test.
 The tests are written using `operator-sdk` and so you can find more information
 about how to write tests in the [official operator-sdk
-docs](https://sdk.operatorframework.io/docs/golang/e2e-tests/).
+docs](https://sdk.operatorframework.io/docs/golang/legacy/e2e-tests/).
 
 Adding a new test is as easy as to create a new directory in `test/e2e` with the
 new E2E test, and to run them:
