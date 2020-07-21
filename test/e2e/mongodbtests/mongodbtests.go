@@ -9,17 +9,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,20 +146,6 @@ func DeletePod(mdb *mdbv1.MongoDB, podNum int) func(*testing.T) {
 	}
 }
 
-// ConnectivitySucceeds returns a test function which performs
-// a basic MongoDB connectivity test
-func Connectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing.T) {
-	return func(t *testing.T) {
-		if err := Connect(mdb, options.Client().SetAuth(options.Credential{
-			AuthMechanism: "SCRAM-SHA-256",
-			Username:      username,
-			Password:      password,
-		})); err != nil {
-			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %+v", err))
-		}
-	}
-}
-
 // Status compares the given status to the actual status of the MongoDB resource
 func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -197,64 +178,5 @@ func ChangeVersion(mdb *mdbv1.MongoDB, newVersion string) func(*testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-}
-
-// Connect performs a connectivity check by initializing a mongo client
-// and inserting a document into the MongoDB resource. Custom client
-// options can be passed, for example to configure TLS.
-func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
-	if err != nil {
-		return err
-	}
-
-	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
-		collection := mongoClient.Database("testing").Collection("numbers")
-		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
-// IsReachableDuring periodically tests connectivity to the provided MongoDB resource
-// during execution of the provided functions. This function can be used to ensure
-// The MongoDB is up throughout the test.
-func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
-	return IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
-		return Connect(mdb, options.Client().SetAuth(options.Credential{
-			AuthMechanism: "SCRAM-SHA-256",
-			Username:      username,
-			Password:      password,
-		}))
-	})
-}
-
-func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
-	return func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
-		defer cancel()
-
-		// once all the test functions have been executed, the go routine will be cancelled
-		go func() { //nolint
-			for {
-				select {
-				case <-ctx.Done():
-					t.Log("context cancelled, no longer checking connectivity") //nolint
-					return
-				case <-time.After(interval):
-					if err := connectFunc(); err != nil {
-						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %+v", err))
-					} else {
-						t.Logf("Successfully connected to %s", mdb.Name)
-					}
-				}
-			}
-		}()
-		testFunc()
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -24,15 +23,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// tlsConfig is the test tls fixture that we use for testing
+// tls.
 var tlsConfig *tls.Config = nil
-
-func initTls() {
-	var err error
-	tlsConfig, err = getClientTLSConfig()
-	if err != nil {
-		os.Exit(1)
-	}
-}
 
 type Tester struct {
 	mongoClient *mongo.Client
@@ -41,29 +34,31 @@ type Tester struct {
 	tls         tls.Config
 }
 
-func NewTester(opts ...*options.ClientOptions) *Tester {
-	initTls()
+func NewTester(opts ...*options.ClientOptions) (*Tester, error) {
 	t := &Tester{}
 	for _, opt := range opts {
 		t.clientOpts = append(t.clientOpts, opt)
 	}
-	return t
+	return t, initTls()
 }
 
+// initTls loads in the tls configuration fixture
+func initTls() error {
+	var err error = nil
+	tlsConfig, err = getClientTLSConfig()
+	return err
+}
+
+// FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
+// and the hosts from the resource.
+// NOTE: Tls is not configured as the mechanism that the ClientOptions are merged only merge on non-nil
+// values, meaning we need to remove option that configures TLS from the list if we want to not use tls.
+// For now we can just explicitly pass WithTls() or WithoutTls() to configure TLS.
 func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOptions) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 	clientOpts = append(clientOpts, WithHosts(mdb.Hosts()))
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
 
-	//if mdb.Spec.Security.TLS.Enabled {
-	//	tlsConfig, err := getClientTLSConfig()
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	clientOpts = append(clientOpts, &options.ClientOptions{
-	//		TLSConfig: tlsConfig,
-	//	})
-	//}
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		user := users[0]
@@ -79,13 +74,17 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...*options.ClientOption
 	// add any additional options
 	clientOpts = append(clientOpts, opts...)
 
-	return NewTester(clientOpts...), nil
+	return NewTester(clientOpts...)
 }
 
+// ConnectivitySucceeds performs a basic check that ensures that it is possible
+// to connect to the MongoDB resource
 func (m *Tester) ConnectivitySucceeds(opts ...*options.ClientOptions) func(t *testing.T) {
 	return m.connectivityCheck(true, opts...)
 }
 
+// ConnectivitySucceeds performs a basic check that ensures that it is not possible
+// to connect to the MongoDB resource
 func (m *Tester) ConnectivityFails(opts ...*options.ClientOptions) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
@@ -117,7 +116,6 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 // this reason, this function checks the value of the parameter many times, based
 // on the value of `tries`.
 func (m *Tester) HasFeatureCompatibilityVersion(fcv string, tries int) func(t *testing.T) {
-	//connectivityOpts := connectivity.Defaults()
 	connectivityOpts := defaults()
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
@@ -195,7 +193,7 @@ func (m *Tester) getAdminSetting(key string) (interface{}, error) {
 
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
 // with the defined interval. A cancel function is returned, which can be called to stop testing connectivity.
-func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration) func() {
+func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration, opts ...*options.ClientOptions) func() {
 	ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
 	// once all the test functions have been executed, the go routine will be cancelled
 	t.Logf("Starting background connectivity test")
@@ -206,7 +204,7 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 			case <-ctx.Done():
 				return
 			case <-time.After(interval):
-				m.ConnectivitySucceeds()(t)
+				m.ConnectivitySucceeds(opts...)(t)
 			}
 		}
 	}()
@@ -219,6 +217,8 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 	}
 }
 
+// ensureClient establishes a mongo client connection applying any addition
+// client options on top of what were provided at construction.
 func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
 	allOpts := t.clientOpts
 	allOpts = append(allOpts, opts...)
@@ -230,6 +230,8 @@ func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
 	return nil
 }
 
+// WithScram provides a configuration option that will configure the MongoDB resource
+// with the given username and password
 func WithScram(username, password string) *options.ClientOptions {
 	return &options.ClientOptions{
 		Auth: &options.Credential{
@@ -241,24 +243,29 @@ func WithScram(username, password string) *options.ClientOptions {
 	}
 }
 
+// WithHosts configures the hosts of the deployment
 func WithHosts(hosts []string) *options.ClientOptions {
 	return &options.ClientOptions{
 		Hosts: hosts,
 	}
 }
 
+// WithTls configures the client to use tls
 func WithTls() *options.ClientOptions {
 	return &options.ClientOptions{
 		TLSConfig: tlsConfig,
 	}
 }
 
+// WithoutTls will not override WithTls
+// but indicates that TLS should not be used.
 func WithoutTls() *options.ClientOptions {
 	return &options.ClientOptions{
 		TLSConfig: nil,
 	}
 }
 
+// getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data
 	caPEM, err := ioutil.ReadFile("testdata/tls/ca.crt")
@@ -274,6 +281,9 @@ func getClientTLSConfig() (*tls.Config, error) {
 	}, nil
 }
 
+// defaults returns the default connectivity options
+// that our used in our tests.
+// TODO: allow these to be configurable
 func defaults() connectivityOpts {
 	return connectivityOpts{
 		IntervalTime:   1 * time.Second,
