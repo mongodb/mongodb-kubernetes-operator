@@ -272,9 +272,13 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDel
 // convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
 // that can be added directly to the AutomationConfig.
 func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, user mdbv1.MongoDBUser) (automationconfig.MongoDBUser, error) {
+	userDb := user.DB
+	if userDb == "" {
+		userDb = "admin"
+	}
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Name,
-		Database: user.DB,
+		Database: userDb,
 	}
 	for _, role := range user.Roles {
 		acUser.Roles = append(acUser.Roles, automationconfig.Role{
