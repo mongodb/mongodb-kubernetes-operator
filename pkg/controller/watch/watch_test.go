@@ -57,8 +57,8 @@ func TestWatcher(t *testing.T) {
 	t.Run("Multiple objects to reconile", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Add(objNsName, mdb1.NamespacedName())
-		watcher.Add(objNsName, mdb2.NamespacedName())
+		watcher.Watch(objNsName, mdb1.NamespacedName())
+		watcher.Watch(objNsName, mdb2.NamespacedName())
 
 		watcher.Create(event.CreateEvent{
 			Meta:   obj.GetObjectMeta(),
@@ -72,7 +72,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Create event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Add(objNsName, mdb1.NamespacedName())
+		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Create(event.CreateEvent{
 			Meta:   obj.GetObjectMeta(),
@@ -85,7 +85,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Update event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Add(objNsName, mdb1.NamespacedName())
+		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Update(event.UpdateEvent{
 			MetaOld:   obj.GetObjectMeta(),
@@ -100,7 +100,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Delete event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Add(objNsName, mdb1.NamespacedName())
+		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Delete(event.DeleteEvent{
 			Meta:   obj.GetObjectMeta(),
@@ -113,7 +113,7 @@ func TestWatcher(t *testing.T) {
 	t.Run("Generic event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Add(objNsName, mdb1.NamespacedName())
+		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Generic(event.GenericEvent{
 			Meta:   obj.GetObjectMeta(),
@@ -144,17 +144,17 @@ func TestWatcherAdd(t *testing.T) {
 	}
 
 	// Ensure single object can be added to empty watchlist.
-	watcher.Add(watchedName, mdb1.NamespacedName())
+	watcher.Watch(watchedName, mdb1.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{mdb1.NamespacedName()}, watcher.watched[watchedName])
 
 	// Ensure object can only be watched once.
-	watcher.Add(watchedName, mdb1.NamespacedName())
+	watcher.Watch(watchedName, mdb1.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{mdb1.NamespacedName()}, watcher.watched[watchedName])
 
 	// Ensure a single object can be watched for multiple reconciliations.
-	watcher.Add(watchedName, mdb2.NamespacedName())
+	watcher.Watch(watchedName, mdb2.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{
 		mdb1.NamespacedName(),

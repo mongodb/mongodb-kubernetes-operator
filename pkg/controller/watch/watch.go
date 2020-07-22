@@ -23,8 +23,8 @@ func New() ResourceWatcher {
 	}
 }
 
-// Add will add a new object to watch.
-func (w ResourceWatcher) Add(watchedName, dependentName types.NamespacedName) {
+// Watch will add a new object to watch.
+func (w ResourceWatcher) Watch(watchedName, dependentName types.NamespacedName) {
 	existing, hasExisting := w.watched[watchedName]
 	if !hasExisting {
 		existing = []types.NamespacedName{}
