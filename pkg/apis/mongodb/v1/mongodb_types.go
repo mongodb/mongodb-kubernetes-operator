@@ -173,12 +173,6 @@ func (m MongoDB) MongoURI() string {
 	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
 }
 
-// TODO: this is a temporary function which will be used in the e2e tests
-// which will be removed in the following PR to clean up our mongo client testing
-func (m MongoDB) SCRAMMongoURI(username, password string) string {
-	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(m.Hosts(), ","))
-}
-
 func (m MongoDB) Hosts() []string {
 	hosts := make([]string, m.Spec.Members)
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
