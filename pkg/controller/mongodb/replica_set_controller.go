@@ -60,19 +60,11 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	tlsCAMountPath     = "/var/lib/tls/ca/"
-	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/secret/" //nolint
-	tlsSecretCertName  = "tls.crt"              //nolint
-	tlsSecretKeyName   = "tls.key"
-	tlsServerMountPath = "/var/lib/tls/server/"
-	tlsServerFileName  = "server.pem"
-
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
 	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
-	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
+	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
+	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
 
 	trueAnnotation = "true"
@@ -450,7 +442,10 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		return corev1.Secret{}, err
 	}
 
-	tlsModification := getTLSConfigModification(mdb)
+	tlsModification, err := getTLSConfigModification(r.client, mdb)
+	if err != nil {
+		return corev1.ConfigMap{}, err
+	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
@@ -569,14 +564,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		"app": mdb.ServiceName(),
 	}
 
-	ownerReferences := []metav1.OwnerReference{
-		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-			Group:   mdbv1.SchemeGroupVersion.Group,
-			Version: mdbv1.SchemeGroupVersion.Version,
-			Kind:    mdb.Kind,
-		}),
-	}
-
 	// the health status volume is required in both agent and mongod pods.
 	// the mongod requires it to determine if an upgrade is happening and needs to kill the pod
 	// to prevent agent deadlock
@@ -599,7 +586,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithServiceName(mdb.ServiceName()),
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
-		statefulset.WithOwnerReference(ownerReferences),
+		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
 		statefulset.WithReplicas(mdb.Spec.Members),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
@@ -618,6 +605,14 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 			),
 		),
 	)
+}
+
+func getOwnerReference(mdb mdbv1.MongoDB) metav1.OwnerReference {
+	return *metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
+		Group:   mdbv1.SchemeGroupVersion.Group,
+		Version: mdbv1.SchemeGroupVersion.Version,
+		Kind:    mdb.Kind,
+	})
 }
 
 func getDomain(service, namespace, clusterName string) string {

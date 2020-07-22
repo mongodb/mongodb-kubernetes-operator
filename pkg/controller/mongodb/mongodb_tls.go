@@ -3,27 +3,32 @@ package mongodb
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 )
 
+const (
+	tlsCAMountPath             = "/var/lib/tls/ca/"
+	tlsCACertName              = "ca.crt"
+	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
+	tlsOperatorSecretFileName  = "server.pem"
+	tlsSecretCertName          = "tls.crt" //nolint
+	tlsSecretKeyName           = "tls.key"
+)
+
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-// The possible return values are:
-// - (true, nil) if the config is valid
-// - (false, nil) if the config is not valid
-// - (_, err) if an error occured when validating the config
 func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return true, nil
@@ -73,16 +78,53 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 }
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
-// The config is only updated after the certs and keys have been rolled out to all pods.
-// The agent needs these to be in place before the config is updated.
-// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
-	if !(mdb.Spec.Security.TLS.Enabled && hasRolledOutTLS(mdb)) {
-		return automationconfig.NOOP()
+// It will also ensure that the combined cert-key secret is created.
+func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
+	if !mdb.Spec.Security.TLS.Enabled {
+		return automationconfig.NOOP(), nil
 	}
 
+	if err := ensureTLSSecret(getUpdateCreator, mdb); err != nil {
+		return automationconfig.NOOP(), err
+	}
+
+	// The config is only updated after the certs and keys have been rolled out to all pods.
+	// The agent needs these to be in place before the config is updated.
+	// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
+	if hasRolledOutTLS(mdb) {
+		return tlsConfigModification(mdb), nil
+	}
+
+	return automationconfig.NOOP(), nil
+}
+
+// ensureTLSSecret will create or update the operator-managed Secret containing
+// the concatenated certificate and key from the user-provided Secret.
+func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) error {
+	cert, err := secret.ReadKey(getUpdateCreator, tlsSecretCertName, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return err
+	}
+
+	key, err := secret.ReadKey(getUpdateCreator, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return err
+	}
+
+	operatorSecret := secret.Builder().
+		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
+		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
+		SetField(tlsOperatorSecretFileName, cert+key).
+		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
+		Build()
+
+	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+}
+
+// tlsConfigModification will enable TLS in the automation config.
+func tlsConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
 	caCertificatePath := tlsCAMountPath + tlsCACertName
-	certificateKeyPath := tlsServerMountPath + tlsServerFileName
+	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName
 
 	mode := automationconfig.TLSModeRequired
 	if mdb.Spec.Security.TLS.Optional {
@@ -108,7 +150,7 @@ func getTLSConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
 // hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
 // These must be mounted before TLS can be enabled in the automation config.
 func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
-	_, completedRollout := mdb.Annotations[tLSRolledOutAnnotationKey]
+	_, completedRollout := mdb.Annotations[tlsRolledOutAnnotationKey]
 	return completedRollout
 }
 
@@ -124,7 +166,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 	if mdb.Annotations == nil {
 		mdb.Annotations = map[string]string{}
 	}
-	mdb.Annotations[tLSRolledOutAnnotationKey] = trueAnnotation
+	mdb.Annotations[tlsRolledOutAnnotationKey] = trueAnnotation
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
 	}
@@ -141,10 +183,6 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 		return podtemplatespec.NOOP()
 	}
 
-	// Configure an empty volume into which the TLS init container will write the certificate and key file
-	tlsVolume := statefulset.CreateVolumeFromEmptyDir("tls")
-	tlsVolumeMount := statefulset.CreateVolumeMount(tlsVolume.Name, tlsServerMountPath, statefulset.WithReadOnly(false))
-
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
 	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
@@ -152,34 +190,16 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
-	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.Spec.Security.TLS.CertificateKeySecret.Name)
-	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsSecretMountPath, statefulset.WithReadOnly(true))
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.TLSOperatorSecretNamespacedName().Name)
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
 	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
 	// Because of this we need to use an init container which reads the two files mounted from the secret and combines them into one
 	return podtemplatespec.Apply(
-		podtemplatespec.WithInitContainer("tls-init", tlsInit(tlsVolumeMount, tlsSecretVolumeMount)),
-		podtemplatespec.WithVolume(tlsVolume),
 		podtemplatespec.WithVolume(caVolume),
 		podtemplatespec.WithVolume(tlsSecretVolume),
-		podtemplatespec.WithVolumeMounts(agentName, tlsVolumeMount, caVolumeMount),
-		podtemplatespec.WithVolumeMounts(mongodbName, tlsVolumeMount, caVolumeMount),
-	)
-}
-
-// tlsInit creates an init container which combines the mounted tls.key and tls.crt into a single PEM file
-func tlsInit(tlsMount, tlsSecretMount corev1.VolumeMount) container.Modification {
-	command := fmt.Sprintf(
-		"cat %s %s > %s",
-		tlsSecretMountPath+tlsSecretCertName,
-		tlsSecretMountPath+tlsSecretKeyName,
-		tlsServerMountPath+tlsServerFileName)
-
-	return container.Apply(
-		container.WithName("tls-init"),
-		container.WithImage("busybox"),
-		container.WithCommand([]string{"sh", "-c", command}),
-		container.WithVolumeMounts([]corev1.VolumeMount{tlsMount, tlsSecretMount}),
+		podtemplatespec.WithVolumeMounts(agentName, tlsSecretVolumeMount, caVolumeMount),
+		podtemplatespec.WithVolumeMounts(mongodbName, tlsSecretVolumeMount, caVolumeMount),
 	)
 }
