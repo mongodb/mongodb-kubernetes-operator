@@ -103,7 +103,7 @@ func TestReadExistingCredentials(t *testing.T) {
 }
 
 func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *testing.T) {
-	sha1Salt, sha256SaltKey, err := generateSalts()
+	sha1Salt, sha256SaltKey, err := generate.Salts()
 	assert.NoError(t, err)
 
 	username := "user-1"
@@ -313,19 +313,21 @@ func assertScramCredsCredentialsValidity(t *testing.T, scram1Creds, scram256Cred
 	assert.Equal(t, 15000, scram256Creds.IterationCount)
 }
 
+// validScramCredentialsSecret returns a secret that has all valid scram credentials
 func validScramCredentialsSecret(objectKey types.NamespacedName, username string) corev1.Secret {
-	return secret.Builder(). // valid secret
-					SetName(scramCredentialsSecretName(objectKey.Name, username)).
-					SetNamespace(objectKey.Namespace).
-					SetField(sha1SaltKey, testSha1Salt).
-					SetField(sha1StoredKeyKey, testSha1StoredKey).
-					SetField(sha1ServerKeyKey, testSha1ServerKey).
-					SetField(sha256SaltKey, testSha256Salt).
-					SetField(sha256StoredKeyKey, testSha256StoredKey).
-					SetField(sha256ServerKeyKey, testSha256ServerKey).
-					Build()
+	return secret.Builder().
+		SetName(scramCredentialsSecretName(objectKey.Name, username)).
+		SetNamespace(objectKey.Namespace).
+		SetField(sha1SaltKey, testSha1Salt).
+		SetField(sha1StoredKeyKey, testSha1StoredKey).
+		SetField(sha1ServerKeyKey, testSha1ServerKey).
+		SetField(sha256SaltKey, testSha256Salt).
+		SetField(sha256StoredKeyKey, testSha256StoredKey).
+		SetField(sha256ServerKeyKey, testSha256ServerKey).
+		Build()
 }
 
+// invalidSecret returns a secret that is incomplete
 func invalidSecret(objectKey types.NamespacedName, username string) corev1.Secret {
 	return secret.Builder().
 		SetName(scramCredentialsSecretName(objectKey.Name, username)).

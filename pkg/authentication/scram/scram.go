@@ -1,11 +1,8 @@
 package scram
 
 import (
-	"crypto/sha1" //nolint
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"hash"
 
 	"go.uber.org/zap"
 
@@ -113,25 +110,25 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User,
 	// we should only need to generate new credentials in two situations.
 	// 1. We are creating the credentials for the first time
 	// 2. We are changing the password
-	needToGenerateNewCredentials, err := needToGenerateNewCredentials(getUpdateCreator, user.GetUserName(), mdbNamespacedName, password)
+	shouldGenerateNewCredentials, err := needToGenerateNewCredentials(getUpdateCreator, user.GetUserName(), mdbNamespacedName, password)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
 	// there are no changes required, we can re-use the same credentials.
-	if !needToGenerateNewCredentials {
+	if !shouldGenerateNewCredentials {
 		zap.S().Debugf("Credentials have not changed, using credentials stored in: secret/%s", scramCredentialsSecretName(mdbNamespacedName.Name, user.GetUserName()))
 		return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.GetUserName())
 	}
 
 	// the password has changed, or we are generating it for the first time
+	zap.S().Debugf("Generating new credentials and storing in secret/%s", scramCredentialsSecretName(mdbNamespacedName.Name, user.GetUserName()))
 	sha1Creds, sha256Creds, err := generateScramShaCredentials(user.GetUserName(), password)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
 	// create or update our credentials secret for this user
-	zap.S().Debugf("Generating new credentials and storing in secret/%s", scramCredentialsSecretName(mdbNamespacedName.Name, user.GetUserName()))
 	if err := createScramCredentialsSecret(getUpdateCreator, mdbNamespacedName, user.GetUserName(), sha1Creds, sha256Creds); err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
@@ -184,40 +181,10 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, username string, m
 	return sha1CredsAreDifferent || sha256CredsAreDifferent, nil
 }
 
-// generateSalts generates 2 different salts. The first is for the sha1 algorithm
-// the second is for sha256
-func generateSalts() ([]byte, []byte, error) {
-	sha1Salt, err := generateSalt(sha1.New)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sha256Salt, err := generateSalt(sha256.New)
-	if err != nil {
-		return nil, nil, err
-	}
-	return sha1Salt, sha256Salt, nil
-}
-
-// generateSalt will create a salt which can be used to compute Scram Sha credentials based on the given hashConstructor.
-// sha1.New should be used for MONGODB-CR/SCRAM-SHA-1 and sha256.New should be used for SCRAM-SHA-256
-func generateSalt(hashConstructor func() hash.Hash) ([]byte, error) {
-	saltSize := hashConstructor().Size() - scramcredentials.RFC5802MandatedSaltSize
-	salt, err := generate.RandomFixedLengthStringOfSize(20)
-
-	if err != nil {
-		return nil, err
-	}
-	shaBytes32 := sha256.Sum256([]byte(salt))
-
-	// the algorithms expect a salt of a specific size.
-	return shaBytes32[:saltSize], nil
-}
-
 // generateScramShaCredentials creates a new set of credentials using randomly generated salts. The first returned element is
 // sha1 credentials, the second is sha256 credentials
 func generateScramShaCredentials(username string, password string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
-	sha1Salt, sha256Salt, err := generateSalts()
+	sha1Salt, sha256Salt, err := generate.Salts()
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
@@ -246,7 +213,7 @@ func computeScramShaCredentials(username, password string, sha1Salt, sha256Salt 
 
 // createScramCredentialsSecret will create a Secret that contains all of the fields required to read these credentials
 // back in the future.
-func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey types.NamespacedName, username string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
+func createScramCredentialsSecret(getUpdateCreator secret.GetUpdateCreator, mdbObjectKey types.NamespacedName, username string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
 	scramCredsSecret := secret.Builder().
 		SetName(scramCredentialsSecretName(mdbObjectKey.Name, username)).
 		SetNamespace(mdbObjectKey.Namespace).
@@ -257,7 +224,7 @@ func createScramCredentialsSecret(secretCreator secret.Creator, mdbObjectKey typ
 		SetField(sha256StoredKeyKey, sha256Creds.StoredKey).
 		SetField(sha256ServerKeyKey, sha256Creds.ServerKey).
 		Build()
-	return secretCreator.CreateSecret(scramCredsSecret)
+	return secret.CreateOrUpdate(getUpdateCreator, scramCredsSecret)
 }
 
 // readExistingCredentials reads the existing set of credentials for both ScramSha 1 & 256
