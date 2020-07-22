@@ -103,7 +103,7 @@ func TestReadExistingCredentials(t *testing.T) {
 }
 
 func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *testing.T) {
-	sha1Salt, sha256SaltKey, err := generateSalts()
+	sha1Salt, sha256SaltKey, err := generate.Salts()
 	assert.NoError(t, err)
 
 	username := "user-1"
@@ -123,12 +123,12 @@ func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *
 func TestEnsureScramCredentials(t *testing.T) {
 	mdb, user := buildMongoDBAndUser("mdb-0")
 	t.Run("Fails when there is no password secret, and no credentials secret", func(t *testing.T) {
-		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb)
+		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb.NamespacedName())
 		assert.Error(t, err)
 	})
 	t.Run("Existing credentials are used when password does not exist, but credentials secret has been created", func(t *testing.T) {
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb)
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
 	})
@@ -143,7 +143,7 @@ func TestEnsureScramCredentials(t *testing.T) {
 			Build()
 
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb)
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
 		assert.NotEmpty(t, scram1Creds.Salt)
@@ -174,7 +174,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 			SetField(user.PasswordSecretRef.Key, "TDg_DESiScDrJV6").
 			Build()
 
-		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb, user)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb.NamespacedName(), user)
 
 		assert.NoError(t, err)
 		assert.Equal(t, user.Name, acUser.Username)
@@ -189,7 +189,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 	})
 
 	t.Run("If there is no password secret, the creation fails", func(t *testing.T) {
-		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb, user)
+		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb.NamespacedName(), user)
 		assert.Error(t, err)
 	})
 }
@@ -313,19 +313,21 @@ func assertScramCredsCredentialsValidity(t *testing.T, scram1Creds, scram256Cred
 	assert.Equal(t, 15000, scram256Creds.IterationCount)
 }
 
+// validScramCredentialsSecret returns a secret that has all valid scram credentials
 func validScramCredentialsSecret(objectKey types.NamespacedName, username string) corev1.Secret {
-	return secret.Builder(). // valid secret
-					SetName(scramCredentialsSecretName(objectKey.Name, username)).
-					SetNamespace(objectKey.Namespace).
-					SetField(sha1SaltKey, testSha1Salt).
-					SetField(sha1StoredKeyKey, testSha1StoredKey).
-					SetField(sha1ServerKeyKey, testSha1ServerKey).
-					SetField(sha256SaltKey, testSha256Salt).
-					SetField(sha256StoredKeyKey, testSha256StoredKey).
-					SetField(sha256ServerKeyKey, testSha256ServerKey).
-					Build()
+	return secret.Builder().
+		SetName(scramCredentialsSecretName(objectKey.Name, username)).
+		SetNamespace(objectKey.Namespace).
+		SetField(sha1SaltKey, testSha1Salt).
+		SetField(sha1StoredKeyKey, testSha1StoredKey).
+		SetField(sha1ServerKeyKey, testSha1ServerKey).
+		SetField(sha256SaltKey, testSha256Salt).
+		SetField(sha256StoredKeyKey, testSha256StoredKey).
+		SetField(sha256ServerKeyKey, testSha256ServerKey).
+		Build()
 }
 
+// invalidSecret returns a secret that is incomplete
 func invalidSecret(objectKey types.NamespacedName, username string) corev1.Secret {
 	return secret.Builder().
 		SetName(scramCredentialsSecretName(objectKey.Name, username)).

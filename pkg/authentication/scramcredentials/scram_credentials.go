@@ -20,8 +20,8 @@ const (
 	serverKeyInput = "Server Key" // specified in RFC 5802
 
 	// using the default MongoDB values for the number of iterations depending on mechanism
-	scramSha1Iterations   = 10000
-	scramSha256Iterations = 15000
+	DefaultScramSha1Iterations   = 10000
+	DefaultScramSha256Iterations = 15000
 )
 
 type ScramCreds struct {
@@ -33,13 +33,13 @@ type ScramCreds struct {
 
 func ComputeScramSha256Creds(password string, salt []byte) (ScramCreds, error) {
 	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
-	return computeScramCredentials(sha256.New, scramSha256Iterations, base64EncodedSalt, password)
+	return computeScramCredentials(sha256.New, DefaultScramSha256Iterations, base64EncodedSalt, password)
 }
 
 func ComputeScramSha1Creds(username, password string, salt []byte) (ScramCreds, error) {
 	base64EncodedSalt := base64.StdEncoding.EncodeToString(salt)
 	password = md5Hex(username + ":mongo:" + password)
-	return computeScramCredentials(sha1.New, scramSha1Iterations, base64EncodedSalt, password)
+	return computeScramCredentials(sha1.New, DefaultScramSha1Iterations, base64EncodedSalt, password)
 }
 
 func md5Hex(s string) string {
