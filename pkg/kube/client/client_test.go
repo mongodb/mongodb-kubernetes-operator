@@ -79,6 +79,5 @@ func TestDeleteConfigMap(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = client.GetConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
-	assert.Error(t, err)
 	assert.Equal(t, err, notFoundError())
 }
