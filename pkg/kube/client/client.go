@@ -26,7 +26,7 @@ type Client interface {
 	k8sClient.Client
 	// TODO: remove this function, add mongodb package which has GetAndUpdate function
 	GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error
-	configmap.GetUpdateCreator
+	configmap.GetUpdateCreateDeleter
 	service.GetUpdateCreator
 	secret.GetUpdateCreateDeleter
 	statefulset.GetUpdateCreateDeleter
@@ -66,6 +66,17 @@ func (c client) UpdateConfigMap(cm corev1.ConfigMap) error {
 // CreateConfigMap provides a thin wrapper and client.Client to create corev1.ConfigMap types
 func (c client) CreateConfigMap(cm corev1.ConfigMap) error {
 	return c.Create(context.TODO(), &cm)
+}
+
+// DeleteConfigMap deletes the configmap of the given object key
+func (c client) DeleteConfigMap(key k8sClient.ObjectKey) error {
+	cm := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      key.Name,
+			Namespace: key.Namespace,
+		},
+	}
+	return c.Delete(context.TODO(), &cm)
 }
 
 // GetSecret provides a thin wrapper and client.Client to access corev1.Secret types

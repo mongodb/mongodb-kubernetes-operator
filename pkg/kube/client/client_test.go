@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -61,4 +63,22 @@ func TestAddingDataField_ModifiesExistingObject(t *testing.T) {
 
 	assert.Contains(t, cm.Data, "new-field")
 	assert.Equal(t, cm.Data["new-field"], "value")
+}
+
+func TestDeleteConfigMap(t *testing.T) {
+	cm := configmap.Builder().
+		SetName("config-map").
+		SetNamespace("default").
+		Build()
+
+	client := NewClient(NewMockedClient())
+	err := client.CreateConfigMap(cm)
+	assert.NoError(t, err)
+
+	err = client.DeleteConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
+	assert.NoError(t, err)
+
+	_, err = client.GetConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
+	assert.Error(t, err)
+	assert.Equal(t, err, notFoundError())
 }
