@@ -197,7 +197,7 @@ func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
 func (m MongoDB) TLSOperatorSecretNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: "mongodb-operator-server-certificate-key", Namespace: m.Namespace}
+	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
 }
 
 func (m MongoDB) NamespacedName() types.NamespacedName {

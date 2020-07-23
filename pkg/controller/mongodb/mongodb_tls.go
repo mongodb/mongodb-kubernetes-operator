@@ -1,6 +1,7 @@
 package mongodb
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +24,7 @@ const (
 	tlsCAMountPath             = "/var/lib/tls/ca/"
 	tlsCACertName              = "ca.crt"
 	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
-	tlsOperatorSecretFileName  = "server.pem"
-	tlsSecretCertName          = "tls.crt" //nolint
+	tlsSecretCertName          = "tls.crt"              //nolint
 	tlsSecretKeyName           = "tls.key"
 )
 
@@ -74,6 +74,9 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 		return false, nil
 	}
 
+	// Watch certificate-key secret to handle rotations
+	r.secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
+
 	return true, nil
 }
 
@@ -84,7 +87,13 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), nil
 	}
 
-	if err := ensureTLSSecret(getUpdateCreator, mdb); err != nil {
+	cert, key, err := getCertAndKey(getUpdateCreator, mdb)
+	if err != nil {
+		return automationconfig.NOOP(), err
+	}
+
+	err = ensureTLSSecret(getUpdateCreator, mdb, cert, key)
+	if err != nil {
 		return automationconfig.NOOP(), err
 	}
 
@@ -92,39 +101,58 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 	// The agent needs these to be in place before the config is updated.
 	// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
 	if hasRolledOutTLS(mdb) {
-		return tlsConfigModification(mdb), nil
+		return tlsConfigModification(mdb, cert, key), nil
 	}
 
 	return automationconfig.NOOP(), nil
 }
 
-// ensureTLSSecret will create or update the operator-managed Secret containing
-// the concatenated certificate and key from the user-provided Secret.
-func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) error {
-	cert, err := secret.ReadKey(getUpdateCreator, tlsSecretCertName, mdb.TLSSecretNamespacedName())
+// getCertAndKey will fetch the certificate and key from the user-provided Secret.
+func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDB) (string, string, error) {
+	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
-	key, err := secret.ReadKey(getUpdateCreator, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	key, err := secret.ReadKey(getter, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
 	if err != nil {
-		return err
+		return "", "", err
 	}
+
+	return cert, key, nil
+}
+
+// ensureTLSSecret will create or update the operator-managed Secret containing
+// the concatenated certificate and key from the user-provided Secret.
+func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, cert, key string) error {
+	// Calculate file name from certificate and key
+	fileName := tlsOperatorSecretFileName(cert, key)
 
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
-		SetField(tlsOperatorSecretFileName, cert+key).
+		SetField(fileName, cert+key).
 		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
 		Build()
 
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
 }
 
+// tlsOperatorSecretFileName calculates the file name to use for the mounted
+// certificate-key file. The name is based on the hash of the combined cert and key.
+// If the certificate or key changes, the file path changes as well which will trigger
+// the agent to perform a restart.
+// The user-provided secret is being watched and will trigger a reconciliation
+// on changes. This enables the operator to automatically handle cert rotations.
+func tlsOperatorSecretFileName(cert, key string) string {
+	hash := sha256.Sum256([]byte(cert + key))
+	return fmt.Sprintf("%x.pem", hash)
+}
+
 // tlsConfigModification will enable TLS in the automation config.
-func tlsConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+func tlsConfigModification(mdb mdbv1.MongoDB, cert, key string) automationconfig.Modification {
 	caCertificatePath := tlsCAMountPath + tlsCACertName
-	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName
+	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName(cert, key)
 
 	mode := automationconfig.TLSModeRequired
 	if mdb.Spec.Security.TLS.Optional {
