@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -78,18 +80,21 @@ func Add(mgr manager.Manager) error {
 type ManifestProvider func() (automationconfig.VersionManifest, error)
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
+	secretWatcher := watch.New()
+
 	return &ReplicaSetReconciler{
 		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
 		manifestProvider: manifestProvider,
 		log:              zap.S(),
+		secretWatcher:    &secretWatcher,
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
 	// Create a new controller
 	c, err := controller.New("replicaset-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -101,6 +106,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -115,6 +126,7 @@ type ReplicaSetReconciler struct {
 	scheme           *runtime.Scheme
 	manifestProvider func() (automationconfig.VersionManifest, error)
 	log              *zap.SugaredLogger
+	secretWatcher    *watch.ResourceWatcher
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
