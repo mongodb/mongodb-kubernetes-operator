@@ -40,7 +40,7 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
 	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
 
-	t.Run("MongoDB is reachable while certificate is rotated", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
+	t.Run("MongoDB is reachable while certificate is rotated", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
 		func() {
 			t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
 			t.Run("Wait for certificate to be rotated", tlstests.WaitForRotatedCertificate(&mdb))
