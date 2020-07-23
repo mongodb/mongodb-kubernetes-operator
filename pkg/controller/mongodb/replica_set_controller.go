@@ -79,7 +79,6 @@ func Add(mgr manager.Manager) error {
 // contains the list of all available MongoDB versions
 type ManifestProvider func() (automationconfig.VersionManifest, error)
 
-// newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
@@ -93,7 +92,8 @@ func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *Repl
 	}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
+// add sets up a controller for the Reconciler on the manager. It will
+// also configure the necessary watches.
 func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
 	// Create a new controller
 	c, err := controller.New("replicaset-controller", mgr, controller.Options{Reconciler: r})
