@@ -24,8 +24,7 @@ const (
 	tlsCAMountPath             = "/var/lib/tls/ca/"
 	tlsCACertName              = "ca.crt"
 	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
-	tlsOperatorSecretFileName  = "server.pem"
-	tlsSecretCertName          = "tls.crt" //nolint
+	tlsSecretCertName          = "tls.crt"              //nolint
 	tlsSecretKeyName           = "tls.key"
 )
 
@@ -116,13 +115,8 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		return "", err
 	}
 
-	// The hash of the combined cert and key determines the file name of the
-	// mounted secret. If the certificate or key changes, the file path changes
-	// as well which will trigger the agent to perform a restart.
-	// The user-provided secret is being watched and will trigger a reconciliation
-	// on changes. This enables the operator to automatically handle cert rotations.
-	hash := sha256.Sum256([]byte(cert + key))
-	fileName := fmt.Sprintf("%x.pem", hash)
+	// Calculate file name from certificate and key
+	fileName := tlsOperatorSecretFileName(cert, key)
 
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
@@ -132,6 +126,17 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		Build()
 
 	return fileName, secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+}
+
+// tlsOperatorSecretFileName calculates the file name to use for the mounted
+// certificate-key file. The name is based on the hash of the combined cert and key.
+// If the certificate or key changes, the file path changes as well which will trigger
+// the agent to perform a restart.
+// The user-provided secret is being watched and will trigger a reconciliation
+// on changes. This enables the operator to automatically handle cert rotations.
+func tlsOperatorSecretFileName(cert, key string) string {
+	hash := sha256.Sum256([]byte(cert + key))
+	return fmt.Sprintf("%x.pem", hash)
 }
 
 // tlsConfigModification will enable TLS in the automation config.
