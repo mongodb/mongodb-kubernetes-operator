@@ -437,7 +437,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		return corev1.Secret{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
+	authModification, err := scram.EnsureScram(r.client, mdb.AgentScramCredentialsNamespacedName(), mdb)
 	if err != nil {
 		return corev1.Secret{}, err
 	}

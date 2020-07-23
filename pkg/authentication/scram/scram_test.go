@@ -198,16 +198,16 @@ func TestEnsureEnabler(t *testing.T) {
 	t.Run("Should fail if there is no password present for the user", func(t *testing.T) {
 		mdb, _ := buildMongoDBAndUser("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.AgentScramCredentialsNamespacedName(), mdb)
 		assert.Error(t, err)
 	})
 	t.Run("Agent Credentials Secret should be created if there are no users", func(t *testing.T) {
 		mdb := buildMongoDB("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.AgentScramCredentialsNamespacedName(), mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
+		agentCredentialsSecret, err := s.GetSecret(mdb.AgentScramCredentialsNamespacedName())
 		assert.NoError(t, err)
 		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
 		assert.NotEmpty(t, agentCredentialsSecret.Data[AgentPasswordKey])
@@ -218,17 +218,17 @@ func TestEnsureEnabler(t *testing.T) {
 		mdb := buildMongoDB("mdb-0")
 
 		agentPasswordSecret := secret.Builder().
-			SetName(mdb.ScramCredentialsNamespacedName().Name).
-			SetNamespace(mdb.ScramCredentialsNamespacedName().Namespace).
+			SetName(mdb.AgentScramCredentialsNamespacedName().Name).
+			SetNamespace(mdb.AgentScramCredentialsNamespacedName().Namespace).
 			SetField(AgentPasswordKey, "A21Zv5agv3EKXFfM").
 			SetField(AgentKeyfileKey, "RuPeMaIe2g0SNTTa").
 			Build()
 
 		s := newMockedSecretGetUpdateCreateDeleter(agentPasswordSecret)
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		_, err := EnsureScram(s, mdb.AgentScramCredentialsNamespacedName(), mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
+		agentCredentialsSecret, err := s.GetSecret(mdb.AgentScramCredentialsNamespacedName())
 		assert.NoError(t, err)
 		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
 		assert.Equal(t, "A21Zv5agv3EKXFfM", string(agentCredentialsSecret.Data[AgentPasswordKey]))

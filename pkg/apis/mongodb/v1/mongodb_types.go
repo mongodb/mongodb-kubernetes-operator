@@ -213,7 +213,7 @@ func (m MongoDB) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
-func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
+func (m *MongoDB) AgentScramCredentialsNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
