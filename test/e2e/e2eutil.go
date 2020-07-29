@@ -74,14 +74,6 @@ func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, st
 	})
 }
 
-// WaitForStatefulSetToHaveExpectedContainerValue waits until the passed
-func WaitForStatefulSetToHaveExpectedContainerCondition(t *testing.T, mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
-		idx := findIndexByName(containerName, sts.Spec.Template.Spec.Containers)
-		return idx != -1 && condition(sts.Spec.Template.Spec.Containers[idx])
-	})
-}
-
 // WaitForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
 func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
@@ -182,13 +174,4 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 			Name: "test-tls-ca",
 		},
 	}
-}
-
-func findIndexByName(name string, containers []corev1.Container) int {
-	for idx, c := range containers {
-		if c.Name == name {
-			return idx
-		}
-	}
-	return -1
 }

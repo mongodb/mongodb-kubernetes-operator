@@ -292,10 +292,29 @@ func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration,
 
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToHaveExpectedContainerCondition(t, mdb, containerName, condition, time.Second*5, time.Minute*5)
+		sts := appsv1.StatefulSet{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("StatefulSet %s/%s - container %s satisfies the given condition!", mdb.Namespace, mdb.Name, containerName)
+
+		container := findContainerByName(containerName, sts.Spec.Template.Spec.Containers)
+		if container == nil {
+			t.Fatalf(`No container found with name "%s" in StatefulSet pod template`, containerName)
+		}
+
+		if !condition(*container) {
+			t.Fatalf(`Container "%s" does not satisfy condition`, containerName)
+		}
 	}
+}
+
+func findContainerByName(name string, containers []corev1.Container) *corev1.Container {
+	for _, c := range containers {
+		if c.Name == name {
+			return &c
+		}
+	}
+
+	return nil
 }

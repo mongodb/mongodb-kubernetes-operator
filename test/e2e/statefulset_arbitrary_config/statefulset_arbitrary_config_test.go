@@ -38,6 +38,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool { return container.ReadinessProbe.TimeoutSeconds == 100 }))
-
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
+		return container.ReadinessProbe.TimeoutSeconds == 100
+	}))
 }
