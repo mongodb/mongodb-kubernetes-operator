@@ -42,9 +42,8 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool { return container.ReadinessProbe.TimeoutSeconds == 100 }))
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
+		return container.ReadinessProbe.TimeoutSeconds == 100
+	}))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-	t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
-
 }
