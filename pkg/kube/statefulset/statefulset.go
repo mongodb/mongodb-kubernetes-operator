@@ -262,7 +262,7 @@ func createVolumeClaimMap(volumeMounts []corev1.PersistentVolumeClaim) map[strin
 	return mountMap
 }
 
-func MergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
+func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
 	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
 	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
 	var mergedVolumes []corev1.PersistentVolumeClaim
@@ -289,7 +289,6 @@ func MergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, 
 }
 
 func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (appsv1.StatefulSetSpec, error) {
-
 	// PodTemplateSpec needs to be manually merged
 	mergedPodTemplateSpec, err := podtemplatespec.MergePodTemplateSpecs(defaultSpec.Template, overrideSpec.Template)
 	if err != nil {
@@ -297,7 +296,7 @@ func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (ap
 	}
 
 	// VolumeClaimTemplates needs to be manually merged
-	mergedVolumeClaimTemplates, err := MergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
+	mergedVolumeClaimTemplates, err := mergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
 	if err != nil {
 		return appsv1.StatefulSetSpec{}, err
 	}
