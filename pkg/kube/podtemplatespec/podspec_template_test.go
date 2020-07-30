@@ -99,6 +99,52 @@ func TestPodTemplateSpec_MultipleEditsToContainer(t *testing.T) {
 	assert.Equal(t, "cmd", c.Command[0])
 }
 
+func TestMerge(t *testing.T) {
+	defaultSpec := getDefaultPodSpec()
+	customSpec := getCustomPodSpec()
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	initContainerDefault := getDefaultContainer()
+	initContainerDefault.Name = "init-container-default"
+
+	initContainerCustom := getCustomContainer()
+	initContainerCustom.Name = "init-container-custom"
+
+	expected := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-default-name",
+			Namespace: "my-default-namespace",
+			Labels: map[string]string{
+				"app":    "operator",
+				"custom": "some",
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"node-0": "node-0",
+				"node-1": "node-1",
+			},
+			ServiceAccountName:            "my-service-account-override",
+			TerminationGracePeriodSeconds: int64Ref(11),
+			ActiveDeadlineSeconds:         int64Ref(10),
+			NodeName:                      "my-node-name",
+			RestartPolicy:                 corev1.RestartPolicyAlways,
+			Containers: []corev1.Container{
+				getDefaultContainer(),
+				getCustomContainer(),
+			},
+			InitContainers: []corev1.Container{
+				initContainerDefault,
+				initContainerCustom,
+			},
+			Affinity: affinity("zone", "custom"),
+		},
+	}
+	assert.Equal(t, expected, mergedSpec)
+}
+
 func TestMergeFromEmpty(t *testing.T) {
 	defaultPodSpec := corev1.PodTemplateSpec{}
 	customPodSpecTemplate := getCustomPodSpec()
@@ -154,40 +200,53 @@ func TestMergeContainer(t *testing.T) {
 	overrideOtherDefaultContainer.Env = []corev1.EnvVar{{Name: "env_var", Value: "xxx"}}
 	overrideOtherDefaultContainer.VolumeMounts = []corev1.VolumeMount{anotherVol}
 
-	mergedContainers, err := mergeContainers(
-		[]corev1.Container{getDefaultContainer(), otherDefaultContainer},
-		[]corev1.Container{getCustomContainer(), overrideDefaultContainer, overrideOtherDefaultContainer},
-	)
+	defaultSpec := getDefaultPodSpec()
+	defaultSpec.Spec.Containers = []corev1.Container{getDefaultContainer(), otherDefaultContainer}
 
+	customSpec := getCustomPodSpec()
+	customSpec.Spec.Containers = []corev1.Container{getCustomContainer(), overrideDefaultContainer, overrideOtherDefaultContainer}
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
 	assert.NoError(t, err)
-	assert.Len(t, mergedContainers, 3)
 
-	assert.Equal(t, getCustomContainer(), mergedContainers[2])
+	assert.Len(t, mergedSpec.Spec.Containers, 3)
+	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[2])
 
-	mergedDefaultContainer := mergedContainers[0]
-	assert.Equal(t, "container-0", mergedDefaultContainer.Name)
-	assert.Equal(t, []corev1.VolumeMount{vol0}, mergedDefaultContainer.VolumeMounts)
-	assert.Equal(t, "overridden", mergedDefaultContainer.Image)
-	// only "periodSeconds" was overwritten - other fields stayed untouched
-	assert.Equal(t, corev1.Handler{HTTPGet: &corev1.HTTPGetAction{Path: "/foo"}}, mergedDefaultContainer.ReadinessProbe.Handler)
-	assert.Equal(t, int32(20), mergedDefaultContainer.ReadinessProbe.PeriodSeconds)
+	firstExpected := corev1.Container{
+		Name:         "container-0",
+		VolumeMounts: []corev1.VolumeMount{vol0},
+		Image:        "overridden",
+		ReadinessProbe: &corev1.Probe{
+			// only "periodSeconds" was overwritten - other fields stayed untouched
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{Path: "/foo"},
+			},
+			PeriodSeconds: 20,
+		},
+	}
+	assert.Equal(t, firstExpected, mergedSpec.Spec.Containers[0])
 
-	mergedOtherContainer := mergedContainers[1]
-	assert.Equal(t, "default-side-car", mergedOtherContainer.Name)
-	assert.Equal(t, []corev1.VolumeMount{sideCarVol, anotherVol}, mergedOtherContainer.VolumeMounts)
-	assert.Len(t, mergedOtherContainer.Env, 1)
-	assert.Equal(t, "env_var", mergedOtherContainer.Env[0].Name)
-	assert.Equal(t, "xxx", mergedOtherContainer.Env[0].Value)
+	secondExpected := corev1.Container{
+		Name:         "default-side-car",
+		Image:        "image-0",
+		VolumeMounts: []corev1.VolumeMount{sideCarVol, anotherVol},
+		Env: []corev1.EnvVar{
+			corev1.EnvVar{
+				Name:  "env_var",
+				Value: "xxx",
+			},
+		},
+		ReadinessProbe: otherDefaultContainer.ReadinessProbe,
+	}
+	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[1])
 }
 
 func TestMergeVolumeMounts(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	vol1 := corev1.VolumeMount{Name: "another-mount"}
 	volumeMounts := []corev1.VolumeMount{vol0, vol1}
-	var mergedVolumeMounts []corev1.VolumeMount
-	var err error
 
-	mergedVolumeMounts, err = mergeVolumeMounts(nil, volumeMounts)
+	mergedVolumeMounts, err := mergeVolumeMounts(nil, volumeMounts)
 	assert.NoError(t, err)
 	assert.Equal(t, []corev1.VolumeMount{vol0, vol1}, mergedVolumeMounts)
 
@@ -196,38 +255,6 @@ func TestMergeVolumeMounts(t *testing.T) {
 	mergedVolumeMounts, err = mergeVolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
 	assert.NoError(t, err)
 	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
-}
-
-func TestGetMergedDefaultPodSpecTemplate(t *testing.T) {
-	var err error
-
-	dbPodSpecTemplate := getDefaultPodSpec()
-	var mergedPodSpecTemplate corev1.PodTemplateSpec
-
-	// nothing to merge
-	mergedPodSpecTemplate, err = MergePodTemplateSpecs(corev1.PodTemplateSpec{}, dbPodSpecTemplate)
-	assert.NoError(t, err)
-	assert.Equal(t, mergedPodSpecTemplate, dbPodSpecTemplate)
-	assert.Len(t, mergedPodSpecTemplate.Spec.Containers, 1)
-	assert.Equal(t, mergedPodSpecTemplate.Spec.Containers[0], dbPodSpecTemplate.Spec.Containers[0])
-
-	extraContainer := corev1.Container{
-		Name:  "extra-container",
-		Image: "container-image",
-	}
-
-	newPodSpecTemplate := corev1.PodTemplateSpec{
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{extraContainer},
-		},
-	}
-
-	// with a side car container
-	mergedPodSpecTemplate, err = MergePodTemplateSpecs(newPodSpecTemplate, dbPodSpecTemplate)
-	assert.NoError(t, err)
-	assert.Len(t, mergedPodSpecTemplate.Spec.Containers, 2)
-	assert.Equal(t, mergedPodSpecTemplate.Spec.Containers[1], dbPodSpecTemplate.Spec.Containers[0])
-	assert.Equal(t, mergedPodSpecTemplate.Spec.Containers[0], extraContainer)
 }
 
 func int64Ref(i int64) *int64 {
