@@ -292,6 +292,7 @@ func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (ap
 func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
 	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
 	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
+
 	var mergedVolumes []corev1.PersistentVolumeClaim
 	for idx, defaultMount := range defaultMountsMap {
 		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
@@ -302,6 +303,7 @@ func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, 
 		}
 		mergedVolumes = append(mergedVolumes, defaultMount)
 	}
+
 	for _, overrideMount := range overrideMountsMap {
 		if _, ok := defaultMountsMap[overrideMount.Name]; ok {
 			// already merged
@@ -309,9 +311,11 @@ func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, 
 		}
 		mergedVolumes = append(mergedVolumes, overrideMount)
 	}
+
 	sort.SliceStable(mergedVolumes, func(i, j int) bool {
 		return mergedVolumes[i].Name < mergedVolumes[j].Name
 	})
+
 	return mergedVolumes, nil
 }
 
