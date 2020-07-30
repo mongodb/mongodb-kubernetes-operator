@@ -264,6 +264,7 @@ func int64Ref(i int64) *int64 {
 func getDefaultPodSpec() corev1.PodTemplateSpec {
 	initContainer := getDefaultContainer()
 	initContainer.Name = "init-container-default"
+
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-default-name",
@@ -287,6 +288,7 @@ func getDefaultPodSpec() corev1.PodTemplateSpec {
 func getCustomPodSpec() corev1.PodTemplateSpec {
 	initContainer := getCustomContainer()
 	initContainer.Name = "init-container-custom"
+
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{"custom": "some"},
