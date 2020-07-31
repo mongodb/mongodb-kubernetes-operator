@@ -106,9 +106,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
+			net := process.Args26["net"].(map[string]interface{})
+			assert.Equal(t, map[string]interface{}{
+				"mode": automationconfig.TLSModeDisabled,
+			}, net["tls"])
 		}
 	})
 
@@ -122,9 +123,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
+			net := process.Args26["net"].(map[string]interface{})
+			assert.Equal(t, map[string]interface{}{
+				"mode": automationconfig.TLSModeDisabled,
+			}, net["tls"])
 		}
 	})
 
@@ -141,12 +143,13 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT", "KEY")
 
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModeRequired,
-				PEMKeyFile:                         tlsOperatorSecretMountPath + operatorSecretFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
+			net := process.Args26["net"].(map[string]interface{})
+			assert.Equal(t, map[string]interface{}{
+				"mode":                                automationconfig.TLSModeRequired,
+				"certificateKeyFile":                  tlsOperatorSecretMountPath + operatorSecretFileName,
+				"CAFile":                              tlsCAMountPath + tlsCACertName,
+				"allowConnectionsWithoutCertificates": true,
+			}, net["tls"])
 		}
 	})
 
@@ -164,12 +167,13 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT", "KEY")
 
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModePreferred,
-				PEMKeyFile:                         tlsOperatorSecretMountPath + operatorSecretFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
+			net := process.Args26["net"].(map[string]interface{})
+			assert.Equal(t, map[string]interface{}{
+				"mode":                                automationconfig.TLSModePreferred,
+				"certificateKeyFile":                  tlsOperatorSecretMountPath + operatorSecretFileName,
+				"CAFile":                              tlsCAMountPath + tlsCACertName,
+				"allowConnectionsWithoutCertificates": true,
+			}, net["tls"])
 		}
 	})
 }
