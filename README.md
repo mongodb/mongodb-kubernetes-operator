@@ -153,7 +153,7 @@ You can configure the MongoDB Community Kubernetes Operator to use TLS certifica
 
 Before you secure MongoDB resource connections using TLS, you must:
 
-1. Using your own Certificate Authority (CA), create a PEM-encoded TLS certificate for each member of the Application Database’s replica set. The certificate must have one of the following:
+1. Create a PEM-encoded TLS certificate for the servers in the MongoDB resource using your own Certificate Authority (CA). The certificate must have one of the following:
 
    - A wildcard `Common Name` that matches the domain name of all of the replica set members:
 
@@ -193,9 +193,13 @@ To secure connections to MongoDB resources using TLS:
      When you enable TLS on an existing replica set deployment:
 
      a. Set `security.tls.optional` to `true`.
+
      b. Apply the configuration to Kubernetes.
+
      c. Upgrade your existing clients to use TLS.
+
      d. Set `security.tls.optional` to `false`.
+
      e. Complete the remaining steps in the procedure.
 
      ---
@@ -236,7 +240,7 @@ The MongoDB Community Kubernetes Operator supports the following features:
 - Reporting of MongoDB server state via the [MongoDB resource](/deploy/crds/mongodb.com_mongodb_crd.yaml) `status` field
 - Use of any of the available [Docker MongoDB images](https://hub.docker.com/_/mongo/)
 - Clients inside the Kubernetes cluster can connect to the replica set (no external connectivity)
-- TLS support for client/server communication
+- TLS support for client-to-server and server-to-server communication
 
 ### Planned Features
 - Server internal authentication via keyfile
