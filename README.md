@@ -234,9 +234,9 @@ To secure connections to MongoDB resources using TLS:
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 1. From within the Kubernetes cluster, connect to the MongoDB resource.
-   - If `security.tls.optional` is omitted or `false`: clients must
+   - If `spec.security.tls.optional` is omitted or `false`: clients must
      establish TLS connections to the MongoDB servers in the replica set.
-   - If `security.tls.optional` is true, clients can establish TLS or
+   - If `spec.security.tls.optional` is true, clients can establish TLS or
      non-TLS connections to the MongoDB servers in the replica set.
 
    See the documentation for your connection method to learn how to establish a TLS connection to a MongoDB server.
