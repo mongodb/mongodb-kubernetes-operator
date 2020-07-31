@@ -21,6 +21,10 @@ type Creator interface {
 	CreateConfigMap(cm corev1.ConfigMap) error
 }
 
+type Deleter interface {
+	DeleteConfigMap(key client.ObjectKey) error
+}
+
 type GetUpdater interface {
 	Getter
 	Updater
@@ -30,6 +34,13 @@ type GetUpdateCreator interface {
 	Getter
 	Updater
 	Creator
+}
+
+type GetUpdateCreateDeleter interface {
+	Getter
+	Updater
+	Creator
+	Deleter
 }
 
 // ReadKey accepts a ConfigMap Getter, the object of the ConfigMap to get, and the key within

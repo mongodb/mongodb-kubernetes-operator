@@ -76,7 +76,13 @@ func (m *mockedClient) List(_ context.Context, _ runtime.Object, _ ...k8sClient.
 	return nil
 }
 
-func (m *mockedClient) Delete(_ context.Context, _ runtime.Object, _ ...k8sClient.DeleteOption) error {
+func (m *mockedClient) Delete(_ context.Context, obj runtime.Object, _ ...k8sClient.DeleteOption) error {
+	relevantMap := m.ensureMapFor(obj)
+	objKey, err := k8sClient.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+	delete(relevantMap, objKey)
 	return nil
 }
 
