@@ -31,7 +31,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test basic connectivity", mongodbtests.Connectivity(&mdb))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	overrideSpec := v1.StatefulSetConfiguration{}
@@ -41,10 +41,9 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDB) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 	assert.NoError(t, err)
 
-	t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
-
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool { return container.ReadinessProbe.TimeoutSeconds == 100 }))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-	t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
-
+	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Test basic connectivity after update", mongodbtests.Connectivity(&mdb))
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
+		return container.ReadinessProbe.TimeoutSeconds == 100
+	}))
 }

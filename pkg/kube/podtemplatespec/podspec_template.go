@@ -228,7 +228,38 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 	}
 }
 
-func MergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {
+func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
+	// Containers need to be merged manually
+	mergedContainers, err := mergeContainers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	// InitContainers need to be merged manually
+	mergedInitContainers, err := mergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	// Affinity needs to be merged manually
+	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	// Everything else can be merged with mergo
+	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
+	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	mergedPodTemplateSpec.Spec.Containers = mergedContainers
+	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
+	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
+	return mergedPodTemplateSpec, nil
+}
+
+func mergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {
 	defaultMountsMap := createMountsMap(defaultMounts)
 	overrideMountsMap := createMountsMap(overrideMounts)
 	mergedVolumeMounts := []corev1.VolumeMount{}
@@ -259,7 +290,7 @@ func createMountsMap(volumeMounts []corev1.VolumeMount) map[string]corev1.Volume
 	return mountMap
 }
 
-func MergeContainers(defaultContainers, customContainers []corev1.Container) ([]corev1.Container, error) {
+func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]corev1.Container, error) {
 	defaultMap := createContainerMap(defaultContainers)
 	customMap := createContainerMap(customContainers)
 	mergedContainers := []corev1.Container{}
@@ -267,7 +298,7 @@ func MergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 		if customContainer, ok := customMap[defaultContainer.Name]; ok {
 			// The container is present in both maps, so we need to merge
 			// Merge mounts
-			mergedMounts, err := MergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
+			mergedMounts, err := mergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
 			if err != nil {
 				return nil, err
 			}
@@ -316,38 +347,6 @@ func mergeAffinity(defaultAffinity, overrideAffinity *corev1.Affinity) (*corev1.
 		return nil, err
 	}
 	return mergedAffinity, nil
-}
-
-func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
-
-	// Containers need to be merged manually
-	mergedContainers, err := MergeContainers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	// InitContainers need to be merged manually
-	mergedInitContainers, err := MergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	// Affinity needs to be merged manually
-	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	// Everything else can be merged with mergo
-	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
-	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	mergedPodTemplateSpec.Spec.Containers = mergedContainers
-	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
-	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
-	return mergedPodTemplateSpec, nil
 }
 
 // findContainerByName will find either a container or init container by name in a pod template spec
