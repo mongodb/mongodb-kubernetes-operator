@@ -200,9 +200,14 @@ func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
 }
 
 // TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
-// As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
 func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: m.Namespace}
+}
+
+// TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
+// containing the combined certificate and key.
+func (m MongoDB) TLSOperatorSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
 }
 
 func (m MongoDB) NamespacedName() types.NamespacedName {
