@@ -168,9 +168,14 @@ Before you secure MongoDB resource connections using TLS, you must:
      <metadata.name of the MongoDB resource>-2.<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local
      ```
 
-1. Create a Kubernetes ConfigMap that contains the certificate for the CA that signed your server certificate. For a certificate file named `ca.crt`:
+1. Create a Kubernetes ConfigMap that contains the certificate for the CA that signed your server certificate. The key in the ConfigMap that references the certificate must be named `ca.crt`. Kubernetes configures this automatically if the certificate file is named `ca.crt`:
    ```
    kubectl create configmap <tls-ca-configmap-name> --from-file=ca.crt --namespace <namespace>
+   ```
+
+   For a certificate file with any other name, you must define the `ca.crt` key manually:
+   ```
+   kubectl create configmap <tls-ca-configmap-name> --from-file=ca.crt=<certificate-file-name>.crt --namespace <namespace>
    ```
 
 1. Create a Kubernetes secret that contains the server certificate and key for the members of your replica set. For a server certificate named `server.crt` and key named `server.key`:
@@ -184,37 +189,44 @@ To secure connections to MongoDB resources using TLS:
 
 1. Add the following fields to the MongoDB resource definition:
 
-   - `security.tls.enabled`: Encrypts communications using TLS certificates between MongoDB hosts in a replica set and client applications and MongoDB deployments. Set to `true`.
-   - `security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://docs.mongodb.com/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
+   - `spec.security.tls.enabled`: Encrypts communications using TLS certificates between MongoDB hosts in a replica set and client applications and MongoDB deployments. Set to `true`.
+   - `spec.security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://docs.mongodb.com/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
 
      ---
      **NOTE**
 
      When you enable TLS on an existing replica set deployment:
 
-     a. Set `security.tls.optional` to `true`.
+     a. Set `spec.security.tls.optional` to `true`.
 
      b. Apply the configuration to Kubernetes.
 
      c. Upgrade your existing clients to use TLS.
 
-     d. Set `security.tls.optional` to `false`.
+     d. Remove the `spec.security.tls.optional` field.
 
      e. Complete the remaining steps in the procedure.
 
      ---
-   - `security.tls.certificateKeySecretRef.name`: Name of the Kubernetes secret that contains the server certificate and key that you created in the [prerequisites](#prerequisites-1).
-   - `security.tls.caConfigMapRef.name`: Name of the Kubernetes ConfigMap that contains the Certificate Authority certificate used to sign the server certificate that you created in the [prerequisites](#prerequisites-1).
+   - `spec.security.tls.certificateKeySecretRef.name`: Name of the Kubernetes secret that contains the server certificate and key that you created in the [prerequisites](#prerequisites-1).
+   - `spec.security.tls.caConfigMapRef.name`: Name of the Kubernetes ConfigMap that contains the Certificate Authority certificate used to sign the server certificate that you created in the [prerequisites](#prerequisites-1).
 
    ```yaml
-   security:
-     tls:
-       enabled: true
-       optional: false
-       certificateKeySecretRef:
-         name: <tls-secret-name>
-       caConfigMapRef:
-         name: <tls-ca-configmap-name>
+   apiVersion: mongodb.com/v1
+   kind: MongoDB
+   metadata:
+     name: example-mongodb
+   spec:
+     members: 3
+     type: ReplicaSet
+     version: "4.2.7"
+     security:
+       tls:
+         enabled: true
+         certificateKeySecretRef:
+           name: <tls-secret-name>
+         caConfigMapRef:
+           name: <tls-ca-configmap-name>
    ```
 
 1. Apply the configuration to Kubernetes:
