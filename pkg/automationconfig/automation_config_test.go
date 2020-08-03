@@ -40,12 +40,8 @@ func TestBuildAutomationConfig(t *testing.T) {
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
-		assert.Equal(t, map[string]interface{}{
-			"dbPath": DefaultMongoDBDataDir,
-		}, p.Args26["storage"])
-		assert.Equal(t, map[string]interface{}{
-			"replSetName": "my-rs",
-		}, p.Args26["replication"], "replication should be configured based on the replica set name provided")
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").MustStr())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").MustStr())
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
@@ -149,9 +145,7 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
 	for _, process := range ac.Processes {
-		assert.Equal(t, map[string]interface{}{
-			"port": 27017,
-		}, process.Args26["net"])
+		assert.Equal(t, 27017, process.Args26.Get("net.port").MustInt())
 	}
 }
 

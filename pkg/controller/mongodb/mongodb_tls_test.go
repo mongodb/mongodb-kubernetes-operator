@@ -106,10 +106,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			net := process.Args26["net"].(map[string]interface{})
-			assert.Equal(t, map[string]interface{}{
-				"mode": automationconfig.TLSModeDisabled,
-			}, net["tls"])
+			assert.False(t, process.Args26.Has("net.tls"))
 		}
 	})
 
@@ -123,10 +120,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			net := process.Args26["net"].(map[string]interface{})
-			assert.Equal(t, map[string]interface{}{
-				"mode": automationconfig.TLSModeDisabled,
-			}, net["tls"])
+			assert.False(t, process.Args26.Has("net.tls"))
 		}
 	})
 
@@ -143,13 +137,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT", "KEY")
 
-			net := process.Args26["net"].(map[string]interface{})
-			assert.Equal(t, map[string]interface{}{
-				"mode":                                automationconfig.TLSModeRequired,
-				"certificateKeyFile":                  tlsOperatorSecretMountPath + operatorSecretFileName,
-				"CAFile":                              tlsCAMountPath + tlsCACertName,
-				"allowConnectionsWithoutCertificates": true,
-			}, net["tls"])
+			assert.Equal(t, automationconfig.TLSModeRequired, process.Args26.Get("net.tls.mode").Data())
+			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
 
@@ -167,13 +158,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT", "KEY")
 
-			net := process.Args26["net"].(map[string]interface{})
-			assert.Equal(t, map[string]interface{}{
-				"mode":                                automationconfig.TLSModePreferred,
-				"certificateKeyFile":                  tlsOperatorSecretMountPath + operatorSecretFileName,
-				"CAFile":                              tlsCAMountPath + tlsCACertName,
-				"allowConnectionsWithoutCertificates": true,
-			}, net["tls"])
+			assert.Equal(t, automationconfig.TLSModePreferred, process.Args26.Get("net.tls.mode").Data())
+			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
 }

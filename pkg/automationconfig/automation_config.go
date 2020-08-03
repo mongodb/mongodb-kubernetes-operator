@@ -4,6 +4,7 @@ import (
 	"path"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/stretchr/objx"
 )
 
 const (
@@ -29,18 +30,23 @@ type Role struct {
 }
 
 type Process struct {
-	Name                        string                 `json:"name"`
-	HostName                    string                 `json:"hostname"`
-	Args26                      map[string]interface{} `json:"args2_6"`
-	FeatureCompatibilityVersion string                 `json:"featureCompatibilityVersion"`
-	ProcessType                 ProcessType            `json:"processType"`
-	Version                     string                 `json:"version"`
-	AuthSchemaVersion           int                    `json:"authSchemaVersion"`
-	SystemLog                   SystemLog              `json:"systemLog"`
-	WiredTiger                  WiredTiger             `json:"wiredTiger"`
+	Name                        string      `json:"name"`
+	HostName                    string      `json:"hostname"`
+	Args26                      objx.Map    `json:"args2_6"`
+	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType `json:"processType"`
+	Version                     string      `json:"version"`
+	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	SystemLog                   SystemLog   `json:"systemLog"`
+	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
 func newProcess(name, hostName, version, replSetName string, opts ...func(process *Process)) Process {
+	args26 := objx.New(map[string]interface{}{})
+	args26.Set("net.port", 27017)
+	args26.Set("storage.dbPath", DefaultMongoDBDataDir)
+	args26.Set("replication.replSetName", replSetName)
+
 	p := Process{
 		Name:                        name,
 		HostName:                    hostName,
@@ -52,17 +58,7 @@ func newProcess(name, hostName, version, replSetName string, opts ...func(proces
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		},
 		AuthSchemaVersion: 5,
-		Args26: map[string]interface{}{
-			"net": map[string]interface{}{
-				"port": 27017,
-			},
-			"storage": map[string]interface{}{
-				"dbPath": DefaultMongoDBDataDir,
-			},
-			"replication": map[string]interface{}{
-				"replSetName": replSetName,
-			},
-		},
+		Args26:            args26,
 	}
 
 	for _, opt := range opts {
@@ -70,13 +66,6 @@ func newProcess(name, hostName, version, replSetName string, opts ...func(proces
 	}
 
 	return p
-}
-
-type Args26 struct {
-	Net         Net         `json:"net"`
-	Security    Security    `json:"security"`
-	Storage     Storage     `json:"storage"`
-	Replication Replication `json:"replication"`
 }
 
 type TLSMode string
@@ -87,18 +76,6 @@ const (
 	TLSModePreferred TLSMode = "preferTLS"
 	TLSModeRequired  TLSMode = "requireTLS"
 )
-
-type Security struct {
-	ClusterAuthMode string `json:"clusterAuthMode,omitempty"`
-}
-
-type Storage struct {
-	DBPath string `json:"dbPath"`
-}
-
-type Replication struct {
-	ReplicaSetName string `json:"replSetName"`
-}
 
 type ProcessType string
 
