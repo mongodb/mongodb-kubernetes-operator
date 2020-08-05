@@ -1,0 +1,16 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.7"
+  # Override storage class for the default volume claim
+  statefulset:
+    spec:
+      volumeClaimTemplates:
+      - metadata:
+          name: data-volume
+        spec:
+          storageClassName: my-storage-class
