@@ -308,6 +308,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 
 	mongodConfig := objx.New(map[string]interface{}{})
 	mongodConfig.Set("net.port", 1000)
+	mongodConfig.Set("storage.other", "value")
 	mongodConfig.Set("arbitrary.config.path", "value")
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
@@ -323,8 +324,9 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 		// Ensure port was overridden
 		assert.Equal(t, float64(1000), p.Args26.Get("net.port").Data())
 
-		// Ensure custom value was added
+		// Ensure custom values were added
 		assert.Equal(t, "value", p.Args26.Get("arbitrary.config.path").Data())
+		assert.Equal(t, "value", p.Args26.Get("storage.other").Data())
 
 		// Ensure default settings went unchanged
 		assert.Equal(t, automationconfig.DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
