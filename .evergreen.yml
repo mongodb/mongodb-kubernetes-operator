@@ -154,6 +154,7 @@ task_groups:
     - e2e_test_replica_set_tls_rotate
     - e2e_test_statefulset_arbitrary_config
     - e2e_test_statefulset_arbitrary_config_update
+    - e2e_test_replica_set_mongod_config
   teardown_task:
     - func: upload_e2e_logs
 
@@ -297,6 +298,12 @@ tasks:
       - func: run_e2e_test
         vars:
           test: statefulset_arbitrary_config_update
+
+  - name: e2e_test_replica_set_mongod_config
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: e2e_test_replica_set_mongod_config
 
 buildvariants:
   - name: go_unit_tests
