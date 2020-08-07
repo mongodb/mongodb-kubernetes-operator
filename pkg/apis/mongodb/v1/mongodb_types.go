@@ -1,10 +1,13 @@
 package v1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,12 +51,48 @@ type MongoDBSpec struct {
 
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulset,omitempty"`
+
+	// AdditionalMongodConfig is additional configuration that can be passed to
+	// each data-bearing mongod at runtime. Uses the same structure as the mongod
+	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
+	// +kubebuilder:validation:Type=object
+	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
 	Spec appsv1.StatefulSetSpec `json:"spec"`
+}
+
+// MongodConfiguration holds the optional mongod configuration
+// that should be merged with the operator created one.
+//
+// The CRD generator does not support map[string]interface{}
+// on the top level and hence we need to work around this with
+// a wrapping struct.
+type MongodConfiguration struct {
+	Object map[string]interface{} `json:"-"`
+}
+
+// MarshalJSON defers JSON encoding to the wrapped map
+func (m *MongodConfiguration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Object)
+}
+
+// UnmarshalJSON will decode the data into the wrapped map
+func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
+	if m.Object == nil {
+		m.Object = map[string]interface{}{}
+	}
+
+	return json.Unmarshal(data, &m.Object)
+}
+
+func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
+	return &MongodConfiguration{
+		Object: runtime.DeepCopyJSON(m.Object),
+	}
 }
 
 type MongoDBUser struct {
