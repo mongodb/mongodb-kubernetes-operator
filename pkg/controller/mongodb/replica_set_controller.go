@@ -482,7 +482,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 // into the configuration set up by the operator.
 func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
 	return func(ac *automationconfig.AutomationConfig) {
-		for i, _ := range ac.Processes {
+		for i := range ac.Processes {
 			// Mergo requires both objects to have the same type
 			mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
 		}
