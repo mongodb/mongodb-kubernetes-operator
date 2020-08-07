@@ -360,6 +360,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
+		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		SetToolsVersion(dummyToolsVersionConfig())
 
@@ -461,7 +462,6 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		currentAC,
 		authModification,
 		tlsModification,
-		getMongodConfigModification(mdb),
 	)
 	if err != nil {
 		return corev1.ConfigMap{}, err
