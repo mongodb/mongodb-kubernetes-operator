@@ -9,6 +9,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/imdario/mergo"
+	"github.com/stretchr/objx"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
@@ -452,7 +455,14 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		return corev1.ConfigMap{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
+	ac, err := buildAutomationConfig(
+		mdb,
+		manifest.BuildsForVersion(mdb.Spec.Version),
+		currentAC,
+		authModification,
+		tlsModification,
+		getMongodConfigModification(mdb),
+	)
 	if err != nil {
 		return corev1.ConfigMap{}, err
 	}
@@ -466,6 +476,17 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
+}
+
+// getMongodConfigModification will merge the additional configuration in the CRD
+// into the configuration set up by the operator.
+func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+	return func(ac *automationconfig.AutomationConfig) {
+		for i, _ := range ac.Processes {
+			// Mergo requires both objects to have the same type
+			mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
+		}
+	}
 }
 
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet

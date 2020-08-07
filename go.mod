@@ -10,7 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/imdario/mergo v0.3.9 // indirect
+	github.com/imdario/mergo v0.3.9
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/klauspost/compress v1.9.8 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
