@@ -172,12 +172,12 @@ func tlsConfigModification(mdb mdbv1.MongoDB, certKey string) automationconfig.M
 		config.TLS.CAFilePath = caCertificatePath
 
 		for i := range config.Processes {
-			config.Processes[i].Args26.Net.TLS = automationconfig.MongoDBTLS{
-				Mode:                               mode,
-				CAFile:                             caCertificatePath,
-				PEMKeyFile:                         certificateKeyPath,
-				AllowConnectionsWithoutCertificate: true,
-			}
+			args := config.Processes[i].Args26
+
+			args.Set("net.tls.mode", mode)
+			args.Set("net.tls.CAFile", caCertificatePath)
+			args.Set("net.tls.certificateKeyFile", certificateKeyPath)
+			args.Set("net.tls.allowConnectionsWithoutCertificates", true)
 		}
 	}
 }
