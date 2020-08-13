@@ -40,7 +40,7 @@ functions:
           DIR: ${workdir}/bin
 
   # upload_e2e_logs has the responsibility of dumping as much information as
-  # posible into the S3 bucket 
+  # posible into the S3 bucket
   upload_e2e_logs:
     - command: s3.put
       params:
@@ -57,6 +57,14 @@ functions:
         permissions: public-read
         content_type: text/plain
 
+  # This is a blocker for the release process. It will *always* fail and needs to be overriden
+  # if the release needs to proceed.
+  release_blocker:
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator/scripts/ci
+        binary: scripts/ci/release_blocker
 
   setup_kubernetes_environment:
     - command: subprocess.exec
@@ -305,6 +313,12 @@ tasks:
         vars:
           test: replica_set_mongod_config
 
+  - name: release_blocker
+    commands:
+      - func: clone
+      - func: release_blocker
+
+
 buildvariants:
   - name: go_unit_tests
     display_name: go_unit_tests
@@ -346,3 +360,10 @@ buildvariants:
       - name: build_e2e_image
       - name: build_testrunner_image
       - name: build_prehook_image
+
+  - name: release_blocker
+    display_name: release_blocker
+    run_on:
+      - ubuntu1604-packer  # Note: cheapest machine I found
+    tasks:
+      - name: release_blocker

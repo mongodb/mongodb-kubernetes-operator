@@ -3,7 +3,7 @@ from dockerfile_generator import render
 import os
 import json
 
-from typing import Union, Any
+from typing import Union, Any, Optional
 
 
 def build_image(repo_url: str, tag: str, path: str) -> None:
@@ -26,6 +26,18 @@ def push_image(tag: str) -> None:
     progress = ""
     for line in client.images.push(tag, stream=True):
         print("\r" + push_image_formatted(line), end="", flush=True)
+
+
+def retag_image(
+    repo_url: str, old_tag: str, new_tag: str, path: str, labels: Optional[dict] = None
+) -> None:
+    with open(f"{path}/Dockerfile", "w") as f:
+        f.write(f"FROM {repo_url}:{old_tag}")
+    client = docker.from_env()
+    i, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
+    i.tag(repo_url, new_tag)
+    os.remove(f"{path}/Dockerfile")
+    client.images.push(repo_url, new_tag)
 
 
 def push_image_formatted(line: Any) -> str:
