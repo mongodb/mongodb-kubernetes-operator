@@ -1,0 +1,8 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
