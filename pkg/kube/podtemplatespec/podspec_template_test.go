@@ -182,6 +182,34 @@ func TestMultipleMerges(t *testing.T) {
 	}
 }
 
+func TestMergeEnvironmentVariables(t *testing.T) {
+
+	otherDefaultContainer := getDefaultContainer()
+	otherDefaultContainer.Env = append(otherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "1",
+		Value: "1",
+	})
+
+	overrideOtherDefaultContainer := getDefaultContainer()
+	overrideOtherDefaultContainer.Env = append(overrideOtherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "2",
+		Value: "2",
+	})
+
+	defaultSpec := getDefaultPodSpec()
+	defaultSpec.Spec.Containers = []corev1.Container{otherDefaultContainer}
+
+	customSpec := getCustomPodSpec()
+	customSpec.Spec.Containers = []corev1.Container{overrideOtherDefaultContainer}
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	mergedContainer := mergedSpec.Spec.Containers[0]
+	assert.Len(t, mergedContainer.Env, 2)
+
+}
+
 func TestMergeContainer(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	sideCarVol := corev1.VolumeMount{Name: "container-1.volume-mount-0"}

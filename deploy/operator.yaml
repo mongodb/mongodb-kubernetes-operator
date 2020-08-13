@@ -15,7 +15,8 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          image: quay.io/mongodb/mongodb-kubernetes-operator:0.1.1
+#          image: quay.io/mongodb/mongodb-kubernetes-operator:0.1.1
+          image: quay.io/mongodb/community-operator-dev:5f353f3d61837d27478b460f
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
@@ -34,3 +35,5 @@ spec:
               value: quay.io/mongodb/mongodb-agent:10.15.1.6468-1
             - name: VERSION_UPGRADE_HOOK_IMAGE
               value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
+            - name: "MANAGED_SECURITY_CONTEXT"
+              value: "true"

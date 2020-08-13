@@ -302,6 +302,7 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 			if err != nil {
 				return nil, err
 			}
+
 			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
 				return nil, err
 			}
