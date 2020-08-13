@@ -3,6 +3,7 @@ package podtemplatespec
 import (
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -303,6 +304,8 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 				return nil, err
 			}
 
+			mergedEnvs := mergeEnvs(defaultContainer.Env, customContainer.Env)
+
 			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
 				return nil, err
 			}
@@ -311,6 +314,7 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 			// to the defaulted limits
 			defaultContainer.Resources = customContainer.Resources
 			defaultContainer.VolumeMounts = mergedMounts
+			defaultContainer.Env = mergedEnvs
 		}
 		// The default container was not modified by the override, so just add it
 		mergedContainers = append(mergedContainers, defaultContainer)
@@ -326,6 +330,37 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 	}
 
 	return mergedContainers, nil
+}
+
+func mergeEnvs(defaultEnvs []corev1.EnvVar, overrideEnvs []corev1.EnvVar) []corev1.EnvVar {
+	mergedEnvs := []corev1.EnvVar{}
+	mergedEnvs = append(mergedEnvs, defaultEnvs...)
+
+	for _, overrideEnv := range overrideEnvs {
+		// it's an env var of a new name, we're not updating an existing one
+		if contains.EnvVarWithName(mergedEnvs, overrideEnv.Name) {
+			mergedEnvs = replaceEnvVar(mergedEnvs, overrideEnv)
+		} else {
+			mergedEnvs = append(mergedEnvs, overrideEnv)
+		}
+	}
+
+	if len(mergedEnvs) == 0 {
+		return nil
+	}
+	return mergedEnvs
+}
+
+func replaceEnvVar(envs []corev1.EnvVar, newEnv corev1.EnvVar) []corev1.EnvVar {
+	newEnvs := []corev1.EnvVar{}
+	for _, existingEnv := range envs {
+		if existingEnv.Name == newEnv.Name {
+			newEnvs = append(newEnvs, newEnv)
+		} else {
+			newEnvs = append(newEnvs, existingEnv)
+		}
+	}
+	return newEnvs
 }
 
 func createContainerMap(containers []corev1.Container) map[string]corev1.Container {
