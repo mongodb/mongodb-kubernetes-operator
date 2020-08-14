@@ -66,14 +66,6 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/release_blocker
 
-  # Exit if repository is not clean.
-  guard_git_repo_is_clean:
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir:  mongodb-kubernetes-operator
-        binary: scripts/ci/guard_git_repo_is_clean
-
   setup_kubernetes_environment:
     - command: subprocess.exec
       type: setup
@@ -153,7 +145,7 @@ functions:
       type: system
       params:
         working_dir: mondgodb-kubernetes-operator
-        command: python scripts/ci/release_image.py --old_repo_url quay.io/mongodb/mongodb-kubernetes-operator --new_repo_url quay.io/nikolas_de_giorgis/test/mongodb-kubernetes-operator --old_tag ${version_id} --new_tag  '$(git describe)' --labels "{\"quay.expires.after-after\":\"never\"}" --username ${quay_user_name} --password ${quay_password} --registry https:// quay.io/nikolas_de_giorgis
+        command: python scripts/ci/release_image.py --old_repo_url quay.io/mongodb/mongodb-kubernetes-operator --new_repo_url quay.io/nikolas_de_giorgis/test/mongodb-kubernetes-operator --old_tag ${version_id} --labels "{\"quay.expires.after-after\":\"never\"}" --username ${quay_user_name} --password ${quay_password} --registry https:// quay.io/nikolas_de_giorgis
 
 task_groups:
 - name: e2e_test_group
@@ -336,7 +328,7 @@ tasks:
   - name: release_operator
     commands:
       - func: clone
-      - func: guard_git_repo_is_clean
+      - func: release_docker_image
 
 buildvariants:
   - name: go_unit_tests
