@@ -43,10 +43,11 @@ def retag_image(
         f.write(f"FROM {old_repo_url}:{old_tag}")
     client = docker.from_env()
     if username is not None and password is not None and registry is not None:
-        client.login(username=username, password=password, registry=registry)
+        print(client.login(username=username, password=password, registry=registry))
     i, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
     i.tag(new_repo_url, new_tag)
     os.remove(f"{path}/Dockerfile")
+    print(f"Pushing to {new_repo_url}:{new_tag}")
     client.images.push(new_repo_url, new_tag)
 
 

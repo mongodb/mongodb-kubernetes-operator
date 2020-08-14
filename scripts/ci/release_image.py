@@ -9,9 +9,9 @@ import json
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("old_repo_url", help="Url of the image to retag", type=str)
+    parser.add_argument("--old_repo_url", help="Url of the image to retag", type=str)
     parser.add_argument(
-        "new_repo_url", help="Url to where the new image should be pushed", type=str
+        "--new_repo_url", help="Url to where the new image should be pushed", type=str
     )
     parser.add_argument(
         "--path",
@@ -19,18 +19,18 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=".",
     )
-    parser.add_argument("release_file", help="Path to the release file", type=str)
+    parser.add_argument("--release_file", help="Path to the release file", type=str)
     parser.add_argument(
-        "old_tag", help="the old tag of the image to retag", type=str,
+        "--old_tag", help="the old tag of the image to retag", type=str,
     )
     parser.add_argument(
-        "username", help="username for the registry", type=str,
+        "--username", help="username for the registry", type=str,
     )
     parser.add_argument(
-        "password", help="password for the registry", type=str,
+        "--password", help="password for the registry", type=str,
     )
     parser.add_argument(
-        "registry", help="The docker registry", type=str,
+        "--registry", help="The docker registry", type=str,
     )
     parser.add_argument(
         "--labels", help="Labels for the new image", type=json.loads,
@@ -47,7 +47,8 @@ def main() -> int:
 
     new_tag = release["mongodb-kubernetes-operator"]
     dockerutil.retag_image(
-        args.repo_url,
+        args.old_repo_url,
+        args.new_repo_url,
         args.old_tag,
         new_tag,
         args.path,
