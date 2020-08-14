@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -103,29 +105,8 @@ func WithLifecycle(lifeCycleMod lifecycle.Modification) Modification {
 // WithEnvs ensures all of the provided envs exist in the container
 func WithEnvs(envs ...corev1.EnvVar) Modification {
 	return func(container *corev1.Container) {
-		container.Env = mergeEnvs(container.Env, envs)
+		container.Env = envvar.MergeWithOverride(container.Env, envs)
 	}
-}
-
-func mergeEnvs(existing, desired []corev1.EnvVar) []corev1.EnvVar {
-	envMap := make(map[string]corev1.EnvVar)
-	for _, env := range existing {
-		envMap[env.Name] = env
-	}
-
-	for _, env := range desired {
-		envMap[env.Name] = env
-	}
-
-	var mergedEnv []corev1.EnvVar
-	for _, env := range envMap {
-		mergedEnv = append(mergedEnv, env)
-	}
-
-	sort.SliceStable(mergedEnv, func(i, j int) bool {
-		return mergedEnv[i].Name < mergedEnv[j].Name
-	})
-	return mergedEnv
 }
 
 // WithVolumeMounts sets the VolumeMounts

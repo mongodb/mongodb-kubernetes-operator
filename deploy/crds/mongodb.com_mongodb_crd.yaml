@@ -103,8 +103,6 @@ spec:
                 spec:
                   description: The StatefulSet override options for underlying StatefulSet
                   type: object
-              required:
-              - spec
               type: object
             type:
               description: Type defines which type of MongoDB deployment the resource
