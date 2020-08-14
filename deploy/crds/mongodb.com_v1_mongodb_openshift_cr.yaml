@@ -13,9 +13,9 @@ spec:
           containers:
             - name: "mongodb-agent"
               env:
-                name: "MANAGED_SECURITY_CONTEXT"
-                value: "true"
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
             - name: "mongod"
               env:
-                name: "MANAGED_SECURITY_CONTEXT"
-                value: "true"
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"

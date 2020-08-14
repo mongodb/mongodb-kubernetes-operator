@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -63,13 +64,7 @@ type MongoDBSpec struct {
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
 	// The StatefulSet override options for underlying StatefulSet
-	Spec MongoDBStatefulSetSpec `json:"spec"`
-}
-
-// MongoDBStatefulSetSpec wraps the appsv1.StatefulSetSpec
-// but prevents the CRD generation including every nested field
-type MongoDBStatefulSetSpec struct {
-	appsv1.StatefulSetSpec `json:"-"`
+	Spec appsv1.StatefulSetSpec `json:"spec"` // TODO: this pollutes the crd generation
 }
 
 // MongodConfiguration holds the optional mongod configuration
