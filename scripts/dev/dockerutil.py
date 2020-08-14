@@ -29,15 +29,25 @@ def push_image(tag: str) -> None:
 
 
 def retag_image(
-    repo_url: str, old_tag: str, new_tag: str, path: str, labels: Optional[dict] = None
+    old_repo_url: str,
+    new_repo_url: str,
+    old_tag: str,
+    new_tag: str,
+    path: str,
+    labels: Optional[dict] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    registry: Optional[str] = None,
 ) -> None:
     with open(f"{path}/Dockerfile", "w") as f:
-        f.write(f"FROM {repo_url}:{old_tag}")
+        f.write(f"FROM {old_repo_url}:{old_tag}")
     client = docker.from_env()
+    if username is not None and password is not None and registry is not None:
+        client.login(username=username, password=password, registry=registry)
     i, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
-    i.tag(repo_url, new_tag)
+    i.tag(new_repo_url, new_tag)
     os.remove(f"{path}/Dockerfile")
-    client.images.push(repo_url, new_tag)
+    client.images.push(new_repo_url, new_tag)
 
 
 def push_image_formatted(line: Any) -> str:
