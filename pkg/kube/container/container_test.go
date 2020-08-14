@@ -134,7 +134,7 @@ func TestMergeEnvs(t *testing.T) {
 		},
 	}
 
-	merged := envvar.Merge(existing, desired)
+	merged := envvar.MergeWithOverride(existing, desired)
 
 	t.Run("EnvVars should be sorted", func(t *testing.T) {
 		assert.Equal(t, "A_env", merged[0].Name)

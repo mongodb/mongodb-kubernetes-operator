@@ -105,7 +105,7 @@ func WithLifecycle(lifeCycleMod lifecycle.Modification) Modification {
 // WithEnvs ensures all of the provided envs exist in the container
 func WithEnvs(envs ...corev1.EnvVar) Modification {
 	return func(container *corev1.Container) {
-		container.Env = envvar.Merge(container.Env, envs)
+		container.Env = envvar.MergeWithOverride(container.Env, envs)
 	}
 }
 

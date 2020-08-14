@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Merge(existing, desired []corev1.EnvVar) []corev1.EnvVar {
+func MergeWithOverride(existing, desired []corev1.EnvVar) []corev1.EnvVar {
 	envMap := make(map[string]corev1.EnvVar)
 	for _, env := range existing {
 		envMap[env.Name] = env

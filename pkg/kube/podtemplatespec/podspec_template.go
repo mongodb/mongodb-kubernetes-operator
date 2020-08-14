@@ -298,13 +298,13 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 	for _, defaultContainer := range defaultContainers {
 		if customContainer, ok := customMap[defaultContainer.Name]; ok {
 			// The container is present in both maps, so we need to merge
-			// Merge mounts
+			// MergeWithOverride mounts
 			mergedMounts, err := mergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
 			if err != nil {
 				return nil, err
 			}
 
-			mergedEnvs := envvar.Merge(defaultContainer.Env, customContainer.Env)
+			mergedEnvs := envvar.MergeWithOverride(defaultContainer.Env, customContainer.Env)
 
 			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
 				return nil, err
