@@ -63,8 +63,16 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        working_dir: mongodb-kubernetes-operator/scripts/ci
+        working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/release_blocker
+
+  # Exit if repository is not clean.
+  guard_git_repo_is_clean:
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir:  mongodb-kubernetes-operator
+        binary: scripts/ci/guard_git_repo_is_clean
 
   setup_kubernetes_environment:
     - command: subprocess.exec
@@ -318,6 +326,10 @@ tasks:
       - func: clone
       - func: release_blocker
 
+  - name: release_operator
+    commands:
+      - func: clone
+      - func: guard_git_repo_is_clean
 
 buildvariants:
   - name: go_unit_tests
@@ -367,3 +379,15 @@ buildvariants:
       - ubuntu1604-packer  # Note: cheapest machine I found
     tasks:
       - name: release_blocker
+
+  - name: release_operator
+    display_name: release_operator
+    depends_on:
+      - name: release_blocker
+        variant: release_blocker
+    run_on:
+      - ubuntu1604-test
+    expansions:
+      docker_registry: quay.io
+    tasks:
+    - name: release_operator
