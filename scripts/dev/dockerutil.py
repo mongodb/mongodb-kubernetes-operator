@@ -42,11 +42,11 @@ def retag_image(
     with open(f"{path}/Dockerfile", "w") as f:
         f.write(f"FROM {old_repo_url}:{old_tag}")
     client = docker.from_env()
-    if username is not None and password is not None and registry is not None:
+    if all(value is not None for value in [username, password, registry]):
         client.login(username=username, password=password, registry=registry)
 
-    i, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
-    i.tag(new_repo_url, new_tag)
+    image, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
+    image.tag(new_repo_url, new_tag)
     os.remove(f"{path}/Dockerfile")
 
     # We do not want to republish an image that has not changed, so we check if the new
