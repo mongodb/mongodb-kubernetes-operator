@@ -50,12 +50,10 @@ def retag_image(
     os.remove(f"{path}/Dockerfile")
 
     # We do not want to republish an image that has not changed, so we check if the new
-    # pair repo:tag already exists. If not, or it the sha is different to what we are
-    # about to push, we push
+    # pair repo:tag already exists.
     try:
         image = client.images.pull(new_repo_url, new_tag)
-        if image.id == i.id:
-            return
+        return
     # We also need to catch APIError as if the image has been recently deleted (uncommon, but might happen?)
     # we will get this kind of error:
     # docker.errors.APIError: 500 Server Error: Internal Server Error

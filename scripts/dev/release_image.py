@@ -1,6 +1,7 @@
 import dockerutil
-import docker
 import json
+import sys
+import argparse
 
 
 def parse_args() -> argparse.Namespace:
