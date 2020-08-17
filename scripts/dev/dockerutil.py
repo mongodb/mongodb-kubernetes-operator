@@ -44,9 +44,20 @@ def retag_image(
     client = docker.from_env()
     if username is not None and password is not None and registry is not None:
         print(client.login(username=username, password=password, registry=registry))
+
     i, _ = client.images.build(path=f"{path}", labels=labels, tag=new_tag)
     i.tag(new_repo_url, new_tag)
     os.remove(f"{path}/Dockerfile")
+
+    # We do not want to republish an image that has not changed, so we check if the new
+    # pair repo:tag already exists. If not, or it the sha is different to what we are
+    # about to push, we push
+    try:
+        image = client.images.pull(new_repo_url, new_tag)
+        if image.id == i.id:
+            return
+    except docker.errors.ImageNotFound as e:
+        pass
     print(f"Pushing to {new_repo_url}:{new_tag}")
     client.images.push(new_repo_url, new_tag)
 
