@@ -3,6 +3,7 @@ package podtemplatespec
 import (
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -297,11 +298,14 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 	for _, defaultContainer := range defaultContainers {
 		if customContainer, ok := customMap[defaultContainer.Name]; ok {
 			// The container is present in both maps, so we need to merge
-			// Merge mounts
+			// MergeWithOverride mounts
 			mergedMounts, err := mergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
 			if err != nil {
 				return nil, err
 			}
+
+			mergedEnvs := envvar.MergeWithOverride(defaultContainer.Env, customContainer.Env)
+
 			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
 				return nil, err
 			}
@@ -310,6 +314,7 @@ func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]
 			// to the defaulted limits
 			defaultContainer.Resources = customContainer.Resources
 			defaultContainer.VolumeMounts = mergedMounts
+			defaultContainer.Env = mergedEnvs
 		}
 		// The default container was not modified by the override, so just add it
 		mergedContainers = append(mergedContainers, defaultContainer)

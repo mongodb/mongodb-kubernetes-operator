@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -47,10 +48,10 @@ type MongoDBSpec struct {
 
 	// Users specifies the MongoDB users that should be configured in your deployment
 	// +required
-	Users []MongoDBUser `json:"users"`
+	Users []MongoDBUser `json:"-"` // `json:"users"`
 
 	// +optional
-	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulset,omitempty"`
+	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
@@ -62,7 +63,8 @@ type MongoDBSpec struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
-	Spec appsv1.StatefulSetSpec `json:"spec"`
+	// The StatefulSet override options for underlying StatefulSet
+	Spec appsv1.StatefulSetSpec `json:"spec"` // TODO: this pollutes the crd generation
 }
 
 // MongodConfiguration holds the optional mongod configuration
@@ -130,7 +132,7 @@ type Role struct {
 
 type Security struct {
 	// +optional
-	Authentication Authentication `json:"authentication"`
+	Authentication Authentication `json:"-"` //`json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`

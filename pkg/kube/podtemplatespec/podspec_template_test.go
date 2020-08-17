@@ -182,6 +182,41 @@ func TestMultipleMerges(t *testing.T) {
 	}
 }
 
+func TestMergeEnvironmentVariables(t *testing.T) {
+	otherDefaultContainer := getDefaultContainer()
+	otherDefaultContainer.Env = append(otherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name1",
+		Value: "val1",
+	})
+
+	overrideOtherDefaultContainer := getDefaultContainer()
+	overrideOtherDefaultContainer.Env = append(overrideOtherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name2",
+		Value: "val2",
+	})
+	overrideOtherDefaultContainer.Env = append(overrideOtherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name1",
+		Value: "changedValue",
+	})
+
+	defaultSpec := getDefaultPodSpec()
+	defaultSpec.Spec.Containers = []corev1.Container{otherDefaultContainer}
+
+	customSpec := getCustomPodSpec()
+	customSpec.Spec.Containers = []corev1.Container{overrideOtherDefaultContainer}
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	mergedContainer := mergedSpec.Spec.Containers[0]
+
+	assert.Len(t, mergedContainer.Env, 2)
+	assert.Equal(t, mergedContainer.Env[0].Name, "name1")
+	assert.Equal(t, mergedContainer.Env[0].Value, "changedValue")
+	assert.Equal(t, mergedContainer.Env[1].Name, "name2")
+	assert.Equal(t, mergedContainer.Env[1].Value, "val2")
+}
+
 func TestMergeContainer(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	sideCarVol := corev1.VolumeMount{Name: "container-1.volume-mount-0"}
