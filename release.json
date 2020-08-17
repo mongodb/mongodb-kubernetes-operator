@@ -1,4 +1,4 @@
 {
-    "mongodb-kubernetes-operator": "test",
-    "version-upgrade-hook": "testhook"
+    "mongodb-kubernetes-operator": "0.1.0",
+    "version-upgrade-hook": "1.0.2"
 }
