@@ -56,7 +56,11 @@ def retag_image(
         image = client.images.pull(new_repo_url, new_tag)
         if image.id == i.id:
             return
-    except docker.errors.ImageNotFound as e:
+    # We also need to catch APIError as if the image has been recently deleted (uncommon, but might happen?)
+    # we will get this kind of error:
+    # docker.errors.APIError: 500 Server Error: Internal Server Error
+    # ("unknown: Tag <tag> was deleted or has expired. To pull, revive via time machine"
+    except (docker.errors.ImageNotFound, docker.errors.APIError) as e:
         pass
     print(f"Pushing to {new_repo_url}:{new_tag}")
     client.images.push(new_repo_url, new_tag)
