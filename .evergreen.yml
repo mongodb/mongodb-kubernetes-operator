@@ -149,6 +149,8 @@ functions:
           - version_id
           - quay_user_name
           - quay_password
+          - image
+          - image_type
         command: scripts/ci/run_image_release.sh
 
 task_groups:
@@ -334,6 +336,21 @@ tasks:
       - func: clone
       - func: setup_virtualenv
       - func: release_docker_image
+        vars:
+          old_image: quay.io/mongodb/community-operator-dev
+          new_image: quay.io/mongodb/mongodb-kubernetes-operator
+          image_type: operator
+
+  - name: release_version_upgrade_hook
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: release_docker_image
+        vars:
+          old_image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook
+          new_image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook
+          image_type: versionhook
+
 
 buildvariants:
   - name: go_unit_tests
@@ -384,14 +401,17 @@ buildvariants:
     tasks:
       - name: release_blocker
 
-  - name: release_operator
-    display_name: release_operator
+  - name: release_images_quay
+    display_name: release_images_quay
     depends_on:
       - name: release_blocker
         variant: release_blocker
       - name: build_operator_image
         variant: init_test_run
+      - name: build_prehook_image
+        variant: init_test_run
     run_on:
       - ubuntu1604-test
     tasks:
     - name: release_operator
+    - name: release_version_upgrade_hook

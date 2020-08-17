@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--labels", help="Labels for the new image", type=json.loads,
     )
+    parser.add_argument("--image_type", help="Type of image to be released")
     args = parser.parse_args()
 
     return args
@@ -45,7 +46,10 @@ def main() -> int:
     with open(args.release_file) as f:
         release = json.load(f)
 
-    new_tag = release["mongodb-kubernetes-operator"]
+    if args.image_type == "operator":
+        new_tag = release["mongodb-kubernetes-operator"]
+    elif args.image_type == "versionhook":
+        new_tag = release["version-upgrade-hook"]
     dockerutil.retag_image(
         args.old_repo_url,
         args.new_repo_url,
