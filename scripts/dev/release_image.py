@@ -1,7 +1,3 @@
-import sys
-import argparse
-
-sys.path.append("./scripts/dev/")
 import dockerutil
 import docker
 import json
