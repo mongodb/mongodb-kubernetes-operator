@@ -139,6 +139,7 @@ func TestMerge(t *testing.T) {
 				initContainerDefault,
 				initContainerCustom,
 			},
+			Volumes:  []corev1.Volume{},
 			Affinity: affinity("zone", "custom"),
 		},
 	}
@@ -353,6 +354,7 @@ func getDefaultPodSpec() corev1.PodTemplateSpec {
 			Containers:                    []corev1.Container{getDefaultContainer()},
 			InitContainers:                []corev1.Container{initContainer},
 			Affinity:                      affinity("hostname", "default"),
+			Volumes:                       []corev1.Volume{},
 		},
 	}
 }
@@ -376,6 +378,7 @@ func getCustomPodSpec() corev1.PodTemplateSpec {
 			Containers:                    []corev1.Container{getCustomContainer()},
 			InitContainers:                []corev1.Container{initContainer},
 			Affinity:                      affinity("zone", "custom"),
+			Volumes:                       []corev1.Volume{},
 		},
 	}
 }
