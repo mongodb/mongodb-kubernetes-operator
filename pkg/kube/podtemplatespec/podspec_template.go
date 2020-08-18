@@ -1,6 +1,8 @@
 package podtemplatespec
 
 import (
+	"sort"
+
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
@@ -248,6 +250,8 @@ func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateS
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	mergedVolumes := mergeVolumes(defaultTemplate.Spec.Volumes, overrideTemplate.Spec.Volumes)
+
 	// Everything else can be merged with mergo
 	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
 	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
@@ -257,7 +261,29 @@ func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateS
 	mergedPodTemplateSpec.Spec.Containers = mergedContainers
 	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
 	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
+	mergedPodTemplateSpec.Spec.Volumes = mergedVolumes
 	return mergedPodTemplateSpec, nil
+}
+
+func mergeVolumes(defaultVolumes []corev1.Volume, overrideVolumes []corev1.Volume) []corev1.Volume {
+	mergedVolumeMap := make(map[string]corev1.Volume)
+	mergedVolumes := []corev1.Volume{}
+	for _, v := range defaultVolumes {
+		mergedVolumeMap[v.Name] = v
+	}
+
+	for _, v := range overrideVolumes {
+		mergedVolumeMap[v.Name] = v
+	}
+
+	for _, v := range mergedVolumeMap {
+		mergedVolumes = append(mergedVolumes, v)
+	}
+
+	sort.SliceStable(mergedVolumes, func(i, j int) bool {
+		return mergedVolumes[i].Name < mergedVolumes[j].Name
+	})
+	return mergedVolumes
 }
 
 func mergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {

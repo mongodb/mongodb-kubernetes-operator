@@ -1,0 +1,20 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  statefulSet:
+    spec:
+      template:
+        spec:
+          volumes:
+            - name: custom-volume
+              emptyDir: {}
+          containers:
+          - name: mongodb-agent
+            volumeMounts:
+              - name: custom-volume
+                mountPath: /my-custom-version/mount-path

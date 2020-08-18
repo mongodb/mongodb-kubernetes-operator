@@ -139,6 +139,7 @@ func TestMerge(t *testing.T) {
 				initContainerDefault,
 				initContainerCustom,
 			},
+			Volumes:  []corev1.Volume{},
 			Affinity: affinity("zone", "custom"),
 		},
 	}
@@ -276,6 +277,43 @@ func TestMergeContainer(t *testing.T) {
 	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[1])
 }
 
+func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
+	defaultPodSpec := getDefaultPodSpec()
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "old-host-path",
+			},
+		},
+	})
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume-2",
+	})
+
+	overridePodSpec := getDefaultPodSpec()
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "updated-host-path",
+			},
+		},
+	})
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume-3",
+	})
+
+	mergedPodSpecTemplate, err := MergePodTemplateSpecs(defaultPodSpec, overridePodSpec)
+	assert.NoError(t, err)
+
+	assert.Len(t, mergedPodSpecTemplate.Spec.Volumes, 3)
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[0].Name, "new-volume")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[0].VolumeSource.HostPath.Path, "updated-host-path")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[1].Name, "new-volume-2")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[2].Name, "new-volume-3")
+}
+
 func TestMergeVolumeMounts(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	vol1 := corev1.VolumeMount{Name: "another-mount"}
@@ -316,6 +354,7 @@ func getDefaultPodSpec() corev1.PodTemplateSpec {
 			Containers:                    []corev1.Container{getDefaultContainer()},
 			InitContainers:                []corev1.Container{initContainer},
 			Affinity:                      affinity("hostname", "default"),
+			Volumes:                       []corev1.Volume{},
 		},
 	}
 }
@@ -339,6 +378,7 @@ func getCustomPodSpec() corev1.PodTemplateSpec {
 			Containers:                    []corev1.Container{getCustomContainer()},
 			InitContainers:                []corev1.Container{initContainer},
 			Affinity:                      affinity("zone", "custom"),
+			Volumes:                       []corev1.Volume{},
 		},
 	}
 }
