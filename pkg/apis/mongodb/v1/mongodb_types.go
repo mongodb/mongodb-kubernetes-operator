@@ -151,7 +151,7 @@ type Role struct {
 
 type Security struct {
 	// +optional
-	Authentication Authentication `json:"-"` //`json:"authentication"`
+	Authentication Authentication `json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
