@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/objx"
+
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
@@ -338,6 +340,37 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	assert.Equal(t, currentAc.Version, 1)
 }
 
+func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mongodConfig := objx.New(map[string]interface{}{})
+	mongodConfig.Set("net.port", 1000)
+	mongodConfig.Set("storage.other", "value")
+	mongodConfig.Set("arbitrary.config.path", "value")
+	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+
+	for _, p := range currentAc.Processes {
+		// Ensure port was overridden
+		assert.Equal(t, float64(1000), p.Args26.Get("net.port").Data())
+
+		// Ensure custom values were added
+		assert.Equal(t, "value", p.Args26.Get("arbitrary.config.path").Data())
+		assert.Equal(t, "value", p.Args26.Get("storage.other").Data())
+
+		// Ensure default settings went unchanged
+		assert.Equal(t, automationconfig.DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, mdb.Name, p.Args26.Get("replication.replSetName").Data())
+	}
+}
+
 func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	mdb := newScramReplicaSet()
 	mgr := client.NewManager(&mdb)
@@ -409,6 +442,10 @@ func TestReconcilliationFailsIfThereIsNoPassword(t *testing.T) {
 	assertReconciliationRetries(t, res, err)
 }
 
+func assertReconciliationRetries(t *testing.T, result reconcile.Result, err error) {
+	assert.True(t, err != nil || result.Requeue)
+}
+
 func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
 	mdb := newScramReplicaSet(defaultUser())
 	mgr := client.NewManager(&mdb)
@@ -448,12 +485,6 @@ func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err e
 	assert.NoError(t, err)
 	assert.Equal(t, false, result.Requeue)
 	assert.Equal(t, time.Duration(0), result.RequeueAfter)
-}
-
-func assertReconciliationRetries(t *testing.T, result reconcile.Result, err error) {
-	errorHappened := err != nil && !result.Requeue
-	isExplicitlyRequeuing := result.Requeue || result.RequeueAfter > 0
-	assert.True(t, errorHappened || isExplicitlyRequeuing)
 }
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the

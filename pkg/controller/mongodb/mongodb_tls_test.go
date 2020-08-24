@@ -106,9 +106,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
+			assert.False(t, process.Args26.Has("net.tls"))
 		}
 	})
 
@@ -122,9 +120,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
+			assert.False(t, process.Args26.Has("net.tls"))
 		}
 	})
 
@@ -139,12 +135,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModeRequired,
-				PEMKeyFile:                         tlsOperatorSecretMountPath + tlsOperatorSecretFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
+			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
+
+			assert.Equal(t, automationconfig.TLSModeRequired, process.Args26.Get("net.tls.mode").Data())
+			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
 
@@ -160,12 +156,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}, ac.TLS)
 
 		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModePreferred,
-				PEMKeyFile:                         tlsOperatorSecretMountPath + tlsOperatorSecretFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
+			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
+
+			assert.Equal(t, automationconfig.TLSModePreferred, process.Args26.Get("net.tls.mode").Data())
+			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
 }
@@ -182,9 +178,10 @@ func TestTLSOperatorSecret(t *testing.T) {
 
 		// Operator-managed secret should have been created and contain the
 		// concatenated certificate and key.
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName, mdb.TLSOperatorSecretNamespacedName())
+		expectedCertificateKey := "CERT\nKEY"
+		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.Equal(t, "CERTKEY", certificateKey)
+		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
 
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
@@ -197,7 +194,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		s := secret.Builder().
 			SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
-			SetField(tlsOperatorSecretFileName, "").
+			SetField(tlsOperatorSecretFileName(""), "").
 			Build()
 		err = client.CreateSecret(s)
 		assert.NoError(t, err)
@@ -205,11 +202,32 @@ func TestTLSOperatorSecret(t *testing.T) {
 		_, err = getTLSConfigModification(client, mdb)
 		assert.NoError(t, err)
 
-		// Operator-managed secret should have been updated the with concatenated certificate and key.
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName, mdb.TLSOperatorSecretNamespacedName())
+		// Operator-managed secret should have been updated with the concatenated
+		// certificate and key.
+		expectedCertificateKey := "CERT\nKEY"
+		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.Equal(t, "CERTKEY", certificateKey)
+		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
+}
+
+func TestCombineCertificateAndKey(t *testing.T) {
+	tests := []struct {
+		Cert     string
+		Key      string
+		Expected string
+	}{
+		{"CERT", "KEY", "CERT\nKEY"},
+		{"CERT\n", "KEY", "CERT\nKEY"},
+		{"CERT", "KEY\n", "CERT\nKEY"},
+		{"CERT\n", "KEY\n", "CERT\nKEY"},
+		{"CERT\n\n\n", "KEY\n\n\n", "CERT\nKEY"},
+	}
+
+	for _, test := range tests {
+		combined := combineCertificateAndKey(test.Cert, test.Key)
+		assert.Equal(t, test.Expected, combined)
+	}
 }
 
 func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) error {

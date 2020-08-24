@@ -1,0 +1,21 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-openshift-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: "mongodb-agent"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
+            - name: "mongod"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"

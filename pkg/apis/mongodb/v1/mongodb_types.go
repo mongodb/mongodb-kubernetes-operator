@@ -1,8 +1,13 @@
 package v1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	appsv1 "k8s.io/api/apps/v1"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -47,7 +52,53 @@ type MongoDBSpec struct {
 
 	// Users specifies the MongoDB users that should be configured in your deployment
 	// +required
-	Users []MongoDBUser `json:"users"`
+	Users []MongoDBUser `json:"-"` // `json:"users"`
+
+	// +optional
+	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
+
+	// AdditionalMongodConfig is additional configuration that can be passed to
+	// each data-bearing mongod at runtime. Uses the same structure as the mongod
+	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
+	// +kubebuilder:validation:Type=object
+	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
+}
+
+// StatefulSetConfiguration holds the optional custom StatefulSet
+// that should be merged into the operator created one.
+type StatefulSetConfiguration struct {
+	// The StatefulSet override options for underlying StatefulSet
+	Spec appsv1.StatefulSetSpec `json:"spec"` // TODO: this pollutes the crd generation
+}
+
+// MongodConfiguration holds the optional mongod configuration
+// that should be merged with the operator created one.
+//
+// The CRD generator does not support map[string]interface{}
+// on the top level and hence we need to work around this with
+// a wrapping struct.
+type MongodConfiguration struct {
+	Object map[string]interface{} `json:"-"`
+}
+
+// MarshalJSON defers JSON encoding to the wrapped map
+func (m *MongodConfiguration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Object)
+}
+
+// UnmarshalJSON will decode the data into the wrapped map
+func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
+	if m.Object == nil {
+		m.Object = map[string]interface{}{}
+	}
+
+	return json.Unmarshal(data, &m.Object)
+}
+
+func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
+	return &MongodConfiguration{
+		Object: runtime.DeepCopyJSON(m.Object),
+	}
 }
 
 type MongoDBUser struct {
@@ -100,7 +151,7 @@ type Role struct {
 
 type Security struct {
 	// +optional
-	Authentication Authentication `json:"authentication"`
+	Authentication Authentication `json:"-"` //`json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
@@ -206,7 +257,7 @@ func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
 func (m MongoDB) TLSOperatorSecretNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: "mongodb-operator-server-certificate-key", Namespace: m.Namespace}
+	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
 }
 
 func (m MongoDB) NamespacedName() types.NamespacedName {

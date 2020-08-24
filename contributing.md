@@ -51,7 +51,7 @@ to be able to run properly. Create a json file with the following content:
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
-    "prestop_hook_image": "prehook",
+    "version_upgrade_hook_image": "version_upgrade_hook",
     "testrunner_image": "test-runner"
 }
 ```

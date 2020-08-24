@@ -1,0 +1,15 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.7"
+  security:
+    tls:
+      enabled: true
+      certificateKeySecretRef:
+        name: tls-secret-name
+      caConfigMapRef:
+        name: tls-ca-configmap-name
