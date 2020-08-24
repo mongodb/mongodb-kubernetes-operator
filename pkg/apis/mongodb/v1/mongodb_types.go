@@ -52,7 +52,7 @@ type MongoDBSpec struct {
 
 	// Users specifies the MongoDB users that should be configured in your deployment
 	// +required
-	Users []MongoDBUser `json:"-"` // `json:"users"`
+	Users []MongoDBUser `json:"users"`
 
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
@@ -151,7 +151,7 @@ type Role struct {
 
 type Security struct {
 	// +optional
-	Authentication Authentication `json:"-"` //`json:"authentication"`
+	Authentication Authentication `json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
