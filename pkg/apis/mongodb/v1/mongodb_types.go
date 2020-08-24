@@ -52,7 +52,7 @@ type MongoDBSpec struct {
 
 	// Users specifies the MongoDB users that should be configured in your deployment
 	// +required
-	Users []MongoDBUser `json:"-"` // `json:"users"`
+	Users []MongoDBUser `json:"users"`
 
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
