@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/objx"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -296,4 +297,79 @@ func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration,
 		}()
 		testFunc()
 	}
+}
+
+func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
+	return func(t *testing.T) {
+		sts := appsv1.StatefulSet{}
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		container := findContainerByName(containerName, sts.Spec.Template.Spec.Containers)
+		if container == nil {
+			t.Fatalf(`No container found with name "%s" in StatefulSet pod template`, containerName)
+		}
+
+		if !condition(*container) {
+			t.Fatalf(`Container "%s" does not satisfy condition`, containerName)
+		}
+	}
+}
+
+func findContainerByName(name string, containers []corev1.Container) *corev1.Container {
+	for _, c := range containers {
+		if c.Name == name {
+			return &c
+		}
+	}
+
+	return nil
+}
+
+func EnsureMongodConfig(mdb *mdbv1.MongoDB, selector string, expected interface{}) func(*testing.T) {
+	return func(t *testing.T) {
+		opts, err := getCommandLineOptions(mdb)
+		if err != nil {
+			assert.NoError(t, err)
+		}
+
+		// The options are stored under the key "parsed"
+		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+		assert.Equal(t, expected, parsed.Get(selector).Data())
+	}
+}
+
+// getCommandLineOptions will get the command line options from the admin database
+// and return the results as a map.
+func getCommandLineOptions(mdb *mdbv1.MongoDB) (bson.M, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	if err != nil {
+		return nil, err
+	}
+
+	var result bson.M
+	client.
+		Database("admin").
+		RunCommand(ctx, bson.D{{"getCmdLineOpts", 1}}).
+		Decode(&result)
+
+	return result, nil
+}
+
+// bsonToMap will convert a bson map to a regular map recursively.
+// objx does not work when the nested objects are bson.M.
+func bsonToMap(m bson.M) map[string]interface{} {
+	out := make(map[string]interface{})
+	for key, value := range m {
+		if subMap, ok := value.(bson.M); ok {
+			out[key] = bsonToMap(subMap)
+		} else {
+			out[key] = value
+		}
+	}
+	return out
 }

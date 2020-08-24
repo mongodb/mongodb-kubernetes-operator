@@ -40,9 +40,8 @@ func TestBuildAutomationConfig(t *testing.T) {
 	for i, p := range ac.Processes {
 		assert.Equal(t, Mongod, p.ProcessType)
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
-		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Storage.DBPath)
-		assert.Equal(t, TLSModeDisabled, p.Args26.Net.TLS.Mode)
-		assert.Equal(t, "my-rs", p.Args26.Replication.ReplicaSetName, "replication should be configured based on the replica set name provided")
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
 		assert.Equal(t, toHostName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
@@ -145,9 +144,9 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
-	assert.Equal(t, ac.Processes[0].Args26.Net.Port, 27017)
-	assert.Equal(t, ac.Processes[1].Args26.Net.Port, 27017)
-	assert.Equal(t, ac.Processes[2].Args26.Net.Port, 27017)
+	for _, process := range ac.Processes {
+		assert.Equal(t, 27017, process.Args26.Get("net.port").Data())
+	}
 }
 
 func TestVersionManifest_BuildsForVersion(t *testing.T) {

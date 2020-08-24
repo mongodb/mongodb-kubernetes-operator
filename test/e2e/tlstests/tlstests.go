@@ -6,8 +6,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"testing"
 	"time"
+
+	f "github.com/operator-framework/operator-sdk/pkg/test"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -144,6 +149,59 @@ func getAdminSetting(uri, key string) (interface{}, error) {
 
 	value := result.Map()[key]
 	return value, nil
+}
+
+func RotateCertificate(mdb *v1.MongoDB) func(*testing.T) {
+	return func(t *testing.T) {
+		// Load new certificate and key
+		cert, err := ioutil.ReadFile("testdata/tls/server_rotated.crt")
+		assert.NoError(t, err)
+		key, err := ioutil.ReadFile("testdata/tls/server_rotated.key")
+		assert.NoError(t, err)
+
+		certKeySecret := secret.Builder().
+			SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
+			SetNamespace(mdb.Namespace).
+			SetField("tls.crt", string(cert)).
+			SetField("tls.key", string(key)).
+			Build()
+
+		err = f.Global.Client.Update(context.TODO(), &certKeySecret)
+		assert.NoError(t, err)
+	}
+}
+
+func WaitForRotatedCertificate(mdb *v1.MongoDB) func(*testing.T) {
+	return func(t *testing.T) {
+		// The rotated certificate has serial number 2
+		expectedSerial := big.NewInt(2)
+
+		tlsConfig, err := getClientTLSConfig()
+		assert.NoError(t, err)
+
+		// Reject all server certificates that don't have the expected serial number
+		tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			cert := verifiedChains[0][0]
+			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
+				return fmt.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
+			}
+
+			return nil
+		}
+
+		opts := options.Client().SetTLSConfig(tlsConfig).ApplyURI(mdb.MongoURI())
+		mongoClient, err := mongo.Connect(context.TODO(), opts)
+		assert.NoError(t, err)
+
+		// Ping the cluster until it succeeds. The ping will only suceed with the right certificate.
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			if err := mongoClient.Ping(context.TODO(), nil); err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		assert.NoError(t, err)
+	}
 }
 
 func getClientTLSConfig() (*tls.Config, error) {

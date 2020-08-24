@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/lifecycle"
@@ -132,7 +134,7 @@ func TestMergeEnvs(t *testing.T) {
 		},
 	}
 
-	merged := mergeEnvs(existing, desired)
+	merged := envvar.MergeWithOverride(existing, desired)
 
 	t.Run("EnvVars should be sorted", func(t *testing.T) {
 		assert.Equal(t, "A_env", merged[0].Name)

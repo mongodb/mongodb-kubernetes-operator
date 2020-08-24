@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
+	"github.com/stretchr/objx"
 
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -340,6 +340,37 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	assert.Equal(t, currentAc.Version, 1)
 }
 
+func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mongodConfig := objx.New(map[string]interface{}{})
+	mongodConfig.Set("net.port", 1000)
+	mongodConfig.Set("storage.other", "value")
+	mongodConfig.Set("arbitrary.config.path", "value")
+	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	assert.NoError(t, err)
+
+	for _, p := range currentAc.Processes {
+		// Ensure port was overridden
+		assert.Equal(t, float64(1000), p.Args26.Get("net.port").Data())
+
+		// Ensure custom values were added
+		assert.Equal(t, "value", p.Args26.Get("arbitrary.config.path").Data())
+		assert.Equal(t, "value", p.Args26.Get("storage.other").Data())
+
+		// Ensure default settings went unchanged
+		assert.Equal(t, automationconfig.DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, mdb.Name, p.Args26.Get("replication.replSetName").Data())
+	}
+}
+
 func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	mdb := newScramReplicaSet()
 	mgr := client.NewManager(&mdb)
@@ -402,242 +433,11 @@ func AssertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
 		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
 }
-func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
-	mdb := newTestReplicaSetWithTLS()
-	mgr := client.NewManager(&mdb)
-
-	s := secret.Builder().
-		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
-		SetNamespace(mdb.Namespace).
-		SetField("tls.crt", "CERT").
-		SetField("tls.key", "KEY").
-		Build()
-
-	err := mgr.GetClient().Create(context.TODO(), &s)
-	assert.NoError(t, err)
-
-	configMap := configmap.Builder().
-		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
-		SetNamespace(mdb.Namespace).
-		SetField("ca.crt", "CERT").
-		Build()
-
-	err = mgr.GetClient().Create(context.TODO(), &configMap)
-	assert.NoError(t, err)
-
-	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assertReconciliationSuccessful(t, res, err)
-
-	sts := appsv1.StatefulSet{}
-	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
-	assert.NoError(t, err)
-
-	// Assert that all TLS volumes have been added.
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
-	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "tls",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "tls-ca",
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mdb.Spec.Security.TLS.CaConfigMap.Name,
-				},
-			},
-		},
-	})
-	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "tls-secret",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.Spec.Security.TLS.CertificateKeySecret.Name,
-			},
-		},
-	})
-
-	// Assert that the TLS init container has been added.
-	tlsVolumeMount := corev1.VolumeMount{
-		Name:      "tls",
-		ReadOnly:  false,
-		MountPath: tlsServerMountPath,
-	}
-	tlsSecretVolumeMount := corev1.VolumeMount{
-		Name:      "tls-secret",
-		ReadOnly:  true,
-		MountPath: tlsSecretMountPath,
-	}
-	tlsCAVolumeMount := corev1.VolumeMount{
-		Name:      "tls-ca",
-		ReadOnly:  true,
-		MountPath: tlsCAMountPath,
-	}
-
-	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
-	tlsInitContainer := sts.Spec.Template.Spec.InitContainers[1]
-	assert.Equal(t, "tls-init", tlsInitContainer.Name)
-
-	// Assert that all containers have the correct volumes mounted.
-	assert.Len(t, tlsInitContainer.VolumeMounts, 2)
-	assert.Contains(t, tlsInitContainer.VolumeMounts, tlsVolumeMount)
-	assert.Contains(t, tlsInitContainer.VolumeMounts, tlsSecretVolumeMount)
-
-	agentContainer := sts.Spec.Template.Spec.Containers[0]
-	assert.Contains(t, agentContainer.VolumeMounts, tlsVolumeMount)
-	assert.Contains(t, agentContainer.VolumeMounts, tlsCAVolumeMount)
-
-	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Contains(t, mongodbContainer.VolumeMounts, tlsVolumeMount)
-	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
-}
-
-func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
-	createAC := func(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
-		manifest, err := mockManifestProvider(mdb.Spec.Version)()
-		assert.NoError(t, err)
-		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
-
-		ac, err := buildAutomationConfig(
-			mdb,
-			versionConfig,
-			automationconfig.AutomationConfig{},
-			getTLSConfigModification(mdb),
-		)
-		assert.NoError(t, err)
-		return ac
-	}
-
-	t.Run("With TLS disabled", func(t *testing.T) {
-		mdb := newTestReplicaSet()
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            "",
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
-		}
-	})
-
-	t.Run("With TLS enabled, during rollout", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLS()
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            "",
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode: automationconfig.TLSModeDisabled,
-			}, process.Args26.Net.TLS)
-		}
-	})
-
-	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            tlsCAMountPath + tlsCACertName,
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModeRequired,
-				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
-		}
-	})
-
-	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tLSRolledOutAnnotationKey] = "true"
-		mdb.Spec.Security.TLS.Optional = true
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            tlsCAMountPath + tlsCACertName,
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.Equal(t, automationconfig.MongoDBTLS{
-				Mode:                               automationconfig.TLSModePreferred,
-				PEMKeyFile:                         tlsServerMountPath + tlsServerFileName,
-				CAFile:                             tlsCAMountPath + tlsCACertName,
-				AllowConnectionsWithoutCertificate: true,
-			}, process.Args26.Net.TLS)
-		}
-	})
-}
-
-func TestReconcilliationFailsIfThereIsNoPassword(t *testing.T) {
-	mdb := newScramReplicaSet(defaultUser())
-	mgr := client.NewManager(&mdb)
-	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assertReconciliationRetries(t, res, err)
-}
-
-func TestScramUsersAreAddedToAutomationConfig(t *testing.T) {
-	mdb := newScramReplicaSet(defaultUser())
-	mgr := client.NewManager(&mdb)
-
-	// create the secret storing the user's password
-	passwordSecret := secret.Builder().
-		SetName(mdb.Spec.Users[0].PasswordSecretRef.Name).
-		SetNamespace(mdb.Namespace).
-		SetField("password-1", "my-password123!").
-		Build()
-
-	err := secret.CreateOrUpdate(mgr.Client, passwordSecret)
-	assert.NoError(t, err)
-
-	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assertReconciliationSuccessful(t, res, err)
-
-	ac, err := getCurrentAutomationConfig(mgr.Client, mdb)
-	assert.NoError(t, err)
-
-	assert.Len(t, ac.Auth.Users, 1)
-	createdUser := ac.Auth.Users[0]
-	assert.NotNil(t, createdUser.ScramSha256Creds)
-	assert.NotNil(t, createdUser.ScramSha1Creds)
-	assert.Equal(t, "admin", createdUser.Database)
-	assert.Equal(t, "scram-user", createdUser.Username)
-	assert.Len(t, createdUser.Roles, 2)
-	assert.Equal(t, createdUser.Roles[0].Role, "clusterAdmin")
-	assert.Equal(t, createdUser.Roles[0].Database, "admin")
-	assert.Equal(t, createdUser.Roles[1].Role, "userAdminAnyDatabase")
-	assert.Equal(t, createdUser.Roles[1].Database, "admin")
-
-}
 
 func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, result.Requeue)
 	assert.Equal(t, time.Duration(0), result.RequeueAfter)
-}
-
-func assertReconciliationRetries(t *testing.T, result reconcile.Result, err error) {
-	errorHappened := err != nil && !result.Requeue
-	isExplicitlyRequeuing := result.Requeue || result.RequeueAfter > 0
-	assert.True(t, errorHappened || isExplicitlyRequeuing)
 }
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the

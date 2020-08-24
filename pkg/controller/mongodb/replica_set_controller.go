@@ -11,7 +11,11 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
+	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/stretchr/objx"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
@@ -60,19 +64,11 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	tlsCAMountPath     = "/var/lib/tls/ca/"
-	tlsCACertName      = "ca.crt"
-	tlsSecretMountPath = "/var/lib/tls/secret/" //nolint
-	tlsSecretCertName  = "tls.crt"              //nolint
-	tlsSecretKeyName   = "tls.key"
-	tlsServerMountPath = "/var/lib/tls/server/"
-	tlsServerFileName  = "server.pem"
-
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
 	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
-	// TLSRolledOutKey indicates if TLS has been fully rolled out
-	tLSRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
+	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
+	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
 
 	trueAnnotation = "true"
@@ -96,19 +92,22 @@ func Add(mgr manager.Manager) error {
 // contains the list of all available MongoDB versions
 type ManifestProvider func() (automationconfig.VersionManifest, error)
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
+	secretWatcher := watch.New()
+
 	return &ReplicaSetReconciler{
 		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
 		manifestProvider: manifestProvider,
 		log:              zap.S(),
+		secretWatcher:    &secretWatcher,
 	}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+// add sets up a controller for the Reconciler on the manager. It will
+// also configure the necessary watches.
+func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
 	// Create a new controller
 	c, err := controller.New("replicaset-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -120,6 +119,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -134,6 +139,7 @@ type ReplicaSetReconciler struct {
 	scheme           *runtime.Scheme
 	manifestProvider func() (automationconfig.VersionManifest, error)
 	log              *zap.SugaredLogger
+	secretWatcher    *watch.ResourceWatcher
 }
 
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
@@ -364,6 +370,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
+		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		SetToolsVersion(dummyToolsVersionConfig())
 
@@ -450,14 +457,23 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		return corev1.Secret{}, err
 	}
 
-	tlsModification := getTLSConfigModification(mdb)
+	tlsModification, err := getTLSConfigModification(r.client, mdb)
+	if err != nil {
+		return corev1.Secret{}, err
+	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
 
-	ac, err := buildAutomationConfig(mdb, manifest.BuildsForVersion(mdb.Spec.Version), currentAC, authModification, tlsModification)
+	ac, err := buildAutomationConfig(
+		mdb,
+		manifest.BuildsForVersion(mdb.Spec.Version),
+		currentAC,
+		authModification,
+		tlsModification,
+	)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -471,6 +487,18 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
+}
+
+// getMongodConfigModification will merge the additional configuration in the CRD
+// into the configuration set up by the operator.
+func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+	return func(ac *automationconfig.AutomationConfig) {
+		for i := range ac.Processes {
+			// Mergo requires both objects to have the same type
+			// TODO: proper error handling
+			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
+		}
+	}
 }
 
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
@@ -569,14 +597,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		"app": mdb.ServiceName(),
 	}
 
-	ownerReferences := []metav1.OwnerReference{
-		*metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-			Group:   mdbv1.SchemeGroupVersion.Group,
-			Version: mdbv1.SchemeGroupVersion.Version,
-			Kind:    mdb.Kind,
-		}),
-	}
-
 	// the health status volume is required in both agent and mongod pods.
 	// the mongod requires it to determine if an upgrade is happening and needs to kill the pod
 	// to prevent agent deadlock
@@ -599,7 +619,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithServiceName(mdb.ServiceName()),
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
-		statefulset.WithOwnerReference(ownerReferences),
+		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
 		statefulset.WithReplicas(mdb.Spec.Members),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
@@ -617,7 +637,16 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				buildScramPodSpecModification(mdb),
 			),
 		),
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.Spec),
 	)
+}
+
+func getOwnerReference(mdb mdbv1.MongoDB) metav1.OwnerReference {
+	return *metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
+		Group:   mdbv1.SchemeGroupVersion.Group,
+		Version: mdbv1.SchemeGroupVersion.Version,
+		Kind:    mdb.Kind,
+	})
 }
 
 func getDomain(service, namespace, clusterName string) string {

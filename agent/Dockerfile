@@ -21,11 +21,13 @@ RUN mkdir -p agent \
     && rm -r mongodb-mms-automation-agent-*
 
 RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
-#    && curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readinessprobe -o /var/lib/mongodb-mms-automation/probes/readinessprobe \
     && curl --retry 3 https://readinessprobe-test.s3-us-west-1.amazonaws.com/readiness -o /var/lib/mongodb-mms-automation/probes/readinessprobe \
     && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe \
     && mkdir -p /var/log/mongodb-mms-automation/ \
-    && chmod -R +wr /var/log/mongodb-mms-automation/
+    && chmod -R +wr /var/log/mongodb-mms-automation/ \
+    # ensure that the agent user can write the logs in OpenShift
+    && touch /var/log/mongodb-mms-automation/readiness.log \
+    && chmod ugo+rw /var/log/mongodb-mms-automation/readiness.log
 
 # Install MongoDB tools. The agent will automatically search the folder and find the binaries.
 RUN curl --fail --retry 3 --silent https://downloads.mongodb.org/tools/db/mongodb-database-tools-ubuntu1604-x86_64-${tools_version}.tgz -o mongodb-tools.tgz \

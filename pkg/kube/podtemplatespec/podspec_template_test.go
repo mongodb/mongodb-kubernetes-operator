@@ -3,6 +3,8 @@ package podtemplatespec
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -95,4 +97,332 @@ func TestPodTemplateSpec_MultipleEditsToContainer(t *testing.T) {
 	assert.Equal(t, "image", c.Image)
 	assert.Equal(t, corev1.PullAlways, c.ImagePullPolicy)
 	assert.Equal(t, "cmd", c.Command[0])
+}
+
+func TestMerge(t *testing.T) {
+	defaultSpec := getDefaultPodSpec()
+	customSpec := getCustomPodSpec()
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	initContainerDefault := getDefaultContainer()
+	initContainerDefault.Name = "init-container-default"
+
+	initContainerCustom := getCustomContainer()
+	initContainerCustom.Name = "init-container-custom"
+
+	expected := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-default-name",
+			Namespace: "my-default-namespace",
+			Labels: map[string]string{
+				"app":    "operator",
+				"custom": "some",
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"node-0": "node-0",
+				"node-1": "node-1",
+			},
+			ServiceAccountName:            "my-service-account-override",
+			TerminationGracePeriodSeconds: int64Ref(11),
+			ActiveDeadlineSeconds:         int64Ref(10),
+			NodeName:                      "my-node-name",
+			RestartPolicy:                 corev1.RestartPolicyAlways,
+			Containers: []corev1.Container{
+				getDefaultContainer(),
+				getCustomContainer(),
+			},
+			InitContainers: []corev1.Container{
+				initContainerDefault,
+				initContainerCustom,
+			},
+			Volumes:  []corev1.Volume{},
+			Affinity: affinity("zone", "custom"),
+		},
+	}
+	assert.Equal(t, expected, mergedSpec)
+}
+
+func TestMergeFromEmpty(t *testing.T) {
+	defaultPodSpec := corev1.PodTemplateSpec{}
+	customPodSpecTemplate := getCustomPodSpec()
+
+	mergedPodTemplateSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
+
+	assert.NoError(t, err)
+	assert.Equal(t, customPodSpecTemplate, mergedPodTemplateSpec)
+}
+
+func TestMergeWithEmpty(t *testing.T) {
+	defaultPodSpec := getDefaultPodSpec()
+	customPodSpecTemplate := corev1.PodTemplateSpec{}
+
+	mergedPodTemplateSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
+
+	assert.NoError(t, err)
+	assert.Equal(t, defaultPodSpec, mergedPodTemplateSpec)
+}
+
+func TestMultipleMerges(t *testing.T) {
+	defaultPodSpec := getDefaultPodSpec()
+	customPodSpecTemplate := getCustomPodSpec()
+
+	referenceSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
+	assert.NoError(t, err)
+
+	mergedSpec := defaultPodSpec
+
+	// multiple merges must give the same result
+	for i := 0; i < 3; i++ {
+		mergedSpec, err := MergePodTemplateSpecs(mergedSpec, customPodSpecTemplate)
+		assert.NoError(t, err)
+		assert.Equal(t, referenceSpec, mergedSpec)
+	}
+}
+
+func TestMergeEnvironmentVariables(t *testing.T) {
+	otherDefaultContainer := getDefaultContainer()
+	otherDefaultContainer.Env = append(otherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name1",
+		Value: "val1",
+	})
+
+	overrideOtherDefaultContainer := getDefaultContainer()
+	overrideOtherDefaultContainer.Env = append(overrideOtherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name2",
+		Value: "val2",
+	})
+	overrideOtherDefaultContainer.Env = append(overrideOtherDefaultContainer.Env, corev1.EnvVar{
+		Name:  "name1",
+		Value: "changedValue",
+	})
+
+	defaultSpec := getDefaultPodSpec()
+	defaultSpec.Spec.Containers = []corev1.Container{otherDefaultContainer}
+
+	customSpec := getCustomPodSpec()
+	customSpec.Spec.Containers = []corev1.Container{overrideOtherDefaultContainer}
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	mergedContainer := mergedSpec.Spec.Containers[0]
+
+	assert.Len(t, mergedContainer.Env, 2)
+	assert.Equal(t, mergedContainer.Env[0].Name, "name1")
+	assert.Equal(t, mergedContainer.Env[0].Value, "changedValue")
+	assert.Equal(t, mergedContainer.Env[1].Name, "name2")
+	assert.Equal(t, mergedContainer.Env[1].Value, "val2")
+}
+
+func TestMergeContainer(t *testing.T) {
+	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
+	sideCarVol := corev1.VolumeMount{Name: "container-1.volume-mount-0"}
+
+	anotherVol := corev1.VolumeMount{Name: "another-mount"}
+
+	overrideDefaultContainer := corev1.Container{Name: "container-0"}
+	overrideDefaultContainer.Image = "overridden"
+	overrideDefaultContainer.ReadinessProbe = &corev1.Probe{PeriodSeconds: 20}
+
+	otherDefaultContainer := getDefaultContainer()
+	otherDefaultContainer.Name = "default-side-car"
+	otherDefaultContainer.VolumeMounts = []corev1.VolumeMount{sideCarVol}
+
+	overrideOtherDefaultContainer := otherDefaultContainer
+	overrideOtherDefaultContainer.Env = []corev1.EnvVar{{Name: "env_var", Value: "xxx"}}
+	overrideOtherDefaultContainer.VolumeMounts = []corev1.VolumeMount{anotherVol}
+
+	defaultSpec := getDefaultPodSpec()
+	defaultSpec.Spec.Containers = []corev1.Container{getDefaultContainer(), otherDefaultContainer}
+
+	customSpec := getCustomPodSpec()
+	customSpec.Spec.Containers = []corev1.Container{getCustomContainer(), overrideDefaultContainer, overrideOtherDefaultContainer}
+
+	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
+	assert.NoError(t, err)
+
+	assert.Len(t, mergedSpec.Spec.Containers, 3)
+	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[2])
+
+	firstExpected := corev1.Container{
+		Name:         "container-0",
+		VolumeMounts: []corev1.VolumeMount{vol0},
+		Image:        "overridden",
+		ReadinessProbe: &corev1.Probe{
+			// only "periodSeconds" was overwritten - other fields stayed untouched
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{Path: "/foo"},
+			},
+			PeriodSeconds: 20,
+		},
+	}
+	assert.Equal(t, firstExpected, mergedSpec.Spec.Containers[0])
+
+	secondExpected := corev1.Container{
+		Name:         "default-side-car",
+		Image:        "image-0",
+		VolumeMounts: []corev1.VolumeMount{sideCarVol, anotherVol},
+		Env: []corev1.EnvVar{
+			corev1.EnvVar{
+				Name:  "env_var",
+				Value: "xxx",
+			},
+		},
+		ReadinessProbe: otherDefaultContainer.ReadinessProbe,
+	}
+	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[1])
+}
+
+func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
+	defaultPodSpec := getDefaultPodSpec()
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "old-host-path",
+			},
+		},
+	})
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume-2",
+	})
+
+	overridePodSpec := getDefaultPodSpec()
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "updated-host-path",
+			},
+		},
+	})
+	defaultPodSpec.Spec.Volumes = append(defaultPodSpec.Spec.Volumes, corev1.Volume{
+		Name: "new-volume-3",
+	})
+
+	mergedPodSpecTemplate, err := MergePodTemplateSpecs(defaultPodSpec, overridePodSpec)
+	assert.NoError(t, err)
+
+	assert.Len(t, mergedPodSpecTemplate.Spec.Volumes, 3)
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[0].Name, "new-volume")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[0].VolumeSource.HostPath.Path, "updated-host-path")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[1].Name, "new-volume-2")
+	assert.Equal(t, mergedPodSpecTemplate.Spec.Volumes[2].Name, "new-volume-3")
+}
+
+func TestMergeVolumeMounts(t *testing.T) {
+	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
+	vol1 := corev1.VolumeMount{Name: "another-mount"}
+	volumeMounts := []corev1.VolumeMount{vol0, vol1}
+
+	mergedVolumeMounts, err := mergeVolumeMounts(nil, volumeMounts)
+	assert.NoError(t, err)
+	assert.Equal(t, []corev1.VolumeMount{vol0, vol1}, mergedVolumeMounts)
+
+	vol2 := vol1
+	vol2.MountPath = "/somewhere"
+	mergedVolumeMounts, err = mergeVolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
+	assert.NoError(t, err)
+	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
+}
+
+func int64Ref(i int64) *int64 {
+	return &i
+}
+
+func getDefaultPodSpec() corev1.PodTemplateSpec {
+	initContainer := getDefaultContainer()
+	initContainer.Name = "init-container-default"
+
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-default-name",
+			Namespace: "my-default-namespace",
+			Labels:    map[string]string{"app": "operator"},
+		},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"node-0": "node-0",
+			},
+			ServiceAccountName:            "my-default-service-account",
+			TerminationGracePeriodSeconds: int64Ref(12),
+			ActiveDeadlineSeconds:         int64Ref(10),
+			Containers:                    []corev1.Container{getDefaultContainer()},
+			InitContainers:                []corev1.Container{initContainer},
+			Affinity:                      affinity("hostname", "default"),
+			Volumes:                       []corev1.Volume{},
+		},
+	}
+}
+
+func getCustomPodSpec() corev1.PodTemplateSpec {
+	initContainer := getCustomContainer()
+	initContainer.Name = "init-container-custom"
+
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{"custom": "some"},
+		},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"node-1": "node-1",
+			},
+			ServiceAccountName:            "my-service-account-override",
+			TerminationGracePeriodSeconds: int64Ref(11),
+			NodeName:                      "my-node-name",
+			RestartPolicy:                 corev1.RestartPolicyAlways,
+			Containers:                    []corev1.Container{getCustomContainer()},
+			InitContainers:                []corev1.Container{initContainer},
+			Affinity:                      affinity("zone", "custom"),
+			Volumes:                       []corev1.Volume{},
+		},
+	}
+}
+
+func affinity(antiAffinityKey, nodeAffinityKey string) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					TopologyKey: antiAffinityKey,
+				},
+			}},
+		},
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+				MatchFields: []corev1.NodeSelectorRequirement{{
+					Key: nodeAffinityKey,
+				}},
+			}}},
+		},
+	}
+}
+
+func getDefaultContainer() corev1.Container {
+	return corev1.Container{
+		Name:  "container-0",
+		Image: "image-0",
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{HTTPGet: &corev1.HTTPGetAction{
+				Path: "/foo",
+			}},
+			PeriodSeconds: 10,
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name: "container-0.volume-mount-0",
+			},
+		},
+	}
+}
+
+func getCustomContainer() corev1.Container {
+	return corev1.Container{
+		Name:  "container-1",
+		Image: "image-1",
+	}
 }
