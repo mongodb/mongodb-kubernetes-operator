@@ -93,27 +93,6 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDB {
 	}
 }
 
-func defaultUser() mdbv1.MongoDBUser {
-	return mdbv1.MongoDBUser{
-		Name: "scram-user",
-		DB:   "admin",
-		PasswordSecretRef: mdbv1.SecretKeyReference{
-			Name: "scram-user-password",
-			Key:  "password-1",
-		},
-		Roles: []mdbv1.Role{
-			{
-				Name: "clusterAdmin",
-				DB:   "admin",
-			},
-			{
-				Name: "userAdminAnyDatabase",
-				DB:   "admin",
-			},
-		},
-	}
-}
-
 func mockManifestProvider(version string) func() (automationconfig.VersionManifest, error) {
 	return func() (automationconfig.VersionManifest, error) {
 		return automationconfig.VersionManifest{
