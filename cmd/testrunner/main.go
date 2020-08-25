@@ -10,6 +10,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
@@ -19,8 +21,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -70,35 +71,35 @@ func main() {
 func runCmd(f flags) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return fmt.Errorf("error retreiving kubernetes config: %v", err)
+		return errors.Errorf("could not get kubernetes config: %s", err)
 	}
 
 	k8s, err := k8sClient.New(config, k8sClient.Options{})
 	if err != nil {
-		return fmt.Errorf("error creating kubernetes client %v", err)
+		return errors.Errorf("could not create client: %s", err)
 	}
 
 	c := client.NewClient(k8s)
 
 	if err := ensureNamespace(f.namespace, c); err != nil {
-		return fmt.Errorf("error ensuring namespace: %v", err)
+		return errors.Errorf("could not create namespace: %s", err)
 	}
 
 	fmt.Printf("Ensured namespace: %s\n", f.namespace)
 
 	if err := crds.EnsureCreation(config, f.deployDir); err != nil {
-		return fmt.Errorf("error ensuring CRDs: %v", err)
+		return errors.Errorf("could not ensure CRDs: %s", err)
 	}
 
 	fmt.Println("Ensured CRDs")
 	if err := deployOperator(f, c); err != nil {
-		return fmt.Errorf("error deploying operator: %v", err)
+		return errors.Errorf("could not deploy operator: %s", err)
 	}
 	fmt.Println("Successfully deployed the operator")
 
 	testToRun := "test/operator-sdk-test.yaml"
 	if err := buildKubernetesResourceFromYamlFile(c, testToRun, &corev1.Pod{}, withNamespace(f.namespace), withTestImage(f.testImage), withTest(f.test), withEnvVar("PERFORM_CLEANUP", f.performCleanup)); err != nil {
-		return fmt.Errorf("error deploying test: %v", err)
+		return errors.Errorf("error deploying test: %s", err)
 	}
 
 	nsName := types.NamespacedName{Name: "operator-sdk-test", Namespace: f.namespace}
@@ -106,17 +107,17 @@ func runCmd(f flags) error {
 	fmt.Println("Waiting for pod to be ready...")
 	testPod, err := pod.WaitForPhase(c, nsName, time.Second*5, time.Minute*5, corev1.PodRunning)
 	if err != nil {
-		return fmt.Errorf("error waiting for test pod to be created: %v", err)
+		return errors.Errorf("error waiting for test pod to be created: %s", err)
 	}
 
 	fmt.Println("Tailing pod logs...")
 	if err := tailPodLogs(config, testPod); err != nil {
-		return err
+		return errors.Errorf("could not tail pod logs: %s", err)
 	}
 
 	_, err = pod.WaitForPhase(c, nsName, time.Second*5, time.Minute, corev1.PodSucceeded)
 	if err != nil {
-		return fmt.Errorf("error waiting for test to finish: %v", err)
+		return errors.Errorf("error waiting for test to finish: %v", err)
 	}
 
 	fmt.Println("Test passed!")
@@ -126,19 +127,19 @@ func runCmd(f flags) error {
 func tailPodLogs(config *rest.Config, testPod corev1.Pod) error {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("error getting clientset: %v", err)
+		return errors.Errorf("could not get clientset: %s", err)
 	}
 
 	if err := pod.GetLogs(os.Stdout, pod.CoreV1FollowStreamer(testPod, clientset.CoreV1())); err != nil {
-		return fmt.Errorf("error tailing logs: %+v", err)
+		return errors.Errorf("could not tail pod logs: %s", err)
 	}
 	return nil
 }
 
 func ensureNamespace(ns string, client client.Client) error {
 	err := client.Get(context.TODO(), types.NamespacedName{Name: ns}, &corev1.Namespace{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("error creating namespace: %v", err)
+	if err != nil && !apiErrors.IsNotFound(err) {
+		return errors.Errorf("error creating namespace: %v", err)
 	} else if err == nil {
 		fmt.Printf("Namespace %s already exists!\n", ns)
 		return nil
@@ -150,24 +151,24 @@ func ensureNamespace(ns string, client client.Client) error {
 		},
 	}
 	if err := client.Create(context.TODO(), &newNamespace); err != nil {
-		return fmt.Errorf("error creating namespace: %s", err)
+		return errors.Errorf("error creating namespace: %s", err)
 	}
 	return nil
 }
 
 func deployOperator(f flags, c client.Client) error {
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(f.namespace)); err != nil {
-		return fmt.Errorf("error building operator role: %v", err)
+		return errors.Errorf("error building operator role: %v", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(f.namespace)); err != nil {
-		return fmt.Errorf("error building operator service account: %v", err)
+		return errors.Errorf("error building operator service account: %v", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(f.namespace)); err != nil {
-		return fmt.Errorf("error building operator role binding: %v", err)
+		return errors.Errorf("error building operator role binding: %v", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"),
@@ -175,7 +176,7 @@ func deployOperator(f flags, c client.Client) error {
 		withNamespace(f.namespace),
 		withOperatorImage(f.operatorImage),
 		withVersionUpgradeHookImage(f.versionUpgradeHookImage)); err != nil {
-		return fmt.Errorf("error building operator deployment: %v", err)
+		return errors.Errorf("error building operator deployment: %v", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
@@ -281,11 +282,11 @@ func withTest(test string) func(obj runtime.Object) {
 func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
+		return errors.Errorf("error reading file: %v", err)
 	}
 
 	if err := marshalRuntimeObjectFromYAMLBytes(data, obj); err != nil {
-		return fmt.Errorf("error converting yaml bytes to service account: %v", err)
+		return errors.Errorf("error converting yaml bytes to service account: %v", err)
 	}
 
 	for _, opt := range options {
@@ -307,10 +308,10 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 
 func createOrUpdate(c client.Client, obj runtime.Object) error {
 	if err := c.Create(context.TODO(), obj); err != nil {
-		if apierrors.IsAlreadyExists(err) {
+		if apiErrors.IsAlreadyExists(err) {
 			return c.Update(context.TODO(), obj)
 		}
-		return fmt.Errorf("error creating %s in kubernetes: %v", obj.GetObjectKind(), err)
+		return errors.Errorf("error creating %s in kubernetes: %v", obj.GetObjectKind(), err)
 	}
 	return nil
 }

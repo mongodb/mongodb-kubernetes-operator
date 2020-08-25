@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/imdario/mergo"
@@ -35,7 +37,7 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -154,7 +156,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	mdb := mdbv1.MongoDB{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, &mdb)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -189,7 +191,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
-		r.log.Warnf("Error creating/updating StatefulSet: %+v", err)
+		r.log.Warnf("Error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -202,7 +204,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
-		r.log.Warnf("Error checking StatefulSet status: %+v", err)
+		r.log.Warnf("Error checking StatefulSet status: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -213,7 +215,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Warnf("Error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Warnf("Error resetting StatefulSet UpdateStrategyType: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -224,19 +226,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		hasLeftReadyStateAnnotationKey: "false",
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		r.log.Warnf("Error setting annotations: %+v", err)
+		r.log.Warnf("Error setting annotations: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
-		r.log.Warnf("Error completing TLS rollout: %+v", err)
+		r.log.Warnf("Error completing TLS rollout: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Updating MongoDB Status")
 	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
-		r.log.Warnf("Error updating the status of the MongoDB resource: %+v", err)
+		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -265,12 +267,12 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 
 	stsCopyBytes, err := json.Marshal(stsCopy)
 	if err != nil {
-		return false, err
+		return false, errors.Errorf("unable to marshal StatefulSet copy: %s", err)
 	}
 
 	stsBytes, err := json.Marshal(existingStatefulSet)
 	if err != nil {
-		return false, err
+		return false, errors.Errorf("unable to marshal existing StatefulSet: %s", err)
 	}
 
 	//comparison is done with bytes instead of reflect.DeepEqual as there are
@@ -284,7 +286,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 			hasLeftReadyStateAnnotationKey: trueAnnotation,
 		}
 		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-			return false, fmt.Errorf("failed setting %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
+			return false, errors.Errorf("could not set %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
 		}
 	}
 
@@ -301,7 +303,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 	svc := buildService(mdb)
 	err := r.client.Create(context.TODO(), &svc)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if err != nil && apiErrors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
@@ -313,11 +315,11 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
-		return fmt.Errorf("error getting StatefulSet: %s", err)
+		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
 	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
-		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
+		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
 }
@@ -342,11 +344,11 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
 	newMdb := &mdbv1.MongoDB{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
-		return mdbv1.MongoDBStatus{}, fmt.Errorf("error getting resource: %+v", err)
+		return mdbv1.MongoDBStatus{}, errors.Errorf("could not get get resource: %s", err)
 	}
 	newMdb.UpdateSuccess()
 	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
-		return mdbv1.MongoDBStatus{}, fmt.Errorf("error updating status: %+v", err)
+		return mdbv1.MongoDBStatus{}, errors.Errorf(fmt.Sprintf("could not update status: %s", err))
 	}
 	return newMdb.Status, nil
 }
@@ -450,7 +452,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+		return corev1.Secret{}, errors.Errorf("could not read version manifest from disk: %s", err)
 	}
 
 	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)

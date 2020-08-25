@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -51,7 +53,7 @@ func ConnectivityWithTLS(mdb *v1.MongoDB, username, password string) func(t *tes
 			Username:      username,
 			Password:      password,
 		})); err != nil {
-			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %+v", err))
+			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %s", err))
 		}
 	}
 }
@@ -121,7 +123,7 @@ func WaitForTLSMode(mdb *v1.MongoDB, expectedValue, username, password string) f
 		})
 
 		if err != nil {
-			t.Fatal(fmt.Sprintf(`Error waiting for TLS mode to reach "%s": %+v`, expectedValue, err))
+			t.Fatal(fmt.Sprintf(`Error waiting for TLS mode to reach "%s": %s`, expectedValue, err))
 		}
 	}
 }
@@ -183,7 +185,7 @@ func WaitForRotatedCertificate(mdb *v1.MongoDB) func(*testing.T) {
 		tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			cert := verifiedChains[0][0]
 			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
-				return fmt.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
+				return errors.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
 			}
 
 			return nil
