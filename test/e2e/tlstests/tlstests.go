@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"testing"
@@ -53,7 +52,7 @@ func ConnectivityWithTLS(mdb *v1.MongoDB, username, password string) func(t *tes
 			Username:      username,
 			Password:      password,
 		})); err != nil {
-			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %s", err))
+			t.Fatalf("Error connecting to MongoDB deployment over TLS: %s", err)
 		}
 	}
 }
@@ -123,7 +122,7 @@ func WaitForTLSMode(mdb *v1.MongoDB, expectedValue, username, password string) f
 		})
 
 		if err != nil {
-			t.Fatal(fmt.Sprintf(`Error waiting for TLS mode to reach "%s": %s`, expectedValue, err))
+			t.Fatalf(`Error waiting for TLS mode to reach "%s": %s`, expectedValue, err)
 		}
 	}
 }

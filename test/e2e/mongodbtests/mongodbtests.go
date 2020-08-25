@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -202,7 +200,7 @@ func Connectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing
 			Username:      username,
 			Password:      password,
 		})); err != nil {
-			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment: %s", err))
+			t.Fatalf("Error connecting to MongoDB deployment: %s", err)
 		}
 	}
 }
@@ -211,7 +209,7 @@ func Connectivity(mdb *mdbv1.MongoDB, username, password string) func(t *testing
 func Status(mdb *mdbv1.MongoDB, expectedStatus mdbv1.MongoDBStatus) func(t *testing.T) {
 	return func(t *testing.T) {
 		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
-			t.Fatal(errors.Errorf("error getting MongoDB resource: %s", err))
+			t.Fatalf("error getting MongoDB resource: %s", err)
 		}
 		assert.Equal(t, expectedStatus, mdb.Status)
 	}
@@ -290,7 +288,7 @@ func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration,
 					return
 				case <-time.After(interval):
 					if err := connectFunc(); err != nil {
-						t.Fatal(fmt.Sprintf("error reaching MongoDB deployment: %s", err))
+						t.Fatalf("error reaching MongoDB deployment: %s", err)
 					} else {
 						t.Logf("Successfully connected to %s", mdb.Name)
 					}

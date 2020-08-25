@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-
-	"github.com/pkg/errors"
 )
 
 // download.go uses the following environment variables:
@@ -16,8 +14,8 @@ import (
 //   FILENAME: The name the file should have after being downloaded
 
 func main() {
-	if err := downloadFile(mustMakeOptions()); err != nil {
-		panic(errors.Errorf("error downloading file: %s", err))
+	if err := downloadFile(makeOptions()); err != nil {
+		os.Exit(1)
 	}
 }
 
@@ -26,7 +24,7 @@ type downloadOptions struct {
 	perms              os.FileMode
 }
 
-func mustMakeOptions() downloadOptions {
+func makeOptions() downloadOptions {
 	return downloadOptions{
 		url:      os.Getenv("URL"),
 		fileName: os.Getenv("FILENAME"),
@@ -40,14 +38,14 @@ func downloadFile(opts downloadOptions) error {
 	fullPath := path.Join(opts.dir, opts.fileName)
 	fmt.Printf("full path to directory: %s\n", fullPath)
 	if err := os.MkdirAll(opts.dir, opts.perms); err != nil {
-		return errors.Errorf("error making directory %s with permissions %d: %s", opts.dir, opts.perms, err)
+		return fmt.Errorf("error making directory %s with permissions %d: %s", opts.dir, opts.perms, err)
 	}
 	if err := fetchFile(fullPath, opts.url); err != nil {
-		return errors.Errorf("error fetching file: %s", err)
+		return fmt.Errorf("error fetching file: %s", err)
 	}
 	fmt.Printf("successfully downloaded file from %s to %s\n", opts.url, fullPath)
 	if err := os.Chmod(fullPath, opts.perms); err != nil {
-		return errors.Errorf("error changing file permissions: %s", err)
+		return fmt.Errorf("error changing file permissions: %s", err)
 	}
 	return nil
 }
@@ -55,17 +53,17 @@ func downloadFile(opts downloadOptions) error {
 func fetchFile(filePath, url string) error {
 	resp, err := http.Get(url) //nolint
 	if err != nil {
-		return errors.Errorf("error getting url: %s", err)
+		return fmt.Errorf("error getting url: %s", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("bad status: %s", resp.Status)
+		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
 	out, err := os.Create(filePath)
 	if err != nil {
-		return errors.Errorf("error creating file: %s", err)
+		return fmt.Errorf("error creating file: %s", err)
 	}
 	defer out.Close()
 
