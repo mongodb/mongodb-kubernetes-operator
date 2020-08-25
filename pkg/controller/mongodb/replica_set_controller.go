@@ -9,7 +9,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
 	"github.com/imdario/mergo"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
@@ -26,7 +29,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
@@ -71,6 +73,14 @@ const (
 
 	trueAnnotation = "true"
 )
+
+func init() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		os.Exit(1)
+	}
+	zap.ReplaceGlobals(logger)
+}
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -138,8 +148,6 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Info("Reconciling MongoDB")
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
@@ -152,10 +160,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		r.log.Errorf("error reconciling MongoDB resource: %s", err)
+		r.log.Errorf("Error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
@@ -191,7 +202,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
-		r.log.Warnf("error checking StatefulSet status: %+v", err)
+		r.log.Warnf("Error checking StatefulSet status: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -202,7 +213,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Warnf("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Warnf("Error resetting StatefulSet UpdateStrategyType: %+v", err)
 		return reconcile.Result{}, err
 	}
 
@@ -341,11 +352,11 @@ func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb)
+	s, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
 		return err
 	}
-	return configmap.CreateOrUpdate(r.client, cm)
+	return secret.CreateOrUpdate(r.client, s)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -420,40 +431,41 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm, err := getUpdater.GetConfigMap(types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace})
+func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
+
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+		return corev1.Secret{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
 	}
 
-	authModification, err := getAuthConfigModification(r.client, mdb)
+	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	ac, err := buildAutomationConfig(
@@ -464,15 +476,15 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		tlsModification,
 	)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
-	return configmap.Builder().
-		SetName(mdb.ConfigMapName()).
+	return secret.Builder().
+		SetName(mdb.AutomationConfigSecretName()).
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
@@ -597,7 +609,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
-	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
+	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")

@@ -38,7 +38,7 @@ func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
 
 // ConnectivityWithTLS returns a test function which performs
 // a basic MongoDB connectivity test over TLS
-func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithTLS(mdb *v1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
 		tlsConfig, err := getClientTLSConfig()
 		if err != nil {
@@ -46,7 +46,11 @@ func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 			return
 		}
 
-		if err := mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig)); err != nil {
+		if err := mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig).SetAuth(options.Credential{
+			AuthMechanism: "SCRAM-SHA-256",
+			Username:      username,
+			Password:      password,
+		})); err != nil {
 			t.Fatal(fmt.Sprintf("Error connecting to MongoDB deployment over TLS: %+v", err))
 		}
 	}
@@ -54,9 +58,9 @@ func ConnectivityWithTLS(mdb *v1.MongoDB) func(t *testing.T) {
 
 // ConnectivityWithoutTLSShouldFail will send a single non-TLS query
 // and expect it to fail.
-func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB) func(t *testing.T) {
+func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := connectWithoutTLS(mdb)
+		err := connectWithoutTLS(mdb, username, password)
 		assert.Error(t, err, "expected connectivity test to fail without TLS")
 	}
 }
@@ -64,11 +68,11 @@ func ConnectivityWithoutTLSShouldFail(mdb *v1.MongoDB) func(t *testing.T) {
 // connectWithoutTLS will initialize a single MongoDB client and
 // send a single request. This function is used to ensure non-TLS
 // requests fail.
-func connectWithoutTLS(mdb *v1.MongoDB) error {
+func connectWithoutTLS(mdb *v1.MongoDB, username, password string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
 	if err != nil {
 		return err
 	}
@@ -81,24 +85,30 @@ func connectWithoutTLS(mdb *v1.MongoDB) error {
 // IsReachableDuring periodically tests connectivity to the provided MongoDB resource
 // during execution of the provided functions. This function can be used to ensure
 // The MongoDB is up throughout the test.
-func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, testFunc func()) func(*testing.T) {
+func IsReachableOverTLSDuring(mdb *v1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
 	return mongodbtests.IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
 		tlsConfig, err := getClientTLSConfig()
 		if err != nil {
 			return err
 		}
 
-		return mongodbtests.Connect(mdb, options.Client().SetTLSConfig(tlsConfig))
+		return mongodbtests.Connect(mdb, options.Client().
+			SetTLSConfig(tlsConfig).
+			SetAuth(options.Credential{
+				AuthMechanism: "SCRAM-SHA-256",
+				Username:      username,
+				Password:      password,
+			}))
 	})
 }
 
 // WaitForTLSMode will poll the admin database and wait for the TLS mode to reach a certain value.
-func WaitForTLSMode(mdb *v1.MongoDB, expectedValue string) func(*testing.T) {
+func WaitForTLSMode(mdb *v1.MongoDB, expectedValue, username, password string) func(*testing.T) {
 	return func(t *testing.T) {
 		err := wait.Poll(time.Second*10, time.Minute*10, func() (done bool, err error) {
 			// Once we upgrade the tests to 4.2 we will have to change this to "tlsMode".
 			// We will also have to change the values we check for.
-			value, err := getAdminSetting(mdb.MongoURI(), "sslMode")
+			value, err := getAdminSetting(mdb.SCRAMMongoURI(username, password), "sslMode")
 			if err != nil {
 				return false, err
 			}

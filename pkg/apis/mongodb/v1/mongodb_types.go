@@ -26,6 +26,10 @@ const (
 	Running Phase = "Running"
 )
 
+const (
+	defaultPasswordKey = "password"
+)
+
 // MongoDBSpec defines the desired state of MongoDB
 type MongoDBSpec struct {
 	// Members is the number of members in the replica set
@@ -48,7 +52,7 @@ type MongoDBSpec struct {
 
 	// Users specifies the MongoDB users that should be configured in your deployment
 	// +required
-	Users []MongoDBUser `json:"-"` // `json:"users"`
+	Users []MongoDBUser `json:"users"`
 
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
@@ -112,6 +116,21 @@ type MongoDBUser struct {
 	Roles []Role `json:"roles"`
 }
 
+func (m MongoDBUser) GetPasswordSecretKey() string {
+	if m.PasswordSecretRef.Key == "" {
+		return defaultPasswordKey
+	}
+	return m.PasswordSecretRef.Key
+}
+
+func (m MongoDBUser) GetPasswordSecretName() string {
+	return m.PasswordSecretRef.Name
+}
+
+func (m MongoDBUser) GetUserName() string {
+	return m.Name
+}
+
 // SecretKeyReference is a reference to the secret containing the user's password
 type SecretKeyReference struct {
 	// Name is the name of the secret storing this user's password
@@ -132,7 +151,7 @@ type Role struct {
 
 type Security struct {
 	// +optional
-	Authentication Authentication `json:"-"` //`json:"authentication"`
+	Authentication Authentication `json:"authentication"`
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
@@ -167,9 +186,6 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
-	// Enabled specifies if authentication should be enabled
-	Enabled bool `json:"enabled"`
-
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
 }
@@ -230,7 +246,7 @@ func (m MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m MongoDB) ConfigMapName() string {
+func (m MongoDB) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
 
@@ -256,7 +272,7 @@ func (m MongoDB) NamespacedName() types.NamespacedName {
 }
 
 func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: "agent-scram-credentials", Namespace: m.Namespace}
+	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.

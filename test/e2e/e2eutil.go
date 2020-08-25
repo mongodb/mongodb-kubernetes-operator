@@ -38,6 +38,13 @@ func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration
 	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm)
 }
 
+// WaitForSecretToExist waits until a Secret of the given name exists
+// using the provided retryInterval and timeout
+func WaitForSecretToExist(cmName string, retryInterval, timeout time.Duration) (corev1.Secret, error) {
+	s := corev1.Secret{}
+	return s, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &s)
+}
+
 // WaitForMongoDBToReachPhase waits until the given MongoDB resource reaches the expected phase
 func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDB, phase mdbv1.Phase, retryInterval, timeout time.Duration) error {
 	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDB) bool {
