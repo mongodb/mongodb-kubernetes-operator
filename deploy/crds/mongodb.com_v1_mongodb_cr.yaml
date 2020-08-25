@@ -3,7 +3,7 @@ kind: MongoDB
 metadata:
   name: example-mongodb
 spec:
-  members: 1
+  members: 3
   type: ReplicaSet
   version: "4.2.6"
   security:
