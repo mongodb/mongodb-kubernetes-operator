@@ -68,7 +68,7 @@ func hmacIteration(hashConstructor func() hash.Hash, input, salt []byte, iterati
 	// incorrect salt size will pass validation, but the credentials will be invalid. i.e. it will not
 	// be possible to auth with the password provided to create the credentials.
 	if len(salt) != hashSize-RFC5802MandatedSaltSize {
-		return nil, errors.Errorf("salt should have a size of %v bytes, but instead has a size of %v bytes", hashSize-RFC5802MandatedSaltSize, len(salt))
+		return nil, errors.Errorf("salt should have a size of %d bytes, but instead has a size of %d bytes", hashSize-RFC5802MandatedSaltSize, len(salt))
 	}
 
 	startKey := append(salt, 0, 0, 0, 1)

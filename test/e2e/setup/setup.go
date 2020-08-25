@@ -42,7 +42,7 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 
 	for _, newType := range newTypes {
 		if err := f.AddToFrameworkScheme(apis.AddToScheme, newType); err != nil {
-			return errors.Errorf("failed to add custom resource type %s to framework scheme: %v", newType.GetObjectKind(), err)
+			return errors.Errorf("failed to add custom resource type %s to framework scheme: %s", newType.GetObjectKind(), err)
 		}
 	}
 	return nil

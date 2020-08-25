@@ -117,7 +117,7 @@ func runCmd(f flags) error {
 
 	_, err = pod.WaitForPhase(c, nsName, time.Second*5, time.Minute, corev1.PodSucceeded)
 	if err != nil {
-		return errors.Errorf("error waiting for test to finish: %v", err)
+		return errors.Errorf("error waiting for test to finish: %s", err)
 	}
 
 	fmt.Println("Test passed!")
@@ -139,7 +139,7 @@ func tailPodLogs(config *rest.Config, testPod corev1.Pod) error {
 func ensureNamespace(ns string, client client.Client) error {
 	err := client.Get(context.TODO(), types.NamespacedName{Name: ns}, &corev1.Namespace{})
 	if err != nil && !apiErrors.IsNotFound(err) {
-		return errors.Errorf("error creating namespace: %v", err)
+		return errors.Errorf("error creating namespace: %s", err)
 	} else if err == nil {
 		fmt.Printf("Namespace %s already exists!\n", ns)
 		return nil
@@ -158,17 +158,17 @@ func ensureNamespace(ns string, client client.Client) error {
 
 func deployOperator(f flags, c client.Client) error {
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(f.namespace)); err != nil {
-		return errors.Errorf("error building operator role: %v", err)
+		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(f.namespace)); err != nil {
-		return errors.Errorf("error building operator service account: %v", err)
+		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(f.namespace)); err != nil {
-		return errors.Errorf("error building operator role binding: %v", err)
+		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"),
@@ -176,7 +176,7 @@ func deployOperator(f flags, c client.Client) error {
 		withNamespace(f.namespace),
 		withOperatorImage(f.operatorImage),
 		withVersionUpgradeHookImage(f.versionUpgradeHookImage)); err != nil {
-		return errors.Errorf("error building operator deployment: %v", err)
+		return errors.Errorf("error building operator deployment: %s", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
@@ -282,11 +282,11 @@ func withTest(test string) func(obj runtime.Object) {
 func buildKubernetesResourceFromYamlFile(c client.Client, yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
-		return errors.Errorf("error reading file: %v", err)
+		return errors.Errorf("error reading file: %s", err)
 	}
 
 	if err := marshalRuntimeObjectFromYAMLBytes(data, obj); err != nil {
-		return errors.Errorf("error converting yaml bytes to service account: %v", err)
+		return errors.Errorf("error converting yaml bytes to service account: %s", err)
 	}
 
 	for _, opt := range options {
@@ -311,7 +311,7 @@ func createOrUpdate(c client.Client, obj runtime.Object) error {
 		if apiErrors.IsAlreadyExists(err) {
 			return c.Update(context.TODO(), obj)
 		}
-		return errors.Errorf("error creating %s in kubernetes: %v", obj.GetObjectKind(), err)
+		return errors.Errorf("error creating %s in kubernetes: %s", obj.GetObjectKind(), err)
 	}
 	return nil
 }
