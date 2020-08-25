@@ -148,8 +148,6 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Info("Reconciling MongoDB")
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
@@ -166,6 +164,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)

@@ -275,12 +275,10 @@ func findContainerByName(name string, containers []corev1.Container) *corev1.Con
 	return nil
 }
 
-func EnsureMongodConfig(mdb *mdbv1.MongoDB, selector string, expected interface{}) func(*testing.T) {
+func EnsureMongodConfig(mdb *mdbv1.MongoDB, username, password, selector string, expected interface{}) func(*testing.T) {
 	return func(t *testing.T) {
-		opts, err := getCommandLineOptions(mdb)
-		if err != nil {
-			assert.NoError(t, err)
-		}
+		opts, err := getCommandLineOptions(mdb, username, password)
+		assert.NoError(t, err)
 
 		// The options are stored under the key "parsed"
 		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
@@ -290,21 +288,21 @@ func EnsureMongodConfig(mdb *mdbv1.MongoDB, selector string, expected interface{
 
 // getCommandLineOptions will get the command line options from the admin database
 // and return the results as a map.
-func getCommandLineOptions(mdb *mdbv1.MongoDB) (bson.M, error) {
+func getCommandLineOptions(mdb *mdbv1.MongoDB, username string, password string) (bson.M, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.MongoURI()))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
 	if err != nil {
 		return nil, err
 	}
 
 	var result bson.M
-	client.
+	err = client.
 		Database("admin").
 		RunCommand(ctx, bson.D{{"getCmdLineOpts", 1}}).
 		Decode(&result)
 
-	return result, nil
+	return result, err
 }
 
 // bsonToMap will convert a bson map to a regular map recursively.
