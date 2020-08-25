@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agenthealth"
 	"go.uber.org/zap"
@@ -108,7 +109,7 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 
 		status, ok := health.Healthiness[getHostname()]
 		if !ok {
-			return agenthealth.Health{}, fmt.Errorf("couldn't find status for hostname %s", getHostname())
+			return agenthealth.Health{}, errors.Errorf("couldn't find status for hostname %s", getHostname())
 		}
 
 		// We determine if the file has been updated by checking if the process is not in goal state.
@@ -117,7 +118,7 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 			return health, nil
 		}
 	}
-	return agenthealth.Health{}, fmt.Errorf("agenth health status not ready after waiting %s", pollingDuration.String())
+	return agenthealth.Health{}, errors.Errorf("agent health status not ready after waiting %s", pollingDuration.String())
 
 }
 
@@ -126,13 +127,13 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 func getAgentHealthStatus() (agenthealth.Health, error) {
 	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
 	if err != nil {
-		return agenthealth.Health{}, fmt.Errorf("error opening file: %s", err)
+		return agenthealth.Health{}, errors.Errorf("could not open file: %s", err)
 	}
 	defer f.Close()
 
 	h, err := readAgentHealthStatus(f)
 	if err != nil {
-		return agenthealth.Health{}, fmt.Errorf("error reading health status: %s", err)
+		return agenthealth.Health{}, errors.Errorf("could not read health status file: %s", err)
 	}
 	return h, err
 }
@@ -159,7 +160,7 @@ func getHostname() string {
 func shouldDeletePod(health agenthealth.Health) (bool, error) {
 	status, ok := health.ProcessPlans[getHostname()]
 	if !ok {
-		return false, fmt.Errorf("hostname %s was not in the process plans", getHostname())
+		return false, errors.Errorf("hostname %s was not in the process plans", getHostname())
 	}
 	return isWaitingToBeDeleted(status), nil
 }
@@ -186,15 +187,15 @@ func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
 func deletePod() error {
 	thisPod, err := getThisPod()
 	if err != nil {
-		return fmt.Errorf("error getting this pod: %s", err)
+		return errors.Errorf("could not get pod: %s", err)
 	}
 	k8sClient, err := inClusterClient()
 	if err != nil {
-		return fmt.Errorf("error getting client: %s", err)
+		return errors.Errorf("could not get client: %s", err)
 	}
 
 	if err := k8sClient.Delete(context.TODO(), &thisPod); err != nil {
-		return fmt.Errorf("error deleting pod: %s", err)
+		return errors.Errorf("could not delete pod: %s", err)
 	}
 	return nil
 }
@@ -203,12 +204,12 @@ func deletePod() error {
 func getThisPod() (corev1.Pod, error) {
 	podName := getHostname()
 	if podName == "" {
-		return corev1.Pod{}, fmt.Errorf("environment variable HOSTNAME was not present")
+		return corev1.Pod{}, errors.Errorf("environment variable HOSTNAME was not present")
 	}
 
 	ns, err := getNamespace()
 	if err != nil {
-		return corev1.Pod{}, fmt.Errorf("error reading namespace: %+v", err)
+		return corev1.Pod{}, errors.Errorf("could not read namespace: %s", err)
 	}
 
 	return corev1.Pod{
@@ -222,12 +223,12 @@ func getThisPod() (corev1.Pod, error) {
 func inClusterClient() (client.Client, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error getting cluster config: %+v", err)
+		return nil, errors.Errorf("could not get cluster config: %%s", err)
 	}
 
 	k8sClient, err := client.New(config, client.Options{})
 	if err != nil {
-		return nil, fmt.Errorf("error creating client: %+v", err)
+		return nil, errors.Errorf("could not create client: %s", err)
 	}
 	return k8sClient, nil
 }

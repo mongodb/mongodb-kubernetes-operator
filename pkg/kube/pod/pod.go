@@ -7,6 +7,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +37,7 @@ func GetLogs(writer io.Writer, streamer Streamer) error {
 	podLogs, err := streamer.Stream()
 
 	if err != nil {
-		return fmt.Errorf("error in opening stream: %v", err)
+		return errors.Errorf("could not open stream: %s", err)
 	}
 
 	defer podLogs.Close()
@@ -48,7 +50,7 @@ func GetLogs(writer io.Writer, streamer Streamer) error {
 	}
 
 	if sc.Err() != nil {
-		return fmt.Errorf("error from scanner: %+v", sc.Err())
+		return errors.Errorf("error from scanner: %s", sc.Err())
 	}
 
 	return nil
