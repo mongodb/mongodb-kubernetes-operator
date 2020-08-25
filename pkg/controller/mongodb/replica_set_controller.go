@@ -195,6 +195,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	currentSts := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{Requeue: true}, nil
+		}
 		r.log.Warnf("Error getting StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
@@ -237,7 +240,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
 		r.log.Warnf("Error updating the status of the MongoDB resource: %+v", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", newStatus)
