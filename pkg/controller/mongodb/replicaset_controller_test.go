@@ -2,10 +2,16 @@ package mongodb
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 
 	"github.com/pkg/errors"
 
@@ -414,6 +420,76 @@ func AssertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
 	})
 }
 
+func TestOpenshift_Configuration(t *testing.T) {
+	sts := performReconciliationAndGetStatefulSet(t, "openshift_mdb.yaml")
+	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[0].Env[1].Name)
+	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[1].Env[1].Name)
+}
+
+func TestVolumeClaimTemplates_Configuration(t *testing.T) {
+	sts := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
+
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
+
+	pvcSpec := sts.Spec.VolumeClaimTemplates[1].Spec
+
+	storage := pvcSpec.Resources.Requests[corev1.ResourceStorage]
+	storageRef := &storage
+
+	assert.Equal(t, "1Gi", storageRef.String())
+	assert.Len(t, pvcSpec.AccessModes, 1)
+	assert.Contains(t, pvcSpec.AccessModes, corev1.ReadWriteOnce)
+}
+
+func TestChangeDataVolume_Configuration(t *testing.T) {
+	sts := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
+
+	dataVolume := sts.Spec.VolumeClaimTemplates[0]
+
+	storage := dataVolume.Spec.Resources.Requests[corev1.ResourceStorage]
+	storageRef := &storage
+
+	assert.Equal(t, "data-volume", dataVolume.Name)
+	assert.Equal(t, "50Gi", storageRef.String())
+}
+
+func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv1.StatefulSet {
+	mdb, err := loadTestFixture(filePath)
+	assert.NoError(t, err)
+	mgr := client.NewManager(&mdb)
+	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
+	assert.NoError(t, err)
+	return sts
+}
+
+func generatePasswordsForAllUsers(mdb mdbv1.MongoDB, c client.Client) error {
+	for _, user := range mdb.Spec.Users {
+
+		key := "password"
+		if user.PasswordSecretRef.Key != "" {
+			key = user.PasswordSecretRef.Key
+		}
+
+		passwordSecret := secret.Builder().
+			SetName(user.PasswordSecretRef.Name).
+			SetNamespace(mdb.Namespace).
+			SetField(key, "GAGTQK2ccRRaxJFudI5y").
+			Build()
+
+		if err := c.CreateSecret(passwordSecret); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, result.Requeue)
@@ -430,4 +506,30 @@ func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
 	sts.Status.UpdatedReplicas = int32(mdb.Spec.Members)
 	err = c.Update(context.TODO(), &sts)
 	assert.NoError(t, err)
+}
+
+// loadTestFixture will create a MongoDB resource from a given fixture
+func loadTestFixture(yamlFileName string) (mdbv1.MongoDB, error) {
+	testPath := fmt.Sprintf("testdata/%s", yamlFileName)
+	mdb := mdbv1.MongoDB{}
+	data, err := ioutil.ReadFile(testPath)
+	if err != nil {
+		return mdb, errors.Errorf("error reading file: %s", err)
+	}
+
+	if err := marshalRuntimeObjectFromYAMLBytes(data, &mdb); err != nil {
+		return mdb, errors.Errorf("error converting yaml bytes to service account: %s", err)
+	}
+
+	return mdb, nil
+}
+
+// marshalRuntimeObjectFromYAMLBytes accepts the bytes of a yaml resource
+// and unmarshals them into the provided runtime Object
+func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
+	jsonBytes, err := yaml.YAMLToJSON(bytes)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonBytes, &obj)
 }

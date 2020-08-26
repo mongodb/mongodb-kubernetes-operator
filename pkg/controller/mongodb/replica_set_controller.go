@@ -183,9 +183,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
+		r.log.Warnf("Error validating TLS config: %s", err)
 		return reconcile.Result{}, err
 	}
 	if !isTLSValid {
+		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
@@ -197,7 +199,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	currentSts := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
-		r.log.Warnf("Error getting StatefulSet: %s", err)
+		if !apiErrors.IsNotFound(err) {
+			r.log.Warnf("Error getting StatefulSet: %s", err)
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -401,11 +405,11 @@ func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
-	bytes, err := ioutil.ReadFile(versionManifestFilePath)
+	versionManifestBytes, err := ioutil.ReadFile(versionManifestFilePath)
 	if err != nil {
 		return automationconfig.VersionManifest{}, err
 	}
-	return versionManifestFromBytes(bytes)
+	return versionManifestFromBytes(versionManifestBytes)
 }
 
 func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, error) {

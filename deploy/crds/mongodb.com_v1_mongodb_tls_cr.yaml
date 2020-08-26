@@ -7,9 +7,21 @@ spec:
   type: ReplicaSet
   version: "4.2.7"
   security:
+    authentication:
+      modes: ["SCRAM"]
     tls:
       enabled: true
       certificateKeySecretRef:
         name: tls-secret-name
       caConfigMapRef:
         name: tls-ca-configmap-name
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef:
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
