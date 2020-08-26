@@ -184,9 +184,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
 		r.log.Warnf("Error validating TLS config: %s", err)
-		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+		return reconcile.Result{}, err
 	}
 	if !isTLSValid {
+		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
