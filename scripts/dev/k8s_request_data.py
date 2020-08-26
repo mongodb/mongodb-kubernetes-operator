@@ -57,6 +57,16 @@ def get_configmap_namespaced(namespace: str, name: str) -> Optional[Dict]:
     return config_map.to_dict()
 
 
+def get_secret_namespaced(namespace: str, name: str) -> Optional[Dict]:
+    corev1 = client.CoreV1Api()
+    try:
+        secret = corev1.read_namespaced_secret(name, namespace, pretty="true")
+    except ApiException as e:
+        print("Exception when calling read_namespaced_secret: %s\n" % e)
+        return None
+    return secret.to_dict()
+
+
 def get_pods_namespaced(namespace: str) -> Optional[List]:
     corev1 = client.CoreV1Api()
     try:
