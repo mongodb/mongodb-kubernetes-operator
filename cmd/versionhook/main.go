@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agenthealth"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,7 +91,7 @@ func setupLogger() *zap.SugaredLogger {
 // waitForAgentHealthStatus will poll the health status file and wait for it to be updated.
 // The agent doesn't write the plan to the file right away and hence we need to wait for the
 // latest plan to be written.
-func waitForAgentHealthStatus() (agenthealth.Health, error) {
+func waitForAgentHealthStatus() (agent.Health, error) {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 
@@ -104,12 +104,12 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 
 		health, err := getAgentHealthStatus()
 		if err != nil {
-			return agenthealth.Health{}, err
+			return agent.Health{}, err
 		}
 
 		status, ok := health.Healthiness[getHostname()]
 		if !ok {
-			return agenthealth.Health{}, errors.Errorf("couldn't find status for hostname %s", getHostname())
+			return agent.Health{}, errors.Errorf("couldn't find status for hostname %s", getHostname())
 		}
 
 		// We determine if the file has been updated by checking if the process is not in goal state.
@@ -118,30 +118,30 @@ func waitForAgentHealthStatus() (agenthealth.Health, error) {
 			return health, nil
 		}
 	}
-	return agenthealth.Health{}, errors.Errorf("agent health status not ready after waiting %s", pollingDuration.String())
+	return agent.Health{}, errors.Errorf("agent health status not ready after waiting %s", pollingDuration.String())
 
 }
 
-// getAgentHealthStatus returns an instance of agenthealth.Health read
+// getAgentHealthStatus returns an instance of agent.Health read
 // from the health file on disk
-func getAgentHealthStatus() (agenthealth.Health, error) {
+func getAgentHealthStatus() (agent.Health, error) {
 	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
 	if err != nil {
-		return agenthealth.Health{}, errors.Errorf("could not open file: %s", err)
+		return agent.Health{}, errors.Errorf("could not open file: %s", err)
 	}
 	defer f.Close()
 
 	h, err := readAgentHealthStatus(f)
 	if err != nil {
-		return agenthealth.Health{}, errors.Errorf("could not read health status file: %s", err)
+		return agent.Health{}, errors.Errorf("could not read health status file: %s", err)
 	}
 	return h, err
 }
 
 // readAgentHealthStatus reads an instance of health.Health from the provided
 // io.Reader
-func readAgentHealthStatus(reader io.Reader) (agenthealth.Health, error) {
-	var h agenthealth.Health
+func readAgentHealthStatus(reader io.Reader) (agent.Health, error) {
+	var h agent.Health
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return h, err
@@ -157,7 +157,7 @@ func getHostname() string {
 // shouldDeletePod returns a boolean value indicating if this pod should be deleted
 // this would be the case if the agent is currently trying to upgrade the version
 // of mongodb.
-func shouldDeletePod(health agenthealth.Health) (bool, error) {
+func shouldDeletePod(health agent.Health) (bool, error) {
 	status, ok := health.ProcessPlans[getHostname()]
 	if !ok {
 		return false, errors.Errorf("hostname %s was not in the process plans", getHostname())
@@ -169,7 +169,7 @@ func shouldDeletePod(health agenthealth.Health) (bool, error) {
 // on the mongod pod to be restarted. In order to do this, we need to check the agent
 // status file and determine if the mongod has been stopped and if we are in the process
 // of a version change.
-func isWaitingToBeDeleted(healthStatus agenthealth.MmsDirectorStatus) bool {
+func isWaitingToBeDeleted(healthStatus agent.MmsDirectorStatus) bool {
 	if len(healthStatus.Plans) == 0 {
 		return false
 	}
@@ -223,7 +223,7 @@ func getThisPod() (corev1.Pod, error) {
 func inClusterClient() (client.Client, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, errors.Errorf("could not get cluster config: %%s", err)
+		return nil, errors.Errorf("could not get cluster config: %s", err)
 	}
 
 	k8sClient, err := client.New(config, client.Options{})
