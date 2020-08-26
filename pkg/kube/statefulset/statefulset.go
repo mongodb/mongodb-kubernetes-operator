@@ -3,6 +3,8 @@ package statefulset
 import (
 	"sort"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
 	"github.com/imdario/mergo"
@@ -289,27 +291,62 @@ func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (ap
 	return defaultSpec, nil
 }
 
+func mergeSingleVolumeClaimTemplate(defaultPvc corev1.PersistentVolumeClaim, overridePvc corev1.PersistentVolumeClaim) corev1.PersistentVolumeClaim {
+
+	if overridePvc.Spec.VolumeMode != nil {
+		defaultPvc.Spec.VolumeMode = overridePvc.Spec.VolumeMode
+	}
+
+	if overridePvc.Spec.StorageClassName != nil {
+		defaultPvc.Spec.StorageClassName = overridePvc.Spec.StorageClassName
+	}
+
+	for _, accessMode := range overridePvc.Spec.AccessModes {
+		if !contains.AccessMode(defaultPvc.Spec.AccessModes, accessMode) {
+			defaultPvc.Spec.AccessModes = append(defaultPvc.Spec.AccessModes, accessMode)
+		}
+	}
+
+	if overridePvc.Spec.Selector != nil {
+		defaultPvc.Spec.Selector = overridePvc.Spec.Selector
+	}
+
+	if overridePvc.Spec.Resources.Limits != nil {
+		defaultPvc.Spec.Resources.Limits = overridePvc.Spec.Resources.Limits
+	}
+
+	if overridePvc.Spec.Resources.Requests != nil {
+		defaultPvc.Spec.Resources.Requests = overridePvc.Spec.Resources.Requests
+	}
+
+	if overridePvc.Spec.DataSource != nil {
+		defaultPvc.Spec.DataSource = overridePvc.Spec.DataSource
+	}
+
+	return defaultPvc
+}
+
 func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
 	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
 	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
 
-	var mergedVolumes []corev1.PersistentVolumeClaim
-	for idx, defaultMount := range defaultMountsMap {
-		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
-			// needs merge
-			if err := mergo.Merge(defaultMountsMap[idx], overrideMount, mergo.WithAppendSlice, mergo.WithOverride); err != nil {
-				return nil, err
-			}
-		}
-		mergedVolumes = append(mergedVolumes, defaultMount)
+	mergedMap := map[string]corev1.PersistentVolumeClaim{}
+
+	for _, vct := range defaultMountsMap {
+		mergedMap[vct.Name] = vct
 	}
 
-	for _, overrideMount := range overrideMountsMap {
-		if _, ok := defaultMountsMap[overrideMount.Name]; ok {
-			// already merged
-			continue
+	for _, overrideClaim := range overrideMountsMap {
+		if defaultClaim, ok := defaultMountsMap[overrideClaim.Name]; ok {
+			mergedMap[overrideClaim.Name] = mergeSingleVolumeClaimTemplate(defaultClaim, overrideClaim)
+		} else {
+			mergedMap[overrideClaim.Name] = overrideClaim
 		}
-		mergedVolumes = append(mergedVolumes, overrideMount)
+	}
+
+	var mergedVolumes []corev1.PersistentVolumeClaim
+	for _, v := range mergedMap {
+		mergedVolumes = append(mergedVolumes, v)
 	}
 
 	sort.SliceStable(mergedVolumes, func(i, j int) bool {

@@ -40,8 +40,9 @@ func (m *mockedClient) ensureMapFor(obj runtime.Object) map[k8sClient.ObjectKey]
 func (m *mockedClient) Get(_ context.Context, key k8sClient.ObjectKey, obj runtime.Object) error {
 	relevantMap := m.ensureMapFor(obj)
 	if val, ok := relevantMap[key]; ok {
+		objCopy := val.DeepCopyObject()
 		v := reflect.ValueOf(obj).Elem()
-		v.Set(reflect.ValueOf(val).Elem())
+		v.Set(reflect.ValueOf(objCopy).Elem())
 		return nil
 	}
 	return notFoundError()
