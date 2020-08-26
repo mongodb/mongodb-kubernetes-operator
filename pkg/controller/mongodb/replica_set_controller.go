@@ -199,10 +199,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	currentSts := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
-		if apiErrors.IsNotFound(err) {
-			return reconcile.Result{}, err
+		if !apiErrors.IsNotFound(err) {
+			r.log.Warnf("Error getting StatefulSet: %s", err)
 		}
-		r.log.Warnf("Error getting StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
