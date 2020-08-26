@@ -152,3 +152,16 @@ func WithSecurityContext(context corev1.SecurityContext) Modification {
 		container.SecurityContext = &context
 	}
 }
+
+// WithAgentFlags takes a slice of envVars corresponding to
+// pairs of key-value agent startup flags and concatenates them
+// into a single string that is then passed as env variable AGENT_FLAGS
+func WithAgentFlags(envs ...corev1.EnvVar) Modification {
+	return func(container *corev1.Container) {
+		agentParams := ""
+		for _, variable := range envs {
+			agentParams += " -" + variable.Name + " " + variable.Value
+		}
+		container.Env = envvar.MergeWithOverride(container.Env, []corev1.EnvVar{{Name: "AGENT_FLAGS", Value: agentParams}})
+	}
+}
