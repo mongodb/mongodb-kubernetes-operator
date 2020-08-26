@@ -7,9 +7,9 @@ type StartupParameter struct {
 	Value string `json:"value"`
 }
 
-// WithAgentFlags takes a slice of envVars corresponding to
-// pairs of key-value agent startup flags and concatenates them
-// into a single string that is then passed as env variable AGENT_FLAGS
+// StartupParametersToAgentFlag takes a slice of StartupParameters
+// and concatenates them into a single string that is then
+// returned as env variable AGENT_FLAGS
 func StartupParametersToAgentFlag(parameters ...StartupParameter) corev1.EnvVar {
 	agentParams := ""
 	for _, param := range parameters {
