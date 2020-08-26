@@ -3,12 +3,13 @@ package pod
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/stretchr/testify/assert"
@@ -25,14 +26,14 @@ func (m mockPoller) Poll(interval, timeout time.Duration, condition wait.Conditi
 	for timeout >= elapsedTime {
 		done, err := condition()
 		if err != nil {
-			return fmt.Errorf("error in condition func: %+v", err)
+			return errors.Errorf("error in condition func: %s", err)
 		}
 		elapsedTime += interval
 		if done {
 			return nil
 		}
 	}
-	return fmt.Errorf("timed out")
+	return errors.Errorf("timed out")
 }
 
 func TestWaitForPhase(t *testing.T) {

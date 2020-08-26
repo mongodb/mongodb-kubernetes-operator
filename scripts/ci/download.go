@@ -14,8 +14,8 @@ import (
 //   FILENAME: The name the file should have after being downloaded
 
 func main() {
-	if err := downloadFile(mustMakeOptions()); err != nil {
-		panic(fmt.Errorf("error downloading file: %s", err))
+	if err := downloadFile(makeOptions()); err != nil {
+		os.Exit(1)
 	}
 }
 
@@ -24,7 +24,7 @@ type downloadOptions struct {
 	perms              os.FileMode
 }
 
-func mustMakeOptions() downloadOptions {
+func makeOptions() downloadOptions {
 	return downloadOptions{
 		url:      os.Getenv("URL"),
 		fileName: os.Getenv("FILENAME"),

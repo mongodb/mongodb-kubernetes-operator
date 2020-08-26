@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -16,7 +18,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 )
@@ -40,7 +42,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 	// Ensure CA ConfigMap exists
 	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
 			return false, nil
 		}
@@ -57,7 +59,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 	// Ensure Secret exists
 	secretData, err := secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
 			return false, nil
 		}
@@ -201,11 +203,11 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 
 	mdb.Annotations[tlsRolledOutAnnotationKey] = trueAnnotation
 	if err := r.ensureAutomationConfig(mdb); err != nil {
-		return fmt.Errorf("error updating automation config after TLS rollout: %+v", err)
+		return errors.Errorf("could not update automation config after TLS rollout: %s", err)
 	}
 
 	if err := r.setAnnotations(mdb.NamespacedName(), mdb.Annotations); err != nil {
-		return fmt.Errorf("error setting TLS annotation: %+v", err)
+		return errors.Errorf("could not set TLS annotation: %s", err)
 	}
 
 	return nil

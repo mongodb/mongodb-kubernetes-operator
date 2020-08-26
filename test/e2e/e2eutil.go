@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -92,7 +94,7 @@ func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := WaitForStatefulSetToExist(mdb.Name, retryInterval, timeout)
 	if err != nil {
-		return fmt.Errorf("error waiting for stateful set to be created: %s", err)
+		return errors.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}

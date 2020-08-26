@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"go.uber.org/zap"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -12,7 +14,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -39,12 +41,12 @@ func scramCredentialsSecretName(mdbName, username string) string {
 func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
-		return automationconfig.NOOP(), fmt.Errorf("error generating password: %s", err)
+		return automationconfig.NOOP(), errors.Errorf("could not generate password: %s", err)
 	}
 
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
-		return automationconfig.NOOP(), fmt.Errorf("error generating keyfile contents: %s", err)
+		return automationconfig.NOOP(), errors.Errorf("could not generate keyfile contents: %s", err)
 	}
 
 	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter, mdb)
@@ -53,7 +55,7 @@ func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, sec
 	}
 	agentSecret, err := secretGetUpdateCreateDeleter.GetSecret(secretNsName)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			s := secret.Builder().
 				SetNamespace(secretNsName.Namespace).
 				SetName(secretNsName.Name).
@@ -100,7 +102,7 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User,
 	password, err := secret.ReadKey(getUpdateCreator, user.GetPasswordSecretKey(), types.NamespacedName{Name: user.GetPasswordSecretName(), Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
 		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			zap.S().Debugf("password secret was not found, reading from credentials from secret/%s", scramCredentialsSecretName(mdbNamespacedName.Name, user.GetUserName()))
 			return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.GetUserName())
 		}
@@ -143,7 +145,7 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, username string, m
 	s, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName(mdbNamespacedName.Name, username), Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
 		// haven't generated credentials yet, so we are changing password
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			zap.S().Debugf("No existing credentials found, generating new credentials")
 			return true, nil
 		}
@@ -200,12 +202,12 @@ func generateScramShaCredentials(username string, password string) (scramcredent
 func computeScramShaCredentials(username, password string, sha1Salt, sha256Salt []byte) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	scram1Creds, err := scramcredentials.ComputeScramSha1Creds(username, password, sha1Salt)
 	if err != nil {
-		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha1Creds: %s", err)
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, errors.Errorf("could not generate scramSha1Creds: %s", err)
 	}
 
 	scram256Creds, err := scramcredentials.ComputeScramSha256Creds(password, sha256Salt)
 	if err != nil {
-		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("error generating scramSha256Creds: %s", err)
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, errors.Errorf("could not generate scramSha256Creds: %s", err)
 	}
 
 	return scram1Creds, scram256Creds, nil
@@ -236,7 +238,7 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 
 	// we should really never hit this situation. It would only be possible if the secret storing credentials is manually edited.
 	if !secret.HasAllKeys(credentialsSecret, sha1SaltKey, sha1ServerKeyKey, sha1ServerKeyKey, sha256SaltKey, sha256ServerKeyKey, sha256StoredKeyKey) {
-		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("credentials secret did not have all of the required keys")
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, errors.Errorf("credentials secret did not have all of the required keys")
 	}
 
 	scramSha1Creds := scramcredentials.ScramCreds{

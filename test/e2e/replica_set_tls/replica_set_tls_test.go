@@ -30,7 +30,7 @@ func TestReplicaSetTLS(t *testing.T) {
 	}
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %+v", err)
+		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
