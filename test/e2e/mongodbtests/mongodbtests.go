@@ -284,7 +284,6 @@ func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration,
 			for {
 				select {
 				case <-ctx.Done():
-					t.Log("context cancelled, no longer checking connectivity") //nolint
 					return
 				case <-time.After(interval):
 					if err := connectFunc(); err != nil {
@@ -352,7 +351,7 @@ func getCommandLineOptions(mdb *mdbv1.MongoDB, username string, password string)
 	var result bson.M
 	err = client.
 		Database("admin").
-		RunCommand(ctx, bson.D{{"getCmdLineOpts", 1}}).
+		RunCommand(ctx, bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
 		Decode(&result)
 
 	return result, err
