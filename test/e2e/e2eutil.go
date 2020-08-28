@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -36,6 +38,13 @@ func UpdateMongoDBResource(original *mdbv1.MongoDB, updateFunc func(*mdbv1.Mongo
 func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{}
 	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm)
+}
+
+// WaitForSecretToExist waits until a Secret of the given name exists
+// using the provided retryInterval and timeout
+func WaitForSecretToExist(cmName string, retryInterval, timeout time.Duration) (corev1.Secret, error) {
+	s := corev1.Secret{}
+	return s, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &s)
 }
 
 // WaitForMongoDBToReachPhase waits until the given MongoDB resource reaches the expected phase
@@ -85,7 +94,7 @@ func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := WaitForStatefulSetToExist(mdb.Name, retryInterval, timeout)
 	if err != nil {
-		return fmt.Errorf("error waiting for stateful set to be created: %s", err)
+		return errors.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}

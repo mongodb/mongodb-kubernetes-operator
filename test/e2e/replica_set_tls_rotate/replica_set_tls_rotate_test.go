@@ -25,22 +25,22 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %+v", err)
+		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
-	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
+	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL", user.Name, password))
+	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb, user.Name, password))
+	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb, user.Name, password))
 
-	t.Run("MongoDB is reachable while certificate is rotated", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
+	t.Run("MongoDB is reachable while certificate is rotated", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
 			t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
 			t.Run("Wait for certificate to be rotated", tlstests.WaitForRotatedCertificate(&mdb))

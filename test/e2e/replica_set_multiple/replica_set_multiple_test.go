@@ -28,12 +28,12 @@ func TestReplicaSet(t *testing.T) {
 	mdb0, user0 := e2eutil.NewTestMongoDB("mdb0")
 	mdb1, user1 := e2eutil.NewTestMongoDB("mdb1")
 
-	_, err := setup.GeneratePasswordForUser(user0, ctx)
+	password0, err := setup.GeneratePasswordForUser(user0, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = setup.GeneratePasswordForUser(user1, ctx)
+	password1, err := setup.GeneratePasswordForUser(user1, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,13 +44,13 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: Basic tests", mongodbtests.BasicFunctionality(&mdb0))
 	t.Run("mdb1: Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
-	t.Run("mdb0: Test Basic Connectivity", mongodbtests.Connectivity(&mdb0))
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1))
+	t.Run("mdb0: Test Basic Connectivity", mongodbtests.Connectivity(&mdb0, user0.Name, password0))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1, user1.Name, password1))
 
 	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
 	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
 
-	t.Run("MongoDB is reachable while being scaled up", mongodbtests.IsReachableDuring(&mdb0, time.Second*10,
+	t.Run("MongoDB is reachable while being scaled up", mongodbtests.IsReachableDuring(&mdb0, time.Second*10, user0.Name, password0,
 		func() {
 			t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
 			t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
@@ -74,5 +74,5 @@ func TestReplicaSet(t *testing.T) {
 	))
 
 	// One last check that mdb1 was not altered.
-	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1))
+	t.Run("mdb1: Test Basic Connectivity", mongodbtests.Connectivity(&mdb1, user1.Name, password1))
 }

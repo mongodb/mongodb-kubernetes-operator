@@ -21,13 +21,13 @@ func TestReplicaSet(t *testing.T) {
 	}
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }

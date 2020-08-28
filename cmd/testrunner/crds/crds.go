@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/ghodss/yaml"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -21,22 +23,22 @@ import (
 func EnsureCreation(config *rest.Config, deployDir string) error {
 	apiextensionsClientSet, err := apiextensionsclientset.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("error creating apiextensions client set: %v", err)
+		return errors.Errorf("error creating apiextensions client set: %s", err)
 	}
 
 	crdFilePaths, err := allCrds(deployDir)
 	if err != nil {
-		return fmt.Errorf("error walking deploy directory: %v", err)
+		return errors.Errorf("error walking deploy directory: %s", err)
 	}
 
 	for _, filePath := range crdFilePaths {
 		crd := &apiextensionsv1beta1.CustomResourceDefinition{}
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return fmt.Errorf("error reading file: %v", err)
+			return errors.Errorf("error reading file: %s", err)
 		}
 		if err := marshalCRDFromYAMLBytes(data, crd); err != nil {
-			return fmt.Errorf("error converting yaml bytes to CRD: %v", err)
+			return errors.Errorf("error converting yaml bytes to CRD: %s", err)
 		}
 		_, err = apiextensionsClientSet.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 
@@ -46,7 +48,7 @@ func EnsureCreation(config *rest.Config, deployDir string) error {
 		}
 
 		if err != nil {
-			return fmt.Errorf("error creating custom resource definition: %v", err)
+			return errors.Errorf("error creating custom resource definition: %s", err)
 		}
 	}
 	return nil

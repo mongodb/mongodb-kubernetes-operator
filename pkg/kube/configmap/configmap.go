@@ -1,7 +1,7 @@
 package configmap
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,7 +53,7 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 	if val, ok := data[key]; ok {
 		return val, nil
 	}
-	return "", fmt.Errorf("key \"%s\" not present in ConfigMap %s/%s", key, objectKey.Namespace, objectKey.Name)
+	return "", errors.Errorf("key \"%s\" not present in ConfigMap %s/%s", key, objectKey.Namespace, objectKey.Name)
 }
 
 // ReadData extracts the contents of the Data field in a given config map

@@ -40,8 +40,16 @@ func (m *mockedClient) ensureMapFor(obj runtime.Object) map[k8sClient.ObjectKey]
 func (m *mockedClient) Get(_ context.Context, key k8sClient.ObjectKey, obj runtime.Object) error {
 	relevantMap := m.ensureMapFor(obj)
 	if val, ok := relevantMap[key]; ok {
-		v := reflect.ValueOf(obj).Elem()
-		v.Set(reflect.ValueOf(val).Elem())
+		if currSts, ok := val.(*appsv1.StatefulSet); ok {
+			// TODO: this currently doesn't work with additional mongodb config
+			// just doing it for StatefulSets for now
+			objCopy := currSts.DeepCopyObject()
+			v := reflect.ValueOf(obj).Elem()
+			v.Set(reflect.ValueOf(objCopy).Elem())
+		} else {
+			v := reflect.ValueOf(obj).Elem()
+			v.Set(reflect.ValueOf(val).Elem())
+		}
 		return nil
 	}
 	return notFoundError()
