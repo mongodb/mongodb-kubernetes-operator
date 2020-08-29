@@ -90,6 +90,10 @@ To deploy your first replica set:
    ```
    kubectl get mongodb --namespace <my-namespace>
    ```
+3. connect clients to MongoDB replica set:
+   ```
+   mongodb://<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local:27017/?replicaSet=<replica set name>
+   ```
 
 ### Upgrade your MongoDB Resource Version and Feature Compatibility Version
 
