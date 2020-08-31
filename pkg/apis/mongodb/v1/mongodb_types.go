@@ -240,6 +240,15 @@ func (m MongoDB) SCRAMMongoURI(username, password string) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(members, ","))
 }
 
+func (m MongoDB) Hosts() []string {
+	hosts := make([]string, m.Spec.Members)
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	for i := 0; i < m.Spec.Members; i++ {
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+	}
+	return hosts
+}
+
 // ServiceName returns the name of the Service that should be created for
 // this resource
 func (m MongoDB) ServiceName() string {

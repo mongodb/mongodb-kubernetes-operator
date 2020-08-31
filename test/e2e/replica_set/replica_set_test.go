@@ -3,6 +3,8 @@ package replica_set
 import (
 	"testing"
 
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -21,14 +23,19 @@ func TestReplicaSet(t *testing.T) {
 	}
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
 
-	password, err := setup.GeneratePasswordForUser(user, ctx)
+	_, err := setup.GeneratePasswordForUser(user, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Keyfile authentication is configured", mongodbtests.IsConfiguredWithKeyfileAuthentication(&mdb, 3, user.Name, password))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
+	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }
