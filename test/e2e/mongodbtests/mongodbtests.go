@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -114,33 +116,62 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 // on the value of `tries`.
 func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, username, password string) func(t *testing.T) {
 	return func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
-		assert.NoError(t, err)
-
-		database := mongoClient.Database("admin")
-		assert.NotNil(t, database)
-
-		runCommand := bson.D{
-			primitive.E{Key: "getParameter", Value: 1},
-			primitive.E{Key: "featureCompatibilityVersion", Value: 1},
-		}
 		found := false
 		for !found && tries > 0 {
 			<-time.After(10 * time.Second)
-			var result bson.M
-			if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
+			result, err := getAdminParameter(mdb, "featureCompatibilityVersion", username, password)
+			if err != nil {
 				continue
 			}
-			expected := primitive.M{"version": fcv}
-			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-				found = true
-			}
 
+			expected := primitive.M{"version": fcv}
+			found = reflect.DeepEqual(expected, result["featureCompatibilityVersion"])
 			tries--
 		}
+		assert.True(t, found)
+	}
+}
 
+func getAdminParameter(mdb *mdbv1.MongoDB, parameter, username, password string) (map[string]interface{}, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	database := mongoClient.Database("admin")
+
+	if database == nil {
+		return nil, errors.New("admin database was nil")
+	}
+
+	runCommand := bson.D{
+		primitive.E{Key: "getParameter", Value: 1},
+		primitive.E{Key: parameter, Value: 1},
+	}
+
+	result := make(map[string]interface{})
+	if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
+		return nil, errors.Errorf("failed running command: %s", err)
+	}
+
+	return result, nil
+}
+
+func IsConfiguredWithKeyfileAuthentication(mdb *mdbv1.MongoDB, tries int, username, password string) func(t *testing.T) {
+	return func(t *testing.T) {
+		found := false
+		for !found && tries > 0 {
+			<-time.After(10 * time.Second)
+			clusterAuthMode, err := getAdminParameter(mdb, "clusterAuthMode", username, password)
+			if err != nil {
+				continue
+			}
+			found = clusterAuthMode["clusterAuthMode"] == "keyFile"
+			tries--
+		}
 		assert.True(t, found)
 	}
 }
