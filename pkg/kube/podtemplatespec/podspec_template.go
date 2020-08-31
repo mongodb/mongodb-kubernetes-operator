@@ -339,9 +339,14 @@ func mergeTolerations(defaultTolerations, overrideTolerations []corev1.Toleratio
 		mergedTolerations = append(mergedTolerations, v)
 	}
 
+	if len(mergedTolerations) == 0 {
+		return nil
+	}
+
 	sort.SliceStable(mergedTolerations, func(i, j int) bool {
 		return mergedTolerations[i].Key < mergedTolerations[j].Key
 	})
+
 	return mergedTolerations
 }
 
