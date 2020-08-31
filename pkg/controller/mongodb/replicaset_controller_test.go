@@ -454,6 +454,22 @@ func TestChangeDataVolume_Configuration(t *testing.T) {
 	assert.Equal(t, "50Gi", storageRef.String())
 }
 
+func TestCustomStorageClass_Configuration(t *testing.T) {
+	sts := performReconciliationAndGetStatefulSet(t, "custom_storage_class.yaml")
+
+	dataVolume := sts.Spec.VolumeClaimTemplates[0]
+
+	storage := dataVolume.Spec.Resources.Requests[corev1.ResourceStorage]
+	storageRef := &storage
+
+	expectedStorageClass := "my-storage-class"
+	expectedStorageClassRef := &expectedStorageClass
+
+	assert.Equal(t, "data-volume", dataVolume.Name)
+	assert.Equal(t, "1Gi", storageRef.String())
+	assert.Equal(t, expectedStorageClassRef, dataVolume.Spec.StorageClassName)
+}
+
 func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv1.StatefulSet {
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)
