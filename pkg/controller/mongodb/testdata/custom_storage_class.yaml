@@ -1,0 +1,20 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: volume-claim-templates-mdb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  persistent: true
+  statefulSet:
+    spec:
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: "my-storage-class"
+            resources:
+              requests:
+                storage: 1Gi
