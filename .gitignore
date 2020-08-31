@@ -78,7 +78,6 @@ tags
 
 .idea
 vendor
-zz_generated*.go
 __pycache__
 Dockerfile
 Dockerfile_python_formatting
