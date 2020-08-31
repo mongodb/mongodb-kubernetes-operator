@@ -1,0 +1,22 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: tolerations-mdb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  persistent: true
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb-agent
+          tolerations:
+            - key: "example-key"
+              operator: "Exists"
+              effect: "NoSchedule"
+            - key: "example-key-2"
+              operator: "Equal"
+              effect: "NoExecute"
