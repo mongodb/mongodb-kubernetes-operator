@@ -394,6 +394,12 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 	return automationconfig.ToolsVersion{
 		Version: "100.1.0",
+		URLs: map[string]map[string]string{
+			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
+			"linux": {
+				"ubuntu1604": "https://dummy",
+			},
+		},
 	}
 }
 
