@@ -79,6 +79,11 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 	return b
 }
 
+func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
+	b.toolsVersion = version
+	return b
+}
+
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 	for idx := range version.Builds {
 		if version.Builds[idx].Modules == nil {

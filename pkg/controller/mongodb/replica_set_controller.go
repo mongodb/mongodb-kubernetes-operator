@@ -378,7 +378,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		AddModifications(getMongodConfigModification(mdb)).
-		AddModifications(modifications...)
+		AddModifications(modifications...).
+		SetToolsVersion(dummyToolsVersionConfig())
 
 	newAc, err := builder.Build()
 	if err != nil {
@@ -386,6 +387,14 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	}
 
 	return newAc, nil
+}
+
+// dummyToolsVersionConfig generates a dummy config for the tools settings in the automation config.
+// The agent will not uses any of these values but requires them to be set.
+func dummyToolsVersionConfig() automationconfig.ToolsVersion {
+	return automationconfig.ToolsVersion{
+		Version: "100.1.0",
+	}
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
