@@ -54,7 +54,6 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
