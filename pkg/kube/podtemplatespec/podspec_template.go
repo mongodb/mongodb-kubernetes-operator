@@ -238,6 +238,8 @@ func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateS
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	mergedTolerations := mergeTolerations(defaultTemplate.Spec.Tolerations, overrideTemplate.Spec.Tolerations)
+
 	// InitContainers need to be merged manually
 	mergedInitContainers, err := mergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
 	if err != nil {
@@ -259,6 +261,7 @@ func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateS
 	}
 
 	mergedPodTemplateSpec.Spec.Containers = mergedContainers
+	mergedPodTemplateSpec.Spec.Tolerations = mergedTolerations
 	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
 	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
 	mergedPodTemplateSpec.Spec.Volumes = mergedVolumes
@@ -315,6 +318,36 @@ func createMountsMap(volumeMounts []corev1.VolumeMount) map[string]corev1.Volume
 		mountMap[m.Name] = m
 	}
 	return mountMap
+}
+
+func createTolerationsMap(tolerations []corev1.Toleration) map[string]corev1.Toleration {
+	tolerationsMap := make(map[string]corev1.Toleration)
+	for _, t := range tolerations {
+		tolerationsMap[t.Key] = t
+	}
+	return tolerationsMap
+}
+
+func mergeTolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []corev1.Toleration {
+	mergedTolerations := make([]corev1.Toleration, 0)
+	defaultMap := createTolerationsMap(defaultTolerations)
+	for _, v := range overrideTolerations {
+		defaultMap[v.Key] = v
+	}
+
+	for _, v := range defaultMap {
+		mergedTolerations = append(mergedTolerations, v)
+	}
+
+	if len(mergedTolerations) == 0 {
+		return nil
+	}
+
+	sort.SliceStable(mergedTolerations, func(i, j int) bool {
+		return mergedTolerations[i].Key < mergedTolerations[j].Key
+	})
+
+	return mergedTolerations
 }
 
 func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]corev1.Container, error) {

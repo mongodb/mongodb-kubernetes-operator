@@ -124,7 +124,9 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, u
 				continue
 			}
 
-			expected := primitive.M{"version": fcv}
+			expected := map[string]interface{}{
+				"version": fcv,
+			}
 			found = reflect.DeepEqual(expected, result["featureCompatibilityVersion"])
 			tries--
 		}
@@ -140,7 +142,6 @@ func getAdminParameter(mdb *mdbv1.MongoDB, parameter, username, password string)
 	if err != nil {
 		return nil, err
 	}
-
 	database := mongoClient.Database("admin")
 
 	if database == nil {
