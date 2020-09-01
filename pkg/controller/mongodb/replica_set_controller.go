@@ -54,6 +54,7 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -378,8 +379,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		AddModifications(getMongodConfigModification(mdb)).
-		AddModifications(modifications...).
-		SetToolsVersion(dummyToolsVersionConfig())
+		AddModifications(modifications...)
 
 	newAc, err := builder.Build()
 	if err != nil {
@@ -387,21 +387,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 	}
 
 	return newAc, nil
-}
-
-// dummyToolsVersionConfig generates a dummy config for the tools settings in the automation config.
-// The agent will not uses any of these values but requires them to be set.
-// TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
-func dummyToolsVersionConfig() automationconfig.ToolsVersion {
-	return automationconfig.ToolsVersion{
-		Version: "100.0.2",
-		URLs: map[string]map[string]string{
-			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
-			"linux": {
-				"ubuntu1604": "https://dummy",
-			},
-		},
-	}
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
@@ -547,6 +532,7 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 			"-noDaemonize",
 			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
 			"-serveStatusPort=5000",
+			"-useLocalMongoDbTools",
 		},
 		),
 		container.WithEnvs(
