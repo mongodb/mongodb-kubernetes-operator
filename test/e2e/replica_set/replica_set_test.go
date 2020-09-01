@@ -28,6 +28,7 @@ func TestReplicaSet(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Keyfile authentication is configured", mongodbtests.IsConfiguredWithKeyfileAuthentication(&mdb, 3, user.Name, password))
 	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb, user.Name, password))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }
