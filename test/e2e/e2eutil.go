@@ -130,7 +130,7 @@ func NewTestMongoDB(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 		Spec: mdbv1.MongoDBSpec{
 			Members:                     3,
 			Type:                        "ReplicaSet",
-			Version:                     "4.0.6",
+			Version:                     "4.4.0",
 			FeatureCompatibilityVersion: "4.0",
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{

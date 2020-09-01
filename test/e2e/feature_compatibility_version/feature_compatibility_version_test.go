@@ -23,6 +23,7 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
+	mdb.Spec.Version = "4.0.6"
 
 	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
