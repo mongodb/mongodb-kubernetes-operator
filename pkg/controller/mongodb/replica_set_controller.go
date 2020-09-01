@@ -394,6 +394,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 
 // dummyToolsVersionConfig generates a dummy config for the tools settings in the automation config.
 // The agent will not uses any of these values but requires them to be set.
+// TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
 func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 	return automationconfig.ToolsVersion{
 		Version: envvar.GetEnvOrDefault(mongodbToolsVersionEnv, "100.1.0"),
