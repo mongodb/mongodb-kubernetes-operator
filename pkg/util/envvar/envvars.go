@@ -1,6 +1,7 @@
 package envvar
 
 import (
+	"os"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,4 +26,11 @@ func MergeWithOverride(existing, desired []corev1.EnvVar) []corev1.EnvVar {
 		return mergedEnv[i].Name < mergedEnv[j].Name
 	})
 	return mergedEnv
+}
+
+func GetEnvOrDefault(envVar, defaultValue string) string {
+	if val := os.Getenv(envVar); val != "" {
+		return val
+	}
+	return defaultValue
 }

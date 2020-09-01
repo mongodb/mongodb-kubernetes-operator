@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -54,6 +56,7 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -393,7 +396,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 // The agent will not uses any of these values but requires them to be set.
 func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 	return automationconfig.ToolsVersion{
-		Version: "100.1.0",
+		Version: envvar.GetEnvOrDefault(mongodbToolsVersionEnv, "100.1.0"),
 		URLs: map[string]map[string]string{
 			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
 			"linux": {
