@@ -2,6 +2,7 @@ package mongotester
 
 import (
 	"crypto/tls"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,7 @@ func TestTlsRemoval_RemovesCorrectConfig(t *testing.T) {
 	assert.Len(t, opts, 1, "tls removal should remove an element")
 	assert.NotNil(t, opts[0].Hosts, "tls removal should not effect other configs")
 	assert.Len(t, opts[0].Hosts, 3, "original configs should not be changed")
+	assert.True(t, reflect.DeepEqual(opts[0].Hosts, []string{"host1", "host2", "host3"}))
 }
 
 func TestWithScram_AddsScramOption(t *testing.T) {

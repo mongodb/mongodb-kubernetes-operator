@@ -246,7 +246,7 @@ func (c clientOptionAdder) ApplyOption(opts ...*options.ClientOptions) []*option
 }
 
 // clientOptionRemover is used if a value from the client array of options should be removed.
-// assigning a nil vlaue will not take precedence over an existing value, so we need a mechanism
+// assigning a nil value will not take precedence over an existing value, so we need a mechanism
 // to remove elements that are present
 
 // e.g. to disable TLS, you need to remove the options.ClientOption that has a non-nil tls config
@@ -305,7 +305,6 @@ func withTls(tls *tls.Config) OptionApplier {
 }
 
 // WithoutTls will remove the tls configuration
-// resulting in using a TLS tls connection
 func WithoutTls() OptionApplier {
 	return clientOptionRemover{
 		removalPredicate: func(opt *options.ClientOptions) bool {
