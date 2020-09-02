@@ -2,6 +2,7 @@ import os
 import shutil
 import yaml
 from typing import Dict, TextIO, List
+from base64 import b64decode
 import json
 import k8s_request_data
 
@@ -68,19 +69,22 @@ def dump_pods_and_logs_namespaced(diagnostic_file: TextIO, namespace: str) -> No
             dump_pod_log_namespaced(namespace, name, pod.spec.containers)
 
 
-def dump_configmap_keys_namespaced(
-    namespace: str, keys: List[str], configmap_name: str
+def dump_secret_keys_namespaced(
+    namespace: str, keys: List[str], secret_name: str
 ) -> None:
-    configmap = k8s_request_data.get_configmap_namespaced(namespace, configmap_name)
-    if configmap is not None:
+    secret = k8s_request_data.get_secret_namespaced(namespace, secret_name)
+    if secret is not None:
         for key in keys:
             with open(
-                f"logs/e2e/{configmap_name}-{key}.json", mode="w", encoding="utf-8",
+                f"logs/e2e/{secret_name}-{key}.json", mode="w", encoding="utf-8",
             ) as log_file:
-                if key in configmap["data"]:
-                    log_file.write(
-                        json.dumps(json.loads(configmap["data"][key]), indent=4)
-                    )
+                if key in secret["data"]:
+                    decoded_data = _decode_secret(secret["data"])
+                    log_file.write(json.dumps(json.loads(decoded_data[key]), indent=4))
+
+
+def _decode_secret(data: Dict[str, str]) -> Dict[str, str]:
+    return {k: b64decode(v).decode("utf-8") for (k, v) in data.items()}
 
 
 def dump_automation_configs(namespace: str) -> None:
@@ -90,13 +94,10 @@ def dump_automation_configs(namespace: str) -> None:
         return
     for mdb in mongodb_resources:
         name = mdb["metadata"]["name"]
-        dump_configmap_keys_namespaced(
-            namespace, ["automation-config"], f"{name}-config"
-        )
+        dump_secret_keys_namespaced(namespace, ["automation-config"], f"{name}-config")
 
 
 def dump_all(namespace: str) -> None:
-
     if os.path.exists("logs"):
         shutil.rmtree("logs")
 
