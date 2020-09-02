@@ -91,6 +91,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 			<-time.After(10 * time.Second)
 			actualValue, err := m.getAdminSetting(key)
 			if err != nil {
+				t.Logf("Unable to get admin setting %s with error : %s", key, err)
 				continue
 			}
 			found = reflect.DeepEqual(expectedValue, actualValue)
