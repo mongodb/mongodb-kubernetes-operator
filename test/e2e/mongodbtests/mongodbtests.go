@@ -123,11 +123,9 @@ func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, u
 			if err != nil {
 				continue
 			}
-
 			expected := map[string]interface{}{
 				"version": fcv,
 			}
-
 			found = reflect.DeepEqual(expected, result["featureCompatibilityVersion"])
 			tries--
 		}
