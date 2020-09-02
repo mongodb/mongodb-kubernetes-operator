@@ -25,6 +25,8 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
+	mdb.Spec.Version = "4.2.6"
+	mdb.Spec.FeatureCompatibilityVersion = "4.2"
 
 	password, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
@@ -39,7 +41,7 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	// Upgrade version to 4.0.8
 	t.Run("MongoDB is reachable while version is upgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
-			t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.0.8"))
+			t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.4.0"))
 			t.Run("StatefulSet has OnDelete update strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
@@ -50,7 +52,7 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	// Downgrade version back to 4.0.6
 	t.Run("MongoDB is reachable while version is downgraded", mongodbtests.IsReachableDuring(&mdb, time.Second*10, user.Name, password,
 		func() {
-			t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.0.6"))
+			t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
 			t.Run("StatefulSet has OnDelete restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 			t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
 			t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
