@@ -43,7 +43,7 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 
 	// Upgrade version to 4.2.6 while keeping the FCV set to 4.0
 	t.Run("MongoDB is reachable while version is upgraded", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
 	})
@@ -53,7 +53,7 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 
 	// Downgrade version back to 4.0.6, checks that the FeatureCompatibilityVersion stayed at 4.0
 	t.Run("MongoDB is reachable while version is downgraded", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.0.6"))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
 	})
