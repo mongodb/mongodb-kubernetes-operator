@@ -62,9 +62,6 @@ type OptionApplier interface {
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
 // and the hosts from the resource.
-// NOTE: Tls is not configured as the mechanism that the ClientOptions are merged only merge on non-nil
-// values, meaning we need to remove option that configures TLS from the list if we want to not use tls.
-// For now we can just explicitly pass WithTls() or WithoutTls() to configure TLS.
 func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
@@ -82,6 +79,10 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...OptionApplier) (*Test
 		}
 		t.Logf("Configuring SCRAM username: %s and password from secret %s for MongoDB: %s", user.Name, user.PasswordSecretRef.Name, mdb.NamespacedName())
 		clientOpts = WithScram(user.Name, string(passwordSecret.Data[user.PasswordSecretRef.Key])).ApplyOption(clientOpts...)
+	}
+
+	if mdb.Spec.Security.TLS.Enabled {
+		clientOpts = WithTls().ApplyOption(clientOpts...)
 	}
 
 	// add any additional options
