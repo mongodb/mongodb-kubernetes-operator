@@ -6,9 +6,12 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
@@ -193,6 +196,37 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 		if err != nil {
 			t.Fatal(fmt.Errorf("error during connectivity check: %s", err))
 		}
+	}
+}
+
+func (m *Tester) WaitForRotatedCertificate() func(*testing.T) {
+	return func(t *testing.T) {
+		// The rotated certificate has serial number 2
+		expectedSerial := big.NewInt(2)
+
+		assert.NotNil(t, tlsConfig)
+
+		// Reject all server certificates that don't have the expected serial number
+		tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			cert := verifiedChains[0][0]
+			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
+				return errors.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
+			}
+			return nil
+		}
+
+		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tlsConfig}); err != nil {
+			t.Fatal(err)
+		}
+
+		// Ping the cluster until it succeeds. The ping will only succeed with the right certificate.
+		err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			if err := m.mongoClient.Ping(context.TODO(), nil); err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		assert.NoError(t, err)
 	}
 }
 
