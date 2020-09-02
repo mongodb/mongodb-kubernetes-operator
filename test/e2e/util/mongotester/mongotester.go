@@ -133,20 +133,15 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...*options.ClientOp
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 			if err != nil && shouldSucceed {
+				t.Logf("Was not able to connect, when we should have been able to!")
 				return false, nil
 			}
 			if err == nil && !shouldSucceed {
 				t.Logf("Was successfully able to connect, when we should not have been able to!")
 				return false, nil
 			}
-
-			successfulCheck := (err != nil && !shouldSucceed) || (err == nil && shouldSucceed)
-			if successfulCheck {
-				t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
-				return true, nil
-			}
-
-			return false, nil
+			t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
+			return true, nil
 		})
 
 		if err != nil {
