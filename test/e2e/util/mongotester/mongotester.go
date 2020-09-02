@@ -90,6 +90,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 		for !found && tries > 0 {
 			<-time.After(10 * time.Second)
 			actualValue, err := m.getAdminSetting(key)
+			t.Logf("actualValue: %+v", actualValue)
 			if err != nil {
 				t.Logf("Unable to get admin setting %s with error : %s", key, err)
 				continue
@@ -103,7 +104,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 
 // getAdminSetting will get a setting from the admin database.
 func (m *Tester) getAdminSetting(key string) (interface{}, error) {
-	var result bson.D
+	var result map[string]interface{}
 	err := m.mongoClient.
 		Database("admin").
 		RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
@@ -111,7 +112,7 @@ func (m *Tester) getAdminSetting(key string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	value := result.Map()[key]
+	value := result[key]
 	return value, nil
 }
 
