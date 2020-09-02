@@ -11,7 +11,6 @@ import (
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +74,7 @@ func (m *Tester) HasKeyfileAuth(tries int) func(t *testing.T) {
 }
 
 func (m *Tester) HasFCV(fcv string, tries int) func(t *testing.T) {
-	return m.hasAdminParameter("featureCompatibilityVersion", primitive.M{"version": fcv}, tries)
+	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries)
 }
 
 func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int) func(t *testing.T) {
