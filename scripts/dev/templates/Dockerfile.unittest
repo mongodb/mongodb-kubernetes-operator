@@ -1,5 +1,5 @@
 {% extends "Dockerfile.template" %}
 
 {% block command -%}
-CMD ["go", "test", "./pkg/...", "&&", "go", "test", "./test/e2e/util/mongotester/*"]
+CMD ["sh", "-c", "go test ./pkg/... && go test ./test/e2e/util/mongotester/*"]
 {% endblock -%}
