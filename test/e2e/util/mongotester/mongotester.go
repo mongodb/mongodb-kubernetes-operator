@@ -112,21 +112,26 @@ func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
 
-func (m *Tester) HasKeyfileAuth(tries int) func(t *testing.T) {
+func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries)
 }
 
-func (m *Tester) HasFCV(fcv string, tries int) func(t *testing.T) {
+func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries)
 }
 
-func (m *Tester) HasTlsMode(tlsMode string, tries int) func(t *testing.T) {
-	return m.hasAdminParameter("sslMode", tlsMode, tries)
+func (m *Tester) HasTlsMode(tlsMode string, tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("sslMode", tlsMode, tries, opts...)
 }
 
-func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int) func(t *testing.T) {
+func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int, opts ...OptionApplier) func(t *testing.T) {
+	clientOpts := make([]*options.ClientOptions, 0)
+	for _, optApplier := range opts {
+		clientOpts = optApplier.ApplyOption(clientOpts...)
+	}
+
 	return func(t *testing.T) {
-		if err := m.ensureClient(); err != nil {
+		if err := m.ensureClient(clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
