@@ -27,7 +27,7 @@ spec:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.name-
+                  fieldPath: metadata.name
             - name: MANAGED_SECURITY_CONTEXT
               value: 'true'
             - name: OPERATOR_NAME
