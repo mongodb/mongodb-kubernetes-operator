@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # This should be copied to .git/hooks/pre-commit
 
@@ -41,11 +41,11 @@ function go_linting() {
     do
         dirs_to_analyze+=("$(dirname "${file}")" )
     done
-    dirs_to_analyze=($(echo "${dirs_to_analyze[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    mapfile -t dirs_to_analyze < <(printf '%s\n' "${dirs_to_analyze[@]}" | sort -u)
     if [ ${#dirs_to_analyze[@]} -ne 0 ]; then
         echo "Running golangci-lint on staged files"
         local exit_status=0
-        for file in $dirs_to_analyze
+        for file in "${dirs_to_analyze[@]}"
         do
             if ! golangci-lint run "${file}"; then
                 exit_status=1
@@ -71,8 +71,7 @@ function black_formatting()
 
 go_imports
 black_formatting
-mypy_check
-if [ $? -ne 0 ]; then
+if ! mypy_check; then
     echo "MyPy returned some errors, please correct them"
     echo "Commit aborted"
     # In some cases we might encounter mypy errors that we do not
@@ -80,13 +79,12 @@ if [ $? -ne 0 ]; then
     # for ignoring them through code annotation
     echo "If some of the errors reported are false positives "\
          "and should be ignored, mypy provides a way to silence "\
-         "errors: https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"\
-         "\nPlease use this only for errors that you are sure are"\
+         "errors: https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"
+    echo "Please use this only for errors that you are sure are"\
          "false positives."
     exit 1
 fi
-go_linting
-if [ $? -ne 0 ]; then
+if ! go_linting; then
     echo "Golancli-lint returned some errors, please correct them"
     echo "Commit aborted"
     # In some cases we might encounter mypy errors that we do not
@@ -94,8 +92,8 @@ if [ $? -ne 0 ]; then
     # for ignoring them through code annotation
     echo "If some of the errors reported are false positives "\
          "and should be ignored, golanci-lint  provides a way to silence "\
-         "errors: https://golangci-lint.run/usage/false-positives/"\
-         "\nPlease use this only for errors that you are sure are"\
-         " false positives."
+         "errors: https://golangci-lint.run/usage/false-positives/"
+    echo "Please use this only for errors that you are sure are"\
+         "false positives."
     exit 1
 fi
