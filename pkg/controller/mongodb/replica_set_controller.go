@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -54,6 +56,7 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -394,7 +397,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 // TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
 func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 	return automationconfig.ToolsVersion{
-		Version: "100.0.2",
+		Version: envvar.GetEnvOrDefault(mongodbToolsVersionEnv, "100.1.0"),
 		URLs: map[string]map[string]string{
 			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
 			"linux": {
@@ -547,6 +550,7 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 			"-noDaemonize",
 			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
 			"-serveStatusPort=5000",
+			"-useLocalMongoDbTools",
 		},
 		),
 		container.WithEnvs(

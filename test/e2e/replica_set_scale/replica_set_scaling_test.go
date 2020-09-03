@@ -25,6 +25,8 @@ func TestReplicaSetScale(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0")
+	mdb.Spec.Version = "4.0.6" // TOOD: Scaling will currently not work with MongoDB 4.4
+
 	_, err := setup.GeneratePasswordForUser(user, ctx)
 	if err != nil {
 		t.Fatal(err)
