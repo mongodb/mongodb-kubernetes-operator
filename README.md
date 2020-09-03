@@ -107,7 +107,7 @@ If you want to deploy the operator on OpenShift you will have to provide the env
 
 See [here](deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for an example of how to provide the required configuration for a MongoDB ReplicaSet.
 
-See [here](deploy/operator_openshift.yaml) for an example of how to provide the variable for the Operator deployment.
+See [here](deploy/operator_openshift.yaml) for an example of how to configure the Operator deployment.
 
 #### Example
 
