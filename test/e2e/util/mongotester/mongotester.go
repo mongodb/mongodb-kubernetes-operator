@@ -120,6 +120,17 @@ func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *te
 	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries, opts...)
 }
 
+func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("authenticationMechanisms", []string{"SCRAM-SHA-256"}, tries, opts...)
+}
+
+func (m *Tester) EnsureAuthentication(tries int, opts ...OptionApplier) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(3, opts...))
+		t.Run("SCRAM-SHA-256 is configured", m.ScramIsConfigured(3, opts...))
+	}
+}
+
 func (m *Tester) HasTlsMode(tlsMode string, tries int, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("sslMode", tlsMode, tries, opts...)
 }

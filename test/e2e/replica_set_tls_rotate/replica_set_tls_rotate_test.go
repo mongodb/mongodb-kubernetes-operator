@@ -44,6 +44,7 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls()))
 	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Ensure Authentication", tester.EnsureAuthentication(3, WithTls()))
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 
 	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
