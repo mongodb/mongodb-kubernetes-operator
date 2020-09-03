@@ -33,6 +33,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
 		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
+
 	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +59,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	t.Run("MongoDB is reachable over TLS while making TLS required", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
-		t.Run("Wait for TLS to be required", tester.HasTlsMode("requireSSL", 60))
+		t.Run("Wait for TLS to be required", tester.HasTlsMode("requireSSL", 120))
 	})
 
 	// Ensure MongoDB is reachable only over TLS

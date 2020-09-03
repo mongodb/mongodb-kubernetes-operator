@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/objx"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -229,6 +232,43 @@ func (m *Tester) WaitForRotatedCertificate() func(*testing.T) {
 		})
 		assert.NoError(t, err)
 	}
+}
+
+func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(*testing.T) {
+	return func(t *testing.T) {
+		opts, err := m.getCommandLineOptions()
+		assert.NoError(t, err)
+
+		// The options are stored under the key "parsed"
+		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+		assert.Equal(t, expected, parsed.Get(selector).Data())
+	}
+}
+
+// getCommandLineOptions will get the command line options from the admin database
+// and return the results as a map.
+func (m *Tester) getCommandLineOptions() (bson.M, error) {
+	var result bson.M
+	err := m.mongoClient.
+		Database("admin").
+		RunCommand(context.TODO(), bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
+		Decode(&result)
+
+	return result, err
+}
+
+// bsonToMap will convert a bson map to a regular map recursively.
+// objx does not work when the nested objects are bson.M.
+func bsonToMap(m bson.M) map[string]interface{} {
+	out := make(map[string]interface{})
+	for key, value := range m {
+		if subMap, ok := value.(bson.M); ok {
+			out[key] = bsonToMap(subMap)
+		} else {
+			out[key] = value
+		}
+	}
+	return out
 }
 
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
