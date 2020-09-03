@@ -35,6 +35,11 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = setup.GeneratePasswordForUser(user, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tester, err := mongotester.FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
