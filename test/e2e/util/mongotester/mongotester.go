@@ -106,14 +106,14 @@ func (m *Tester) ConnectivitySucceeds(opts ...OptionApplier) func(t *testing.T) 
 	return m.connectivityCheck(true, opts...)
 }
 
-// ConnectivitySucceeds performs a basic check that ensures that it is not possible
+// ConnectivityFails performs a basic check that ensures that it is not possible
 // to connect to the MongoDB resource
 func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
 
 func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries)
+	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries, opts...)
 }
 
 func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
