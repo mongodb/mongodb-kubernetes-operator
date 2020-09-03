@@ -208,38 +208,6 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 	}
 }
 
-//func WaitForRotatedCertificate(mdb *v1.MongoDB) func(*testing.T) {
-//	return func(t *testing.T) {
-//		// The rotated certificate has serial number 2
-//		expectedSerial := big.NewInt(2)
-//
-//		tlsConfig, err := getClientTLSConfig()
-//		assert.NoError(t, err)
-//
-//		// Reject all server certificates that don't have the expected serial number
-//		tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-//			cert := verifiedChains[0][0]
-//			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
-//				return errors.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
-//			}
-//
-//			return nil
-//		}
-//
-//		opts := options.Client().SetTLSConfig(tlsConfig).ApplyURI(mdb.MongoURI())
-//		mongoClient, err := mongo.Connect(context.TODO(), opts)
-//		assert.NoError(t, err)
-//
-//		// Ping the cluster until it succeeds. The ping will only suceed with the right certificate.
-//		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-//			if err := mongoClient.Ping(context.TODO(), nil); err != nil {
-//				return false, nil
-//			}
-//			return true, nil
-//		})
-//		assert.NoError(t, err)
-//	}
-//}
 func (m *Tester) WaitForRotatedCertificate() func(*testing.T) {
 	return func(t *testing.T) {
 		// The rotated certificate has serial number 2
