@@ -101,6 +101,13 @@ You can upgrade the major, minor, and/or feature compatibility versions of your 
 
 If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
 
+### Deploying on OpenShift
+
+If you want to deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the mongodb container, the mongo container and the operator deployment.
+
+See [here](deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for an example of how to provide the variable for a ReplicaSet deployment.
+See [here](deploy/operator_openshift.yaml) for an example of how to provide the variable for the Operator deployment.
+
 #### Example
 
 Consider the following example MongoDB resource definition:
