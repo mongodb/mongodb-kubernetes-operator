@@ -27,8 +27,8 @@ const (
 )
 
 func InitTest(t *testing.T) (*f.Context, bool) {
-	ctx := f.NewContext(t)
 
+	ctx := f.NewContext(t)
 	if err := registerTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}

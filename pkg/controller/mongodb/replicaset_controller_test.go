@@ -470,6 +470,19 @@ func TestCustomStorageClass_Configuration(t *testing.T) {
 	assert.Equal(t, expectedStorageClassRef, dataVolume.Spec.StorageClassName)
 }
 
+func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
+	sts := performReconciliationAndGetStatefulSet(t, "tolerations_example.yaml")
+
+	assert.Len(t, sts.Spec.Template.Spec.Tolerations, 2)
+	assert.Equal(t, "example-key", sts.Spec.Template.Spec.Tolerations[0].Key)
+	assert.Equal(t, corev1.TolerationOpExists, sts.Spec.Template.Spec.Tolerations[0].Operator)
+	assert.Equal(t, corev1.TaintEffectNoSchedule, sts.Spec.Template.Spec.Tolerations[0].Effect)
+
+	assert.Equal(t, "example-key-2", sts.Spec.Template.Spec.Tolerations[1].Key)
+	assert.Equal(t, corev1.TolerationOpEqual, sts.Spec.Template.Spec.Tolerations[1].Operator)
+	assert.Equal(t, corev1.TaintEffectNoExecute, sts.Spec.Template.Spec.Tolerations[1].Effect)
+}
+
 func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv1.StatefulSet {
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)

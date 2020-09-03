@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -17,10 +16,8 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/stretchr/objx"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
@@ -105,43 +102,6 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 		err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, currentAc.Version)
-	}
-}
-
-// HasFeatureCompatibilityVersion verifies that the FeatureCompatibilityVersion is
-// set to `version`. The FCV parameter is not signaled as a non Running state, for
-// this reason, this function checks the value of the parameter many times, based
-// on the value of `tries`.
-func HasFeatureCompatibilityVersion(mdb *mdbv1.MongoDB, fcv string, tries int, username, password string) func(t *testing.T) {
-	return func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
-		assert.NoError(t, err)
-
-		database := mongoClient.Database("admin")
-		assert.NotNil(t, database)
-
-		runCommand := bson.D{
-			primitive.E{Key: "getParameter", Value: 1},
-			primitive.E{Key: "featureCompatibilityVersion", Value: 1},
-		}
-		found := false
-		for !found && tries > 0 {
-			<-time.After(10 * time.Second)
-			var result bson.M
-			if err = database.RunCommand(ctx, runCommand).Decode(&result); err != nil {
-				continue
-			}
-			expected := primitive.M{"version": fcv}
-			if reflect.DeepEqual(expected, result["featureCompatibilityVersion"]) {
-				found = true
-			}
-
-			tries--
-		}
-
-		assert.True(t, found)
 	}
 }
 
@@ -261,43 +221,6 @@ func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	})
 }
 
-// IsReachableDuring periodically tests connectivity to the provided MongoDB resource
-// during execution of the provided functions. This function can be used to ensure
-// The MongoDB is up throughout the test.
-func IsReachableDuring(mdb *mdbv1.MongoDB, interval time.Duration, username, password string, testFunc func()) func(*testing.T) {
-	return IsReachableDuringWithConnection(mdb, interval, testFunc, func() error {
-		return Connect(mdb, options.Client().SetAuth(options.Credential{
-			AuthMechanism: "SCRAM-SHA-256",
-			Username:      username,
-			Password:      password,
-		}))
-	})
-}
-
-func IsReachableDuringWithConnection(mdb *mdbv1.MongoDB, interval time.Duration, testFunc func(), connectFunc func() error) func(*testing.T) {
-	return func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background()) // start a go routine which will periodically check basic MongoDB connectivity
-		defer cancel()
-
-		// once all the test functions have been executed, the go routine will be cancelled
-		go func() { //nolint
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(interval):
-					if err := connectFunc(); err != nil {
-						t.Fatalf("error reaching MongoDB deployment: %s", err)
-					} else {
-						t.Logf("Successfully connected to %s", mdb.Name)
-					}
-				}
-			}
-		}()
-		testFunc()
-	}
-}
-
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
@@ -325,48 +248,4 @@ func findContainerByName(name string, containers []corev1.Container) *corev1.Con
 	}
 
 	return nil
-}
-
-func EnsureMongodConfig(mdb *mdbv1.MongoDB, username, password, selector string, expected interface{}) func(*testing.T) {
-	return func(t *testing.T) {
-		opts, err := getCommandLineOptions(mdb, username, password)
-		assert.NoError(t, err)
-
-		// The options are stored under the key "parsed"
-		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
-		assert.Equal(t, expected, parsed.Get(selector).Data())
-	}
-}
-
-// getCommandLineOptions will get the command line options from the admin database
-// and return the results as a map.
-func getCommandLineOptions(mdb *mdbv1.MongoDB, username string, password string) (bson.M, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mdb.SCRAMMongoURI(username, password)))
-	if err != nil {
-		return nil, err
-	}
-
-	var result bson.M
-	err = client.
-		Database("admin").
-		RunCommand(ctx, bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
-		Decode(&result)
-
-	return result, err
-}
-
-// bsonToMap will convert a bson map to a regular map recursively.
-// objx does not work when the nested objects are bson.M.
-func bsonToMap(m bson.M) map[string]interface{} {
-	out := make(map[string]interface{})
-	for key, value := range m {
-		if subMap, ok := value.(bson.M); ok {
-			out[key] = bsonToMap(subMap)
-		} else {
-			out[key] = value
-		}
-	}
-	return out
 }

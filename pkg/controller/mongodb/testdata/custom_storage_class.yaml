@@ -1,7 +1,7 @@
 apiVersion: mongodb.com/v1
 kind: MongoDB
 metadata:
-  name: volume-claim-templates-mdb
+  name: custom-storage-class-mdb
 spec:
   members: 3
   type: ReplicaSet
