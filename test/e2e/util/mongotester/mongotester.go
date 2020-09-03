@@ -6,16 +6,23 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/objx"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -99,27 +106,32 @@ func (m *Tester) ConnectivitySucceeds(opts ...OptionApplier) func(t *testing.T) 
 	return m.connectivityCheck(true, opts...)
 }
 
-// ConnectivitySucceeds performs a basic check that ensures that it is not possible
+// ConnectivityFails performs a basic check that ensures that it is not possible
 // to connect to the MongoDB resource
 func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
 
-func (m *Tester) HasKeyfileAuth(tries int) func(t *testing.T) {
-	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries)
+func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries, opts...)
 }
 
-func (m *Tester) HasFCV(fcv string, tries int) func(t *testing.T) {
-	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries)
+func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries, opts...)
 }
 
-func (m *Tester) HasTlsMode(tlsMode string, tries int) func(t *testing.T) {
-	return m.hasAdminParameter("sslMode", tlsMode, tries)
+func (m *Tester) HasTlsMode(tlsMode string, tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("sslMode", tlsMode, tries, opts...)
 }
 
-func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int) func(t *testing.T) {
+func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int, opts ...OptionApplier) func(t *testing.T) {
+	clientOpts := make([]*options.ClientOptions, 0)
+	for _, optApplier := range opts {
+		clientOpts = optApplier.ApplyOption(clientOpts...)
+	}
+
 	return func(t *testing.T) {
-		if err := m.ensureClient(); err != nil {
+		if err := m.ensureClient(clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
@@ -194,6 +206,75 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 			t.Fatal(fmt.Errorf("error during connectivity check: %s", err))
 		}
 	}
+}
+
+func (m *Tester) WaitForRotatedCertificate() func(*testing.T) {
+	return func(t *testing.T) {
+		// The rotated certificate has serial number 2
+		expectedSerial := big.NewInt(2)
+
+		tls, err := getClientTLSConfig()
+		assert.NoError(t, err)
+
+		// Reject all server certificates that don't have the expected serial number
+		tls.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			cert := verifiedChains[0][0]
+			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
+				return errors.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
+			}
+			return nil
+		}
+
+		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tls}); err != nil {
+			t.Fatal(err)
+		}
+
+		// Ping the cluster until it succeeds. The ping will only succeed with the right certificate.
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			if err := m.mongoClient.Ping(context.TODO(), nil); err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		assert.NoError(t, err)
+	}
+}
+
+func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(*testing.T) {
+	return func(t *testing.T) {
+		opts, err := m.getCommandLineOptions()
+		assert.NoError(t, err)
+
+		// The options are stored under the key "parsed"
+		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+		assert.Equal(t, expected, parsed.Get(selector).Data())
+	}
+}
+
+// getCommandLineOptions will get the command line options from the admin database
+// and return the results as a map.
+func (m *Tester) getCommandLineOptions() (bson.M, error) {
+	var result bson.M
+	err := m.mongoClient.
+		Database("admin").
+		RunCommand(context.TODO(), bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
+		Decode(&result)
+
+	return result, err
+}
+
+// bsonToMap will convert a bson map to a regular map recursively.
+// objx does not work when the nested objects are bson.M.
+func bsonToMap(m bson.M) map[string]interface{} {
+	out := make(map[string]interface{})
+	for key, value := range m {
+		if subMap, ok := value.(bson.M); ok {
+			out[key] = bsonToMap(subMap)
+		} else {
+			out[key] = value
+		}
+	}
+	return out
 }
 
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
