@@ -217,15 +217,15 @@ type MongoDB struct {
 	Status MongoDBStatus `json:"status,omitempty"`
 }
 
-func (m MongoDB) DesiredReplicaSetMembers() int {
+func (m *MongoDB) DesiredReplicaSetMembers() int {
 	return m.Spec.Members
 }
 
-func (m MongoDB) CurrentReplicaSetMembers() int {
+func (m *MongoDB) CurrentReplicaSetMembers() int {
 	return m.Status.Members
 }
 
-func (m MongoDB) MembersThisReconciliation() int {
+func (m *MongoDB) MembersThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
 

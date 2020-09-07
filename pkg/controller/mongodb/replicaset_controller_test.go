@@ -390,14 +390,14 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 }
 
 func TestScramIsConfigured(t *testing.T) {
-	AssertReplicaSetIsConfiguredWithScram(t, newScramReplicaSet())
+	assertReplicaSetIsConfiguredWithScram(t, newScramReplicaSet())
 }
 
 func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
-	AssertReplicaSetIsConfiguredWithScram(t, newTestReplicaSet())
+	assertReplicaSetIsConfiguredWithScram(t, newTestReplicaSet())
 }
 
-func AssertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
+func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
 	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -418,6 +418,44 @@ func AssertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
 		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
 		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
+}
+
+func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, mdb.Status.Members)
+}
+
+func TestReplicaSet_IsScaled_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.Equal(t, 3, mdb.Status.Members)
+
+	// scale members from 3 to five
+	mdb.Spec.Members = 5
+
+	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	makeStatefulSetReady(t, mgr.GetClient(), mdb)
+
+	res, err = r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
+
+	assert.NoError(t, err)
+	assert.Equal(t, true, res.Requeue)
+	assert.Equal(t, 4, mdb.Status.Members)
 }
 
 func TestOpenshift_Configuration(t *testing.T) {

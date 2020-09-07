@@ -1,5 +1,7 @@
 package scale
 
+import "fmt"
+
 // ReplicaSetScaler is an interface which is able to scale up and down a replicaset
 // a single member at a time
 type ReplicaSetScaler interface {
@@ -10,6 +12,8 @@ type ReplicaSetScaler interface {
 // ReplicasThisReconciliation returns the number of replicas that should be configured
 // for that reconciliation. As of MongoDB 4.4 we can only scale members up / down 1 at a time.
 func ReplicasThisReconciliation(replicaSetScaler ReplicaSetScaler) int {
+	fmt.Println(replicaSetScaler.DesiredReplicaSetMembers())
+	fmt.Println(replicaSetScaler.CurrentReplicaSetMembers())
 	// the current replica set members will be 0 when we are creating a new deployment
 	// if this is the case, we want to jump straight to the desired members and not make changes incrementally
 	if replicaSetScaler.CurrentReplicaSetMembers() == 0 || replicaSetScaler.CurrentReplicaSetMembers() == replicaSetScaler.DesiredReplicaSetMembers() {

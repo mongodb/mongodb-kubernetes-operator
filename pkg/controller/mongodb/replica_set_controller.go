@@ -173,7 +173,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status,
+		"desiredMembers", mdb.DesiredReplicaSetMembers(),
+		"currentMembers", mdb.CurrentReplicaSetMembers(),
+	)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
@@ -244,22 +247,28 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	newMdb := mdbv1.MongoDB{}
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &newMdb); err != nil {
+		r.log.Errorf("Could not get get resource: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	if scale.IsStillScaling(&newMdb) {
+		r.log.Infow("Continuing scaling operation", "MongoDB", newMdb.NamespacedName(),
+			"currentMembers", newMdb.CurrentReplicaSetMembers(),
+			"desiredMembers", newMdb.DesiredReplicaSetMembers(),
+		)
+		return reconcile.Result{Requeue: true}, nil
+	}
+
 	r.log.Debug("Updating MongoDB Status")
-	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
+	newStatus, err := r.updateAndReturnStatusSuccess(&newMdb)
 	if err != nil {
 		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
 		return reconcile.Result{}, err
 	}
 
-	if scale.IsStillScaling(mdb) {
-		r.log.Infow("Continuing scaling operation", "MongoDB", mdb.NamespacedName(),
-			"currentMembers", mdb.CurrentReplicaSetMembers(),
-			"desiredMembers", mdb.DesiredReplicaSetMembers(),
-		)
-		return reconcile.Result{Requeue: true}, nil
-	}
-
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", newStatus)
+	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", newMdb.Spec, "MongoDB.Status", newStatus)
 	return reconcile.Result{}, nil
 }
 
@@ -359,15 +368,15 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 // the resource's status is updated to reflect to the state, and any other cleanup
 // operators should be performed here
 func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
-	newMdb := &mdbv1.MongoDB{}
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
-		return mdbv1.MongoDBStatus{}, errors.Errorf("could not get get resource: %s", err)
-	}
-	newMdb.UpdateSuccess()
-	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
+	//newMdb := &mdbv1.MongoDB{}
+	//if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
+	//	return mdbv1.MongoDBStatus{}, errors.Errorf("could not get get resource: %s", err)
+	//}
+	mdb.UpdateSuccess()
+	if err := r.client.Status().Update(context.TODO(), mdb); err != nil {
 		return mdbv1.MongoDBStatus{}, errors.Errorf(fmt.Sprintf("could not update status: %s", err))
 	}
-	return newMdb.Status, nil
+	return mdb.Status, nil
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
