@@ -24,6 +24,8 @@ type Phase string
 
 const (
 	Running Phase = "Running"
+	Failed  Phase = "Failed"
+	Pending Phase = "Pending"
 )
 
 const (
@@ -197,6 +199,7 @@ type AuthMode string
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
+	Members  int    `json:"members"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
