@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 
@@ -171,7 +173,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status,
+		"desiredMembers", mdb.DesiredReplicaSetMembers(),
+		"currentMembers", mdb.CurrentReplicaSetMembers(),
+	)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -258,6 +263,27 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			newOptionBuilder(&mdb).failedf("Error completing TLS rollout: %s", err),
+		)
+	}
+
+	newMdb := mdbv1.MongoDB{}
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &newMdb); err != nil {
+		r.log.Errorf("Could not get get resource: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	// the resource is still scaling, we need to requeue a reconciliation
+	// and increment one member at a time
+	if scale.IsStillScaling(&newMdb) {
+		r.log.Infow("Continuing scaling operation", "MongoDB", newMdb.NamespacedName(),
+			"currentMembers", newMdb.CurrentReplicaSetMembers(),
+			"desiredMembers", newMdb.DesiredReplicaSetMembers(),
+		)
+		return status.Update(r.client.Status(), &newMdb,
+			newOptionBuilder(&newMdb).
+				withMembers(scale.ReplicasThisReconciliation(&newMdb)).
+				retryImmediately().
+				pendingPhase(""),
 		)
 	}
 
