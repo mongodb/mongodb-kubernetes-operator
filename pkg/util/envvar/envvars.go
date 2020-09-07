@@ -29,7 +29,7 @@ func MergeWithOverride(existing, desired []corev1.EnvVar) []corev1.EnvVar {
 }
 
 func GetEnvOrDefault(envVar, defaultValue string) string {
-	if val := os.Getenv(envVar); val != "" {
+	if val, ok := os.LookupEnv(envVar); ok {
 		return val
 	}
 	return defaultValue

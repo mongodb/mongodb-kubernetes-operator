@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-kubernetes-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: mongodb-kubernetes-operator
+  template:
+    metadata:
+      labels:
+        name: mongodb-kubernetes-operator
+    spec:
+      serviceAccountName: mongodb-kubernetes-operator
+      containers:
+        - name: mongodb-kubernetes-operator
+          image: quay.io/mongodb/mongodb-kubernetes-operator:0.2.0
+          command:
+          - mongodb-kubernetes-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MANAGED_SECURITY_CONTEXT
+              value: 'true'
+            - name: OPERATOR_NAME
+              value: "mongodb-kubernetes-operator"
+            - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
+              value: quay.io/mongodb/mongodb-agent:10.15.1.6468-1
+            - name: VERSION_UPGRADE_HOOK_IMAGE
+              value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
