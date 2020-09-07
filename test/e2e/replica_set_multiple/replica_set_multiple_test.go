@@ -71,6 +71,7 @@ func TestReplicaSet(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb0.MongoURI(),
 				Phase:    mdbv1.Running,
+				Members:  5,
 			}))
 		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb0, 3))
 		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
@@ -80,6 +81,7 @@ func TestReplicaSet(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb0.MongoURI(),
 				Phase:    mdbv1.Running,
+				Members:  3,
 			}))
 
 	})
