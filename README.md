@@ -283,4 +283,4 @@ Reviewers, please ensure that the CLA has been signed by referring to [the contr
 
 ## License
 
-Please see the [LICENSE](LICENSE) file.
+Please see the [LICENSE](LICENSE.md) file.
