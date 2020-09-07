@@ -61,8 +61,8 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
 	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
 
-	t.Run("mdb0: Ensure Authentication", tester0.EnsureAuthentication(3))
-	t.Run("mdb1: Ensure Authentication", tester1.EnsureAuthentication(3))
+	t.Run("mdb0: Ensure Authentication", tester0.EnsureAuthenticationIsConfigured(3))
+	t.Run("mdb1: Ensure Authentication", tester1.EnsureAuthenticationIsConfigured(3))
 
 	t.Run("MongoDB is reachable while being scaled up", func(t *testing.T) {
 		defer tester0.StartBackgroundConnectivityTest(t, time.Second*10)()

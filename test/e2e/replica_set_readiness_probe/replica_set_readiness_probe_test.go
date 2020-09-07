@@ -43,7 +43,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Ensure Authentication", tester.EnsureAuthentication(3))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()

@@ -124,7 +124,7 @@ func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *tes
 	return m.hasAdminParameter("authenticationMechanisms", primitive.A{"SCRAM-SHA-256"}, tries, opts...)
 }
 
-func (m *Tester) EnsureAuthentication(tries int, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) EnsureAuthenticationIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
 		t.Run("SCRAM-SHA-256 is configured", m.ScramIsConfigured(tries, opts...))

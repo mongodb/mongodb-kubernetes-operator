@@ -43,5 +43,5 @@ func TestReplicaSetTLS(t *testing.T) {
 	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60))
 	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
-	t.Run("Ensure Authentication", tester.EnsureAuthentication(3, WithTls()))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
 }

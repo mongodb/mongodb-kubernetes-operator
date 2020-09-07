@@ -43,7 +43,7 @@ func TestReplicaSet(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Ensure Authentication", tester.EnsureAuthentication(3))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Mongod config has been set", tester.EnsureMongodConfig(setting, value))

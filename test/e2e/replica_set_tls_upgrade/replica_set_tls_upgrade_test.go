@@ -42,7 +42,7 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds(WithoutTls()))
-	t.Run("Ensure Authentication", tester.EnsureAuthentication(3))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
 	// Enable TLS as optional
 	t.Run("MongoDB is reachable while TLS is being enabled", func(t *testing.T) {
