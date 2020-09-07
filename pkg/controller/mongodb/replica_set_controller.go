@@ -175,39 +175,39 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).
-				Failedf("error creating automation config config map: %s", err),
+			newOptionBuilder(&mdb).
+				failedf("error creating automation config config map: %s", err),
 		)
 	}
 
 	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).
-				Failedf("Error ensuring the service exists: %s", err),
+			newOptionBuilder(&mdb).
+				failedf("Error ensuring the service exists: %s", err),
 		)
 	}
 
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).
-				Failedf("Error validating TLS config: %s", err),
+			newOptionBuilder(&mdb).
+				failedf("Error validating TLS config: %s", err),
 		)
 	}
 	if !isTLSValid {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).
-				RetryAfter(10).
-				PendingPhase("TLS config is not yet valid, retrying in 10 seconds"),
+			newOptionBuilder(&mdb).
+				retryAfter(10).
+				pendingPhase("TLS config is not yet valid, retrying in 10 seconds"),
 		)
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).
-				Failedf("Error creating/updating StatefulSet: %s", err),
+			newOptionBuilder(&mdb).
+				failedf("Error creating/updating StatefulSet: %s", err),
 		)
 	}
 
@@ -217,7 +217,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		if !apiErrors.IsNotFound(err) {
 			errMsg = fmt.Sprintf("error getting StatefulSet: %s", err)
 		}
-		return status.Update(r.client.Status(), &mdb, mdbv1.NewOptionBuilder(&mdb).Failed(errMsg))
+		return status.Update(r.client.Status(), &mdb, newOptionBuilder(&mdb).failed(errMsg))
 
 	}
 
@@ -225,21 +225,21 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).Failedf("Error checking StatefulSet status: %s", err),
+			newOptionBuilder(&mdb).failedf("Error checking StatefulSet status: %s", err),
 		)
 	}
 
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).RetryAfter(10).
-				PendingPhasef("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name),
+			newOptionBuilder(&mdb).retryAfter(10).
+				pendingPhasef("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name),
 		)
 	}
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).Failedf("Error resetting StatefulSet UpdateStrategyType: %s", err),
+			newOptionBuilder(&mdb).failedf("Error resetting StatefulSet UpdateStrategyType: %s", err),
 		)
 	}
 
@@ -251,13 +251,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).Failedf("Error setting annotations: %s", err),
+			newOptionBuilder(&mdb).failedf("Error setting annotations: %s", err),
 		)
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			mdbv1.NewOptionBuilder(&mdb).Failedf("Error completing TLS rollout: %s", err),
+			newOptionBuilder(&mdb).failedf("Error completing TLS rollout: %s", err),
 		)
 	}
 
@@ -366,7 +366,7 @@ func (r ReplicaSetReconciler) updateStatus(mdb *mdbv1.MongoDB) (reconcile.Result
 		return reconcile.Result{}, errors.Errorf("could not get get resource: %s", err)
 	}
 
-	res, err := status.Update(r.client.Status(), mdb, mdbv1.NewOptionBuilder(mdb).Success())
+	res, err := status.Update(r.client.Status(), mdb, newOptionBuilder(mdb).success())
 	if err != nil {
 		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
 		return reconcile.Result{}, err

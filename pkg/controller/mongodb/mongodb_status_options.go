@@ -1,7 +1,8 @@
-package v1
+package mongodb
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -10,16 +11,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// OptionBuilder is in charge of constructing a slice of options that
+// optionBuilder is in charge of constructing a slice of options that
 // will be applied on top of the MongoDB resource that has been provided
-type OptionBuilder struct {
-	mdb     *MongoDB
+type optionBuilder struct {
+	mdb     *v1.MongoDB
 	options []status.Option
 }
 
-// NewOptionBuilder returns an initialized OptionBuilder
-func NewOptionBuilder(mdb *MongoDB) *OptionBuilder {
-	return &OptionBuilder{
+// newOptionBuilder returns an initialized optionBuilder
+func newOptionBuilder(mdb *v1.MongoDB) *optionBuilder {
+	return &optionBuilder{
 		mdb:     mdb,
 		options: []status.Option{},
 	}
@@ -28,7 +29,7 @@ func NewOptionBuilder(mdb *MongoDB) *OptionBuilder {
 // toStatusOptions should be called on terminal operations
 // these operations will return the final set of options that will
 // be applied the status of the resource
-func (o *OptionBuilder) toStatusOptions() status.Option {
+func (o *optionBuilder) toStatusOptions() status.Option {
 	return multiOption{
 		options: o.options,
 	}
@@ -48,18 +49,18 @@ func (m multiOption) GetResult() (reconcile.Result, error) {
 	return status.DetermineReconciliationResult(m.options)
 }
 
-func (o *OptionBuilder) Success() status.Option {
-	return o.WithMembers(o.mdb.Spec.Members).
-		WithMongoURI(o.mdb.MongoURI()).
-		RunningPhase()
+func (o *optionBuilder) success() status.Option {
+	return o.withMembers(o.mdb.Spec.Members).
+		withMongoURI(o.mdb.MongoURI()).
+		runningPhase()
 }
 
-func (o *OptionBuilder) Failed(msg string) status.Option {
-	return o.withPhase(Failed, msg).toStatusOptions()
+func (o *optionBuilder) failed(msg string) status.Option {
+	return o.withPhase(v1.Failed, msg).toStatusOptions()
 }
 
-func (o *OptionBuilder) Failedf(msg string, params ...interface{}) status.Option {
-	return o.Failed(fmt.Sprintf(msg, params...))
+func (o *optionBuilder) failedf(msg string, params ...interface{}) status.Option {
+	return o.failed(fmt.Sprintf(msg, params...))
 }
 
 type retryOption struct {
@@ -74,7 +75,7 @@ func (r retryOption) GetResult() (reconcile.Result, error) {
 	return retry(r.retryAfter)
 }
 
-func (o *OptionBuilder) RetryAfter(seconds int) *OptionBuilder {
+func (o *optionBuilder) retryAfter(seconds int) *optionBuilder {
 	o.options = append(o.options,
 		retryOption{
 			retryAfter: seconds,
@@ -82,7 +83,7 @@ func (o *OptionBuilder) RetryAfter(seconds int) *OptionBuilder {
 	return o
 }
 
-func (o *OptionBuilder) WithMongoURI(uri string) *OptionBuilder {
+func (o *optionBuilder) withMongoURI(uri string) *optionBuilder {
 	o.options = append(o.options,
 		mongoUriOption{
 			mdb:      o.mdb,
@@ -93,7 +94,7 @@ func (o *OptionBuilder) WithMongoURI(uri string) *OptionBuilder {
 
 type mongoUriOption struct {
 	mongoUri string
-	mdb      *MongoDB
+	mdb      *v1.MongoDB
 }
 
 func (m mongoUriOption) ApplyOption() {
@@ -104,7 +105,7 @@ func (m mongoUriOption) GetResult() (reconcile.Result, error) {
 	return ok()
 }
 
-func (o *OptionBuilder) WithMembers(members int) *OptionBuilder {
+func (o *optionBuilder) withMembers(members int) *optionBuilder {
 	o.options = append(o.options,
 		membersOption{
 			mdb:     o.mdb,
@@ -115,7 +116,7 @@ func (o *OptionBuilder) WithMembers(members int) *OptionBuilder {
 
 type membersOption struct {
 	members int
-	mdb     *MongoDB
+	mdb     *v1.MongoDB
 }
 
 func (m membersOption) ApplyOption() {
@@ -126,11 +127,11 @@ func (m membersOption) GetResult() (reconcile.Result, error) {
 	return ok()
 }
 
-func (o *OptionBuilder) RunningPhase() status.Option {
-	return o.withPhase(Running, "").toStatusOptions()
+func (o *optionBuilder) runningPhase() status.Option {
+	return o.withPhase(v1.Running, "").toStatusOptions()
 }
 
-func (o *OptionBuilder) withPhase(phase Phase, msg string) *OptionBuilder {
+func (o *optionBuilder) withPhase(phase v1.Phase, msg string) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
 			mdb:     o.mdb,
@@ -140,18 +141,18 @@ func (o *OptionBuilder) withPhase(phase Phase, msg string) *OptionBuilder {
 	return o
 }
 
-func (o *OptionBuilder) PendingPhase(msg string) status.Option {
-	return o.withPhase(Pending, msg).toStatusOptions()
+func (o *optionBuilder) pendingPhase(msg string) status.Option {
+	return o.withPhase(v1.Pending, msg).toStatusOptions()
 }
 
-func (o *OptionBuilder) PendingPhasef(msg string, params ...interface{}) status.Option {
-	return o.withPhase(Pending, fmt.Sprintf(msg, params...)).toStatusOptions()
+func (o *optionBuilder) pendingPhasef(msg string, params ...interface{}) status.Option {
+	return o.withPhase(v1.Pending, fmt.Sprintf(msg, params...)).toStatusOptions()
 }
 
 type phaseOption struct {
-	phase   Phase
+	phase   v1.Phase
 	message string
-	mdb     *MongoDB
+	mdb     *v1.MongoDB
 }
 
 func (p phaseOption) ApplyOption() {
@@ -159,13 +160,13 @@ func (p phaseOption) ApplyOption() {
 }
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {
-	if p.phase == Running {
+	if p.phase == v1.Running {
 		return ok()
 	}
-	if p.phase == Pending {
+	if p.phase == v1.Pending {
 		return retry(10)
 	}
-	if p.phase == Failed {
+	if p.phase == v1.Failed {
 		// TODO: don't access global logger here
 		zap.S().Errorf(p.message)
 		return failed(p.message)

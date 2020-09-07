@@ -1,6 +1,8 @@
-package v1
+package mongodb
 
 import (
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -60,23 +62,36 @@ func TestMultiOption_ApplyOption(t *testing.T) {
 func TestOptionBuilder_RunningPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	NewOptionBuilder(&mdb).RunningPhase().ApplyOption()
+	newOptionBuilder(&mdb).runningPhase().ApplyOption()
 
-	assert.Equal(t, Running, mdb.Status.Phase)
+	assert.Equal(t, mdbv1.Running, mdb.Status.Phase)
 }
 
 func TestOptionBuilder_PendingPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	NewOptionBuilder(&mdb).PendingPhase("pending").ApplyOption()
+	newOptionBuilder(&mdb).pendingPhase("pending").ApplyOption()
 
-	assert.Equal(t, Pending, mdb.Status.Phase)
+	assert.Equal(t, mdbv1.Pending, mdb.Status.Phase)
 }
 
 func TestOptionBuilder_FailedPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	NewOptionBuilder(&mdb).Failed("failed").ApplyOption()
+	newOptionBuilder(&mdb).failed("failed").ApplyOption()
 
-	assert.Equal(t, Failed, mdb.Status.Phase)
+	assert.Equal(t, mdbv1.Failed, mdb.Status.Phase)
+}
+
+func newReplicaSet(members int, name, namespace string) mdbv1.MongoDB {
+	return mdbv1.MongoDB{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: mdbv1.MongoDBSpec{
+			Members: members,
+		},
+	}
 }
