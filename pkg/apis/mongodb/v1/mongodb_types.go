@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -197,6 +199,7 @@ type AuthMode string
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
+	Members  int    `json:"members"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -214,9 +217,22 @@ type MongoDB struct {
 	Status MongoDBStatus `json:"status,omitempty"`
 }
 
+func (m MongoDB) DesiredReplicaSetMembers() int {
+	return m.Spec.Members
+}
+
+func (m MongoDB) CurrentReplicaSetMembers() int {
+	return m.Status.Members
+}
+
+func (m MongoDB) MembersThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(m)
+}
+
 func (m *MongoDB) UpdateSuccess() {
 	m.Status.MongoURI = m.MongoURI()
 	m.Status.Phase = Running
+	m.Status.Members = scale.ReplicasThisReconciliation(m)
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

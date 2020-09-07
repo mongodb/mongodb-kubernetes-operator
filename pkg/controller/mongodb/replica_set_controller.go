@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/pkg/errors"
@@ -247,6 +249,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
 		return reconcile.Result{}, err
+	}
+
+	if scale.IsStillScaling(mdb) {
+		r.log.Infow("Continuing scaling operation", "MongoDB", mdb.NamespacedName(),
+			"currentMembers", mdb.CurrentReplicaSetMembers(),
+			"desiredMembers", mdb.DesiredReplicaSetMembers(),
+		)
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", newStatus)
