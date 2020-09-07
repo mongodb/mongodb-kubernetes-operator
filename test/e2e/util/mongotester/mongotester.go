@@ -121,7 +121,7 @@ func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *te
 }
 
 func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("authenticationMechanisms", []string{"SCRAM-SHA-256"}, tries, opts...)
+	return m.hasAdminParameter("authenticationMechanisms", primitive.A{"SCRAM-SHA-256"}, tries, opts...)
 }
 
 func (m *Tester) EnsureAuthentication(tries int, opts ...OptionApplier) func(t *testing.T) {
