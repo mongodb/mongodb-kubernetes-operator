@@ -126,8 +126,8 @@ func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *tes
 
 func (m *Tester) EnsureAuthentication(tries int, opts ...OptionApplier) func(t *testing.T) {
 	return func(t *testing.T) {
-		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(3, opts...))
-		t.Run("SCRAM-SHA-256 is configured", m.ScramIsConfigured(3, opts...))
+		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
+		t.Run("SCRAM-SHA-256 is configured", m.ScramIsConfigured(tries, opts...))
 	}
 }
 
@@ -153,7 +153,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 		for !found && tries > 0 {
 			<-time.After(10 * time.Second)
 			actualValue, err := m.getAdminSetting(key)
-			t.Logf("Actual Value: %+v", actualValue)
+			t.Logf("Actual Value: %+v, type: %s", actualValue, reflect.TypeOf(actualValue))
 			if err != nil {
 				t.Logf("Unable to get admin setting %s with error : %s", key, err)
 				continue
