@@ -54,6 +54,7 @@ import (
 
 const (
 	agentImageEnv                = "AGENT_IMAGE"
+	clusterDNSName               = "CLUSTER_DNS_NAME"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
@@ -369,7 +370,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 
 	builder := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
