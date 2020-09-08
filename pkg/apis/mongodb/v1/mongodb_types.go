@@ -200,7 +200,7 @@ type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
 	Members  int    `json:"members"`
-	Message  string `json:"message"`
+	Message  string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

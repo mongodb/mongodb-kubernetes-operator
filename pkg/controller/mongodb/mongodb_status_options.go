@@ -19,6 +19,7 @@ const (
 	Info  severity = "INFO"
 	Warn  severity = "WARN"
 	Error severity = "ERROR"
+	None  severity = "NONE"
 )
 
 // optionBuilder is in charge of constructing a slice of options that
@@ -141,6 +142,10 @@ func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionB
 		},
 	})
 	return o
+}
+
+func (o *optionBuilder) clearMessage() *optionBuilder {
+	return o.withMessage(None, "")
 }
 
 type phaseOption struct {

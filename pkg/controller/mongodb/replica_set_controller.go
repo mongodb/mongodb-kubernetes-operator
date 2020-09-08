@@ -384,7 +384,8 @@ func (r ReplicaSetReconciler) updateStatus(mdb *mdbv1.MongoDB) (reconcile.Result
 	res, err := status.Update(r.client.Status(), mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
 		withPhase(mdbv1.Running).
-		withMembers(mdb.Spec.Members),
+		withMembers(mdb.Spec.Members).
+		clearMessage(),
 	)
 	if err != nil {
 		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
