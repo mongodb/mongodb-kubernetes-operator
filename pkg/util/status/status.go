@@ -17,6 +17,7 @@ type OptionBuilder interface {
 	GetOptions() []Option
 }
 
+// Update takes the options provided by the given option builder, applies them all and then updates the resource
 func Update(statusWriter client.StatusWriter, obj runtime.Object, optionBuilder OptionBuilder) (reconcile.Result, error) {
 	options := optionBuilder.GetOptions()
 	for _, opt := range options {

@@ -24,7 +24,7 @@ type Phase string
 
 const (
 	Running Phase = "Running"
-	Failed  Phase = "failed"
+	Failed  Phase = "Failed"
 	Pending Phase = "Pending"
 )
 
