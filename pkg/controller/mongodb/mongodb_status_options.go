@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -38,26 +37,6 @@ func statusOptions() *optionBuilder {
 	return &optionBuilder{
 		options: []status.Option{},
 	}
-}
-
-type retryOption struct {
-	retryAfter int
-}
-
-func (r retryOption) ApplyOption(_ *mdbv1.MongoDB) {
-	// has no impact on the resource status itself
-}
-
-func (r retryOption) GetResult() (reconcile.Result, error) {
-	return retryResult(r.retryAfter)
-}
-
-func (o *optionBuilder) retryAfter(seconds int) *optionBuilder {
-	o.options = append(o.options,
-		retryOption{
-			retryAfter: seconds,
-		})
-	return o
 }
 
 func (o *optionBuilder) withMongoURI(uri string) *optionBuilder {
@@ -99,11 +78,11 @@ func (m membersOption) ApplyOption(mdb *mdbv1.MongoDB) {
 func (m membersOption) GetResult() (reconcile.Result, error) {
 	return okResult()
 }
-
-func (o *optionBuilder) withPhase(phase mdbv1.Phase) *optionBuilder {
+func (o *optionBuilder) withPhase(phase mdbv1.Phase, retryAfter int) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
-			phase: phase,
+			phase:      phase,
+			retryAfter: retryAfter,
 		})
 	return o
 }
@@ -144,12 +123,21 @@ func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionB
 	return o
 }
 
-func (o *optionBuilder) clearMessage() *optionBuilder {
-	return o.withMessage(None, "")
+func (o *optionBuilder) withFailedPhase() *optionBuilder {
+	return o.withPhase(mdbv1.Failed, 0)
+}
+
+func (o *optionBuilder) withPendingPhase(retryAfter int) *optionBuilder {
+	return o.withPhase(mdbv1.Pending, retryAfter)
+}
+
+func (o *optionBuilder) withRunningPhase() *optionBuilder {
+	return o.withPhase(mdbv1.Running, -1)
 }
 
 type phaseOption struct {
-	phase mdbv1.Phase
+	phase      mdbv1.Phase
+	retryAfter int
 }
 
 func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
@@ -161,7 +149,7 @@ func (p phaseOption) GetResult() (reconcile.Result, error) {
 		return okResult()
 	}
 	if p.phase == mdbv1.Pending {
-		return retryResult(10)
+		return retryResult(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
 		return failedResult()
@@ -177,12 +165,9 @@ func okResult() (reconcile.Result, error) {
 }
 
 func retryResult(after int) (reconcile.Result, error) {
-	return reconcile.Result{RequeueAfter: time.Second * time.Duration(after)}, nil
+	return reconcile.Result{Requeue: true, RequeueAfter: time.Second * time.Duration(after)}, nil
 }
 
 func failedResult() (reconcile.Result, error) {
-	// the error returned from this function will cause the reconciler to requeue
-	// the reconciliation, but the message itself isn't what ends up on the status of the resource
-	// that must be set with withMessage(severityLevel, msg)
-	return reconcile.Result{}, errors.New("error during reconciliation")
+	return retryResult(0)
 }

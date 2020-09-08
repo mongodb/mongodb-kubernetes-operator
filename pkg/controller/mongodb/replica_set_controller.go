@@ -177,7 +177,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error creating automation config config map: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 
@@ -186,7 +186,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 
@@ -195,15 +195,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 	if !isTLSValid {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				retryAfter(10).
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
-				withPhase(mdbv1.Pending),
+				withPendingPhase(10),
 		)
 	}
 
@@ -212,7 +211,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error creating/updating StatefulSet: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 
@@ -224,7 +223,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		}
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, errMsg).
-			withPhase(mdbv1.Failed),
+			withFailedPhase(),
 		)
 
 	}
@@ -233,16 +232,16 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			statusOptions().withMessage(Info, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
-				withPhase(mdbv1.Pending),
+			statusOptions().withMessage(Error, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
-			statusOptions().retryAfter(10).
+			statusOptions().
 				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
-				withPhase(mdbv1.Pending),
+				withPendingPhase(10),
 		)
 	}
 
@@ -251,7 +250,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 
@@ -265,14 +264,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-				withPhase(mdbv1.Failed),
+				withFailedPhase(),
 		)
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			statusOptions().withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
-				withPhase(mdbv1.Failed),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
@@ -280,33 +280,28 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, fmt.Sprintf("could not get get resource: %s", err)).
-			withPhase(mdbv1.Failed),
+			withFailedPhase(),
 		)
 	}
 
 	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
-		withPhase(mdbv1.Running).
 		withMembers(mdb.Spec.Members).
-		clearMessage(),
+		withMessage(None, "").
+		withRunningPhase(),
 	)
 
 	if err != nil {
-		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withMessage(Error, fmt.Sprintf("Error updating the status of the MongoDB resource: %s", err)).
-			withPhase(mdbv1.Failed),
-		)
+		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
+		return res, err
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
-		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withMessage(Info, "Performing multi state operation, requeuing reconciliation").
-			withPhase(mdbv1.Pending),
-		)
+		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+		return res, nil
 	}
 
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
+	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 	return res, err
 }
 

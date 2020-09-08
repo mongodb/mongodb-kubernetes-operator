@@ -38,7 +38,7 @@ func TestMembersOption_ApplyOption(t *testing.T) {
 func TestOptionBuilder_RunningPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	statusOptions().withPhase(mdbv1.Running).GetOptions()[0].ApplyOption(&mdb)
+	statusOptions().withRunningPhase().GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Running, mdb.Status.Phase)
 }
@@ -46,7 +46,7 @@ func TestOptionBuilder_RunningPhase(t *testing.T) {
 func TestOptionBuilder_PendingPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	statusOptions().withPhase(mdbv1.Pending).GetOptions()[0].ApplyOption(&mdb)
+	statusOptions().withPendingPhase(10).GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Pending, mdb.Status.Phase)
 }
@@ -54,7 +54,7 @@ func TestOptionBuilder_PendingPhase(t *testing.T) {
 func TestOptionBuilder_FailedPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	statusOptions().withPhase(mdbv1.Failed).GetOptions()[0].ApplyOption(&mdb)
+	statusOptions().withFailedPhase().GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Failed, mdb.Status.Phase)
 }
