@@ -2,7 +2,7 @@ package scramcredentials
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
+	"crypto/md5"  //nolint
 	"crypto/sha1" //nolint
 	"crypto/sha256"
 	"encoding/base64"
@@ -44,8 +44,8 @@ func ComputeScramSha1Creds(username, password string, salt []byte) (ScramCreds, 
 }
 
 func md5Hex(s string) string {
-	h := md5.New()
-	h.Write([]byte(s))
+	h := md5.New()     // nolint
+	h.Write([]byte(s)) //nolint
 	return hex.EncodeToString(h.Sum(nil))
 }
 

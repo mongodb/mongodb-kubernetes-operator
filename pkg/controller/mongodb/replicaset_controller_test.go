@@ -142,6 +142,9 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
+	_ = os.Setenv(mongodbRepoUrl, "repo")
+	_ = os.Setenv(mongodbImageEnv, "mongo")
+
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
@@ -162,7 +165,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, mongodbName, mongodbContainer.Name)
-	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
+	assert.Equal(t, "repo/mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
 
