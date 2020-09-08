@@ -277,7 +277,37 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Updating MongoDB Status")
-	return r.updateStatus(&mdb)
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Error, fmt.Sprintf("could not get get resource: %s", err)).
+			withPhase(mdbv1.Failed),
+		)
+	}
+
+	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
+		withMongoURI(mdb.MongoURI()).
+		withPhase(mdbv1.Running).
+		withMembers(mdb.Spec.Members).
+		clearMessage(),
+	)
+
+	if err != nil {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Error, fmt.Sprintf("Error updating the status of the MongoDB resource: %s", err)).
+			withPhase(mdbv1.Failed),
+		)
+	}
+
+	if res.RequeueAfter > 0 || res.Requeue {
+		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Info, "Performing multi state operation, requeuing reconciliation").
+			withPhase(mdbv1.Pending),
+		)
+	}
+
+	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
+	return res, err
 }
 
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
@@ -370,35 +400,6 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 			mdb.Annotations[key] = val
 		}
 	})
-}
-
-// updateStatus should be called after a successful reconciliation
-// the resource's status is updated to reflect to the state, and any other cleanup
-// operators should be performed here
-func (r ReplicaSetReconciler) updateStatus(mdb *mdbv1.MongoDB) (reconcile.Result, error) {
-	newMdb := &mdbv1.MongoDB{}
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
-		return reconcile.Result{}, errors.Errorf("could not get get resource: %s", err)
-	}
-
-	res, err := status.Update(r.client.Status(), mdb, statusOptions().
-		withMongoURI(mdb.MongoURI()).
-		withPhase(mdbv1.Running).
-		withMembers(mdb.Spec.Members).
-		clearMessage(),
-	)
-	if err != nil {
-		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
-		return reconcile.Result{}, err
-	}
-
-	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
-		return res, err
-	}
-
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
-	return res, err
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
