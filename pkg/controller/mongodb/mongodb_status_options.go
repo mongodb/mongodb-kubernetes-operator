@@ -1,66 +1,45 @@
 package mongodb
 
 import (
-	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"time"
+
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"go.uber.org/zap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+// severity indicates the severity level
+// at which the message should be logged
+type severity string
+
+const (
+	Info  severity = "INFO"
+	Warn  severity = "WARN"
+	Error severity = "ERROR"
 )
 
 // optionBuilder is in charge of constructing a slice of options that
 // will be applied on top of the MongoDB resource that has been provided
 type optionBuilder struct {
-	mdb     *v1.MongoDB
-	options []status.Option
+	mdb          *mdbv1.MongoDB
+	currentPhase mdbv1.Phase
+	options      []status.Option
+}
+
+// GetOptions implements the OptionBuilder interface
+func (o *optionBuilder) GetOptions() []status.Option {
+	return o.options
 }
 
 // newOptionBuilder returns an initialized optionBuilder
-func newOptionBuilder(mdb *v1.MongoDB) *optionBuilder {
+func newOptionBuilder(mdb *mdbv1.MongoDB) *optionBuilder {
 	return &optionBuilder{
 		mdb:     mdb,
 		options: []status.Option{},
 	}
-}
-
-// toStatusOptions should be called on terminal operations
-// these operations will return the final set of options that will
-// be applied the status of the resource
-func (o *optionBuilder) toStatusOptions() status.Option {
-	return multiOption{
-		options: o.options,
-	}
-}
-
-type multiOption struct {
-	options []status.Option
-}
-
-func (m multiOption) ApplyOption() {
-	for _, opt := range m.options {
-		opt.ApplyOption()
-	}
-}
-
-func (m multiOption) GetResult() (reconcile.Result, error) {
-	return status.DetermineReconciliationResult(m.options)
-}
-
-func (o *optionBuilder) success() status.Option {
-	return o.withMembers(o.mdb.Spec.Members).
-		withMongoURI(o.mdb.MongoURI()).
-		runningPhase()
-}
-
-func (o *optionBuilder) failed(msg string) status.Option {
-	return o.withPhase(v1.Failed, msg).toStatusOptions()
-}
-
-func (o *optionBuilder) failedf(msg string, params ...interface{}) status.Option {
-	return o.failed(fmt.Sprintf(msg, params...))
 }
 
 type retryOption struct {
@@ -72,7 +51,7 @@ func (r retryOption) ApplyOption() {
 }
 
 func (r retryOption) GetResult() (reconcile.Result, error) {
-	return retry(r.retryAfter)
+	return retryResult(r.retryAfter)
 }
 
 func (o *optionBuilder) retryAfter(seconds int) *optionBuilder {
@@ -94,7 +73,7 @@ func (o *optionBuilder) withMongoURI(uri string) *optionBuilder {
 
 type mongoUriOption struct {
 	mongoUri string
-	mdb      *v1.MongoDB
+	mdb      *mdbv1.MongoDB
 }
 
 func (m mongoUriOption) ApplyOption() {
@@ -102,7 +81,7 @@ func (m mongoUriOption) ApplyOption() {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
-	return ok()
+	return okResult()
 }
 
 func (o *optionBuilder) withMembers(members int) *optionBuilder {
@@ -116,7 +95,7 @@ func (o *optionBuilder) withMembers(members int) *optionBuilder {
 
 type membersOption struct {
 	members int
-	mdb     *v1.MongoDB
+	mdb     *mdbv1.MongoDB
 }
 
 func (m membersOption) ApplyOption() {
@@ -124,35 +103,60 @@ func (m membersOption) ApplyOption() {
 }
 
 func (m membersOption) GetResult() (reconcile.Result, error) {
-	return ok()
+	return okResult()
 }
 
-func (o *optionBuilder) runningPhase() status.Option {
-	return o.withPhase(v1.Running, "").toStatusOptions()
-}
-
-func (o *optionBuilder) withPhase(phase v1.Phase, msg string) *optionBuilder {
+func (o *optionBuilder) withPhase(phase mdbv1.Phase) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
-			mdb:     o.mdb,
-			phase:   phase,
-			message: msg,
+			mdb:   o.mdb,
+			phase: phase,
 		})
+	o.currentPhase = phase
 	return o
 }
 
-func (o *optionBuilder) pendingPhase(msg string) status.Option {
-	return o.withPhase(v1.Pending, msg).toStatusOptions()
+type message struct {
+	messageString string
+	severityLevel severity
 }
 
-func (o *optionBuilder) pendingPhasef(msg string, params ...interface{}) status.Option {
-	return o.withPhase(v1.Pending, fmt.Sprintf(msg, params...)).toStatusOptions()
+type messageOption struct {
+	mdb     *mdbv1.MongoDB
+	message message
+}
+
+func (m messageOption) ApplyOption() {
+	m.mdb.Status.Message = m.message.messageString
+	if m.message.severityLevel == Error {
+		zap.S().Error(m.message)
+	}
+	if m.message.severityLevel == Warn {
+		zap.S().Warn(m.message)
+	}
+	if m.message.severityLevel == Info {
+		zap.S().Info(m.message)
+	}
+}
+
+func (m messageOption) GetResult() (reconcile.Result, error) {
+	return okResult()
+}
+
+func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
+	o.options = append(o.options, messageOption{
+		mdb: o.mdb,
+		message: message{
+			messageString: msg,
+			severityLevel: severityLevel,
+		},
+	})
+	return o
 }
 
 type phaseOption struct {
-	phase   v1.Phase
-	message string
-	mdb     *v1.MongoDB
+	phase mdbv1.Phase
+	mdb   *mdbv1.MongoDB
 }
 
 func (p phaseOption) ApplyOption() {
@@ -160,28 +164,32 @@ func (p phaseOption) ApplyOption() {
 }
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {
-	if p.phase == v1.Running {
-		return ok()
+	if p.phase == mdbv1.Running {
+		return okResult()
 	}
-	if p.phase == v1.Pending {
-		return retry(10)
+	if p.phase == mdbv1.Pending {
+		return retryResult(10)
 	}
-	if p.phase == v1.Failed {
-		// TODO: don't access global logger here
-		zap.S().Errorf(p.message)
-		return failed(p.message)
+	if p.phase == mdbv1.Failed {
+		return failedResult()
 	}
-	return ok()
+	return okResult()
 }
 
-func ok() (reconcile.Result, error) {
+// helper functions which return reconciliation results which should be
+// returned from the main reconciliation loop
+
+func okResult() (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 }
 
-func retry(after int) (reconcile.Result, error) {
+func retryResult(after int) (reconcile.Result, error) {
 	return reconcile.Result{RequeueAfter: time.Second * time.Duration(after)}, nil
 }
 
-func failed(msg string, params ...interface{}) (reconcile.Result, error) {
-	return reconcile.Result{}, errors.Errorf(msg, params...)
+func failedResult() (reconcile.Result, error) {
+	// the error returned from this function will cause the reconciler to requeue
+	// the reconciliation, but the message itself isn't what ends up on the status of the resource
+	// that must be set with withMessage(severityLevel, msg)
+	return reconcile.Result{}, errors.New("error during reconciliation")
 }

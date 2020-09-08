@@ -13,7 +13,12 @@ type Option interface {
 	GetResult() (reconcile.Result, error)
 }
 
-func Update(statusWriter client.StatusWriter, obj runtime.Object, options ...Option) (reconcile.Result, error) {
+type OptionBuilder interface {
+	GetOptions() []Option
+}
+
+func Update(statusWriter client.StatusWriter, obj runtime.Object, optionBuilder OptionBuilder) (reconcile.Result, error) {
+	options := optionBuilder.GetOptions()
 	for _, opt := range options {
 		opt.ApplyOption()
 	}
@@ -22,10 +27,10 @@ func Update(statusWriter client.StatusWriter, obj runtime.Object, options ...Opt
 		return reconcile.Result{}, err
 	}
 
-	return DetermineReconciliationResult(options)
+	return determineReconciliationResult(options)
 }
 
-func DetermineReconciliationResult(options []Option) (reconcile.Result, error) {
+func determineReconciliationResult(options []Option) (reconcile.Result, error) {
 	// if there are any errors in any of our options, we return those first
 	for _, opt := range options {
 		res, err := opt.GetResult()

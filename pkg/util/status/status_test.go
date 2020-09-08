@@ -42,7 +42,7 @@ func TestDetermineReconciliationResult(t *testing.T) {
 			successOption{},
 		}
 
-		res, err := DetermineReconciliationResult(opts)
+		res, err := determineReconciliationResult(opts)
 		assert.NotNil(t, err)
 		assert.Equal(t, false, res.Requeue)
 		assert.Equal(t, time.Duration(0), res.RequeueAfter)
@@ -54,7 +54,7 @@ func TestDetermineReconciliationResult(t *testing.T) {
 			retryOption{},
 			successOption{},
 		}
-		res, err := DetermineReconciliationResult(opts)
+		res, err := determineReconciliationResult(opts)
 		assert.NotNil(t, err)
 		assert.Equal(t, false, res.Requeue)
 		assert.Equal(t, time.Duration(0), res.RequeueAfter)
@@ -66,7 +66,7 @@ func TestDetermineReconciliationResult(t *testing.T) {
 			successOption{},
 			successOption{},
 		}
-		res, err := DetermineReconciliationResult(opts)
+		res, err := determineReconciliationResult(opts)
 		assert.Nil(t, err)
 		assert.Equal(t, false, res.Requeue)
 		assert.Equal(t, time.Duration(0), res.RequeueAfter)
@@ -78,7 +78,7 @@ func TestDetermineReconciliationResult(t *testing.T) {
 			successOption{},
 			retryOption{},
 		}
-		res, err := DetermineReconciliationResult(opts)
+		res, err := determineReconciliationResult(opts)
 		assert.Nil(t, err)
 		assert.Equal(t, true, res.Requeue)
 	})
