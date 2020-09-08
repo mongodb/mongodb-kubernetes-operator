@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -11,7 +13,7 @@ import (
 
 type errorOption struct{}
 
-func (e errorOption) ApplyOption() {}
+func (e errorOption) ApplyOption(_ *mdbv1.MongoDB) {}
 
 func (e errorOption) GetResult() (reconcile.Result, error) {
 	return reconcile.Result{}, errors.Errorf("error")
@@ -19,7 +21,7 @@ func (e errorOption) GetResult() (reconcile.Result, error) {
 
 type successOption struct{}
 
-func (s successOption) ApplyOption() {}
+func (s successOption) ApplyOption(_ *mdbv1.MongoDB) {}
 
 func (s successOption) GetResult() (reconcile.Result, error) {
 	return reconcile.Result{}, nil
@@ -27,7 +29,7 @@ func (s successOption) GetResult() (reconcile.Result, error) {
 
 type retryOption struct{}
 
-func (r retryOption) ApplyOption() {}
+func (r retryOption) ApplyOption(_ *mdbv1.MongoDB) {}
 
 func (r retryOption) GetResult() (reconcile.Result, error) {
 	return reconcile.Result{Requeue: true}, nil

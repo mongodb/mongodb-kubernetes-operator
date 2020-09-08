@@ -3,13 +3,14 @@ package status
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type Option interface {
-	ApplyOption()
+	ApplyOption(mdb *mdbv1.MongoDB)
 	GetResult() (reconcile.Result, error)
 }
 
@@ -18,13 +19,13 @@ type OptionBuilder interface {
 }
 
 // Update takes the options provided by the given option builder, applies them all and then updates the resource
-func Update(statusWriter client.StatusWriter, obj runtime.Object, optionBuilder OptionBuilder) (reconcile.Result, error) {
+func Update(statusWriter client.StatusWriter, mdb *mdbv1.MongoDB, optionBuilder OptionBuilder) (reconcile.Result, error) {
 	options := optionBuilder.GetOptions()
 	for _, opt := range options {
-		opt.ApplyOption()
+		opt.ApplyOption(mdb)
 	}
 
-	if err := statusWriter.Update(context.TODO(), obj); err != nil {
+	if err := statusWriter.Update(context.TODO(), mdb); err != nil {
 		return reconcile.Result{}, err
 	}
 

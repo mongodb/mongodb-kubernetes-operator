@@ -24,9 +24,7 @@ const (
 // optionBuilder is in charge of constructing a slice of options that
 // will be applied on top of the MongoDB resource that has been provided
 type optionBuilder struct {
-	mdb          *mdbv1.MongoDB
-	currentPhase mdbv1.Phase
-	options      []status.Option
+	options []status.Option
 }
 
 // GetOptions implements the OptionBuilder interface
@@ -34,10 +32,9 @@ func (o *optionBuilder) GetOptions() []status.Option {
 	return o.options
 }
 
-// newOptionBuilder returns an initialized optionBuilder
-func newOptionBuilder(mdb *mdbv1.MongoDB) *optionBuilder {
+// options returns an initialized optionBuilder
+func statusOptions() *optionBuilder {
 	return &optionBuilder{
-		mdb:     mdb,
 		options: []status.Option{},
 	}
 }
@@ -46,7 +43,7 @@ type retryOption struct {
 	retryAfter int
 }
 
-func (r retryOption) ApplyOption() {
+func (r retryOption) ApplyOption(_ *mdbv1.MongoDB) {
 	// has no impact on the resource status itself
 }
 
@@ -65,7 +62,6 @@ func (o *optionBuilder) retryAfter(seconds int) *optionBuilder {
 func (o *optionBuilder) withMongoURI(uri string) *optionBuilder {
 	o.options = append(o.options,
 		mongoUriOption{
-			mdb:      o.mdb,
 			mongoUri: uri,
 		})
 	return o
@@ -73,11 +69,10 @@ func (o *optionBuilder) withMongoURI(uri string) *optionBuilder {
 
 type mongoUriOption struct {
 	mongoUri string
-	mdb      *mdbv1.MongoDB
 }
 
-func (m mongoUriOption) ApplyOption() {
-	m.mdb.Status.MongoURI = m.mongoUri
+func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.MongoURI = m.mongoUri
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
@@ -87,7 +82,6 @@ func (m mongoUriOption) GetResult() (reconcile.Result, error) {
 func (o *optionBuilder) withMembers(members int) *optionBuilder {
 	o.options = append(o.options,
 		membersOption{
-			mdb:     o.mdb,
 			members: members,
 		})
 	return o
@@ -95,11 +89,10 @@ func (o *optionBuilder) withMembers(members int) *optionBuilder {
 
 type membersOption struct {
 	members int
-	mdb     *mdbv1.MongoDB
 }
 
-func (m membersOption) ApplyOption() {
-	m.mdb.Status.Members = m.members
+func (m membersOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.Members = m.members
 }
 
 func (m membersOption) GetResult() (reconcile.Result, error) {
@@ -109,10 +102,8 @@ func (m membersOption) GetResult() (reconcile.Result, error) {
 func (o *optionBuilder) withPhase(phase mdbv1.Phase) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
-			mdb:   o.mdb,
 			phase: phase,
 		})
-	o.currentPhase = phase
 	return o
 }
 
@@ -122,12 +113,11 @@ type message struct {
 }
 
 type messageOption struct {
-	mdb     *mdbv1.MongoDB
 	message message
 }
 
-func (m messageOption) ApplyOption() {
-	m.mdb.Status.Message = m.message.messageString
+func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.Message = m.message.messageString
 	if m.message.severityLevel == Error {
 		zap.S().Error(m.message)
 	}
@@ -145,7 +135,6 @@ func (m messageOption) GetResult() (reconcile.Result, error) {
 
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
 	o.options = append(o.options, messageOption{
-		mdb: o.mdb,
 		message: message{
 			messageString: msg,
 			severityLevel: severityLevel,
@@ -156,11 +145,10 @@ func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionB
 
 type phaseOption struct {
 	phase mdbv1.Phase
-	mdb   *mdbv1.MongoDB
 }
 
-func (p phaseOption) ApplyOption() {
-	p.mdb.Status.Phase = p.phase
+func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.Phase = p.phase
 }
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {

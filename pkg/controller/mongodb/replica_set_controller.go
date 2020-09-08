@@ -175,7 +175,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("error creating automation config config map: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
@@ -184,7 +184,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
@@ -193,14 +193,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
 	}
 	if !isTLSValid {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				retryAfter(10).
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
 				withPhase(mdbv1.Pending),
@@ -210,7 +210,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error creating/updating StatefulSet: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
@@ -222,7 +222,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		if !apiErrors.IsNotFound(err) {
 			errMsg = fmt.Sprintf("error getting StatefulSet: %s", err)
 		}
-		return status.Update(r.client.Status(), &mdb, newOptionBuilder(&mdb).
+		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, errMsg).
 			withPhase(mdbv1.Failed),
 		)
@@ -233,14 +233,14 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).withMessage(Info, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
+			statusOptions().withMessage(Info, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
 				withPhase(mdbv1.Pending),
 		)
 	}
 
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).retryAfter(10).
+			statusOptions().retryAfter(10).
 				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
 				withPhase(mdbv1.Pending),
 		)
@@ -249,7 +249,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
@@ -263,7 +263,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
+			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
@@ -271,7 +271,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
+			statusOptions().withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
 				withPhase(mdbv1.Failed),
 		)
 	}
@@ -381,7 +381,7 @@ func (r ReplicaSetReconciler) updateStatus(mdb *mdbv1.MongoDB) (reconcile.Result
 		return reconcile.Result{}, errors.Errorf("could not get get resource: %s", err)
 	}
 
-	res, err := status.Update(r.client.Status(), mdb, newOptionBuilder(mdb).
+	res, err := status.Update(r.client.Status(), mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
 		withPhase(mdbv1.Running).
 		withMembers(mdb.Spec.Members),
