@@ -1,4 +1,4 @@
-package agenthealth
+package agent
 
 import (
 	"time"

@@ -10,7 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
+	"github.com/pkg/errors"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+
 	"github.com/imdario/mergo"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
@@ -27,14 +34,13 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,6 +59,7 @@ const (
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	mongodbImageEnv              = "MONGODB_IMAGE"
 	mongodbRepoUrl               = "MONGODB_REPO_URL"
+	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
 	agentName                      = "mongodb-agent"
@@ -74,6 +81,14 @@ const (
 
 	trueAnnotation = "true"
 )
+
+func init() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		os.Exit(1)
+	}
+	zap.ReplaceGlobals(logger)
+}
 
 // Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -141,24 +156,25 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Info("Reconciling MongoDB")
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
 	mdb := mdbv1.MongoDB{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, &mdb)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apiErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		r.log.Errorf("error reconciling MongoDB resource: %s", err)
+		r.log.Errorf("Error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		r.log.Warnf("error creating automation config config map: %s", err)
@@ -173,28 +189,32 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
+		r.log.Warnf("Error validating TLS config: %s", err)
 		return reconcile.Result{}, err
 	}
 	if !isTLSValid {
+		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
-		r.log.Warnf("Error creating/updating StatefulSet: %+v", err)
+		r.log.Warnf("Error creating/updating StatefulSet: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	currentSts := appsv1.StatefulSet{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
-		r.log.Warnf("Error getting StatefulSet: %s", err)
+		if !apiErrors.IsNotFound(err) {
+			r.log.Warnf("Error getting StatefulSet: %s", err)
+		}
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
-		r.log.Warnf("error checking StatefulSet status: %+v", err)
+		r.log.Warnf("Error checking StatefulSet status: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -205,7 +225,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		r.log.Warnf("error resetting StatefulSet UpdateStrategyType: %+v", err)
+		r.log.Warnf("Error resetting StatefulSet UpdateStrategyType: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -216,19 +236,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		hasLeftReadyStateAnnotationKey: "false",
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		r.log.Warnf("Error setting annotations: %+v", err)
+		r.log.Warnf("Error setting annotations: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
-		r.log.Warnf("Error completing TLS rollout: %+v", err)
+		r.log.Warnf("Error completing TLS rollout: %s", err)
 		return reconcile.Result{}, err
 	}
 
 	r.log.Debug("Updating MongoDB Status")
 	newStatus, err := r.updateAndReturnStatusSuccess(&mdb)
 	if err != nil {
-		r.log.Warnf("Error updating the status of the MongoDB resource: %+v", err)
+		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
 		return reconcile.Result{}, err
 	}
 
@@ -257,12 +277,12 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 
 	stsCopyBytes, err := json.Marshal(stsCopy)
 	if err != nil {
-		return false, err
+		return false, errors.Errorf("unable to marshal StatefulSet copy: %s", err)
 	}
 
 	stsBytes, err := json.Marshal(existingStatefulSet)
 	if err != nil {
-		return false, err
+		return false, errors.Errorf("unable to marshal existing StatefulSet: %s", err)
 	}
 
 	//comparison is done with bytes instead of reflect.DeepEqual as there are
@@ -276,7 +296,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 			hasLeftReadyStateAnnotationKey: trueAnnotation,
 		}
 		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-			return false, fmt.Errorf("failed setting %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
+			return false, errors.Errorf("could not set %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
 		}
 	}
 
@@ -293,7 +313,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 	svc := buildService(mdb)
 	err := r.client.Create(context.TODO(), &svc)
-	if err != nil && errors.IsAlreadyExists(err) {
+	if err != nil && apiErrors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
@@ -305,11 +325,11 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
-		return fmt.Errorf("error getting StatefulSet: %s", err)
+		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
 	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
-		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
+		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
 }
@@ -334,21 +354,21 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 func (r ReplicaSetReconciler) updateAndReturnStatusSuccess(mdb *mdbv1.MongoDB) (mdbv1.MongoDBStatus, error) {
 	newMdb := &mdbv1.MongoDB{}
 	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
-		return mdbv1.MongoDBStatus{}, fmt.Errorf("error getting resource: %+v", err)
+		return mdbv1.MongoDBStatus{}, errors.Errorf("could not get get resource: %s", err)
 	}
 	newMdb.UpdateSuccess()
 	if err := r.client.Status().Update(context.TODO(), newMdb); err != nil {
-		return mdbv1.MongoDBStatus{}, fmt.Errorf("error updating status: %+v", err)
+		return mdbv1.MongoDBStatus{}, errors.Errorf(fmt.Sprintf("could not update status: %s", err))
 	}
 	return newMdb.Status, nil
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
-	cm, err := r.buildAutomationConfigConfigMap(mdb)
+	s, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
 		return err
 	}
-	return configmap.CreateOrUpdate(r.client, cm)
+	return secret.CreateOrUpdate(r.client, s)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -380,7 +400,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 // TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
 func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 	return automationconfig.ToolsVersion{
-		Version: "100.0.2",
+		Version: envvar.GetEnvOrDefault(mongodbToolsVersionEnv, "100.1.0"),
 		URLs: map[string]map[string]string{
 			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
 			"linux": {
@@ -391,11 +411,11 @@ func dummyToolsVersionConfig() automationconfig.ToolsVersion {
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
-	bytes, err := ioutil.ReadFile(versionManifestFilePath)
+	versionManifestBytes, err := ioutil.ReadFile(versionManifestFilePath)
 	if err != nil {
 		return automationconfig.VersionManifest{}, err
 	}
-	return versionManifestFromBytes(bytes)
+	return versionManifestFromBytes(versionManifestBytes)
 }
 
 func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, error) {
@@ -423,40 +443,41 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater configmap.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
-	currentCm, err := getUpdater.GetConfigMap(types.NamespacedName{Name: mdb.ConfigMapName(), Namespace: mdb.Namespace})
+func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		// If the AC was not found we don't surface it as an error
 		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal([]byte(currentCm.Data[AutomationConfigKey]), &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
+
 	return currentAc, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) (corev1.ConfigMap, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
-		return corev1.ConfigMap{}, fmt.Errorf("error reading version manifest from disk: %+v", err)
+		return corev1.Secret{}, errors.Errorf("could not read version manifest from disk: %s", err)
 	}
 
-	authModification, err := getAuthConfigModification(r.client, mdb)
+	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
 	ac, err := buildAutomationConfig(
@@ -467,15 +488,15 @@ func (r ReplicaSetReconciler) buildAutomationConfigConfigMap(mdb mdbv1.MongoDB) 
 		tlsModification,
 	)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.ConfigMap{}, err
+		return corev1.Secret{}, err
 	}
 
-	return configmap.Builder().
-		SetName(mdb.ConfigMapName()).
+	return secret.Builder().
+		SetName(mdb.AutomationConfigSecretName()).
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
@@ -532,6 +553,7 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 			"-noDaemonize",
 			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
 			"-serveStatusPort=5000",
+			"-useLocalMongoDbTools",
 		},
 		),
 		container.WithEnvs(
@@ -609,7 +631,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
-	automationConfigVolume := statefulset.CreateVolumeFromConfigMap("automation-config", mdb.ConfigMapName())
+	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")

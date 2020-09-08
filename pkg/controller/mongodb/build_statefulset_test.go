@@ -53,12 +53,12 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
 	assert.Equal(t, int32(240), probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
-	assert.Len(t, agentContainer.VolumeMounts, 3)
+	assert.Len(t, agentContainer.VolumeMounts, 4)
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, "mongo:4.2.2", mongodContainer.Image)
 	assert.NotNil(t, sts.Spec.Template.Spec.Containers[0].ReadinessProbe)
-	assert.Len(t, mongodContainer.VolumeMounts, 3)
+	assert.Len(t, mongodContainer.VolumeMounts, 4)
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
 	assert.Equal(t, versionUpgradeHookName, initContainer.Name)

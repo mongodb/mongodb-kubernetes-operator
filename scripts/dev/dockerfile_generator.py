@@ -6,11 +6,13 @@ from typing import List, Dict, Union
 
 DockerParameters = Dict[str, Union[bool, str, List[str]]]
 
+GOLANG_TAG = "1.14"
+
 
 def operator_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "builder": True,
-        "builder_image": "golang",
+        "builder_image": f"golang:{GOLANG_TAG}",
         "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
         "files_to_add": files_to_add,
     }
@@ -19,7 +21,7 @@ def operator_params(files_to_add: List[str]) -> DockerParameters:
 def test_runner_params(files_to_add: List[str],) -> DockerParameters:
     return {
         "builder": True,
-        "builder_image": "golang",  # TODO: make this image smaller. There were errors using alpine
+        "builder_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller. There were errors using alpine
         "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
         "files_to_add": files_to_add,
     }
@@ -27,14 +29,14 @@ def test_runner_params(files_to_add: List[str],) -> DockerParameters:
 
 def e2e_params(files_to_add: List[str]) -> DockerParameters:
     return {
-        "base_image": "golang",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
+        "base_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
 
 def unit_test_params(files_to_add: List[str]) -> DockerParameters:
     return {
-        "base_image": "golang",
+        "base_image": f"golang:{GOLANG_TAG}",
         "files_to_add": files_to_add,
     }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -23,6 +24,10 @@ type Phase string
 
 const (
 	Running Phase = "Running"
+)
+
+const (
+	defaultPasswordKey = "password"
 )
 
 // MongoDBSpec defines the desired state of MongoDB
@@ -50,7 +55,7 @@ type MongoDBSpec struct {
 	Users []MongoDBUser `json:"users"`
 
 	// +optional
-	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulset,omitempty"`
+	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
@@ -62,7 +67,8 @@ type MongoDBSpec struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
-	Spec appsv1.StatefulSetSpec `json:"spec"`
+	// The StatefulSet override options for underlying StatefulSet
+	Spec appsv1.StatefulSetSpec `json:"spec"` // TODO: this pollutes the crd generation
 }
 
 // MongodConfiguration holds the optional mongod configuration
@@ -108,6 +114,21 @@ type MongoDBUser struct {
 
 	// Roles is an array of roles assigned to this user
 	Roles []Role `json:"roles"`
+}
+
+func (m MongoDBUser) GetPasswordSecretKey() string {
+	if m.PasswordSecretRef.Key == "" {
+		return defaultPasswordKey
+	}
+	return m.PasswordSecretRef.Key
+}
+
+func (m MongoDBUser) GetPasswordSecretName() string {
+	return m.PasswordSecretRef.Name
+}
+
+func (m MongoDBUser) GetUserName() string {
+	return m.Name
 }
 
 // SecretKeyReference is a reference to the secret containing the user's password
@@ -165,9 +186,6 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
-	// Enabled specifies if authentication should be enabled
-	Enabled bool `json:"enabled"`
-
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
 }
@@ -222,13 +240,22 @@ func (m MongoDB) SCRAMMongoURI(username, password string) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(members, ","))
 }
 
+func (m MongoDB) Hosts() []string {
+	hosts := make([]string, m.Spec.Members)
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	for i := 0; i < m.Spec.Members; i++ {
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+	}
+	return hosts
+}
+
 // ServiceName returns the name of the Service that should be created for
 // this resource
 func (m MongoDB) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m MongoDB) ConfigMapName() string {
+func (m MongoDB) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
 
@@ -254,7 +281,7 @@ func (m MongoDB) NamespacedName() types.NamespacedName {
 }
 
 func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: "agent-scram-credentials", Namespace: m.Namespace}
+	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.

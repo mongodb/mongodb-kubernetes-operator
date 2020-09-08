@@ -53,6 +53,19 @@ spec:
               description: Security configures security features, such as TLS, and
                 authentication settings for a deployment
               properties:
+                authentication:
+                  properties:
+                    modes:
+                      description: Modes is an array specifying which authentication
+                        methods should be enabled
+                      items:
+                        enum:
+                        - SCRAM
+                        type: string
+                      type: array
+                  required:
+                  - modes
+                  type: object
                 tls:
                   description: TLS configuration for both client-server and server-server
                     communication
@@ -91,17 +104,71 @@ spec:
                   - enabled
                   type: object
               type: object
+            statefulSet:
+              description: StatefulSetConfiguration holds the optional custom StatefulSet
+                that should be merged into the operator created one.
+              type: object
             type:
               description: Type defines which type of MongoDB deployment the resource
                 should create
               enum:
               - ReplicaSet
               type: string
+            users:
+              description: Users specifies the MongoDB users that should be configured
+                in your deployment
+              items:
+                properties:
+                  db:
+                    description: DB is the database the user is stored in. Defaults
+                      to "admin"
+                    type: string
+                  name:
+                    description: Name is the username of the user
+                    type: string
+                  passwordSecretRef:
+                    description: PasswordSecretRef is a reference to the secret containing
+                      this user's password
+                    properties:
+                      key:
+                        description: Key is the key in the secret storing this password.
+                          Defaults to "password"
+                        type: string
+                      name:
+                        description: Name is the name of the secret storing this user's
+                          password
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  roles:
+                    description: Roles is an array of roles assigned to this user
+                    items:
+                      description: Role is the database role this user should have
+                      properties:
+                        db:
+                          description: DB is the database the role can act on
+                          type: string
+                        name:
+                          description: Name is the name of the role
+                          type: string
+                      required:
+                      - db
+                      - name
+                      type: object
+                    type: array
+                required:
+                - name
+                - passwordSecretRef
+                - roles
+                type: object
+              type: array
             version:
               description: Version defines which version of MongoDB will be used
               type: string
           required:
           - type
+          - users
           - version
           type: object
         status:

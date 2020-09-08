@@ -2,10 +2,11 @@ package setup
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 
@@ -26,8 +27,8 @@ const (
 )
 
 func InitTest(t *testing.T) (*f.Context, bool) {
-	ctx := f.NewContext(t)
 
+	ctx := f.NewContext(t)
 	if err := registerTypesWithFramework(&mdbv1.MongoDB{}); err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 
 	for _, newType := range newTypes {
 		if err := f.AddToFrameworkScheme(apis.AddToScheme, newType); err != nil {
-			return fmt.Errorf("failed to add custom resource type %s to framework scheme: %v", newType.GetObjectKind(), err)
+			return errors.Errorf("failed to add custom resource type %s to framework scheme: %s", newType.GetObjectKind(), err)
 		}
 	}
 	return nil
@@ -49,7 +50,7 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
+func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap

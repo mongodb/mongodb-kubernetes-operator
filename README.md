@@ -90,6 +90,10 @@ To deploy your first replica set:
    ```
    kubectl get mongodb --namespace <my-namespace>
    ```
+3. connect clients to MongoDB replica set:
+   ```
+   mongodb://<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local:27017/?replicaSet=<replica set name>
+   ```
 
 ### Upgrade your MongoDB Resource Version and Feature Compatibility Version
 
@@ -100,6 +104,14 @@ You can upgrade the major, minor, and/or feature compatibility versions of your 
 - To modify your resource's [feature compatibility version](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
 
 If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
+
+### Deploying on OpenShift
+
+If you want to deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the mongodb and mongodb agent containers, as well as the operator deployment.
+
+See [here](deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for an example of how to provide the required configuration for a MongoDB ReplicaSet.
+
+See [here](deploy/operator_openshift.yaml) for an example of how to configure the Operator deployment.
 
 #### Example
 
@@ -271,4 +283,4 @@ Reviewers, please ensure that the CLA has been signed by referring to [the contr
 
 ## License
 
-Please see the [LICENSE](LICENSE) file.
+Please see the [LICENSE](LICENSE.md) file.

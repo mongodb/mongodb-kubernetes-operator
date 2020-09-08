@@ -3,6 +3,8 @@ package statefulset_arbitrary_config_update
 import (
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+
 	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -34,9 +36,14 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	mdb.Spec.StatefulSetConfiguration = overrideSpec
 
+	tester, err := mongotester.FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
 		return container.ReadinessProbe.TimeoutSeconds == 100

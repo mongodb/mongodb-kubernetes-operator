@@ -8,7 +8,7 @@ FROM {{base_image}}
 {% block packages -%}
 {% endblock -%}
 
-ENV OPERATOR_SDK_VERSION v0.17.0
+ENV OPERATOR_SDK_VERSION v0.18.2
 ENV GO111MODULE=on
 ENV GOPATH ""
 

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/tlstests"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -23,41 +25,46 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %+v", err)
+	_, err := setup.GeneratePasswordForUser(user, ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
+		t.Fatalf("Failed to set up TLS resources: %s", err)
+	}
+
+	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds(WithoutTls()))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
 	// Enable TLS as optional
-	t.Run("MongoDB is reachable while TLS is being enabled", mongodbtests.IsReachableDuring(&mdb, time.Second*10,
-		func() {
-			t.Run("Upgrade to TLS", tlstests.EnableTLS(&mdb, true))
-			t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
-			t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "preferSSL"))
-		},
-	))
+	t.Run("MongoDB is reachable while TLS is being enabled", func(t *testing.T) {
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithoutTls())()
+		t.Run("Upgrade to TLS", tlstests.EnableTLS(&mdb, true))
+		t.Run("Stateful Set Reaches Ready State, after enabling TLS", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("Wait for TLS to be enabled", tester.HasTlsMode("preferSSL", 60, WithoutTls()))
+	})
 
 	// Ensure MongoDB is reachable both with and without TLS
-	t.Run("Test Basic Connectivity", mongodbtests.Connectivity(&mdb))
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds(WithoutTls()))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Internal cluster keyfile authentication is enabled", tester.HasKeyfileAuth(3, WithTls()))
 
 	// Make TLS required
-	t.Run("MongoDB is reachable over TLS while making TLS required", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
-		func() {
-			t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
-			t.Run("Wait for TLS to be required", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-		},
-	))
+	t.Run("MongoDB is reachable over TLS while making TLS required", func(t *testing.T) {
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls())()
+		t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
+		t.Run("Wait for TLS to be required", tester.HasTlsMode("requireSSL", 120, WithTls()))
+	})
 
 	// Ensure MongoDB is reachable only over TLS
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
-	t.Run("Test TLS Required For Connectivity", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Test TLS Required For Connectivity", tester.ConnectivityFails(WithoutTls()))
 }

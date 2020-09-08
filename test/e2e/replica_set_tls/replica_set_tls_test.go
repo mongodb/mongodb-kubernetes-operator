@@ -3,7 +3,7 @@ package replica_set_tls
 import (
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/tlstests"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -30,12 +30,18 @@ func TestReplicaSetTLS(t *testing.T) {
 	}
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %+v", err)
+		t.Fatalf("Failed to set up TLS resources: %s", err)
+	}
+
+	tester, err := FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
-	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
+	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
 }

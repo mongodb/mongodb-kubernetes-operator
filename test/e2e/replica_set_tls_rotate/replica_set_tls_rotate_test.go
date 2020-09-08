@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/tlstests"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -31,19 +32,24 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	}
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %+v", err)
+		t.Fatalf("Failed to set up TLS resources: %s", err)
+	}
+	tester, err := FromResource(t, mdb)
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tlstests.WaitForTLSMode(&mdb, "requireSSL"))
-	t.Run("Test Basic TLS Connectivity", tlstests.ConnectivityWithTLS(&mdb))
-	t.Run("Test TLS required", tlstests.ConnectivityWithoutTLSShouldFail(&mdb))
+	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls()))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
+	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 
-	t.Run("MongoDB is reachable while certificate is rotated", tlstests.IsReachableOverTLSDuring(&mdb, time.Second*10,
-		func() {
-			t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
-			t.Run("Wait for certificate to be rotated", tlstests.WaitForRotatedCertificate(&mdb))
-		},
-	))
+	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls())()
+		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
+		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate())
+	})
 }

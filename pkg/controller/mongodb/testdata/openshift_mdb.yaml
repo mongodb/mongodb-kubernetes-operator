@@ -1,0 +1,34 @@
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-openshift-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      modes: ["SCRAM"]
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef:
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: "mongodb-agent"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
+            - name: "mongod"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
