@@ -47,13 +47,13 @@ function go_linting() {
         local exit_status=0
         for file in "${dirs_to_analyze[@]}"
         do
-            if ! golangci-lint run "${file}"; then
+           if ! [ -z $file ]; then
+             if ! golangci-lint run "${file}"; then
                 exit_status=1
             fi
+           fi
         done
-        return $exit_status
     fi
-
     return 0
 }
 

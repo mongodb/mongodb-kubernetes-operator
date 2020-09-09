@@ -191,7 +191,7 @@ tasks:
         vars:
           image_type: operator
           image: quay.io/mongodb/community-operator-dev:${version_id}
-          expire_after: 10h
+          expire_after: 48h
 
   - name: build_e2e_image
     priority: 60
@@ -203,7 +203,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-e2e:${version_id}
           image_type: e2e
-          expire_after: 10h
+          expire_after: 48h
 
   - name: build_prehook_image
     priority: 60
@@ -215,7 +215,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook:${version_id}
           image_type: versionhook
-          expire_after: 10h
+          expire_after: 48h
 
   - name: build_testrunner_image
     priority: 60
@@ -227,7 +227,7 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-testrunner:${version_id}
           image_type: testrunner
-          expire_after: 10h
+          expire_after: 48h
 
   - name: black_formatting
     commands:
