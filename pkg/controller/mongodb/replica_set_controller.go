@@ -297,7 +297,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicaSetMembers(), mdb.DesiredReplicaSetMembers())).
 			withMembers(mdb.MembersThisReconciliation()).
-			withPendingPhase(10),
+			withPendingPhase(0),
 		)
 	}
 
