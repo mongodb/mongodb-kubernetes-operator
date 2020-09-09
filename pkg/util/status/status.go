@@ -3,8 +3,6 @@ package status
 import (
 	"context"
 
-	"go.uber.org/zap"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +26,6 @@ func Update(statusWriter client.StatusWriter, mdb *mdbv1.MongoDB, optionBuilder 
 	}
 
 	if err := statusWriter.Update(context.TODO(), mdb); err != nil {
-		zap.S().Errorf("Error updating resource status: %s", err)
 		return reconcile.Result{}, err
 	}
 
