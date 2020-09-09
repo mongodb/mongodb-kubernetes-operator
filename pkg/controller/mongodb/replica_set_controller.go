@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 
@@ -290,9 +292,18 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
+	if scale.IsStillScaling(mdb) {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
+				mdb.CurrentReplicaSetMembers(), mdb.DesiredReplicaSetMembers())).
+			withMembers(mdb.MembersThisReconciliation()).
+			withPendingPhase(10),
+		)
+	}
+
 	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
-		withMembers(mdb.Spec.Members).
+		withMembers(mdb.MembersThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase(),
 	)

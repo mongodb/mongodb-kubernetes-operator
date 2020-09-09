@@ -220,11 +220,11 @@ type MongoDB struct {
 	Status MongoDBStatus `json:"status,omitempty"`
 }
 
-func (m *MongoDB) DesiredReplicaSetMembers() int {
+func (m MongoDB) DesiredReplicaSetMembers() int {
 	return m.Spec.Members
 }
 
-func (m *MongoDB) CurrentReplicaSetMembers() int {
+func (m MongoDB) CurrentReplicaSetMembers() int {
 	return m.Status.Members
 }
 
