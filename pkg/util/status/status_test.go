@@ -45,7 +45,6 @@ func TestDetermineReconciliationResult(t *testing.T) {
 		}
 
 		res, err := determineReconciliationResult(opts)
-
 		assert.NotNil(t, err)
 		assert.Equal(t, false, res.Requeue)
 		assert.Equal(t, time.Duration(0), res.RequeueAfter)
