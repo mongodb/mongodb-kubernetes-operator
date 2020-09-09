@@ -50,7 +50,7 @@ function go_linting() {
            if ! [ -z $file ]; then
              if ! golangci-lint run "${file}"; then
                 exit_status=1
-            fi
+             fi
            fi
         done
     fi
