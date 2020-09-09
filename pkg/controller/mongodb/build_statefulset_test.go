@@ -18,6 +18,9 @@ func init() {
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
+	_ = os.Setenv(mongodbRepoUrl, "repo")
+	_ = os.Setenv(mongodbImageEnv, "mongo")
+
 	mdb := newTestReplicaSet()
 	stsFunc := buildStatefulSetModificationFunction(mdb)
 	sts := &appsv1.StatefulSet{}
@@ -56,7 +59,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Len(t, agentContainer.VolumeMounts, 4)
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Equal(t, "mongo:4.2.2", mongodContainer.Image)
+	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
 	assert.NotNil(t, sts.Spec.Template.Spec.Containers[0].ReadinessProbe)
 	assert.Len(t, mongodContainer.VolumeMounts, 4)
 

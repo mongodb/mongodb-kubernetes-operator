@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -56,6 +57,8 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	mongodbImageEnv              = "MONGODB_IMAGE"
+	mongodbRepoUrl               = "MONGODB_REPO_URL"
 	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
@@ -542,7 +545,7 @@ func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modificatio
 	return func(ac *automationconfig.AutomationConfig) {
 		for i := range ac.Processes {
 			// Mergo requires both objects to have the same type
-			// TODO: proper error handling
+			// TODO: handle this error gracefully, we may need to add an error as second argument for all modification functions
 			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
 		}
 	}
@@ -609,6 +612,15 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 	)
 }
 
+func getMongoDBImage(version string) string {
+	repoUrl := os.Getenv(mongodbRepoUrl)
+	if strings.HasSuffix(repoUrl, "/") {
+		repoUrl = strings.TrimRight(repoUrl, "/")
+	}
+	mongoImageName := os.Getenv(mongodbImageEnv)
+	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
+}
+
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
 	mongoDbCommand := []string{
 		"/bin/sh",
@@ -627,7 +639,7 @@ exec mongod -f /data/automation-mongod.conf ;
 
 	return container.Apply(
 		container.WithName(mongodbName),
-		container.WithImage(fmt.Sprintf("mongo:%s", version)),
+		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(mongoDbCommand),
 		container.WithEnvs(
