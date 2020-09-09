@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -18,15 +17,15 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// EnsureCreation will locate all crd files "*_crd.yaml" in the given deploy directory and ensure that these
+// EnsureCreation will locate all crd files "*_crd.yaml" in the given crd directory and ensure that these
 // CRDs are created into the kubernetes cluster
-func EnsureCreation(config *rest.Config, deployDir string) error {
+func EnsureCreation(config *rest.Config, crdDir string) error {
 	apiextensionsClientSet, err := apiextensionsclientset.NewForConfig(config)
 	if err != nil {
 		return errors.Errorf("error creating apiextensions client set: %s", err)
 	}
 
-	crdFilePaths, err := allCrds(deployDir)
+	crdFilePaths, err := allCrds(crdDir)
 	if err != nil {
 		return errors.Errorf("error walking deploy directory: %s", err)
 	}
@@ -62,8 +61,7 @@ func marshalCRDFromYAMLBytes(bytes []byte, crd *apiextensionsv1beta1.CustomResou
 	return json.Unmarshal(jsonBytes, &crd)
 }
 
-func allCrds(deployDir string) ([]string, error) {
-	crdDir := path.Join(deployDir, "crds")
+func allCrds(crdDir string) ([]string, error) {
 	var crdFilePaths []string
 	err := filepath.Walk(crdDir, func(path string, info os.FileInfo, err error) error {
 		if info != nil && strings.HasSuffix(info.Name(), "_crd.yaml") {
