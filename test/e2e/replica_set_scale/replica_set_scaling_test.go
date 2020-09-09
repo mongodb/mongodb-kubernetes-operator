@@ -40,6 +40,7 @@ func TestReplicaSetScale(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
@@ -51,7 +52,7 @@ func TestReplicaSetScale(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb.MongoURI(),
 				Phase:    mdbv1.Running,
-				Members:  3,
+				Members:  5,
 			}))
 		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
 		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))

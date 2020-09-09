@@ -1,7 +1,7 @@
 package scramcredentials
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint
 	"crypto/sha256"
 	"hash"
 	"testing"

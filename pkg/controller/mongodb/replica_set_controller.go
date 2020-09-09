@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -58,6 +57,8 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
+	mongodbImageEnv              = "MONGODB_IMAGE"
+	mongodbRepoUrl               = "MONGODB_REPO_URL"
 	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 
 	AutomationConfigKey            = "automation-config"
@@ -180,39 +181,43 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
-				failedf("error creating automation config config map: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("error creating automation config config map: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
-				failedf("Error ensuring the service exists: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
-				failedf("Error validating TLS config: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
+				withFailedPhase(),
 		)
 	}
 	if !isTLSValid {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
-				retryAfter(10).
-				pendingPhase("TLS config is not yet valid, retrying in 10 seconds"),
+			statusOptions().
+				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
+				withPendingPhase(10),
 		)
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).
-				failedf("Error creating/updating StatefulSet: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error creating/updating StatefulSet: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
@@ -222,7 +227,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		if !apiErrors.IsNotFound(err) {
 			errMsg = fmt.Sprintf("error getting StatefulSet: %s", err)
 		}
-		return status.Update(r.client.Status(), &mdb, newOptionBuilder(&mdb).failed(errMsg))
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Error, errMsg).
+			withFailedPhase(),
+		)
 
 	}
 
@@ -230,21 +238,25 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).failedf("Error checking StatefulSet status: %s", err),
+			statusOptions().withMessage(Error, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).retryAfter(10).
-				pendingPhasef("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name),
+			statusOptions().
+				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
+				withPendingPhase(10),
 		)
 	}
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).failedf("Error resetting StatefulSet UpdateStrategyType: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
@@ -256,39 +268,47 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).failedf("Error setting annotations: %s", err),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			newOptionBuilder(&mdb).failedf("Error completing TLS rollout: %s", err),
-		)
-	}
-
-	newMdb := mdbv1.MongoDB{}
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &newMdb); err != nil {
-		r.log.Errorf("Could not get get resource: %s", err)
-		return reconcile.Result{}, err
-	}
-
-	// the resource is still scaling, we need to requeue a reconciliation
-	// and increment one member at a time
-	if scale.IsStillScaling(&newMdb) {
-		r.log.Infow("Continuing scaling operation", "MongoDB", newMdb.NamespacedName(),
-			"currentMembers", newMdb.CurrentReplicaSetMembers(),
-			"desiredMembers", newMdb.DesiredReplicaSetMembers(),
-		)
-		return status.Update(r.client.Status(), &newMdb,
-			newOptionBuilder(&newMdb).
-				withMembers(scale.ReplicasThisReconciliation(&newMdb)).
-				retryImmediately().
-				pendingPhase(""),
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
+				withFailedPhase(),
 		)
 	}
 
 	r.log.Debug("Updating MongoDB Status")
-	return r.updateStatus(&mdb)
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Error, fmt.Sprintf("could not get get resource: %s", err)).
+			withFailedPhase(),
+		)
+	}
+
+	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
+		withMongoURI(mdb.MongoURI()).
+		withMembers(mdb.Spec.Members).
+		withMessage(None, "").
+		withRunningPhase(),
+	)
+
+	if err != nil {
+		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
+		return res, err
+	}
+
+	if res.RequeueAfter > 0 || res.Requeue {
+		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+		return res, nil
+	}
+
+	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+	return res, err
 }
 
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
@@ -381,30 +401,6 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 			mdb.Annotations[key] = val
 		}
 	})
-}
-
-// updateStatus should be called after a successful reconciliation
-// the resource's status is updated to reflect to the state, and any other cleanup
-// operators should be performed here
-func (r ReplicaSetReconciler) updateStatus(mdb *mdbv1.MongoDB) (reconcile.Result, error) {
-	newMdb := &mdbv1.MongoDB{}
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), newMdb); err != nil {
-		return reconcile.Result{}, errors.Errorf("could not get get resource: %s", err)
-	}
-
-	res, err := status.Update(r.client.Status(), mdb, newOptionBuilder(mdb).success())
-	if err != nil {
-		r.log.Warnf("Error updating the status of the MongoDB resource: %s", err)
-		return reconcile.Result{}, err
-	}
-
-	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
-		return res, err
-	}
-
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status", res)
-	return res, err
 }
 
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
@@ -552,7 +548,7 @@ func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modificatio
 	return func(ac *automationconfig.AutomationConfig) {
 		for i := range ac.Processes {
 			// Mergo requires both objects to have the same type
-			// TODO: proper error handling
+			// TODO: handle this error gracefully, we may need to add an error as second argument for all modification functions
 			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
 		}
 	}
@@ -619,6 +615,15 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 	)
 }
 
+func getMongoDBImage(version string) string {
+	repoUrl := os.Getenv(mongodbRepoUrl)
+	if strings.HasSuffix(repoUrl, "/") {
+		repoUrl = strings.TrimRight(repoUrl, "/")
+	}
+	mongoImageName := os.Getenv(mongodbImageEnv)
+	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
+}
+
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
 	mongoDbCommand := []string{
 		"/bin/sh",
@@ -637,7 +642,7 @@ exec mongod -f /data/automation-mongod.conf ;
 
 	return container.Apply(
 		container.WithName(mongodbName),
-		container.WithImage(fmt.Sprintf("mongo:%s", version)),
+		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(mongoDbCommand),
 		container.WithEnvs(

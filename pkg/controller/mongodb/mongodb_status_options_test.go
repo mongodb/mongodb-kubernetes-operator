@@ -1,11 +1,11 @@
 package mongodb
 
 import (
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,11 +14,10 @@ func TestMongoUriOption_ApplyOption(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
 	opt := mongoUriOption{
-		mdb:      &mdb,
 		mongoUri: "my-uri",
 	}
 
-	opt.ApplyOption()
+	opt.ApplyOption(&mdb)
 
 	assert.Equal(t, "my-uri", mdb.Status.MongoURI, "Status should be updated")
 }
@@ -27,42 +26,19 @@ func TestMembersOption_ApplyOption(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
 	opt := membersOption{
-		mdb:     &mdb,
 		members: 5,
 	}
 
-	opt.ApplyOption()
+	opt.ApplyOption(&mdb)
 
 	assert.Equal(t, 3, mdb.Spec.Members, "Spec should remain unchanged")
 	assert.Equal(t, 5, mdb.Status.Members, "Status should be updated")
 }
 
-func TestMultiOption_ApplyOption(t *testing.T) {
-	mdb := newReplicaSet(3, "my-rs", "my-ns")
-
-	opt := multiOption{
-		options: []status.Option{
-			membersOption{
-				mdb:     &mdb,
-				members: 4,
-			},
-			mongoUriOption{
-				mdb:      &mdb,
-				mongoUri: "my-uri",
-			},
-		},
-	}
-
-	opt.ApplyOption()
-
-	assert.Equal(t, 4, mdb.Status.Members)
-	assert.Equal(t, "my-uri", mdb.Status.MongoURI)
-}
-
 func TestOptionBuilder_RunningPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	newOptionBuilder(&mdb).runningPhase().ApplyOption()
+	statusOptions().withRunningPhase().GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Running, mdb.Status.Phase)
 }
@@ -70,7 +46,7 @@ func TestOptionBuilder_RunningPhase(t *testing.T) {
 func TestOptionBuilder_PendingPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	newOptionBuilder(&mdb).pendingPhase("pending").ApplyOption()
+	statusOptions().withPendingPhase(10).GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Pending, mdb.Status.Phase)
 }
@@ -78,7 +54,7 @@ func TestOptionBuilder_PendingPhase(t *testing.T) {
 func TestOptionBuilder_FailedPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 
-	newOptionBuilder(&mdb).failed("failed").ApplyOption()
+	statusOptions().withFailedPhase().GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Failed, mdb.Status.Phase)
 }

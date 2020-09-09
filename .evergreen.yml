@@ -40,7 +40,7 @@ functions:
           DIR: ${workdir}/bin
 
   # upload_e2e_logs has the responsibility of dumping as much information as
-  # posible into the S3 bucket
+  # possible into the S3 bucket
   upload_e2e_logs:
     - command: s3.put
       params:

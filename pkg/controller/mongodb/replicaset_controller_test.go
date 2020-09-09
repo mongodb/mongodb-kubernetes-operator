@@ -142,6 +142,9 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
+	_ = os.Setenv(mongodbRepoUrl, "repo")
+	_ = os.Setenv(mongodbImageEnv, "mongo")
+
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
@@ -162,7 +165,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, mongodbName, mongodbContainer.Name)
-	assert.Equal(t, "mongo:4.2.2", mongodbContainer.Image)
+	assert.Equal(t, "repo/mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
 
@@ -407,12 +410,16 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	assertReconciliationSuccessful(t, res, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+
+	assert.NoError(t, err)
 	assert.Equal(t, 5, mdb.Status.Members)
 
 	// scale members from five to three
 	mdb.Spec.Members = 3
 
 	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	assert.NoError(t, err)
+
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
@@ -420,6 +427,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	assert.NoError(t, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
 
 	assert.Equal(t, true, res.Requeue)
 	assert.Equal(t, 4, mdb.Status.Members)
@@ -429,7 +437,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	assert.NoError(t, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
-
+	assert.NoError(t, err)
 	assert.Equal(t, false, res.Requeue)
 	assert.Equal(t, 3, mdb.Status.Members)
 }
@@ -443,12 +451,15 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assertReconciliationSuccessful(t, res, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, mdb.Status.Members)
 
 	// scale members from three to five
 	mdb.Spec.Members = 5
 
 	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	assert.NoError(t, err)
+
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
@@ -457,6 +468,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 
+	assert.NoError(t, err)
 	assert.Equal(t, true, res.Requeue)
 	assert.Equal(t, 4, mdb.Status.Members)
 
@@ -465,6 +477,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.NoError(t, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
 
 	assert.Equal(t, false, res.Requeue)
 	assert.Equal(t, 5, mdb.Status.Members)

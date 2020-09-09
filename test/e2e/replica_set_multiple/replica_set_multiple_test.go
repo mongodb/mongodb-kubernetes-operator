@@ -61,6 +61,9 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("mdb0: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 1))
 	t.Run("mdb1: AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb1, 1))
 
+	t.Run("mdb0: Ensure Authentication", tester0.EnsureAuthenticationIsConfigured(3))
+	t.Run("mdb1: Ensure Authentication", tester1.EnsureAuthenticationIsConfigured(3))
+
 	t.Run("MongoDB is reachable while being scaled up", func(t *testing.T) {
 		defer tester0.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
@@ -71,7 +74,7 @@ func TestReplicaSet(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI: mdb0.MongoURI(),
 				Phase:    mdbv1.Running,
-				Members:  3,
+				Members:  5,
 			}))
 		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb0, 3))
 		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb0))

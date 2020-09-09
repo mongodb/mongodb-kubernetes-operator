@@ -50,7 +50,7 @@ func registerTypesWithFramework(newTypes ...runtime.Object) error {
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *f.TestCtx) error {
+func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap

@@ -26,7 +26,7 @@ type Phase string
 
 const (
 	Running Phase = "Running"
-	Failed  Phase = "failed"
+	Failed  Phase = "Failed"
 	Pending Phase = "Pending"
 )
 
@@ -202,6 +202,7 @@ type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
 	Members  int    `json:"members"`
+	Message  string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -231,12 +232,6 @@ func (m *MongoDB) MembersThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
 
-func (m *MongoDB) UpdateSuccess() {
-	m.Status.MongoURI = m.MongoURI()
-	m.Status.Phase = Running
-	m.Status.Members = scale.ReplicasThisReconciliation(m)
-}
-
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDB) MongoURI() string {
 	members := make([]string, m.Spec.Members)
@@ -245,17 +240,6 @@ func (m MongoDB) MongoURI() string {
 		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
 	}
 	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
-}
-
-// TODO: this is a temporary function which will be used in the e2e tests
-// which will be removed in the following PR to clean up our mongo client testing
-func (m MongoDB) SCRAMMongoURI(username, password string) string {
-	members := make([]string, m.Spec.Members)
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	for i := 0; i < m.Spec.Members; i++ {
-		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
-	}
-	return fmt.Sprintf("mongodb://%s:%s@%s/?authMechanism=SCRAM-SHA-256", username, password, strings.Join(members, ","))
 }
 
 func (m MongoDB) Hosts() []string {
