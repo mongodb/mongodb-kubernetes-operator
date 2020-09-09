@@ -94,6 +94,7 @@ To deploy your first replica set:
    ```
    mongodb://<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local:27017/?replicaSet=<replica set name>
    ```
+   You can choose any name for `<replica set name>`, as long as it [...]. This is used for [...]. Find documentation here: [...].
 
 ### Upgrade your MongoDB Resource Version and Feature Compatibility Version
 
