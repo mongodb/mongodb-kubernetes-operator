@@ -3,6 +3,10 @@ import json
 import sys
 import argparse
 
+ALLOWED_RELEASE_OPTIONS = frozenset(
+    ["mongodb-kubernetes-operator", "version-upgrade-hook"]
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -35,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--image_type",
         help="Type of image to be released",
-        choices=["mongodb-kubernetes-operator", "version-upgrade-hook"],
+        choices=ALLOWED_RELEASE_OPTIONS,
     )
     args = parser.parse_args()
 
@@ -47,18 +51,15 @@ def main() -> int:
     with open(args.release_file) as f:
         release = json.load(f)
 
-    if args.image_type == "operator":
-        new_tag = release["mongodb-kubernetes-operator"]
-    elif args.image_type == "versionhook":
-        new_tag = release["version-upgrade-hook"]
-    else:
-        print(f"Image type{args.image_type} is not supported by the release script!")
+    if args.image_type not in ALLOWED_RELEASE_OPTIONS:
+        print(f"Image type {args.image_type} is not supported by the release script!")
         return 1
+
     dockerutil.retag_image(
         args.old_repo_url,
         args.new_repo_url,
         args.old_tag,
-        new_tag,
+        release[args.image_type],
         args.path,
         args.labels,
         args.username,

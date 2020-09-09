@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
+
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/cmd/testrunner/crds"
