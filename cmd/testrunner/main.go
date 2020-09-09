@@ -32,6 +32,7 @@ import (
 
 type flags struct {
 	deployDir               string
+	crdDir                  string
 	namespace               string
 	operatorImage           string
 	versionUpgradeHookImage string
@@ -41,9 +42,10 @@ type flags struct {
 }
 
 func parseFlags() flags {
-	var namespace, deployDir, operatorImage, versionUpgradeHookImage, testImage, test, performCleanup *string
+	var namespace, deployDir, crdDir, operatorImage, versionUpgradeHookImage, testImage, test, performCleanup *string
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
-	deployDir = flag.String("deployDir", "deploy/", "the path to the directory which contains the yaml deployment files")
+	deployDir = flag.String("deployDir", "deploy/operator/", "the path to the directory which contains the yaml deployment files")
+	crdDir = flag.String("crdDir", "deploy/crds/", "the path to the directory which contains the yaml crd files")
 	operatorImage = flag.String("operatorImage", "quay.io/mongodb/community-operator-dev:latest", "the image which should be used for the operator deployment")
 	versionUpgradeHookImage = flag.String("versionUpgradeHookImage", "quay.io/mongodb/community-operator-pre-stop-hook:latest", "the version upgrade post-start hook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
@@ -53,6 +55,7 @@ func parseFlags() flags {
 
 	return flags{
 		deployDir:               *deployDir,
+		crdDir:                  *crdDir,
 		namespace:               *namespace,
 		operatorImage:           *operatorImage,
 		versionUpgradeHookImage: *versionUpgradeHookImage,
@@ -87,7 +90,7 @@ func runCmd(f flags) error {
 
 	fmt.Printf("Ensured namespace: %s\n", f.namespace)
 
-	if err := crds.EnsureCreation(config, f.deployDir); err != nil {
+	if err := crds.EnsureCreation(config, f.crdDir); err != nil {
 		return errors.Errorf("could not ensure CRDs: %s", err)
 	}
 
