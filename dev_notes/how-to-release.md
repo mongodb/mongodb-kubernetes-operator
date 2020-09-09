@@ -5,7 +5,7 @@
 
 * Create github [draft release](https://github.com/mongodb/mongodb-kubernetes-operator/releases/new)
 
-* Create release PR
+* Create release PR & and reconfigure the Evergreen run to add the release task
 
 * Unblock release task once everything is green
 
