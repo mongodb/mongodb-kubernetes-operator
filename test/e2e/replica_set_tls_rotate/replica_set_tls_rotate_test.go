@@ -1,6 +1,7 @@
 package replica_set_tls
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -32,10 +33,11 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	}
 
 	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
+
 		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 	tester, err := FromResource(t, mdb)
-
+	err = errors.New("123")
 	if err != nil {
 		t.Fatal(err)
 	}
