@@ -62,15 +62,18 @@ const (
 	mongodbImageEnv              = "MONGODB_IMAGE"
 	mongodbRepoUrl               = "MONGODB_REPO_URL"
 	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
+	headlessAgentEnv             = "HEADLESS_AGENT"
+	podNamespaceEnv              = "POD_NAMESPACE"
+	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
 
-	AutomationConfigKey            = "automation-config"
+	AutomationConfigKey            = "cluster-config.json"
 	agentName                      = "mongodb-agent"
 	mongodbName                    = "mongod"
 	versionUpgradeHookName         = "mongod-posthook"
 	dataVolumeName                 = "data-volume"
 	versionManifestFilePath        = "/usr/local/version_manifest.json"
 	readinessProbePath             = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
-	clusterFilePath                = "/var/lib/automation/config/automation-config"
+	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
@@ -184,7 +187,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Error, fmt.Sprintf("error creating automation config config map: %s", err)).
+				withMessage(Error, fmt.Sprintf("error creating automation config secret: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -196,6 +199,24 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
 				withFailedPhase(),
 		)
+	}
+
+	// if we're scaling down, we need to wait until the
+	if scale.IsScalingDown(mdb) {
+		isAtDesiredReplicaCount, err := r.isExpectedNumberOfStatefulSetReplicasReady(mdb)
+		r.log.Infow("Replica Set is scaling", "isAtDesiredReplicaCount", isAtDesiredReplicaCount)
+		if err != nil {
+			r.log.Errorf("error: %s", err)
+			return reconcile.Result{}, err
+		}
+
+		if !isAtDesiredReplicaCount {
+			return status.Update(r.client.Status(), &mdb, statusOptions().
+				withMessage(Info, fmt.Sprintf("Replica Set is scaling down, currentMembers=%d, desiredMembers=%d",
+					mdb.CurrentReplicaSetMembers(), mdb.DesiredReplicaSetMembers())).
+				withPendingPhase(10),
+			)
+		}
 	}
 
 	isTLSValid, err := r.validateTLSConfig(mdb)
@@ -211,6 +232,25 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			statusOptions().
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
 				withPendingPhase(10),
+		)
+	}
+
+	mdbSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if k8sClient.IgnoreNotFound(err) != nil {
+		return reconcile.Result{}, err
+	}
+
+	readyToUpdateSts := true
+	if mdbSts.Status.Replicas > int32(mdb.MembersThisReconciliation()) {
+		readyToUpdateSts = mdbSts.Status.ReadyReplicas == int32(mdb.MembersThisReconciliation())
+		r.log.Debugw("ReplicaSet Scaling", "readyReplicas", mdbSts.Status.Replicas, "replicasThisReconciliation", mdb.MembersThisReconciliation())
+	}
+
+	if !readyToUpdateSts {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Info, fmt.Sprintf("Not ready to update MongoDB resource %s", mdb.NamespacedName())).
+				withPendingPhase(5),
 		)
 	}
 
@@ -355,7 +395,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	//some issues with nil/empty maps not being compared correctly otherwise
 	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
 
-	isReady := statefulset.IsReady(*existingStatefulSet, mdb.Spec.Members)
+	isReady := statefulset.IsReady(*existingStatefulSet, mdb.MembersThisReconciliation())
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
 		annotations := map[string]string{
@@ -374,6 +414,17 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	}
 
 	return areEqual && isReady, nil
+}
+
+func (r *ReplicaSetReconciler) isExpectedNumberOfStatefulSetReplicasReady(mdb mdbv1.MongoDB) (bool, error) {
+	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if err != nil {
+		return false, err
+	}
+	desiredReadyReplicas := int32(mdb.MembersThisReconciliation())
+	r.log.Infow("isExpectedNumberOfStatefulSetReplicasReady", "desiredReadyReplicas", desiredReadyReplicas)
+
+	return sts.Status.ReadyReplicas == desiredReadyReplicas, nil
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
@@ -429,7 +480,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
-		SetMembers(mdb.Spec.Members).
+		SetMembers(mdb.MembersThisReconciliation()).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
@@ -518,17 +569,17 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 
 	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.Secret{}, err
+		return corev1.Secret{}, errors.Errorf("could not ensure scram credentials: %s", err)
 	}
 
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, err
+		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, err
+		return corev1.Secret{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
 	ac, err := buildAutomationConfig(
@@ -539,11 +590,11 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		tlsModification,
 	)
 	if err != nil {
-		return corev1.Secret{}, err
+		return corev1.Secret{}, fmt.Errorf("could not build automation config: %s", err)
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.Secret{}, err
+		return corev1.Secret{}, fmt.Errorf("could not marshal automation config: %s", err)
 	}
 
 	return secret.Builder().
@@ -589,7 +640,7 @@ func isChangingVersion(mdb mdbv1.MongoDB) bool {
 	return false
 }
 
-func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
 	return container.Apply(
 		container.WithName(agentName),
 		container.WithImage(os.Getenv(agentImageEnv)),
@@ -608,6 +659,23 @@ func mongodbAgentContainer(volumeMounts []corev1.VolumeMount) container.Modifica
 		},
 		),
 		container.WithEnvs(
+			corev1.EnvVar{
+				Name:  headlessAgentEnv,
+				Value: "true",
+			},
+			corev1.EnvVar{
+				Name: podNamespaceEnv,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.namespace",
+					},
+				},
+			},
+			corev1.EnvVar{
+				Name:  automationConfigEnv,
+				Value: automationConfigSecretName,
+			},
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
 				Value: agentHealthStatusFilePathValue,
@@ -694,7 +762,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.Spec.Members),
+		statefulset.WithReplicas(mdb.MembersThisReconciliation()),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
 		statefulset.WithPodSpecTemplate(
@@ -704,7 +772,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				podtemplatespec.WithVolume(hooksVolume),
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer([]corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
+				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				buildTLSPodSpecModification(mdb),
@@ -733,7 +801,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(240),
+		probes.WithFailureThreshold(10),
 		probes.WithInitialDelaySeconds(5),
 	)
 }
