@@ -177,8 +177,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
 	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status,
-		"desiredMembers", mdb.DesiredReplicaSetMembers(),
-		"currentMembers", mdb.CurrentReplicaSetMembers(),
+		"desiredMembers", mdb.DesiredReplicas(),
+		"currentMembers", mdb.CurrentReplicas(),
 	)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
@@ -295,15 +295,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
-				mdb.CurrentReplicaSetMembers(), mdb.DesiredReplicaSetMembers())).
-			withMembers(mdb.MembersThisReconciliation()).
+				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+			withMembers(mdb.ReplicasThisReconciliation()).
 			withPendingPhase(0),
 		)
 	}
 
 	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
-		withMembers(mdb.MembersThisReconciliation()).
+		withMembers(mdb.ReplicasThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase(),
 	)

@@ -3,8 +3,8 @@ package scale
 // ReplicaSetScaler is an interface which is able to scale up and down a replicaset
 // a single member at a time
 type ReplicaSetScaler interface {
-	DesiredReplicaSetMembers() int
-	CurrentReplicaSetMembers() int
+	DesiredReplicas() int
+	CurrentReplicas() int
 }
 
 // ReplicasThisReconciliation returns the number of replicas that should be configured
@@ -12,24 +12,24 @@ type ReplicaSetScaler interface {
 func ReplicasThisReconciliation(replicaSetScaler ReplicaSetScaler) int {
 	// the current replica set members will be 0 when we are creating a new deployment
 	// if this is the case, we want to jump straight to the desired members and not make changes incrementally
-	if replicaSetScaler.CurrentReplicaSetMembers() == 0 || replicaSetScaler.CurrentReplicaSetMembers() == replicaSetScaler.DesiredReplicaSetMembers() {
-		return replicaSetScaler.DesiredReplicaSetMembers()
+	if replicaSetScaler.CurrentReplicas() == 0 || replicaSetScaler.CurrentReplicas() == replicaSetScaler.DesiredReplicas() {
+		return replicaSetScaler.DesiredReplicas()
 	}
 
 	if isScalingDown(replicaSetScaler) {
-		return replicaSetScaler.CurrentReplicaSetMembers() - 1
+		return replicaSetScaler.CurrentReplicas() - 1
 	}
 
-	return replicaSetScaler.CurrentReplicaSetMembers() + 1
+	return replicaSetScaler.CurrentReplicas() + 1
 
 }
 
 func IsStillScaling(replicaSetScaler ReplicaSetScaler) bool {
-	return ReplicasThisReconciliation(replicaSetScaler) != replicaSetScaler.DesiredReplicaSetMembers()
+	return ReplicasThisReconciliation(replicaSetScaler) != replicaSetScaler.DesiredReplicas()
 }
 
 func isScalingDown(replicaSetScaler ReplicaSetScaler) bool {
-	return replicaSetScaler.DesiredReplicaSetMembers() < replicaSetScaler.CurrentReplicaSetMembers()
+	return replicaSetScaler.DesiredReplicas() < replicaSetScaler.CurrentReplicas()
 }
 
 // AnyAreStillScaling reports true if any of one the provided members is still scaling
