@@ -99,13 +99,13 @@ type messageOption struct {
 func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 	mdb.Status.Message = m.message.messageString
 	if m.message.severityLevel == Error {
-		zap.S().Error(m.message)
+		zap.S().Error(m.message.messageString)
 	}
 	if m.message.severityLevel == Warn {
-		zap.S().Warn(m.message)
+		zap.S().Warn(m.message.messageString)
 	}
 	if m.message.severityLevel == Info {
-		zap.S().Info(m.message)
+		zap.S().Info(m.message.messageString)
 	}
 }
 
