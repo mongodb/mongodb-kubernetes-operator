@@ -181,6 +181,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		"currentMembers", mdb.CurrentReplicas(),
 	)
 
+	r.log.Debug("Ensuring Automation Config for deployment")
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
@@ -218,6 +219,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
+	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -756,6 +758,8 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
+	zap.S().Debugw("BuildingStatefulSet", "replicas", mdb.ReplicasThisReconciliation())
+
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
 		statefulset.WithNamespace(mdb.Namespace),
@@ -802,7 +806,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(10),
+		probes.WithFailureThreshold(30),
 		probes.WithInitialDelaySeconds(5),
 	)
 }
