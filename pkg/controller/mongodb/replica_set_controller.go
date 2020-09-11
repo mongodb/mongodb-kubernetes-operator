@@ -323,14 +323,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 				withFailedPhase(),
 		)
 	}
-	//
-	//r.log.Debug("Updating MongoDB Status")
-	//if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
-	//	return status.Update(r.client.Status(), &mdb, statusOptions().
-	//		withMessage(Error, fmt.Sprintf("could not get get resource: %s", err)).
-	//		withFailedPhase(),
-	//	)
-	//}
 
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
