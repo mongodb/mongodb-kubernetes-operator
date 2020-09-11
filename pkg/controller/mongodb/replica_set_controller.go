@@ -141,9 +141,6 @@ func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReplicaSetReconciler implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReplicaSetReconciler{}
-
 // ReplicaSetReconciler reconciles a MongoDB ReplicaSet
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
@@ -545,6 +542,7 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPort(27017).
+		SetPublishNotReadyAddresses(true).
 		Build()
 }
 
