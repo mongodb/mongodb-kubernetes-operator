@@ -522,7 +522,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 
 func TestOpenshift_Configuration(t *testing.T) {
 	sts := performReconciliationAndGetStatefulSet(t, "openshift_mdb.yaml")
-	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[0].Env[1].Name)
+	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[0].Env[3].Name)
 	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[1].Env[1].Name)
 }
 
