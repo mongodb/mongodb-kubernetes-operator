@@ -333,6 +333,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
+	if scale.IsStillScaling(mdb) {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
+				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+			withMembers(mdb.ReplicasThisReconciliation()).
+			withPendingPhase(0),
+		)
+	}
+
 	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
 		withMembers(mdb.ReplicasThisReconciliation()).
