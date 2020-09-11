@@ -494,6 +494,7 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPort(27017).
+		SetPublishNotReadyAddresses(true).
 		Build()
 }
 
