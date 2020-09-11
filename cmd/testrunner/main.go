@@ -271,7 +271,7 @@ func withTest(test string) func(obj runtime.Object) {
 				"--kubeconfig",
 				"/etc/config/kubeconfig",
 				"--go-test-flags",
-				"-timeout=20m",
+				"-timeout=40m",
 			}
 		}
 	}
