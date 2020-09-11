@@ -204,13 +204,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// if we're scaling down, we need to wait until the
 	if scale.IsScalingDown(mdb) {
 		isAtDesiredReplicaCount, err := r.isExpectedNumberOfStatefulSetReplicasReady(mdb)
-		r.log.Infow("Replica Set is scaling", "isAtDesiredReplicaCount", isAtDesiredReplicaCount)
 		if err != nil {
 			r.log.Errorf("error: %s", err)
 			return reconcile.Result{}, err
 		}
 
 		if !isAtDesiredReplicaCount {
+			r.log.Infow("not yet at the desired number of replicas, requeuing reconciliation",
+				"currentReplicas", mdb.CurrentReplicas(), "desiredReplicas", mdb.DesiredReplicas())
+
 			return status.Update(r.client.Status(), &mdb, statusOptions().
 				withMessage(Info, fmt.Sprintf("Replica Set is scaling down, currentMembers=%d, desiredMembers=%d",
 					mdb.CurrentReplicas(), mdb.DesiredReplicas())).
@@ -249,7 +251,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if !readyToUpdateSts {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Info, fmt.Sprintf("Not ready to update MongoDB resource %s", mdb.NamespacedName())).
+				withMessage(Debug, fmt.Sprintf("Not ready to update StatefulSet: %s", mdb.NamespacedName())).
 				withPendingPhase(5),
 		)
 	}

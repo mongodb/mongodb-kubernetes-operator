@@ -16,6 +16,7 @@ type severity string
 
 const (
 	Info  severity = "INFO"
+	Debug severity = "DEBUG"
 	Warn  severity = "WARN"
 	Error severity = "ERROR"
 	None  severity = "NONE"
@@ -106,6 +107,9 @@ func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 	}
 	if m.message.severityLevel == Info {
 		zap.S().Info(m.message.messageString)
+	}
+	if m.message.severityLevel == Debug {
+		zap.S().Debug(m.message.messageString)
 	}
 }
 
