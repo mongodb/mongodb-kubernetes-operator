@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -216,6 +218,18 @@ type MongoDB struct {
 
 	Spec   MongoDBSpec   `json:"spec,omitempty"`
 	Status MongoDBStatus `json:"status,omitempty"`
+}
+
+func (m MongoDB) DesiredReplicas() int {
+	return m.Spec.Members
+}
+
+func (m MongoDB) CurrentReplicas() int {
+	return m.Status.Members
+}
+
+func (m *MongoDB) ReplicasThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(m)
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

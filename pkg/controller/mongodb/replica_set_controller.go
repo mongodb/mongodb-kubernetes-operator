@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 
@@ -174,7 +176,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status,
+		"desiredMembers", mdb.DesiredReplicas(),
+		"currentMembers", mdb.CurrentReplicas(),
+	)
 
 	if err := r.ensureAutomationConfig(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -287,9 +292,18 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
+	if scale.IsStillScaling(mdb) {
+		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
+				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+			withMembers(mdb.ReplicasThisReconciliation()).
+			withPendingPhase(0),
+		)
+	}
+
 	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
 		withMongoURI(mdb.MongoURI()).
-		withMembers(mdb.Spec.Members).
+		withMembers(mdb.ReplicasThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase(),
 	)
