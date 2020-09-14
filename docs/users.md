@@ -1,18 +1,10 @@
 # Create a Database User #
 
-You can create database users through the [MongoDB CRD](deploy/crds/mongodb.com_v1_mongodb_scram_cr.yaml).
+You can create a MongoDB database user to authenticate to your MongoDB resource using SCRAM. First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDB CRD](#modify-the-mongodb-crd).
 
-SCRAM authentication is always enabled.
+You cannot disable SCRAM authentication.
 
-## Table of Contents
-
-- [Create a Database User with SCRAM Authentication](#create-a-database-user-with-scram-authentication)
-  - [Create a User Secret](#create-a-user-secret)
-  - [Modify the MongoDB CRD](#modify-the-mongodb-crd)
-
-## Create a Database User with SCRAM Authentication
-
-### Create a User Secret
+## Create a User Secret
 
 1. Copy the following example secret.
 
@@ -21,33 +13,33 @@ SCRAM authentication is always enabled.
      apiVersion: v1
      kind: Secret
      metadata:
-       name: <db-user-secret>  # corresponds to spec.users.passwordSecretRef.name
+       name: <db-user-secret>  # corresponds to spec.users.passwordSecretRef.name in the MongoDB CRD
      type: Opaque
      stringData:
-       password: <my-plain-text-password> # corresponds to spec.users.passwordSecretRef.key
+       password: <my-plain-text-password> # corresponds to spec.users.passwordSecretRef.key in the MongoDB CRD
      ...
      ```
 1. Update `metadata.name` with the name of the secret and `stringData.password` with the user's password.
 1. Save the secret with a `.yaml` file extension.
 1. Apply the secret in Kubernetes:
    ```
-   kubectl apply -f <db-user-secret>.yaml
+   kubectl apply -f <db-user-secret>.yaml --namespace <my-namespace>
    ```
 
-### Modify the MongoDB CRD
+## Modify the MongoDB CRD
 
 1. Add the following fields to the MongoDB resource definition:
 
-   | *Key* | *Type* | *Description* | *Required?* |
+   | Key | Type | Description | Required? |
    |----|----|----|----|
-   | spec.users | array of objects | Configures database users for this deployment. | Yes |
-   | spec.users.name | string | Username of the database user. | Yes |
-   | spec.users.db | string | Database that the user authenticates against. Defaults to `admin`. | No |
-   | spec.users.passwordSecretRef.name | string | Name of the secret that contains the user's plain text password. | |Yes|
-   | spec.users.passwordSecretRef.key | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
-   | spec.users.roles | array of objects | Configures roles assigned to the user. | Yes |
-   | spec.users.roles.role.name | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles). | Yes |
-   | spec.users.roles.role.db | string | Database that the role applies to. | Yes |
+   | `spec.users` | array of objects | Configures database users for this deployment. | Yes |
+   | `spec.users.name` | string | Username of the database user. | Yes |
+   | `spec.users.db` | string | Database that the user authenticates against. Defaults to `admin`. | No |
+   | `spec.users.passwordSecretRef.name` | string | Name of the secret that contains the user's plain text password. | Yes|
+   | `spec.users.passwordSecretRef.key` | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
+   | `spec.users.roles` | array of objects | Configures roles assigned to the user. | Yes |
+   | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles). | Yes |
+   | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
 
    ```
    ---
@@ -78,10 +70,17 @@ SCRAM authentication is always enabled.
 1. Apply the updated MongoDB resource definition:
 
    ```
-   kubectl apply -f <crd>.yaml --namespace <my-namespace>
+   kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
    ```
-   The Operator generates SCRAM credentials for the new user from the password secret. 
-1. Once the resource is running, delete the password secret.
+1. Once the MongoDB resource is running, securely store the user's password and then delete the user secret:
    ```
    kubectl delete secret <db-user-secret> --namespace <my-namespace>
    ```
+
+## Next Steps
+
+- To authenticate to your MongoDB resource, run the following command:
+   ```
+   mongo "mongodb://<mongodb-resource-metadata.name>-svc.<my-namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>" --username <username> --password <password> --authenticationDatabase <authentication-database>
+   ```
+- To change a user's password, create and apply a new secret with a `metadata.name` that is the same as the name specified in `passwordSecretRef.name` of the MongoDB CRD. The Operator automatically re-generates the SCRAM credentials.
