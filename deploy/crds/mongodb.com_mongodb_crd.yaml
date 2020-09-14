@@ -167,6 +167,7 @@ spec:
               description: Version defines which version of MongoDB will be used
               type: string
           required:
+          - security
           - type
           - users
           - version
@@ -174,11 +175,16 @@ spec:
         status:
           description: MongoDBStatus defines the observed state of MongoDB
           properties:
+            members:
+              type: integer
+            message:
+              type: string
             mongoUri:
               type: string
             phase:
               type: string
           required:
+          - members
           - mongoUri
           - phase
           type: object

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
-
 	appsv1 "k8s.io/api/apps/v1"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -51,7 +51,7 @@ type MongoDBSpec struct {
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 
 	// Security configures security features, such as TLS, and authentication settings for a deployment
-	// +optional
+	// +required
 	Security Security `json:"security"`
 
 	// Users specifies the MongoDB users that should be configured in your deployment
