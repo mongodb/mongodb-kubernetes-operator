@@ -78,11 +78,12 @@ def _prepare_testrunner_environment(config_file: str) -> None:
     )
 
 
-def create_kube_config() -> None:
+def create_kube_config(config_file: str) -> None:
     """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
     as a ConfigMap."""
     corev1 = client.CoreV1Api()
     print("Creating kube-config ConfigMap")
+    dev_config = load_config(config_file)
 
     svc = corev1.read_namespaced_service("kubernetes", "default")
 
@@ -104,7 +105,7 @@ def create_kube_config() -> None:
     )
 
     k8s_conditions.ignore_if_already_exists(
-        lambda: corev1.create_namespaced_config_map("default", config_map)
+        lambda: corev1.create_namespaced_config_map(dev_config.namespace, config_map)
     )
 
 
@@ -318,7 +319,7 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file)
-    create_kube_config()
+    create_kube_config(args.config_file)
 
     try:
         build_and_push_images(args, dev_config)
