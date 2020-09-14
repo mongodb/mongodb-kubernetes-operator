@@ -42,11 +42,6 @@ spec:
         spec:
           description: MongoDBSpec defines the desired state of MongoDB
           properties:
-            additionalMongodConfig:
-              description: 'AdditionalMongodConfig is additional configuration that
-                can be passed to each data-bearing mongod at runtime. Uses the same
-                structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
-              type: object
             featureCompatibilityVersion:
               description: FeatureCompatibilityVersion configures the feature compatibility
                 version that will be set for the deployment
