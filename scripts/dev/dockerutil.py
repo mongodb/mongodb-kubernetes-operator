@@ -2,6 +2,7 @@ import docker
 from dockerfile_generator import render
 import os
 import json
+from tqdm import tqdm
 
 from typing import Union, Any, Optional
 
@@ -23,9 +24,13 @@ def push_image(tag: str) -> None:
     """
     client = docker.from_env()
     print(f"Pushing image: {tag}")
-    progress = ""
-    for line in client.images.push(tag, stream=True):
-        print("\r" + push_image_formatted(line), end="", flush=True)
+    with tqdm(total=100, ascii=False) as progress_bar:
+        last_percent = 0.0
+        for line in client.images.push(tag, stream=True):
+            percent = get_completion_percentage(line)
+            if percent:
+                progress_bar.update(percent - last_percent)
+                last_percent = percent
 
 
 def retag_image(
@@ -64,28 +69,27 @@ def retag_image(
     client.images.push(new_repo_url, new_tag)
 
 
-def push_image_formatted(line: Any) -> str:
+def get_completion_percentage(line: Any) -> float:
     try:
         line = json.loads(line.strip().decode("utf-8"))
     except ValueError:
-        return ""
+        return 0
 
     to_skip = ("Preparing", "Waiting", "Layer already exists")
     if "status" in line:
         if line["status"] in to_skip:
-            return ""
+            return 0
         if line["status"] == "Pushing":
             try:
-                current = int(line["progressDetail"]["current"])
-                total = int(line["progressDetail"]["total"])
+                current = float(line["progressDetail"]["current"])
+                total = float(line["progressDetail"]["total"])
             except KeyError:
-                return ""
-            progress = current / total
-            if progress > 1.0:
-                progress == 1.0
-            return "Complete: {:.1%}\n".format(progress)
-
-    return ""
+                return 0
+            result = (current / total) * 100
+            if result > 100.0:
+                return 100.0
+            return result
+    return 0
 
 
 def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str) -> None:
