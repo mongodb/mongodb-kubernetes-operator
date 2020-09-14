@@ -3,8 +3,8 @@
 ## Table of Contents
 
 - [Secure MongoDB Resource Connections using TLS](#secure-mongodb-resource-connections-using-tls)
-  - [Prerequisites](#prerequisites-1)
-  - [Procedure](#procedure-1)
+  - [Prerequisites](#prerequisites)
+  - [Procedure](#procedure)
 
 ## Secure MongoDB Resource Connections using TLS
 
