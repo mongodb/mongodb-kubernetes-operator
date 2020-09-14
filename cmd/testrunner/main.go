@@ -267,7 +267,6 @@ func withTest(test string) func(obj runtime.Object) {
 				fmt.Sprintf("./test/e2e/%s", test),
 				"--operator-namespace",
 				testPod.Namespace,
-
 				"--verbose",
 				"--kubeconfig",
 				"/etc/config/kubeconfig",
