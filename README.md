@@ -15,12 +15,12 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 
 ## Documentation
 
-See the [`/docs`](docs) directory to view documentation on how to:
+See the [`/docs`](/docs) directory to view documentation on how to:
 
-1. [Install or upgrade](docs/install-upgrade.md) the Operator.
-1. [Deploy and configure](docs/deploy-configure.md) MongoDB resources.
-1. [Create a database user] with SCRAM-SHA authentication.
-1. [Secure](docs/secure.md) MongoDB resources.
+1. [Install or upgrade](/docs/install-upgrade.md) the Operator.
+1. [Deploy and configure](/docs/deploy-configure.md) MongoDB resources.
+1. [Create a database user](/docs/users.md) with SCRAM-SHA authentication.
+1. [Secure](/docs/secure.md) MongoDB resources.
 
 ## Supported Features
 
