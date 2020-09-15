@@ -455,7 +455,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 	return nil
 }
 
-// setAnnotations updates the monogdb resource annotations by applying the provided annotations
+// setAnnotations updates the mongodb resource annotations by applying the provided annotations
 // on top of the existing ones
 func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
 	mdb := mdbv1.MongoDB{}
@@ -534,7 +534,7 @@ func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, e
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-// TODO: Make sure this Service is as minimal as posible, to not interfere with
+// TODO: Make sure this Service is as minimal as possible, to not interfere with
 // future implementations and Service Discovery mechanisms we might implement.
 func buildService(mdb mdbv1.MongoDB) corev1.Service {
 	label := make(map[string]string)
