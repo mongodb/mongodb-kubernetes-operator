@@ -54,7 +54,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Equal(t, "agent-image", agentContainer.Image)
 	probe := agentContainer.ReadinessProbe
 	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
-	assert.Equal(t, int32(10), probe.FailureThreshold)
+	assert.Equal(t, probes.New(defaultReadiness()).FailureThreshold, probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
 	assert.Len(t, agentContainer.VolumeMounts, 4)
 
