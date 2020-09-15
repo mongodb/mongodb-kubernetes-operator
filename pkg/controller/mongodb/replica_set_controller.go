@@ -212,10 +212,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			r.log.Infow("not yet at the desired number of replicas, requeuing reconciliation",
 				"currentReplicas", mdb.CurrentReplicas(), "desiredReplicas", mdb.DesiredReplicas())
 
-			return status.Update(r.client.Status(), &mdb, statusOptions().
-				withMessage(Info, fmt.Sprintf("Replica Set is scaling down, currentMembers=%d, desiredMembers=%d",
-					mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-				withPendingPhase(10),
+			return status.Update(r.client.Status(), &mdb,
+				statusOptions().
+					withMessage(Info, fmt.Sprintf("Replica Set is scaling down, currentMembers=%d, desiredMembers=%d",
+						mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+					withPendingPhase(10),
 			)
 		}
 	}
@@ -760,7 +761,12 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
-	zap.S().Debugw("BuildingStatefulSet", "replicas", mdb.ReplicasThisReconciliation())
+	replicas := mdb.Spec.Members
+	if scale.IsScalingDown(mdb) {
+		replicas = mdb.ReplicasThisReconciliation()
+	}
+
+	zap.S().Debugw("BuildingStatefulSet", "replicas", replicas)
 
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
@@ -769,7 +775,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.Spec.Members),
+		statefulset.WithReplicas(replicas),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
 		statefulset.WithPodSpecTemplate(
