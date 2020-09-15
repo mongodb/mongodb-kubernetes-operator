@@ -140,14 +140,11 @@ func WithTerminationGracePeriodSeconds(seconds int) Modification {
 	}
 }
 
-// WithFsGroup sets the PodTemplateSpec's fs group
-func WithFsGroup(fsGroup int) Modification {
+// WithSecurityContext sets the PodTemplateSpec's SecurityContext
+func WithSecurityContext(securityContext corev1.PodSecurityContext) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		spec := &podTemplateSpec.Spec
-		fsGroup64 := int64(fsGroup)
-		spec.SecurityContext = &corev1.PodSecurityContext{
-			FSGroup: &fsGroup64,
-		}
+		spec.SecurityContext = &securityContext
 	}
 }
 

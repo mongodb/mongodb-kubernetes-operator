@@ -57,6 +57,7 @@ import (
 
 const (
 	agentImageEnv                = "AGENT_IMAGE"
+	clusterDNSName               = "CLUSTER_DNS_NAME"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	mongodbImageEnv              = "MONGODB_IMAGE"
@@ -289,6 +290,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
+				withMembers(int(currentSts.Status.ReadyReplicas)).
 				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
 				withPendingPhase(10),
 		)
@@ -476,7 +478,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, "")
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 
 	builder := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
@@ -767,7 +769,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.ReplicasThisReconciliation()),
+		statefulset.WithReplicas(mdb.Spec.Members),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
 		statefulset.WithPodSpecTemplate(
