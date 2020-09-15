@@ -18,6 +18,10 @@ func TestPodTemplateSpec(t *testing.T) {
 		Name: "vol-2",
 	}
 
+	runAsUser := int64(1111)
+	runAsGroup := int64(2222)
+	fsGroup := int64(3333)
+
 	p := New(
 		WithVolume(corev1.Volume{
 			Name: "vol-1",
@@ -25,7 +29,11 @@ func TestPodTemplateSpec(t *testing.T) {
 		WithVolume(corev1.Volume{
 			Name: "vol-2",
 		}),
-		WithFsGroup(100),
+		WithSecurityContext(corev1.PodSecurityContext{
+			RunAsUser:  &runAsUser,
+			RunAsGroup: &runAsGroup,
+			FSGroup:    &fsGroup,
+		}),
 		WithImagePullSecrets("pull-secrets"),
 		WithInitContainerByIndex(0, container.Apply(
 			container.WithName("init-container-0"),
@@ -50,8 +58,12 @@ func TestPodTemplateSpec(t *testing.T) {
 	assert.Equal(t, p.Spec.Volumes[0].Name, "vol-1")
 	assert.Equal(t, p.Spec.Volumes[1].Name, "vol-2")
 
-	expected := int64(100)
-	assert.Equal(t, &expected, p.Spec.SecurityContext.FSGroup)
+	expectedRunAsUser := int64(1111)
+	expectedRunAsGroup := int64(2222)
+	expectedFsGroup := int64(3333)
+	assert.Equal(t, &expectedRunAsUser, p.Spec.SecurityContext.RunAsUser)
+	assert.Equal(t, &expectedRunAsGroup, p.Spec.SecurityContext.RunAsGroup)
+	assert.Equal(t, &expectedFsGroup, p.Spec.SecurityContext.FSGroup)
 
 	assert.Len(t, p.Spec.ImagePullSecrets, 1)
 	assert.Equal(t, "pull-secrets", p.Spec.ImagePullSecrets[0].Name)
