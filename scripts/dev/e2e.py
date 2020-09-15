@@ -7,14 +7,12 @@ from build_and_deploy_operator import (
     load_yaml_from_file,
 )
 import k8s_conditions
-import k8s_request_data
 import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict
 from dev_config import load_config, DevConfig
 from kubernetes import client, config
 import argparse
-import time
 import os
 import sys
 import yaml
