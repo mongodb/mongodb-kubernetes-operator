@@ -201,8 +201,11 @@ type AuthMode string
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
-	Members  int    `json:"members"`
-	Message  string `json:"message,omitempty"`
+
+	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
+	CurrentReplicaSetMembers   int `json:"currentReplicaSetMembers"`
+
+	Message string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -225,11 +228,30 @@ func (m MongoDB) DesiredReplicas() int {
 }
 
 func (m MongoDB) CurrentReplicas() int {
-	return m.Status.Members
+	return m.Status.CurrentStatefulSetReplicas
 }
 
-func (m *MongoDB) ReplicasThisReconciliation() int {
+func (m *MongoDB) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
+}
+
+type intScaler struct {
+	current, desired int
+}
+
+func (a intScaler) DesiredReplicas() int {
+	return a.desired
+}
+
+func (a intScaler) CurrentReplicas() int {
+	return a.current
+}
+
+func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(intScaler{
+		desired: m.Spec.Members,
+		current: m.Status.CurrentReplicaSetMembers,
+	})
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment

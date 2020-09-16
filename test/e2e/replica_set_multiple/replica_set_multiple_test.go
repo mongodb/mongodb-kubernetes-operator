@@ -72,9 +72,10 @@ func TestReplicaSet(t *testing.T) {
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 2))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 			mdbv1.MongoDBStatus{
-				MongoURI: mdb0.MongoURI(),
-				Phase:    mdbv1.Running,
-				Members:  5,
+				MongoURI:                   mdb0.MongoURI(),
+				Phase:                      mdbv1.Running,
+				CurrentReplicaSetMembers:   5,
+				CurrentStatefulSetReplicas: 5,
 			}))
 		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb0, 3))
 		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
@@ -82,9 +83,10 @@ func TestReplicaSet(t *testing.T) {
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 			mdbv1.MongoDBStatus{
-				MongoURI: mdb0.MongoURI(),
-				Phase:    mdbv1.Running,
-				Members:  3,
+				MongoURI:                   mdb0.MongoURI(),
+				Phase:                      mdbv1.Running,
+				CurrentReplicaSetMembers:   5,
+				CurrentStatefulSetReplicas: 5,
 			}))
 
 	})

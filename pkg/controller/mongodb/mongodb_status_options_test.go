@@ -22,19 +22,6 @@ func TestMongoUriOption_ApplyOption(t *testing.T) {
 	assert.Equal(t, "my-uri", mdb.Status.MongoURI, "Status should be updated")
 }
 
-func TestMembersOption_ApplyOption(t *testing.T) {
-	mdb := newReplicaSet(3, "my-rs", "my-ns")
-
-	opt := membersOption{
-		members: 5,
-	}
-
-	opt.ApplyOption(&mdb)
-
-	assert.Equal(t, 3, mdb.Spec.Members, "Spec should remain unchanged")
-	assert.Equal(t, 5, mdb.Status.Members, "Status should be updated")
-}
-
 func TestOptionBuilder_RunningPhase(t *testing.T) {
 	mdb := newReplicaSet(3, "my-rs", "my-ns")
 

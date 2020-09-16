@@ -221,6 +221,20 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
+	// at this stage we know we have successfully updated the automation config with the correct number of
+	// members and the stateful set has the expected number of ready replicas. We can update our status
+	// so we calculate these fields correctly going forward
+	_, err = status.Update(r.client.Status(), &mdb,
+		statusOptions().
+			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()),
+	)
+
+	if err != nil {
+		r.log.Errorf("error updating status: %s", err)
+		return reconcile.Result{}, err
+	}
+
 	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
@@ -244,9 +258,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	readyToUpdateSts := true
-	if mdbSts.Status.Replicas > int32(mdb.ReplicasThisReconciliation()) {
-		readyToUpdateSts = mdbSts.Status.ReadyReplicas == int32(mdb.ReplicasThisReconciliation())
-		r.log.Debugw("ReplicaSet Scaling", "readyReplicas", mdbSts.Status.Replicas, "replicasThisReconciliation", mdb.ReplicasThisReconciliation())
+	if mdbSts.Status.Replicas > int32(mdb.StatefulSetReplicasThisReconciliation()) {
+		readyToUpdateSts = mdbSts.Status.ReadyReplicas == int32(mdb.StatefulSetReplicasThisReconciliation())
+		r.log.Debugw("ReplicaSet Scaling", "readyReplicas", mdbSts.Status.Replicas, "replicasThisReconciliation", mdb.StatefulSetReplicasThisReconciliation())
 	}
 
 	if !readyToUpdateSts {
@@ -272,18 +286,19 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		if !apiErrors.IsNotFound(err) {
 			errMsg = fmt.Sprintf("error getting StatefulSet: %s", err)
 		}
-		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withMessage(Error, errMsg).
-			withFailedPhase(),
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, errMsg).
+				withFailedPhase(),
 		)
-
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 	ready, err := r.isStatefulSetReady(mdb, &currentSts)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
-			statusOptions().withMessage(Error, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -291,7 +306,9 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if !ready {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMembers(int(currentSts.Status.ReadyReplicas)).
+				// need to update the current replicas as they get ready so eventually the desired number becomes
+				// ready one at a time
+				withStatefulSetReplicas(int(currentSts.Status.ReadyReplicas)).
 				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
 				withPendingPhase(10),
 		)
@@ -301,6 +318,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
+				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
 				withFailedPhase(),
 		)
@@ -315,6 +333,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
+				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
 				withFailedPhase(),
 		)
@@ -323,6 +342,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
+				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
 				withFailedPhase(),
 		)
@@ -330,27 +350,21 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
+			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-			withMembers(mdb.ReplicasThisReconciliation()).
+			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 			withPendingPhase(0),
 		)
 	}
 
-	if scale.IsStillScaling(mdb) {
-		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
-				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-			withMembers(mdb.ReplicasThisReconciliation()).
-			withPendingPhase(0),
-		)
-	}
-
-	res, err := status.Update(r.client.Status(), &mdb, statusOptions().
-		withMongoURI(mdb.MongoURI()).
-		withMembers(mdb.ReplicasThisReconciliation()).
-		withMessage(None, "").
-		withRunningPhase(),
+	res, err := status.Update(r.client.Status(), &mdb,
+		statusOptions().
+			withMongoURI(mdb.MongoURI()).
+			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+			withMessage(None, "").
+			withRunningPhase(),
 	)
 
 	if err != nil {
@@ -400,7 +414,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	//some issues with nil/empty maps not being compared correctly otherwise
 	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
 
-	isReady := statefulset.IsReady(*existingStatefulSet, mdb.ReplicasThisReconciliation())
+	isReady := statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
 		annotations := map[string]string{
@@ -426,7 +440,7 @@ func (r *ReplicaSetReconciler) isExpectedNumberOfStatefulSetReplicasReady(mdb md
 	if err != nil {
 		return false, err
 	}
-	desiredReadyReplicas := int32(mdb.ReplicasThisReconciliation())
+	desiredReadyReplicas := int32(mdb.StatefulSetReplicasThisReconciliation())
 	r.log.Infow("isExpectedNumberOfStatefulSetReplicasReady", "desiredReadyReplicas", desiredReadyReplicas)
 
 	return sts.Status.ReadyReplicas == desiredReadyReplicas, nil
@@ -480,12 +494,13 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 
 func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
+	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
 	builder := automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
-		SetMembers(mdb.ReplicasThisReconciliation()).
+		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
@@ -761,12 +776,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
-	replicas := mdb.Spec.Members
-	if scale.IsScalingDown(mdb) {
-		replicas = mdb.ReplicasThisReconciliation()
-	}
-
-	zap.S().Debugw("BuildingStatefulSet", "replicas", replicas)
+	zap.S().Debugw("BuildingStatefulSet", "replicas", mdb.StatefulSetReplicasThisReconciliation())
 
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
@@ -775,7 +785,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(replicas),
+		statefulset.WithReplicas(mdb.StatefulSetReplicasThisReconciliation()),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
 		statefulset.WithPodSpecTemplate(
@@ -814,7 +824,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(30),
+		probes.WithFailureThreshold(15),
 		probes.WithInitialDelaySeconds(5),
 	)
 }

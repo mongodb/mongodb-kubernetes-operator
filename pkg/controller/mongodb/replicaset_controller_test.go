@@ -412,7 +412,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 5, mdb.Status.Members)
+	assert.Equal(t, 5, mdb.Status.CurrentReplicaSetMembers)
 
 	// scale members from five to three
 	mdb.Spec.Members = 3
@@ -424,13 +424,14 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
 
+	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, res.Requeue)
-	assert.Equal(t, 4, mdb.Status.Members)
+	assert.Equal(t, 4, mdb.Status.CurrentReplicaSetMembers)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
@@ -441,7 +442,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, false, res.Requeue)
-	assert.Equal(t, 3, mdb.Status.Members)
+	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
 }
 
 func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
@@ -454,7 +455,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, mdb.Status.Members)
+	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
 
 	// scale members from three to five
 	mdb.Spec.Members = 5
@@ -472,7 +473,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	assert.NoError(t, err)
 	assert.Equal(t, true, res.Requeue)
-	assert.Equal(t, 4, mdb.Status.Members)
+	assert.Equal(t, 4, mdb.Status.CurrentReplicaSetMembers)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
@@ -484,7 +485,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.NoError(t, err)
 
 	assert.Equal(t, false, res.Requeue)
-	assert.Equal(t, 5, mdb.Status.Members)
+	assert.Equal(t, 5, mdb.Status.CurrentReplicaSetMembers)
 }
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
@@ -521,7 +522,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 3, mdb.Status.Members)
+	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
 }
 
 func TestOpenshift_Configuration(t *testing.T) {
@@ -635,8 +636,8 @@ func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
 	sts := appsv1.StatefulSet{}
 	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
 	assert.NoError(t, err)
-	sts.Status.ReadyReplicas = int32(mdb.ReplicasThisReconciliation())
-	sts.Status.UpdatedReplicas = int32(mdb.ReplicasThisReconciliation())
+	sts.Status.ReadyReplicas = int32(mdb.StatefulSetReplicasThisReconciliation())
+	sts.Status.UpdatedReplicas = int32(mdb.StatefulSetReplicasThisReconciliation())
 	err = c.Update(context.TODO(), &sts)
 	assert.NoError(t, err)
 }

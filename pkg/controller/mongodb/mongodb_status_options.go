@@ -60,25 +60,6 @@ func (m mongoUriOption) GetResult() (reconcile.Result, error) {
 	return okResult()
 }
 
-func (o *optionBuilder) withMembers(members int) *optionBuilder {
-	o.options = append(o.options,
-		membersOption{
-			members: members,
-		})
-	return o
-}
-
-type membersOption struct {
-	members int
-}
-
-func (m membersOption) ApplyOption(mdb *mdbv1.MongoDB) {
-	mdb.Status.Members = m.members
-}
-
-func (m membersOption) GetResult() (reconcile.Result, error) {
-	return okResult()
-}
 func (o *optionBuilder) withPhase(phase mdbv1.Phase, retryAfter int) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
@@ -115,6 +96,20 @@ func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 
 func (m messageOption) GetResult() (reconcile.Result, error) {
 	return okResult()
+}
+
+func (o *optionBuilder) withAutomationConfigMembers(members int) *optionBuilder {
+	o.options = append(o.options, automationConfigReplicasOption{
+		replicaSetMembers: members,
+	})
+	return o
+}
+
+func (o *optionBuilder) withStatefulSetReplicas(members int) *optionBuilder {
+	o.options = append(o.options, statefulSetReplicasOption{
+		replicas: members,
+	})
+	return o
 }
 
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
@@ -158,6 +153,30 @@ func (p phaseOption) GetResult() (reconcile.Result, error) {
 	if p.phase == mdbv1.Failed {
 		return failedResult()
 	}
+	return okResult()
+}
+
+type automationConfigReplicasOption struct {
+	replicaSetMembers int
+}
+
+func (a automationConfigReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.CurrentReplicaSetMembers = a.replicaSetMembers
+}
+
+func (a automationConfigReplicasOption) GetResult() (reconcile.Result, error) {
+	return okResult()
+}
+
+type statefulSetReplicasOption struct {
+	replicas int
+}
+
+func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.CurrentStatefulSetReplicas = s.replicas
+}
+
+func (s statefulSetReplicasOption) GetResult() (reconcile.Result, error) {
 	return okResult()
 }
 

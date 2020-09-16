@@ -128,9 +128,10 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 			})))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBStatus{
-				MongoURI: mdb.MongoURI(),
-				Phase:    mdbv1.Running,
-				Members:  mdb.Spec.Members,
+				MongoURI:                   mdb.MongoURI(),
+				Phase:                      mdbv1.Running,
+				CurrentReplicaSetMembers:   mdb.Spec.Members,
+				CurrentStatefulSetReplicas: mdb.Spec.Members,
 			}))
 	}
 }
