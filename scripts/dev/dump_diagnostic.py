@@ -94,7 +94,9 @@ def dump_automation_configs(namespace: str) -> None:
         return
     for mdb in mongodb_resources:
         name = mdb["metadata"]["name"]
-        dump_secret_keys_namespaced(namespace, ["automation-config"], f"{name}-config")
+        dump_secret_keys_namespaced(
+            namespace, ["cluster-config.json"], f"{name}-config"
+        )
 
 
 def dump_all(namespace: str) -> None:

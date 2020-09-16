@@ -47,7 +47,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
 	assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	assert.Equal(t, operatorServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 1)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
