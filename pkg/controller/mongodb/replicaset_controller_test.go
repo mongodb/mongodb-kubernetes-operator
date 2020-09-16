@@ -435,6 +435,8 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
+	makeStatefulSetReady(t, mgr.GetClient(), mdb)
+
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
 
 	assert.NoError(t, err)
@@ -474,6 +476,8 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.NoError(t, err)
 	assert.Equal(t, true, res.Requeue)
 	assert.Equal(t, 4, mdb.Status.CurrentReplicaSetMembers)
+
+	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
