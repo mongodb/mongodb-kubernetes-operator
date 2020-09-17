@@ -1,6 +1,6 @@
 # MongoDB Community Kubernetes Operator Documentation #
 
-# Table of Contents
+## Table of Contents
 
 - [Contribute to the MongoDB Kubernetes Operator](/docs/contributing.md)
 - [MongoDB Community Kubernetes Operator Architecture](/docs/architecutre.md)

@@ -1,6 +1,6 @@
 # Create a Database User #
 
-You can create a MongoDB database user to authenticate to your MongoDB resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDB CRD](#modify-the-mongodb-crd).
+You can create a MongoDB database user to authenticate to your MongoDB resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDB resource definition](#modify-the-mongodb-crd).
 
 You cannot disable SCRAM authentication.
 
@@ -27,7 +27,7 @@ You cannot disable SCRAM authentication.
    kubectl apply -f <db-user-secret>.yaml --namespace <my-namespace>
    ```
 
-## Modify the MongoDB CRD
+## Modify the MongoDB Resource
 
 1. Add the following fields to the MongoDB resource definition:
 
