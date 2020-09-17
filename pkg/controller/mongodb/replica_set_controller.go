@@ -200,24 +200,17 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
-	// if we're scaling down, we need to wait until the
+	// if we're scaling down, we need to wait until the StatefulSet is at the
+	// desired number of replicas. Scaling down has to happen one member at a time
 	if scale.IsScalingDown(mdb) {
-		isAtDesiredReplicaCount, err := r.isExpectedNumberOfStatefulSetReplicasReady(mdb)
+		result, err := checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(r.client, r.client.Status(), mdb)
+
 		if err != nil {
-			r.log.Errorf("error: %s", err)
-			return reconcile.Result{}, err
+			return result, err
 		}
 
-		if !isAtDesiredReplicaCount {
-			r.log.Infow("not yet at the desired number of replicas, requeuing reconciliation",
-				"currentReplicas", mdb.CurrentReplicas(), "desiredReplicas", mdb.DesiredReplicas())
-
-			return status.Update(r.client.Status(), &mdb,
-				statusOptions().
-					withMessage(Info, fmt.Sprintf("Replica Set is scaling down, currentMembers=%d, desiredMembers=%d",
-						mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-					withPendingPhase(10),
-			)
+		if result.Requeue {
+			return result, nil
 		}
 	}
 
@@ -231,8 +224,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	)
 
 	if err != nil {
-		r.log.Errorf("error updating status: %s", err)
-		return reconcile.Result{}, err
+		r.log.Errorf("Error updating status: %s", err)
+		return failedResult()
 	}
 
 	r.log.Debug("Validating TLS Config")
@@ -280,15 +273,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
-	currentSts := appsv1.StatefulSet{}
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &currentSts); err != nil {
-		errMsg := err.Error()
-		if !apiErrors.IsNotFound(err) {
-			errMsg = fmt.Sprintf("error getting StatefulSet: %s", err)
-		}
+	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Error, errMsg).
+				withMessage(Error, fmt.Sprintf("Error getting StatefulSet: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -381,6 +370,41 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	return res, err
 }
 
+// checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig ensures that the expected number of StatefulSet
+// replicas are ready. When a member has its process removed from the Automation Config, the pod will eventually
+// become unready. We use this information to determine if we are safe to continue the reconciliation process.
+func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter statefulset.Getter, statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB) (reconcile.Result, error) {
+	isAtDesiredReplicaCount, err := areExpectedNumberOfStatefulSetReplicasReady(stsGetter, mdb)
+	if err != nil {
+		return status.Update(statusWriter, &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error determining state of StatefulSet: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	if !isAtDesiredReplicaCount {
+		return status.Update(statusWriter, &mdb,
+			statusOptions().
+				withMessage(Info, fmt.Sprintf("Not yet at the desired number of replicas, currentMembers=%d, desiredMembers=%d",
+					mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+				withPendingPhase(10),
+		)
+	}
+	return okResult()
+}
+
+// areExpectedNumberOfStatefulSetReplicasReady checks to see if the StatefulSet corresponding
+// to the given MongoDB resource has the expected number of ready replicas.
+func areExpectedNumberOfStatefulSetReplicasReady(stsGetter statefulset.Getter, mdb mdbv1.MongoDB) (bool, error) {
+	sts, err := stsGetter.GetStatefulSet(mdb.NamespacedName())
+	if err != nil {
+		return false, err
+	}
+	desiredReadyReplicas := int32(mdb.StatefulSetReplicasThisReconciliation())
+	return sts.Status.ReadyReplicas == desiredReadyReplicas, nil
+}
+
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
 func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
@@ -433,17 +457,6 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	}
 
 	return areEqual && isReady, nil
-}
-
-func (r *ReplicaSetReconciler) isExpectedNumberOfStatefulSetReplicasReady(mdb mdbv1.MongoDB) (bool, error) {
-	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
-	if err != nil {
-		return false, err
-	}
-	desiredReadyReplicas := int32(mdb.StatefulSetReplicasThisReconciliation())
-	r.log.Infow("isExpectedNumberOfStatefulSetReplicasReady", "desiredReadyReplicas", desiredReadyReplicas)
-
-	return sts.Status.ReadyReplicas == desiredReadyReplicas, nil
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
@@ -824,7 +837,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(15),
+		probes.WithFailureThreshold(240),
 		probes.WithInitialDelaySeconds(5),
 	)
 }
