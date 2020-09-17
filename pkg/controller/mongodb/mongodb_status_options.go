@@ -1,9 +1,8 @@
 package mongodb
 
 import (
-	"time"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/resconciliationresult"
 	"go.uber.org/zap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -57,7 +56,7 @@ func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
-	return okResult()
+	return resconciliationresult.OK()
 }
 
 func (o *optionBuilder) withPhase(phase mdbv1.Phase, retryAfter int) *optionBuilder {
@@ -95,7 +94,7 @@ func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (m messageOption) GetResult() (reconcile.Result, error) {
-	return okResult()
+	return resconciliationresult.OK()
 }
 
 func (o *optionBuilder) withAutomationConfigMembers(members int) *optionBuilder {
@@ -145,15 +144,15 @@ func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {
 	if p.phase == mdbv1.Running {
-		return okResult()
+		return resconciliationresult.OK()
 	}
 	if p.phase == mdbv1.Pending {
-		return retryResult(p.retryAfter)
+		return resconciliationresult.Retry(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
-		return failedResult()
+		return resconciliationresult.Failed()
 	}
-	return okResult()
+	return resconciliationresult.OK()
 }
 
 type automationConfigReplicasOption struct {
@@ -165,7 +164,7 @@ func (a automationConfigReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (a automationConfigReplicasOption) GetResult() (reconcile.Result, error) {
-	return okResult()
+	return resconciliationresult.OK()
 }
 
 type statefulSetReplicasOption struct {
@@ -177,20 +176,5 @@ func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (s statefulSetReplicasOption) GetResult() (reconcile.Result, error) {
-	return okResult()
-}
-
-// helper functions which return reconciliation results which should be
-// returned from the main reconciliation loop
-
-func okResult() (reconcile.Result, error) {
-	return reconcile.Result{}, nil
-}
-
-func retryResult(after int) (reconcile.Result, error) {
-	return reconcile.Result{Requeue: true, RequeueAfter: time.Second * time.Duration(after)}, nil
-}
-
-func failedResult() (reconcile.Result, error) {
-	return retryResult(0)
+	return resconciliationresult.OK()
 }

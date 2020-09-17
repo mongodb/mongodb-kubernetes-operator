@@ -55,7 +55,7 @@ func TestReplicaSetScale(t *testing.T) {
 				CurrentStatefulSetReplicas: 5,
 			}))
 		t.Run("Scale MongoDB Resource Down", mongodbtests.Scale(&mdb, 3))
-		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("Stateful Set Scaled Down Correctly", mongodbtests.StatefulSetIsReadyAfterScaleDown(&mdb))
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 5))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,

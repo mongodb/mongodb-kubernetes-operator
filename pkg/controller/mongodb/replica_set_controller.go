@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/resconciliationresult"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
@@ -204,13 +206,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// desired number of replicas. Scaling down has to happen one member at a time
 	if scale.IsScalingDown(mdb) {
 		result, err := checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(r.client, r.client.Status(), mdb)
-
-		if err != nil {
+		if resconciliationresult.ShouldRequeue(result, err) {
 			return result, err
-		}
-
-		if result.Requeue {
-			return result, nil
 		}
 	}
 
@@ -225,7 +222,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if err != nil {
 		r.log.Errorf("Error updating status: %s", err)
-		return failedResult()
+		return resconciliationresult.Failed()
 	}
 
 	r.log.Debug("Validating TLS Config")
@@ -391,7 +388,7 @@ func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter s
 				withPendingPhase(10),
 		)
 	}
-	return okResult()
+	return resconciliationresult.OK()
 }
 
 // areExpectedNumberOfStatefulSetReplicasReady checks to see if the StatefulSet corresponding

@@ -29,8 +29,21 @@ import (
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
 func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return statefulSetIsReady(mdb, time.Second*15, time.Minute*5)
+}
+
+// StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
+// note: scaling down takes considerably longer than scaling up due the readiness probe
+// failure threshold being high
+func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return statefulSetIsReady(mdb, time.Second*15, time.Minute*20)
+}
+
+// StatefulSetIsReady ensures that the underlying stateful set
+// reaches the running state
+func statefulSetIsReady(mdb *mdbv1.MongoDB, interval time.Duration, timeout time.Duration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToBeReady(t, mdb, interval, timeout)
 		if err != nil {
 			t.Fatal(err)
 		}
