@@ -98,7 +98,8 @@ func TestAddVolumeAndMount(t *testing.T) {
 	assert.Equal(t, sts.Spec.Template.Spec.Containers[1].VolumeMounts[0].MountPath, "mount-path-secret")
 
 	assert.Len(t, sts.Spec.Template.Spec.Volumes, 2)
-	assert.Equal(t, sts.Spec.Template.Spec.Volumes[1].Name, "mount-name-secret")
+	assert.Equal(t, "mount-name-secret", sts.Spec.Template.Spec.Volumes[1].Name)
+	assert.Equal(t, int32(416), *sts.Spec.Template.Spec.Volumes[1].Secret.DefaultMode)
 	assert.Nil(t, sts.Spec.Template.Spec.Volumes[1].VolumeSource.ConfigMap, "volume should not have been configured from a config map source")
 	assert.NotNil(t, sts.Spec.Template.Spec.Volumes[1].VolumeSource.Secret, "volume should have been configured from a secret source")
 
