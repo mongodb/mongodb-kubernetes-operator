@@ -69,7 +69,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 		t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
 		t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
-		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 2))
+		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 			mdbv1.MongoDBStatus{
 				MongoURI:                   mdb0.MongoURI(),
