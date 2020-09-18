@@ -36,7 +36,13 @@ func StatefulSetIsReady(mdb *mdbv1.MongoDB) func(t *testing.T) {
 // note: scaling down takes considerably longer than scaling up due the readiness probe
 // failure threshold being high
 func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDB) func(t *testing.T) {
-	return statefulSetIsReady(mdb, time.Second*60, time.Minute*45)
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToBeReadyAfterScaleDown(t, mdb, time.Second*60, time.Minute*45)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
 }
 
 // StatefulSetIsReady ensures that the underlying stateful set

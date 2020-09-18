@@ -281,7 +281,7 @@ tasks:
           test: replica_set_scale
 
   - name: e2e_test_replica_set_scale_down
-    exec_timeout_secs: 3000
+    exec_timeout_secs: 3600
     commands:
       - func: run_e2e_test
         vars:
