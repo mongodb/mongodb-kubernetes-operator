@@ -435,7 +435,13 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	//some issues with nil/empty maps not being compared correctly otherwise
 	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
 
-	isReady := int32(mdb.StatefulSetReplicasThisReconciliation()) == existingStatefulSet.Status.ReadyReplicas
+	isReady := false
+	if scale.IsScalingDown(mdb) || existingStatefulSet.Status.ReadyReplicas == 1 {
+		isReady = int32(mdb.StatefulSetReplicasThisReconciliation()) == existingStatefulSet.Status.ReadyReplicas
+	} else {
+		isReady = statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
+	}
+
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
 		annotations := map[string]string{
