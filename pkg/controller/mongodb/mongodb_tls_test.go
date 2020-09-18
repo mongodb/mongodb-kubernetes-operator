@@ -46,11 +46,13 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 			},
 		},
 	})
+	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: mdb.TLSOperatorSecretNamespacedName().Name,
+				SecretName:  mdb.TLSOperatorSecretNamespacedName().Name,
+				DefaultMode: &permission,
 			},
 		},
 	})
