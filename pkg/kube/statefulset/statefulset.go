@@ -100,11 +100,13 @@ func CreateVolumeFromConfigMap(name, sourceName string) corev1.Volume {
 }
 
 func CreateVolumeFromSecret(name, sourceName string, options ...func(v *corev1.Volume)) corev1.Volume {
+	permission := int32(416)
 	volumeMount := &corev1.Volume{
 		Name: name,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: sourceName,
+				SecretName:  sourceName,
+				DefaultMode: &permission,
 			},
 		},
 	}
