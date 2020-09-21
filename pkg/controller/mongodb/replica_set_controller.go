@@ -240,25 +240,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
-	mdbSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
-	if k8sClient.IgnoreNotFound(err) != nil {
-		return reconcile.Result{}, err
-	}
-
-	readyToUpdateSts := true
-	if mdbSts.Status.Replicas > int32(mdb.StatefulSetReplicasThisReconciliation()) {
-		readyToUpdateSts = mdbSts.Status.ReadyReplicas == int32(mdb.StatefulSetReplicasThisReconciliation())
-		r.log.Debugw("ReplicaSet Scaling", "readyReplicas", mdbSts.Status.Replicas, "replicasThisReconciliation", mdb.StatefulSetReplicasThisReconciliation())
-	}
-
-	if !readyToUpdateSts {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Debug, fmt.Sprintf("Not ready to update StatefulSet: %s", mdb.NamespacedName())).
-				withPendingPhase(5),
-		)
-	}
-
 	r.log.Debug("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -796,7 +777,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(60), // TODO: this value needs further consideration
+		probes.WithFailureThreshold(15), // TODO: this value needs further consideration
 		probes.WithInitialDelaySeconds(5),
 	)
 }

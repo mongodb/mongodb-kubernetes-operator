@@ -223,32 +223,10 @@ type MongoDB struct {
 	Status MongoDBStatus `json:"status,omitempty"`
 }
 
-func (m MongoDB) DesiredReplicas() int {
-	return m.Spec.Members
-}
-
-func (m MongoDB) CurrentReplicas() int {
-	return m.Status.CurrentStatefulSetReplicas
-}
-
-func (m *MongoDB) StatefulSetReplicasThisReconciliation() int {
-	return scale.ReplicasThisReconciliation(m)
-}
-
-type intScaler struct {
-	current, desired int
-}
-
-func (a intScaler) DesiredReplicas() int {
-	return a.desired
-}
-
-func (a intScaler) CurrentReplicas() int {
-	return a.current
-}
-
 func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
-	return scale.ReplicasThisReconciliation(intScaler{
+	// determine the correct number of automation config replica set members
+	// based on our desired number, and our current number
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
 		desired: m.Spec.Members,
 		current: m.Status.CurrentReplicaSetMembers,
 	})
@@ -318,6 +296,30 @@ func (m MongoDB) GetFCV() string {
 	minorIndex := 1
 	parts := strings.Split(versionToSplit, ".")
 	return strings.Join(parts[:minorIndex+1], ".")
+}
+
+func (m MongoDB) DesiredReplicas() int {
+	return m.Spec.Members
+}
+
+func (m MongoDB) CurrentReplicas() int {
+	return m.Status.CurrentStatefulSetReplicas
+}
+
+func (m *MongoDB) StatefulSetReplicasThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(m)
+}
+
+type automationConfigReplicasScaler struct {
+	current, desired int
+}
+
+func (a automationConfigReplicasScaler) DesiredReplicas() int {
+	return a.desired
+}
+
+func (a automationConfigReplicasScaler) CurrentReplicas() int {
+	return a.current
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
