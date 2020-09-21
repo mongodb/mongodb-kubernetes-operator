@@ -777,7 +777,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(15), // TODO: this value needs further consideration
+		probes.WithFailureThreshold(60), // TODO: this value needs further consideration
 		probes.WithInitialDelaySeconds(5),
 	)
 }
