@@ -637,10 +637,20 @@ func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err e
 // makeStatefulSetReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
 func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
+	setStatefulSetReadyReplicas(t, c, mdb, mdb.StatefulSetReplicasThisReconciliation())
+}
+
+// makeStatefulSetUnReady updates the StatefulSet corresponding to the
+// provided MongoDB resource to mark it as unready.
+func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
+	setStatefulSetReadyReplicas(t, c, mdb, 0)
+}
+
+func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB, readyReplicas int) {
 	sts := appsv1.StatefulSet{}
 	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
 	assert.NoError(t, err)
-	sts.Status.ReadyReplicas = int32(mdb.StatefulSetReplicasThisReconciliation())
+	sts.Status.ReadyReplicas = int32(readyReplicas)
 	sts.Status.UpdatedReplicas = int32(mdb.StatefulSetReplicasThisReconciliation())
 	err = c.Update(context.TODO(), &sts)
 	assert.NoError(t, err)

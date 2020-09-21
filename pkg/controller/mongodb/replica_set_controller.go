@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/resconciliationresult"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
@@ -171,18 +171,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, nil
+			return result.OK()
 		}
 		r.log.Errorf("Error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return result.Failed()
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status,
-		"desiredMembers", mdb.DesiredReplicas(),
-		"currentMembers", mdb.CurrentReplicas(),
-	)
+	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	r.log.Debug("Ensuring Automation Config for deployment")
 	if err := r.ensureAutomationConfig(mdb); err != nil {
@@ -205,24 +202,25 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	// if we're scaling down, we need to wait until the StatefulSet is at the
 	// desired number of replicas. Scaling down has to happen one member at a time
 	if scale.IsScalingDown(mdb) {
-		result, err := checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(r.client, r.client.Status(), mdb)
-		if resconciliationresult.ShouldRequeue(result, err) {
-			return result, err
+		res, err := checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(r.client, r.client.Status(), mdb)
+
+		if err != nil {
+			r.log.Errorf("Error checking if StatefulSet members have been removed from the automation config: %s", err)
+			return result.Failed()
+		}
+
+		if result.ShouldRequeue(res, err) {
+			r.log.Debugf("The expected number of Stateful Set members for scale down are not yet ready, requeuing reconciliation")
+			return result.Retry(10)
 		}
 	}
 
 	// at this stage we know we have successfully updated the automation config with the correct number of
 	// members and the stateful set has the expected number of ready replicas. We can update our status
 	// so we calculate these fields correctly going forward
-	_, err = status.Update(r.client.Status(), &mdb,
-		statusOptions().
-			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
-			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()),
-	)
-
-	if err != nil {
-		r.log.Errorf("Error updating status: %s", err)
-		return resconciliationresult.Failed()
+	if err := updateScalingStatus(r.client.Status(), mdb); err != nil {
+		r.log.Errorf("Failed updating the status of the MongoDB resource: %s", err)
+		return result.Failed()
 	}
 
 	r.log.Debug("Validating TLS Config")
@@ -367,41 +365,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	return res, err
 }
 
-// checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig ensures that the expected number of StatefulSet
-// replicas are ready. When a member has its process removed from the Automation Config, the pod will eventually
-// become unready. We use this information to determine if we are safe to continue the reconciliation process.
-func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter statefulset.Getter, statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB) (reconcile.Result, error) {
-	isAtDesiredReplicaCount, err := areExpectedNumberOfStatefulSetReplicasReady(stsGetter, mdb)
-	if err != nil {
-		return status.Update(statusWriter, &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error determining state of StatefulSet: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	if !isAtDesiredReplicaCount {
-		return status.Update(statusWriter, &mdb,
-			statusOptions().
-				withMessage(Info, fmt.Sprintf("Not yet at the desired number of replicas, currentMembers=%d, desiredMembers=%d",
-					mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-				withPendingPhase(10),
-		)
-	}
-	return resconciliationresult.OK()
-}
-
-// areExpectedNumberOfStatefulSetReplicasReady checks to see if the StatefulSet corresponding
-// to the given MongoDB resource has the expected number of ready replicas.
-func areExpectedNumberOfStatefulSetReplicasReady(stsGetter statefulset.Getter, mdb mdbv1.MongoDB) (bool, error) {
-	sts, err := stsGetter.GetStatefulSet(mdb.NamespacedName())
-	if err != nil {
-		return false, err
-	}
-	desiredReadyReplicas := int32(mdb.StatefulSetReplicasThisReconciliation())
-	return sts.Status.ReadyReplicas == desiredReadyReplicas, nil
-}
-
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
 func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
@@ -435,12 +398,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	//some issues with nil/empty maps not being compared correctly otherwise
 	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
 
-	isReady := false
-	if scale.IsScalingDown(mdb) || existingStatefulSet.Status.ReadyReplicas == 1 {
-		isReady = int32(mdb.StatefulSetReplicasThisReconciliation()) == existingStatefulSet.Status.ReadyReplicas
-	} else {
-		isReady = statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
-	}
+	isReady := statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
 
 	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
 		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
@@ -792,8 +750,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 
 	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 
-	zap.S().Debugw("BuildingStatefulSet", "replicas", mdb.StatefulSetReplicasThisReconciliation())
-
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
 		statefulset.WithNamespace(mdb.Namespace),
@@ -840,7 +796,7 @@ func getDomain(service, namespace, clusterName string) string {
 func defaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(60),
+		probes.WithFailureThreshold(60), // TODO: this value needs further consideration
 		probes.WithInitialDelaySeconds(5),
 	)
 }

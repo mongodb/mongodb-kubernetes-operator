@@ -2,7 +2,7 @@ package mongodb
 
 import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/resconciliationresult"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -56,7 +56,7 @@ func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
-	return resconciliationresult.OK()
+	return result.OK()
 }
 
 func (o *optionBuilder) withPhase(phase mdbv1.Phase, retryAfter int) *optionBuilder {
@@ -94,7 +94,7 @@ func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (m messageOption) GetResult() (reconcile.Result, error) {
-	return resconciliationresult.OK()
+	return result.OK()
 }
 
 func (o *optionBuilder) withAutomationConfigMembers(members int) *optionBuilder {
@@ -144,15 +144,15 @@ func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {
 	if p.phase == mdbv1.Running {
-		return resconciliationresult.OK()
+		return result.OK()
 	}
 	if p.phase == mdbv1.Pending {
-		return resconciliationresult.Retry(p.retryAfter)
+		return result.Retry(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
-		return resconciliationresult.Failed()
+		return result.Failed()
 	}
-	return resconciliationresult.OK()
+	return result.OK()
 }
 
 type automationConfigReplicasOption struct {
@@ -164,7 +164,7 @@ func (a automationConfigReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (a automationConfigReplicasOption) GetResult() (reconcile.Result, error) {
-	return resconciliationresult.OK()
+	return result.OK()
 }
 
 type statefulSetReplicasOption struct {
@@ -176,5 +176,5 @@ func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (s statefulSetReplicasOption) GetResult() (reconcile.Result, error) {
-	return resconciliationresult.OK()
+	return result.OK()
 }

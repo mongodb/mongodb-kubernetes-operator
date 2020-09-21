@@ -1,4 +1,4 @@
-package resconciliationresult
+package result
 
 import (
 	"time"
