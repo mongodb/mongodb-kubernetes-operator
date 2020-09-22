@@ -292,7 +292,7 @@ func mergeKeyToPathItems(defaultItems []corev1.KeyToPath, overrideItems []corev1
 	// Merge Items array by KeyToPath.Key entry
 	defaultItemsMap := createKeyToPathMap(defaultItems)
 	overrideItemsMap := createKeyToPathMap(overrideItems)
-	mergedItems := []corev1.KeyToPath{}
+	var mergedItems []corev1.KeyToPath
 	for _, defaultItem := range defaultItemsMap {
 		mergedKey := defaultItem
 		if overrideItem, ok := overrideItemsMap[defaultItem.Key]; ok {
@@ -337,9 +337,7 @@ func mergeVolume(defaultVolume corev1.Volume, overrideVolume corev1.Volume) core
 		if overrideSource.Secret.SecretName != "" {
 			mergedVolume.Secret.SecretName = overrideSource.Secret.SecretName
 		}
-		if len(overrideSource.Secret.Items) > 0 {
-			mergedVolume.Secret.Items = mergeKeyToPathItems(defaultSource.Secret.Items, overrideSource.Secret.Items)
-		}
+		mergedVolume.Secret.Items = mergeKeyToPathItems(defaultSource.Secret.Items, overrideSource.Secret.Items)
 		if overrideSource.Secret.DefaultMode != nil {
 			mergedVolume.Secret.DefaultMode = overrideSource.Secret.DefaultMode
 		}
@@ -350,9 +348,7 @@ func mergeVolume(defaultVolume corev1.Volume, overrideVolume corev1.Volume) core
 		if overrideSource.ConfigMap.LocalObjectReference.Name != "" {
 			mergedVolume.ConfigMap.LocalObjectReference.Name = overrideSource.ConfigMap.LocalObjectReference.Name
 		}
-		if len(overrideSource.ConfigMap.Items) > 0 {
-			mergedVolume.ConfigMap.Items = mergeKeyToPathItems(defaultSource.ConfigMap.Items, overrideSource.ConfigMap.Items)
-		}
+		mergedVolume.ConfigMap.Items = mergeKeyToPathItems(defaultSource.ConfigMap.Items, overrideSource.ConfigMap.Items)
 		if overrideSource.ConfigMap.DefaultMode != nil {
 			mergedVolume.ConfigMap.DefaultMode = overrideSource.ConfigMap.DefaultMode
 		}
