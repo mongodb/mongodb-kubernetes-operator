@@ -16,7 +16,7 @@ import (
 func updateScalingStatus(statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB) error {
 	_, err := status.Update(statusWriter, &mdb,
 		statusOptions().
-			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()),
 	)
 	return err

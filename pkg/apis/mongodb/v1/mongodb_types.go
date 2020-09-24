@@ -203,7 +203,7 @@ type MongoDBStatus struct {
 	Phase    Phase  `json:"phase"`
 
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
-	CurrentReplicaSetMembers   int `json:"currentReplicaSetMembers"`
+	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
 
 	Message string `json:"message,omitempty"`
 }
@@ -228,7 +228,7 @@ func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
 	// based on our desired number, and our current number
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
 		desired: m.Spec.Members,
-		current: m.Status.CurrentReplicaSetMembers,
+		current: m.Status.CurrentMongoDBMembers,
 	})
 }
 

@@ -283,7 +283,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
 				withFailedPhase(),
 		)
@@ -298,7 +298,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
 				withFailedPhase(),
 		)
@@ -307,7 +307,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
 				withFailedPhase(),
 		)
@@ -315,7 +315,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
@@ -326,7 +326,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	res, err := status.Update(r.client.Status(), &mdb,
 		statusOptions().
 			withMongoURI(mdb.MongoURI()).
-			withAutomationConfigMembers(mdb.AutomationConfigMembersThisReconciliation()).
+			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase(),

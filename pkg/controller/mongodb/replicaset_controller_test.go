@@ -412,7 +412,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 5, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 
 	// scale members from five to three
 	mdb.Spec.Members = 3
@@ -431,9 +431,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, res.Requeue)
-	assert.Equal(t, 4, mdb.Status.CurrentReplicaSetMembers)
-
-	makeStatefulSetReady(t, mgr.GetClient(), mdb)
+	assert.Equal(t, 4, mdb.Status.CurrentMongoDBMembers)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
@@ -444,7 +442,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, false, res.Requeue)
-	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 3, mdb.Status.CurrentMongoDBMembers)
 }
 
 func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
@@ -457,7 +455,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 3, mdb.Status.CurrentMongoDBMembers)
 
 	// scale members from three to five
 	mdb.Spec.Members = 5
@@ -475,7 +473,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	assert.NoError(t, err)
 	assert.Equal(t, true, res.Requeue)
-	assert.Equal(t, 4, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 4, mdb.Status.CurrentMongoDBMembers)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
 
@@ -489,7 +487,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.NoError(t, err)
 
 	assert.Equal(t, false, res.Requeue)
-	assert.Equal(t, 5, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 }
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
@@ -526,7 +524,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 3, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 3, mdb.Status.CurrentMongoDBMembers)
 }
 
 func TestOpenshift_Configuration(t *testing.T) {

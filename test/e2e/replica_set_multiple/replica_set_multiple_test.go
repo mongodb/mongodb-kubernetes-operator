@@ -74,7 +74,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI:                   mdb0.MongoURI(),
 				Phase:                      mdbv1.Running,
-				CurrentReplicaSetMembers:   5,
+				CurrentMongoDBMembers:      5,
 				CurrentStatefulSetReplicas: 5,
 			}))
 
@@ -87,7 +87,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 		//	mdbv1.MongoDBStatus{
 		//		MongoURI:                   mdb0.MongoURI(),
 		//		Phase:                      mdbv1.Running,
-		//		CurrentReplicaSetMembers:   5,
+		//		CurrentMongoDBMembers:   5,
 		//		CurrentStatefulSetReplicas: 5,
 		//	}))
 

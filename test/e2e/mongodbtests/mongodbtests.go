@@ -149,7 +149,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDB) func(*testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
-				CurrentReplicaSetMembers:   mdb.Spec.Members,
+				CurrentMongoDBMembers:      mdb.Spec.Members,
 				CurrentStatefulSetReplicas: mdb.Spec.Members,
 			}))
 	}

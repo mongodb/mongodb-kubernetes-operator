@@ -53,7 +53,7 @@ func TestReplicaSetScaleDown(t *testing.T) {
 			mdbv1.MongoDBStatus{
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
-				CurrentReplicaSetMembers:   1,
+				CurrentMongoDBMembers:      1,
 				CurrentStatefulSetReplicas: 1,
 			}))
 	})

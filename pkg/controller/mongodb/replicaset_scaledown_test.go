@@ -17,7 +17,7 @@ func TestUpdateScalingStatus(t *testing.T) {
 	mgr := client.NewManager(&mdb)
 
 	assert.Equal(t, 0, mdb.Status.CurrentStatefulSetReplicas)
-	assert.Equal(t, 0, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, 0, mdb.Status.CurrentMongoDBMembers)
 
 	expectedAutomationConfigMembers := mdb.AutomationConfigMembersThisReconciliation()
 	expectedStatefulSetReplicas := mdb.StatefulSetReplicasThisReconciliation()
@@ -29,7 +29,7 @@ func TestUpdateScalingStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, expectedAutomationConfigMembers, mdb.Status.CurrentStatefulSetReplicas)
-	assert.Equal(t, expectedStatefulSetReplicas, mdb.Status.CurrentReplicaSetMembers)
+	assert.Equal(t, expectedStatefulSetReplicas, mdb.Status.CurrentMongoDBMembers)
 }
 
 func TestHasReachedDesiredNumberOfStatefulSetReplicasReady(t *testing.T) {

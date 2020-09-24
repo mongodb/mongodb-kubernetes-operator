@@ -97,9 +97,9 @@ func (m messageOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
-func (o *optionBuilder) withAutomationConfigMembers(members int) *optionBuilder {
-	o.options = append(o.options, automationConfigReplicasOption{
-		replicaSetMembers: members,
+func (o *optionBuilder) withMongoDBMembers(members int) *optionBuilder {
+	o.options = append(o.options, mongoDBReplicasOption{
+		mongoDBMembers: members,
 	})
 	return o
 }
@@ -155,15 +155,15 @@ func (p phaseOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
-type automationConfigReplicasOption struct {
-	replicaSetMembers int
+type mongoDBReplicasOption struct {
+	mongoDBMembers int
 }
 
-func (a automationConfigReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
-	mdb.Status.CurrentReplicaSetMembers = a.replicaSetMembers
+func (a mongoDBReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.CurrentMongoDBMembers = a.mongoDBMembers
 }
 
-func (a automationConfigReplicasOption) GetResult() (reconcile.Result, error) {
+func (a mongoDBReplicasOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
