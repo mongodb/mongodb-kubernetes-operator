@@ -201,8 +201,11 @@ type AuthMode string
 type MongoDBStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
-	Members  int    `json:"members"`
-	Message  string `json:"message,omitempty"`
+
+	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
+	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
+
+	Message string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -220,16 +223,13 @@ type MongoDB struct {
 	Status MongoDBStatus `json:"status,omitempty"`
 }
 
-func (m MongoDB) DesiredReplicas() int {
-	return m.Spec.Members
-}
-
-func (m MongoDB) CurrentReplicas() int {
-	return m.Status.Members
-}
-
-func (m *MongoDB) ReplicasThisReconciliation() int {
-	return scale.ReplicasThisReconciliation(m)
+func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
+	// determine the correct number of automation config replica set members
+	// based on our desired number, and our current number
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired: m.Spec.Members,
+		current: m.Status.CurrentMongoDBMembers,
+	})
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
@@ -296,6 +296,30 @@ func (m MongoDB) GetFCV() string {
 	minorIndex := 1
 	parts := strings.Split(versionToSplit, ".")
 	return strings.Join(parts[:minorIndex+1], ".")
+}
+
+func (m MongoDB) DesiredReplicas() int {
+	return m.Spec.Members
+}
+
+func (m MongoDB) CurrentReplicas() int {
+	return m.Status.CurrentStatefulSetReplicas
+}
+
+func (m *MongoDB) StatefulSetReplicasThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(m)
+}
+
+type automationConfigReplicasScaler struct {
+	current, desired int
+}
+
+func (a automationConfigReplicasScaler) DesiredReplicas() int {
+	return a.desired
+}
+
+func (a automationConfigReplicasScaler) CurrentReplicas() int {
+	return a.current
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

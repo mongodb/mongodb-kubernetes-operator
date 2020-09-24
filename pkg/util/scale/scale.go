@@ -16,7 +16,7 @@ func ReplicasThisReconciliation(replicaSetScaler ReplicaSetScaler) int {
 		return replicaSetScaler.DesiredReplicas()
 	}
 
-	if isScalingDown(replicaSetScaler) {
+	if IsScalingDown(replicaSetScaler) {
 		return replicaSetScaler.CurrentReplicas() - 1
 	}
 
@@ -28,7 +28,7 @@ func IsStillScaling(replicaSetScaler ReplicaSetScaler) bool {
 	return ReplicasThisReconciliation(replicaSetScaler) != replicaSetScaler.DesiredReplicas()
 }
 
-func isScalingDown(replicaSetScaler ReplicaSetScaler) bool {
+func IsScalingDown(replicaSetScaler ReplicaSetScaler) bool {
 	return replicaSetScaler.DesiredReplicas() < replicaSetScaler.CurrentReplicas()
 }
 

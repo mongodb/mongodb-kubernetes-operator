@@ -175,7 +175,9 @@ spec:
         status:
           description: MongoDBStatus defines the observed state of MongoDB
           properties:
-            members:
+            currentStatefulSetReplicas:
+              type: integer
+            currentMongoDBMembers:
               type: integer
             message:
               type: string
@@ -183,10 +185,6 @@ spec:
               type: string
             phase:
               type: string
-          required:
-          - members
-          - mongoUri
-          - phase
           type: object
       type: object
   version: v1

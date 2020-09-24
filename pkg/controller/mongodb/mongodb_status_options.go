@@ -1,9 +1,8 @@
 package mongodb
 
 import (
-	"time"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
@@ -16,6 +15,7 @@ type severity string
 
 const (
 	Info  severity = "INFO"
+	Debug severity = "DEBUG"
 	Warn  severity = "WARN"
 	Error severity = "ERROR"
 	None  severity = "NONE"
@@ -56,28 +56,9 @@ func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDB) {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
-	return okResult()
+	return result.OK()
 }
 
-func (o *optionBuilder) withMembers(members int) *optionBuilder {
-	o.options = append(o.options,
-		membersOption{
-			members: members,
-		})
-	return o
-}
-
-type membersOption struct {
-	members int
-}
-
-func (m membersOption) ApplyOption(mdb *mdbv1.MongoDB) {
-	mdb.Status.Members = m.members
-}
-
-func (m membersOption) GetResult() (reconcile.Result, error) {
-	return okResult()
-}
 func (o *optionBuilder) withPhase(phase mdbv1.Phase, retryAfter int) *optionBuilder {
 	o.options = append(o.options,
 		phaseOption{
@@ -99,18 +80,35 @@ type messageOption struct {
 func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
 	mdb.Status.Message = m.message.messageString
 	if m.message.severityLevel == Error {
-		zap.S().Error(m.message)
+		zap.S().Error(m.message.messageString)
 	}
 	if m.message.severityLevel == Warn {
-		zap.S().Warn(m.message)
+		zap.S().Warn(m.message.messageString)
 	}
 	if m.message.severityLevel == Info {
-		zap.S().Info(m.message)
+		zap.S().Info(m.message.messageString)
+	}
+	if m.message.severityLevel == Debug {
+		zap.S().Debug(m.message.messageString)
 	}
 }
 
 func (m messageOption) GetResult() (reconcile.Result, error) {
-	return okResult()
+	return result.OK()
+}
+
+func (o *optionBuilder) withMongoDBMembers(members int) *optionBuilder {
+	o.options = append(o.options, mongoDBReplicasOption{
+		mongoDBMembers: members,
+	})
+	return o
+}
+
+func (o *optionBuilder) withStatefulSetReplicas(members int) *optionBuilder {
+	o.options = append(o.options, statefulSetReplicasOption{
+		replicas: members,
+	})
+	return o
 }
 
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
@@ -146,28 +144,37 @@ func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
 
 func (p phaseOption) GetResult() (reconcile.Result, error) {
 	if p.phase == mdbv1.Running {
-		return okResult()
+		return result.OK()
 	}
 	if p.phase == mdbv1.Pending {
-		return retryResult(p.retryAfter)
+		return result.Retry(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
-		return failedResult()
+		return result.Failed()
 	}
-	return okResult()
+	return result.OK()
 }
 
-// helper functions which return reconciliation results which should be
-// returned from the main reconciliation loop
-
-func okResult() (reconcile.Result, error) {
-	return reconcile.Result{}, nil
+type mongoDBReplicasOption struct {
+	mongoDBMembers int
 }
 
-func retryResult(after int) (reconcile.Result, error) {
-	return reconcile.Result{Requeue: true, RequeueAfter: time.Second * time.Duration(after)}, nil
+func (a mongoDBReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.CurrentMongoDBMembers = a.mongoDBMembers
 }
 
-func failedResult() (reconcile.Result, error) {
-	return retryResult(0)
+func (a mongoDBReplicasOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
+}
+
+type statefulSetReplicasOption struct {
+	replicas int
+}
+
+func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+	mdb.Status.CurrentStatefulSetReplicas = s.replicas
+}
+
+func (s statefulSetReplicasOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
 }

@@ -271,7 +271,8 @@ func withTest(test string) func(obj runtime.Object) {
 				"--kubeconfig",
 				"/etc/config/kubeconfig",
 				"--go-test-flags",
-				"-timeout=20m",
+				// TODO: allow this to be configurable per test, this is only large due to scale down test
+				"-timeout=60m",
 			}
 		}
 	}
