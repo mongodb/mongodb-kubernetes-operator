@@ -68,6 +68,15 @@ type MongoDBSpec struct {
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
+func (m MongoDBSpec) ToJson() []byte {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return []byte{}
+	}
+
+	return b
+}
+
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {

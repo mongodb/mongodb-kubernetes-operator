@@ -82,7 +82,8 @@ const (
 
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
+	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
+	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
 	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
@@ -290,7 +291,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Setting MongoDB Annotations")
-
 	annotations := map[string]string{
 		lastVersionAnnotationKey:       mdb.Spec.Version,
 		hasLeftReadyStateAnnotationKey: "false",
@@ -331,6 +331,11 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			withMessage(None, "").
 			withRunningPhase(),
 	)
+
+	annotations = map[string]string{
+		lastSuccessfulConfiguration: string(mdb.Spec.ToJson()),
+	}
+	r.setAnnotations(mdb.NamespacedName(), annotations)
 
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
