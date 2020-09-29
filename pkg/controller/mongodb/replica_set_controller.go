@@ -353,9 +353,10 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 		return nil
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	return statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
+	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
+	return err
 }
 
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
@@ -419,7 +420,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
-	if err = statefulset.CreateOrUpdate(r.client, set); err != nil {
+	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil

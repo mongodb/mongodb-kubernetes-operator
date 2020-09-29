@@ -75,7 +75,8 @@ tags
 .vscode/*
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
-
+*DS_Store
+*mypy_cache
 .idea
 vendor
 __pycache__
