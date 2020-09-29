@@ -41,8 +41,8 @@ function go_linting() {
     do
         dirs_to_analyze+=("$(dirname "${file}")" )
     done
-    mapfile -t dirs_to_analyze < <(printf '%s\n' "${dirs_to_analyze[@]}" | sort -u)
     if [ ${#dirs_to_analyze[@]} -ne 0 ]; then
+        mapfile -t dirs_to_analyze < <(printf '%s\n' "${dirs_to_analyze[@]}" | sort -u)
         echo "Running golangci-lint on staged files"
         local exit_status=0
         for file in "${dirs_to_analyze[@]}"

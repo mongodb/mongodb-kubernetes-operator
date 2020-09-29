@@ -17,7 +17,7 @@ our local working environments in CI/CD systems.
 
 # High-Perspective Architecture
 
-The operator itself consists of 1 image, that has all the operational logic to deploy and 
+The operator itself consists of 1 image, that has all the operational logic to deploy and
 maintain the MongoDB resources in your cluster.
 
 The operator deploys MongoDB in Pods (via a higher-level resource, a
@@ -64,7 +64,7 @@ of this file.
 
 ## Configure Docker registry
 
-The build process consist in multiple Docker images being built, you need to specify 
+The build process consist in multiple Docker images being built, you need to specify
 where you want the locally build images to be pushed. The Docker registry needs to be
 accessible from your Kubernetes cluster.
 
@@ -128,9 +128,7 @@ MongoDB Replica Set and asserts that the deployed server can be connected to.
 # Writing new E2E tests
 
 You can start with `replica_set` test as an starting point to write a new test.
-The tests are written using `operator-sdk` and so you can find more information
-about how to write tests in the [official operator-sdk
-docs](https://sdk.operatorframework.io/docs/golang/legacy/e2e-tests/).
+The tests are written using `operator-sdk`.
 
 Adding a new test is as easy as to create a new directory in `test/e2e` with the
 new E2E test, and to run them:
@@ -144,11 +142,11 @@ python scripts/dev/e2e.py --test <new-test>
 ## Set up pre-commit hooks
 To set up the pre-commit hooks, please create symbolic links from the provided [hooks](https://github.com/mongodb/mongodb-kubernetes-operator/tree/master/scripts/git-hooks):
 
-* Navigate to your `.git/hooks` directory: 
+* Navigate to your `.git/hooks` directory:
 
 	`cd .git/hooks`
 
-* Create a symlink for every file in the `scripts/git-hooks` directory: 
+* Create a symlink for every file in the `scripts/git-hooks` directory:
 
 	`ln -s -f  ../../scripts/git-hooks/* .`
 
