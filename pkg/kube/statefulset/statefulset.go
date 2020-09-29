@@ -26,7 +26,7 @@ type Getter interface {
 }
 
 type Updater interface {
-	UpdateStatefulSet(sts appsv1.StatefulSet) error
+	UpdateStatefulSet(sts appsv1.StatefulSet) (appsv1.StatefulSet, error)
 }
 
 type Creator interface {
@@ -57,22 +57,22 @@ type GetUpdateCreateDeleter interface {
 
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
-func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) error {
+func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
 	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			return getUpdateCreator.CreateStatefulSet(sts)
+			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(sts)
 		}
-		return err
+		return appsv1.StatefulSet{}, err
 	}
 	return getUpdateCreator.UpdateStatefulSet(sts)
 }
 
 // GetAndUpdate applies the provided function to the most recent version of the object
-func GetAndUpdate(getUpdater GetUpdater, nsName types.NamespacedName, updateFunc func(*appsv1.StatefulSet)) error {
+func GetAndUpdate(getUpdater GetUpdater, nsName types.NamespacedName, updateFunc func(*appsv1.StatefulSet)) (appsv1.StatefulSet, error) {
 	sts, err := getUpdater.GetStatefulSet(nsName)
 	if err != nil {
-		return err
+		return appsv1.StatefulSet{}, err
 	}
 	// apply the function on the most recent version of the resource
 	updateFunc(&sts)

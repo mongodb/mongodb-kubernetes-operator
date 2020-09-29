@@ -138,8 +138,11 @@ func (c client) GetStatefulSet(objectKey k8sClient.ObjectKey) (appsv1.StatefulSe
 }
 
 // UpdateStatefulSet provides a thin wrapper and client.Client to update appsv1.StatefulSet types
-func (c client) UpdateStatefulSet(sts appsv1.StatefulSet) error {
-	return c.Update(context.TODO(), &sts)
+// the updated StatefulSet is returned
+func (c client) UpdateStatefulSet(sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
+	stsToUpdate := &sts
+	err := c.Update(context.TODO(), stsToUpdate)
+	return *stsToUpdate, err
 }
 
 // CreateStatefulSet provides a thin wrapper and client.Client to create appsv1.StatefulSet types
