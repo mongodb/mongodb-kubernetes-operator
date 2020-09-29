@@ -44,4 +44,8 @@ func TestReplicaSetTLS(t *testing.T) {
 	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
+	t.Run("TLS is disabled", mongodbtests.DisableTLS(&mdb))
+	t.Run("MongoDB Reaches Failed Phase", mongodbtests.MongoDBReachesFailedPhase(&mdb))
+	t.Run("TLS is enabled", mongodbtests.EnableTLS(&mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 }

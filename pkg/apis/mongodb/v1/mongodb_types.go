@@ -68,13 +68,24 @@ type MongoDBSpec struct {
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
-func (m MongoDBSpec) ToJson() []byte {
+func (m MongoDBSpec) ToJson() ([]byte, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
-		return []byte{}
+		return []byte{}, err
 	}
 
-	return b
+	return b, nil
+}
+
+func FromJSON(jsonString string) (MongoDBSpec, error) {
+	m := MongoDBSpec{}
+	err := json.Unmarshal([]byte(jsonString), &m)
+	if err != nil {
+		return MongoDBSpec{}, err
+	}
+
+	return m, nil
+
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
