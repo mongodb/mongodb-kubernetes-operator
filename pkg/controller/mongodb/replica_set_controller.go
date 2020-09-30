@@ -190,7 +190,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
 				withFailedPhase(),
 		)
-
 	}
 
 	r.log.Debug("Ensuring Automation Config for deployment")
@@ -342,20 +341,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			withMessage(None, "").
 			withRunningPhase(),
 	)
-	if err == nil {
-		// If we could get all the way up to here, then save the current spec as the last
-		// successfully applied.
-		lastSuccessfulConfigurationSaved, err := mdb.Spec.ToJson()
-		if err != nil {
-			r.log.Error("Error converting Spec to Json: %s", err)
-		}
-		annotations = map[string]string{
-			lastSuccessfulConfiguration: string(lastSuccessfulConfigurationSaved),
-		}
-		r.setAnnotations(mdb.NamespacedName(), annotations)
-	} else {
+	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
+	}
+
+	if err := r.updateCurrentSpecAnnotation(mdb); err != nil {
+		r.log.Errorf("Could not save current state as an annotation: %s", err)
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
@@ -567,12 +559,13 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
 		return nil
 	}
 
-	last, err := mdbv1.FromJSON(lastSuccessfulConfigurationSaved)
+	prevSpec := mdbv1.MongoDBSpec{}
+	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &prevSpec)
 	if err != nil {
-		r.log.Debugf("Could not Unmarshal annotation into MongoDBSpec: ", err)
-		return nil
+		return err
 	}
-	return validation.Validate(last, mdb.Spec)
+
+	return validation.Validate(prevSpec, mdb.Spec)
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
@@ -617,6 +610,18 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
+}
+
+func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDB) error {
+	currentSpec, err := json.Marshal(mdb.Spec)
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{
+		lastSuccessfulConfiguration: string(currentSpec),
+	}
+	return r.setAnnotations(mdb.NamespacedName(), annotations)
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD

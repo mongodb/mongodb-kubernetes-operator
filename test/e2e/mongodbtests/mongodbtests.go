@@ -222,16 +222,16 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 
 // DisableTLS changes the tls.enabled attribute to false
 func DisableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
-	return TLS(mdb, false)
+	return tls(mdb, false)
 }
 
 // EnableTLS changes the tls.enabled attribute to false
 func EnableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
-	return TLS(mdb, true)
+	return tls(mdb, true)
 }
 
-// TLS changes the tls.enabled attribute to false
-func TLS(mdb *mdbv1.MongoDB, enabled bool) func(*testing.T) {
+// tls changes the tls.enabled attribute to false
+func tls(mdb *mdbv1.MongoDB, enabled bool) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Log("Setting TLS to disabled")
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
