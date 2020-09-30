@@ -100,7 +100,7 @@ func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
-// MongoDBReachesFailed ensure the MongoDB resource reaches the Running phase
+// MongoDBReachesFailed ensure the MongoDB resource reaches the Failed phase.
 func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Failed, time.Second*15, time.Minute*5)
@@ -220,17 +220,17 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 	}
 }
 
-// DisableTLS changes the tls.enabled attribute to false
+// DisableTLS changes the tls.enabled attribute to false.
 func DisableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
 	return tls(mdb, false)
 }
 
-// EnableTLS changes the tls.enabled attribute to false
+// EnableTLS changes the tls.enabled attribute to true.
 func EnableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
 	return tls(mdb, true)
 }
 
-// tls changes the tls.enabled attribute to false
+// tls function configures the security.tls.enabled attribute.
 func tls(mdb *mdbv1.MongoDB, enabled bool) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Log("Setting TLS to disabled")
