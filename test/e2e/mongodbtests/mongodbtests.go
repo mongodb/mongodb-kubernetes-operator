@@ -233,7 +233,7 @@ func EnableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
 // tls function configures the security.tls.enabled attribute.
 func tls(mdb *mdbv1.MongoDB, enabled bool) func(*testing.T) {
 	return func(t *testing.T) {
-		t.Log("Setting TLS to disabled")
+		t.Logf("Setting security.tls.enabled to %t", enabled)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Security.TLS.Enabled = enabled
 		})
