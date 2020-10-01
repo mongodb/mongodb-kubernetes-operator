@@ -100,6 +100,17 @@ func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+// MongoDBReachesFailed ensure the MongoDB resource reaches the Failed phase.
+func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Failed, time.Second*15, time.Minute*5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("MongoDB %s/%s is in Failed state!", mdb.Namespace, mdb.Name)
+	}
+}
+
 func AutomationConfigSecretExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
 		s, err := e2eutil.WaitForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1)
@@ -202,6 +213,29 @@ func Scale(mdb *mdbv1.MongoDB, newMembers int) func(*testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
 			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// DisableTLS changes the tls.enabled attribute to false.
+func DisableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
+	return tls(mdb, false)
+}
+
+// EnableTLS changes the tls.enabled attribute to true.
+func EnableTLS(mdb *mdbv1.MongoDB) func(*testing.T) {
+	return tls(mdb, true)
+}
+
+// tls function configures the security.tls.enabled attribute.
+func tls(mdb *mdbv1.MongoDB, enabled bool) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Setting security.tls.enabled to %t", enabled)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDB) {
+			db.Spec.Security.TLS.Enabled = enabled
 		})
 		if err != nil {
 			t.Fatal(err)

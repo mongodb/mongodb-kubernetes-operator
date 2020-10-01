@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
@@ -82,7 +83,8 @@ const (
 
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	lastVersionAnnotationKey = "mongodb.com/v1.lastVersion"
+	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
+	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
 	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
 	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
@@ -180,6 +182,15 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
 	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+
+	r.log.Debug("Validating MongoDB.Spec")
+	if err := r.validateUpdate(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
+				withFailedPhase(),
+		)
+	}
 
 	r.log.Debug("Ensuring Automation Config for deployment")
 	if err := r.ensureAutomationConfig(mdb); err != nil {
@@ -290,7 +301,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Setting MongoDB Annotations")
-
 	annotations := map[string]string{
 		lastVersionAnnotationKey:       mdb.Spec.Version,
 		hasLeftReadyStateAnnotationKey: "false",
@@ -331,10 +341,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 			withMessage(None, "").
 			withRunningPhase(),
 	)
-
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
+	}
+
+	if err := r.updateCurrentSpecAnnotation(mdb); err != nil {
+		r.log.Errorf("Could not save current state as an annotation: %s", err)
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
@@ -537,6 +550,25 @@ func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB)
 	return currentAc, nil
 }
 
+// validateUpdate validates that the new Spec, corresponding to the existing one
+// is still valid. If there is no a previous Spec, then the function assumes this is
+// the first version of the MongoDB resource and skips.
+func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
+	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
+	if !ok {
+		// First version of Spec, no need to validate
+		return nil
+	}
+
+	prevSpec := mdbv1.MongoDBSpec{}
+	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &prevSpec)
+	if err != nil {
+		return err
+	}
+
+	return validation.Validate(prevSpec, mdb.Spec)
+}
+
 func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
@@ -579,6 +611,18 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
 		Build(), nil
+}
+
+func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDB) error {
+	currentSpec, err := json.Marshal(mdb.Spec)
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{
+		lastSuccessfulConfiguration: string(currentSpec),
+	}
+	return r.setAnnotations(mdb.NamespacedName(), annotations)
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD
