@@ -62,6 +62,8 @@ your tests. The `repo_url` sets the Docker registry. In my case I have a
 this file, set the `MONGODB_COMMUNITY_CONFIG` env variable to the absolute path
 of this file.
 
+Please see [here](./build_operator_locally.md) to see how to build and deploy the operator locally.
+
 ## Configure Docker registry
 
 The build process consist in multiple Docker images being built, you need to specify
