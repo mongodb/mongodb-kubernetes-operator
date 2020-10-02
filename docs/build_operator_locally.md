@@ -13,13 +13,13 @@ This guide assumes that you have already installed the following tools:
 
 ## Steps
 
-* Create a local kubernetes cluster and start a local registry by running
+1. Create a local kubernetes cluster and start a local registry by running
 
 ```sh
 ./scripts/dev/setup_kind_cluster.sh
 ```
 
-* Build and deploy the operator:
+2. Build and deploy the operator:
 
 ```sh
 python ./scripts/dev/build_and_deploy_operator
@@ -27,6 +27,19 @@ python ./scripts/dev/build_and_deploy_operator
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
-* Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
+3. Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
 
-* You can now deploy your resources following the [docs](../docs)
+4. You can now deploy your resources following the [docs](../docs/README.md)
+
+
+## Troubleshooting
+If you run into an issue in step 1, you can try the following steps as workaround:
+1. ```sh
+python ./scripts/dev/dockerfile_generator.py > Dockerfile
+```
+1. ```sh
+docker build . -t localhost:5000/mongodb-kubernetes-operator
+```
+1. ```sh
+docker push localhost:5000/mongodb-kubernetes-operator
+```
