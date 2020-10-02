@@ -34,12 +34,17 @@ Note: this will build and push the operator at `repo_url/mongodb-kubernetes-oper
 
 ## Troubleshooting
 If you run into an issue in step 1, you can try the following steps as workaround:
-1. ```sh
+1. Manually build the operator Dockerfile
+```sh
 python ./scripts/dev/dockerfile_generator.py > Dockerfile
 ```
-1. ```sh
+
+1. Build the image
+```sh
 docker build . -t localhost:5000/mongodb-kubernetes-operator
 ```
-1. ```sh
+
+1. Push the image
+```sh
 docker push localhost:5000/mongodb-kubernetes-operator
 ```
