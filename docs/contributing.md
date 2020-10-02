@@ -117,13 +117,26 @@ replica_set_scale
 The tests should run individually using the runner like this:
 
 ```sh
-# python scripts/dev/e2e.py <test-name>
+# python scripts/dev/e2e.py --test <test-name>
 # for example
 python scripts/dev/e2e.py --test replica_set
 ```
 
 This will run the `replica_set` E2E test which is a simple test that installs a
 MongoDB Replica Set and asserts that the deployed server can be connected to.
+
+
+The python script has several flags to control its behaviour, please run
+
+```sh
+python scripts/dev/e2e.py --help
+```
+
+to get a list.
+
+## Troubleshooting
+When you run a test locally, if the `operator-sdk-test` pod is present, you will have to
+first manually delete it; failing to do so will cause the `test-runner` pod to fail.
 
 # Writing new E2E tests
 
