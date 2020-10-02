@@ -39,12 +39,12 @@ If you run into an issue in step 1, you can try the following steps as workaroun
 python ./scripts/dev/dockerfile_generator.py > Dockerfile
 ```
 
-1. Build the image
+2. Build the image
 ```sh
 docker build . -t localhost:5000/mongodb-kubernetes-operator
 ```
 
-1. Push the image
+3. Push the image
 ```sh
 docker push localhost:5000/mongodb-kubernetes-operator
 ```
