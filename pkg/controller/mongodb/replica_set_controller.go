@@ -470,6 +470,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
+		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).

@@ -62,6 +62,28 @@ func TestBuildAutomationConfig(t *testing.T) {
 	}
 }
 
+func TestReplicaSetHorizons(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(3).
+		SetReplicaSetHorizons([]ReplicaSetHorizons{
+			{"horizon": "test-horizon-0"},
+			{"horizon": "test-horizon-1"},
+			{"horizon": "test-horizon-2"},
+		}).
+		Build()
+
+	assert.NoError(t, err)
+
+	for i, member := range ac.ReplicaSets[0].Members {
+		assert.NotEmpty(t, member.Horizons)
+		assert.Contains(t, member.Horizons, "horizon")
+		assert.Equal(t, fmt.Sprintf("test-horizon-%d", i), member.Horizons["horizon"])
+	}
+}
+
 func TestMongoDbVersions(t *testing.T) {
 	ac, err := NewBuilder().
 		SetName("my-rs").
