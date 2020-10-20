@@ -83,6 +83,6 @@ You cannot disable SCRAM authentication.
 
 - To authenticate to your MongoDB resource, run the following command:
    ```
-   mongo "mongodb://<mongodb-resource-metadata.name>-svc.<my-namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>" --username <username> --password <password> --authenticationDatabase <authentication-database>
+   mongo "mongodb://<service-object-name>.<my-namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>" --username <username> --password <password> --authenticationDatabase <authentication-database>
    ```
 - To change a user's password, create and apply a new secret resource definition with a `metadata.name` that is the same as the name specified in `passwordSecretRef.name` of the MongoDB CRD. The Operator will automatically regenerate credentials.

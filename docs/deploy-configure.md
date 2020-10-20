@@ -22,8 +22,9 @@ To deploy your first replica set:
    ```
 3. Connect clients to the MongoDB replica set:
    ```
-   mongodb://<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local:27017/?replicaSet=<replica set name>
+   mongo "mongodb://<service-object-name>.<namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>"
    ```
+<em>NOTE: You can access the mongodb instance only from within a pod running in the cluster.</em>
 
 ## Upgrade your MongoDB Resource Version and Feature Compatibility Version
 
