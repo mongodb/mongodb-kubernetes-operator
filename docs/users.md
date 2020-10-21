@@ -34,7 +34,7 @@ You cannot disable SCRAM authentication.
    | Key | Type | Description | Required? |
    |----|----|----|----|
    | `spec.users` | array of objects | Configures database users for this deployment. | Yes |
-   | `spec.users.name` | string | Username of the database user. | Yes |
+   | `spec.users.name` | string | Username of the database user. <em> NOTE: make sure the name complies with [DNS-1123 subdomain](https://tools.ietf.org/html/rfc1123). Regex for validating name is ''[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'')' </em>| Yes |
    | `spec.users.db` | string | Database that the user authenticates against. Defaults to `admin`. | No |
    | `spec.users.passwordSecretRef.name` | string | Name of the secret that contains the user's plain text password. | Yes|
    | `spec.users.passwordSecretRef.key` | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
