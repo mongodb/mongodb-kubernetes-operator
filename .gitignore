@@ -76,6 +76,8 @@ tags
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 *mypy_cache
+venv/
+local-config.json
 .idea
 vendor
 __pycache__
