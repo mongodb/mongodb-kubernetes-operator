@@ -92,7 +92,7 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 	}
 
 	for _, tt := range testusers {
-		assert.Equal(t, tt.in.GetScramCredentialsSecretName(), tt.exp)
+		assert.Equal(t, tt.exp, tt.in.GetScramCredentialsSecretName())
 	}
 
 }

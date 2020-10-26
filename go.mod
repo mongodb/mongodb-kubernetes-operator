@@ -1,6 +1,6 @@
 module github.com/mongodb/mongodb-kubernetes-operator
 
-go 1.15
+go 1.14
 
 require (
 	github.com/Azure/go-autorest v14.0.1+incompatible // indirect

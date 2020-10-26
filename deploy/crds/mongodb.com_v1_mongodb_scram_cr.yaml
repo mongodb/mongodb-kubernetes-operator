@@ -20,6 +20,7 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
+      scramCredentialsSecretName: my-scram
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required

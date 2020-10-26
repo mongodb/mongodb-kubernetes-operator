@@ -25,3 +25,4 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
+      scramCredentialsSecretName: my-scram

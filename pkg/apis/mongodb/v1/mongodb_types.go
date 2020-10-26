@@ -120,6 +120,7 @@ type MongoDBUser struct {
 	Roles []Role `json:"roles"`
 
 	// ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
 }
 
@@ -138,7 +139,7 @@ func (m MongoDBUser) GetUserName() string {
 	return m.Name
 }
 
-// Get the final SCRAM credentials secret-name by appending the user provided
+// GetScramCredentialsSecretName gets the final SCRAM credentials secret-name by appending the user provided
 // scramsCredentialSecretName with "scram-credentials"
 func (m MongoDBUser) GetScramCredentialsSecretName() string {
 	return fmt.Sprintf("%s-%s", m.ScramCredentialsSecretName, "scram-credentials")

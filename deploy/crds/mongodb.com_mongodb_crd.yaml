@@ -166,6 +166,7 @@ spec:
                 - name
                 - passwordSecretRef
                 - roles
+                - scramCredentialsSecretName
                 type: object
               type: array
             version:
