@@ -157,10 +157,16 @@ spec:
                       - name
                       type: object
                     type: array
+                  scramCredentialsSecretName:
+                    description: ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object
+                      created by the mongoDB operator for storing SCRAM credentials
+                    type: string
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                 required:
                 - name
                 - passwordSecretRef
                 - roles
+                - scramCredentialsSecretName
                 type: object
               type: array
             version:

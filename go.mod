@@ -1,6 +1,6 @@
 module github.com/mongodb/mongodb-kubernetes-operator
 
-go 1.13
+go 1.14
 
 require (
 	github.com/Azure/go-autorest v14.0.1+incompatible // indirect
@@ -15,6 +15,7 @@ require (
 	github.com/klauspost/compress v1.9.8 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/operator-framework/operator-sdk v0.17.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/procfs v0.0.11 // indirect
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/spf13/cobra v0.0.7 // indirect

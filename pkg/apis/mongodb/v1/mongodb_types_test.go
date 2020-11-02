@@ -28,6 +28,75 @@ func TestGetFCV(t *testing.T) {
 	assert.Equal(t, "4.2", mdb.GetFCV())
 }
 
+func TestGetScramCredentialsSecretName(t *testing.T) {
+	testusers := []struct {
+		in  MongoDBUser
+		exp string
+	}{
+		{
+			MongoDBUser{
+				Name: "mdb-0",
+				DB:   "admin",
+				Roles: []Role{
+					// roles on testing db for general connectivity
+					{
+						DB:   "testing",
+						Name: "readWrite",
+					},
+					{
+						DB:   "testing",
+						Name: "clusterAdmin",
+					},
+					// admin roles for reading FCV
+					{
+						DB:   "admin",
+						Name: "readWrite",
+					},
+					{
+						DB:   "admin",
+						Name: "clusterAdmin",
+					},
+				},
+				ScramCredentialsSecretName: "scram-credential-secret-name-0",
+			},
+			"scram-credential-secret-name-0-scram-credentials",
+		},
+		{
+			MongoDBUser{
+				Name: "mdb-1",
+				DB:   "admin",
+				Roles: []Role{
+					// roles on testing db for general connectivity
+					{
+						DB:   "testing",
+						Name: "readWrite",
+					},
+					{
+						DB:   "testing",
+						Name: "clusterAdmin",
+					},
+					// admin roles for reading FCV
+					{
+						DB:   "admin",
+						Name: "readWrite",
+					},
+					{
+						DB:   "admin",
+						Name: "clusterAdmin",
+					},
+				},
+				ScramCredentialsSecretName: "scram-credential-secret-name-1",
+			},
+			"scram-credential-secret-name-1-scram-credentials",
+		},
+	}
+
+	for _, tt := range testusers {
+		assert.Equal(t, tt.exp, tt.in.GetScramCredentialsSecretName())
+	}
+
+}
+
 func newReplicaSet(members int, name, namespace string) MongoDB {
 	return MongoDB{
 		TypeMeta: metav1.TypeMeta{},
