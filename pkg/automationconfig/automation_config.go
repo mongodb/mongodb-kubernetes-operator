@@ -99,7 +99,7 @@ type ReplicaSetMember struct {
 	Priority    int                `json:"priority"`
 	ArbiterOnly bool               `json:"arbiterOnly"`
 	Votes       int                `json:"votes"`
-	Horizons    ReplicaSetHorizons `json:"horizons"`
+	Horizons    ReplicaSetHorizons `json:"horizons,omitempty"`
 }
 
 type ReplicaSetHorizons map[string]string
