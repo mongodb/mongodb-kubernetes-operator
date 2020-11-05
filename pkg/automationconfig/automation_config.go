@@ -94,20 +94,24 @@ type ReplicaSet struct {
 }
 
 type ReplicaSetMember struct {
-	Id          int    `json:"_id"`
-	Host        string `json:"host"`
-	Priority    int    `json:"priority"`
-	ArbiterOnly bool   `json:"arbiterOnly"`
-	Votes       int    `json:"votes"`
+	Id          int                `json:"_id"`
+	Host        string             `json:"host"`
+	Priority    int                `json:"priority"`
+	ArbiterOnly bool               `json:"arbiterOnly"`
+	Votes       int                `json:"votes"`
+	Horizons    ReplicaSetHorizons `json:"horizons,omitempty"`
 }
 
-func newReplicaSetMember(p Process, id int) ReplicaSetMember {
+type ReplicaSetHorizons map[string]string
+
+func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons) ReplicaSetMember {
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
 		Priority:    1,
 		ArbiterOnly: false,
 		Votes:       1,
+		Horizons:    horizons,
 	}
 }
 

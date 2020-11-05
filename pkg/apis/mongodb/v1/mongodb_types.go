@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,6 +51,11 @@ type MongoDBSpec struct {
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 
+	// ReplicaSetHorizons allows providing different DNS settings within the
+	// Kubernetes cluster and to the Kubernetes cluster.
+	// +optional
+	ReplicaSetHorizons ReplicaSetHorizonConfiguration `json:"replicaSetHorizons,omitempty"`
+
 	// Security configures security features, such as TLS, and authentication settings for a deployment
 	// +required
 	Security Security `json:"security"`
@@ -67,6 +73,10 @@ type MongoDBSpec struct {
 	// +kubebuilder:validation:Type=object
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
+
+// ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
+// replica set members.
+type ReplicaSetHorizonConfiguration []automationconfig.ReplicaSetHorizons
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.

@@ -24,16 +24,17 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler        AuthEnabler
-	processes      []Process
-	replicaSets    []ReplicaSet
-	members        int
-	domain         string
-	name           string
-	fcv            string
-	topology       Topology
-	mongodbVersion string
-	previousAC     AutomationConfig
+	enabler            AuthEnabler
+	processes          []Process
+	replicaSets        []ReplicaSet
+	replicaSetHorizons []ReplicaSetHorizons
+	members            int
+	domain             string
+	name               string
+	fcv                string
+	topology           Topology
+	mongodbVersion     string
+	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
 	toolsVersion  ToolsVersion
@@ -56,6 +57,11 @@ func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
 
 func (b *Builder) SetTopology(topology Topology) *Builder {
 	b.topology = topology
+	return b
+}
+
+func (b *Builder) SetReplicaSetHorizons(horizons []ReplicaSetHorizons) *Builder {
+	b.replicaSetHorizons = horizons
 	return b
 }
 
@@ -124,7 +130,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
 		processes[i] = process
-		members[i] = newReplicaSetMember(process, i)
+
+		if b.replicaSetHorizons != nil {
+			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i])
+		} else {
+			members[i] = newReplicaSetMember(process, i, nil)
+		}
 	}
 
 	auth := disabledAuth()

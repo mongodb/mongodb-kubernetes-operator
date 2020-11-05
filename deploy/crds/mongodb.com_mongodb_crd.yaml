@@ -49,6 +49,17 @@ spec:
             members:
               description: Members is the number of members in the replica set
               type: integer
+            replicaSetHorizons:
+              description: Add this parameter and values if you need your database
+                to be accessed outside of Kubernetes. This setting allows you to
+                provide different DNS settings within the Kubernetes cluster and
+                to the Kubernetes cluster. The Kubernetes Operator uses split horizon
+                DNS for replica set members. This feature allows communication both
+                within the Kubernetes cluster and from outside Kubernetes.
+              items:
+                properties: {}
+                type: object
+              type: array
             security:
               description: Security configures security features, such as TLS, and
                 authentication settings for a deployment
