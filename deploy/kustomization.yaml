@@ -6,4 +6,3 @@ resources:
  - ./operator/role.yaml
  - ./operator/role_binding.yaml
  - ./operator/operator.yaml
-
