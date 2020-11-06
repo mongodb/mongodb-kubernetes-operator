@@ -14,14 +14,13 @@ const (
 )
 
 type AutomationConfig struct {
-	Version      int                    `json:"version"`
-	Processes    []Process              `json:"processes"`
-	ReplicaSets  []ReplicaSet           `json:"replicaSets"`
-	Auth         Auth                   `json:"auth"`
-	TLS          TLS                    `json:"tls"`
-	Versions     []MongoDbVersionConfig `json:"mongoDbVersions"`
-	ToolsVersion ToolsVersion           `json:"mongoDbToolsVersion"`
-	Options      Options                `json:"options"`
+	Version     int                    `json:"version"`
+	Processes   []Process              `json:"processes"`
+	ReplicaSets []ReplicaSet           `json:"replicaSets"`
+	Auth        Auth                   `json:"auth"`
+	TLS         TLS                    `json:"tls"`
+	Versions    []MongoDbVersionConfig `json:"mongoDbVersions"`
+	Options     Options                `json:"options"`
 }
 
 type Process struct {

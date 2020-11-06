@@ -37,7 +37,6 @@ type Builder struct {
 	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
-	toolsVersion  ToolsVersion
 	modifications []Modification
 }
 
@@ -82,11 +81,6 @@ func (b *Builder) SetName(name string) *Builder {
 
 func (b *Builder) SetFCV(fcv string) *Builder {
 	b.fcv = fcv
-	return b
-}
-
-func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
-	b.toolsVersion = version
 	return b
 }
 
@@ -153,10 +147,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions:     b.versions,
-		ToolsVersion: b.toolsVersion,
-		Options:      Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:         auth,
+		Versions: b.versions,
+		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Auth:     auth,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},

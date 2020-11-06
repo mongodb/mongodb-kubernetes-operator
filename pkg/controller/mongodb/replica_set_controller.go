@@ -13,7 +13,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 
 	"github.com/pkg/errors"
@@ -65,7 +64,6 @@ const (
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	mongodbImageEnv              = "MONGODB_IMAGE"
 	mongodbRepoUrl               = "MONGODB_REPO_URL"
-	mongodbToolsVersionEnv       = "MONGODB_TOOLS_VERSION"
 	headlessAgentEnv             = "HEADLESS_AGENT"
 	podNamespaceEnv              = "POD_NAMESPACE"
 	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
@@ -476,30 +474,13 @@ func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.
 		SetFCV(mdb.GetFCV()).
 		AddVersion(mdbVersionConfig).
 		AddModifications(getMongodConfigModification(mdb)).
-		AddModifications(modifications...).
-		SetToolsVersion(dummyToolsVersionConfig())
-
+		AddModifications(modifications...)
 	newAc, err := builder.Build()
 	if err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
 
 	return newAc, nil
-}
-
-// dummyToolsVersionConfig generates a dummy config for the tools settings in the automation config.
-// The agent will not uses any of these values but requires them to be set.
-// TODO: Remove this once the agent doesn't require any config: https://jira.mongodb.org/browse/CLOUDP-66024.
-func dummyToolsVersionConfig() automationconfig.ToolsVersion {
-	return automationconfig.ToolsVersion{
-		Version: envvar.GetEnvOrDefault(mongodbToolsVersionEnv, "100.1.0"),
-		URLs: map[string]map[string]string{
-			// The OS must be correctly set. Our Docker image uses Ubuntu 16.04.
-			"linux": {
-				"ubuntu1604": "https://dummy",
-			},
-		},
-	}
 }
 
 func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
