@@ -15,15 +15,15 @@ import k8s_conditions
 
 
 def _load_operator_service_account() -> Dict:
-    return load_yaml_from_file("deploy/service_account.yaml")
+    return load_yaml_from_file("deploy/operator/service_account.yaml")
 
 
 def _load_operator_role() -> Dict:
-    return load_yaml_from_file("deploy/role.yaml")
+    return load_yaml_from_file("deploy/operator/role.yaml")
 
 
 def _load_operator_role_binding() -> Dict:
-    return load_yaml_from_file("deploy/role_binding.yaml")
+    return load_yaml_from_file("deploy/operator/role_binding.yaml")
 
 
 def _load_operator_deployment(operator_image: str) -> Dict:
