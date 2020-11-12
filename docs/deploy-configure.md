@@ -25,8 +25,8 @@ To deploy your first replica set:
    ```
    mongo "mongodb://<service-object-name>.<namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>"
    ```
-<em>NOTE: You can access the MongoDB instance only from within a pod
-running in the cluster.</em>
+**NOTE**: You can access each `mongod` process in the replica set only from within a pod
+running in the cluster.
 
 ## Scale a Replica Set
 
@@ -125,7 +125,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
 
 ## Deploy Replica Sets on OpenShift
 
-To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the MongoDB and MongoDB Agent containers, as well as the operator deployment.
+To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the `mongodb` and `mongodb-agent` containers, as well as the operator deployment.
 
 See [here](../deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for
 an example of how to provide the required configuration for a MongoDB
