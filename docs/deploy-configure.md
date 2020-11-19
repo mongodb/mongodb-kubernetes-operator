@@ -5,6 +5,7 @@ The [`/deploy/crds`](../deploy/crds) directory contains example MongoDB resource
 ## Table of Contents
 
 - [Deploy a Replica Set](#deploy-a-replica-set)
+- [Scale a Replica Set](#scale-a-replica-set)
 - [Upgrade MongoDB Version & FCV](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
 - [Deploying on Openshift](#deploying-on-openshift)
 
@@ -24,7 +25,52 @@ To deploy your first replica set:
    ```
    mongo "mongodb://<service-object-name>.<namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>"
    ```
-<em>NOTE: You can access the mongodb instance only from within a pod running in the cluster.</em>
+**NOTE**: You can access each `mongod` process in the replica set only from within a pod
+running in the cluster.
+
+## Scale a Replica Set
+
+You can scale up (increase) or scale down (decrease) the number of
+members in a replica set.
+
+Consider the following example MongoDB resource definition:
+
+```yaml
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.7"
+```
+
+To scale a replica set:
+
+1. Edit the resource definition.
+
+   Update `members` to the number of members that you want the replica set to have.
+
+   ```yaml
+   apiVersion: mongodb.com/v1
+   kind: MongoDB
+   metadata:
+     name: example-mongodb
+   spec:
+     members: 5
+     type: ReplicaSet
+     version: "4.2.7"
+   ```
+
+2. Reapply the configuration to Kubernetes:
+   ```
+   kubectl apply -f <example>.yaml --namespace <my-namespace>
+   ```
+
+   **NOTE**: When you scale down a MongoDB resource, the Community Operator
+   might take several minutes to remove the StatefulSet replicas for the
+   members that you remove from the replica set.
 
 ## Upgrade your MongoDB Resource Version and Feature Compatibility Version
 
@@ -35,14 +81,6 @@ You can upgrade the major, minor, and/or feature compatibility versions of your 
 - To modify your resource's [feature compatibility version](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
 
 If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
-
-## Deploying on OpenShift
-
-If you want to deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the mongodb and mongodb agent containers, as well as the operator deployment.
-
-See [here](../deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for an example of how to provide the required configuration for a MongoDB ReplicaSet.
-
-See [here](../deploy/openshift/operator_openshift.yaml) for an example of how to configure the Operator deployment.
 
 ### Example
 
@@ -84,3 +122,13 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
    ```
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
+
+## Deploy Replica Sets on OpenShift
+
+To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the `mongodb` and `mongodb-agent` containers, as well as the operator deployment.
+
+See [here](../deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for
+an example of how to provide the required configuration for a MongoDB
+replica set.
+
+See [here](../deploy/openshift/operator_openshift.yaml) for an example of how to configure the Operator deployment.
