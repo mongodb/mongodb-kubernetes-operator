@@ -27,8 +27,8 @@ If applicable, add screenshots to help explain your problem.
  - MongoDB Image used
 
 **Kubernetes Cluster Information**
- - Distribution:
- - Version:
+ - Distribution
+ - Version
  - Image Registry location (quay, or an internal registry)
 
 **Additional context**
