@@ -1,3 +1,4 @@
+---
 apiVersion: mongodb.com/v1
 kind: MongoDB
 metadata:
@@ -33,3 +34,14 @@ spec:
               env:
                 - name: MANAGED_SECURITY_CONTEXT
                   value: "true"
+
+# the user credentials will be generated from this secret
+# once the credentials are generated, this secret is no longer required
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+type: Opaque
+stringData:
+  password: 58LObjiMpxcjP1sMDW
