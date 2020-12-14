@@ -172,7 +172,7 @@ task_groups:
     - e2e_test_feature_compatibility_version
     - e2e_test_feature_compatibility_version_upgrade
     - e2e_test_replica_set_multiple
-    - e2e_test_replica_set_tls
+#    - e2e_test_replica_set_tls # TODO: flakey test, fix and uncomment in CLOUDP-76190
     - e2e_test_replica_set_tls_upgrade
     - e2e_test_replica_set_tls_rotate
     - e2e_test_statefulset_arbitrary_config
