@@ -27,7 +27,7 @@ def _load_operator_role_binding() -> Dict:
 
 
 def _load_operator_deployment(operator_image: str) -> Dict:
-    operator = load_yaml_from_file("deploy/operator.yaml")
+    operator = load_yaml_from_file("deploy/operator/operator.yaml")
     operator["spec"]["template"]["spec"]["containers"][0]["image"] = operator_image
     return operator
 
