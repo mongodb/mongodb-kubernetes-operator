@@ -2,6 +2,12 @@
 #### Prerequisites
 
 * install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* create a python virtual enironment 
+
+```bash
+python3 -m venv /path/to/new/virtual/environment
+source path/to/new/virtual/environment/bin/activate
+```
 * install python dependencies ```pip install -r requirements.txt```
 
 
