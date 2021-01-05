@@ -262,8 +262,8 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error getting StatefulSet: %s", err)).
-				withFailedPhase(),
+				withMessage(Info, fmt.Sprintf("Error getting StatefulSet: %s", err)).
+				withPendingPhase(0),
 		)
 	}
 
