@@ -4,6 +4,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,4 +99,105 @@ func TestGetLabelSelectorRequirementByKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMergeSpec(t *testing.T) {
+
+	original := New(
+		WithName("original"),
+		WithServiceName("original-svc-name"),
+		WithReplicas(3),
+		WithRevisionHistoryLimit(10),
+		WithPodManagementPolicyType(appsv1.OrderedReadyPodManagement),
+		WithSelector(&metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"a": "1",
+				"b": "2",
+				"c": "3",
+				"e": "4",
+			},
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      "key-0",
+					Operator: metav1.LabelSelectorOpIn,
+					Values:   []string{"A", "B", "C"},
+				},
+				{
+					Key:      "key-2",
+					Operator: metav1.LabelSelectorOpExists,
+					Values:   []string{"F", "D", "E"},
+				},
+			},
+		}),
+	)
+
+	override := New(
+		WithName("override"),
+		WithServiceName("override-svc-name"),
+		WithReplicas(5),
+		WithRevisionHistoryLimit(15),
+		WithPodManagementPolicyType(appsv1.ParallelPodManagement),
+		WithSelector(&metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"a": "10",
+				"b": "2",
+				"c": "30",
+				"d": "40",
+			},
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      "key-0",
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+					Values:   []string{"Z"},
+				},
+				{
+					Key:      "key-1",
+					Operator: metav1.LabelSelectorOpExists,
+					Values:   []string{"A", "B", "C", "D"},
+				},
+			},
+		}),
+	)
+
+	mergedSpec := MergeSpecs(original.Spec, override.Spec)
+
+	t.Run("Primitive fields of spec have been merged correctly", func(t *testing.T) {
+		assert.Equal(t, "override-svc-name", mergedSpec.ServiceName)
+		assert.Equal(t, int32(5), *mergedSpec.Replicas)
+		assert.Equal(t, int32(15), *mergedSpec.RevisionHistoryLimit)
+		assert.Equal(t, appsv1.ParallelPodManagement, mergedSpec.PodManagementPolicy)
+	})
+
+	matchLabels := mergedSpec.Selector.MatchLabels
+	assert.Len(t, matchLabels, 5)
+
+	t.Run("Match labels have been merged correctly", func(t *testing.T) {
+		assert.Equal(t, "10", matchLabels["a"])
+		assert.Equal(t, "2", matchLabels["b"])
+		assert.Equal(t, "30", matchLabels["c"])
+		assert.Equal(t, "40", matchLabels["d"])
+		assert.Equal(t, "4", matchLabels["e"])
+	})
+
+	t.Run("Test Match Expressions have been merged correctly", func(t *testing.T) {
+		matchExpressions := mergedSpec.Selector.MatchExpressions
+		assert.Len(t, matchExpressions, 3)
+		t.Run("Elements are sorted in alphabetical order", func(t *testing.T) {
+			assert.Equal(t, "key-0", matchExpressions[0].Key)
+			assert.Equal(t, "key-1", matchExpressions[1].Key)
+			assert.Equal(t, "key-2", matchExpressions[2].Key)
+		})
+
+		t.Run("Test operator merging", func(t *testing.T) {
+			assert.Equal(t, metav1.LabelSelectorOpDoesNotExist, matchExpressions[0].Operator)
+			assert.Equal(t, metav1.LabelSelectorOpExists, matchExpressions[1].Operator)
+			assert.Equal(t, metav1.LabelSelectorOpExists, matchExpressions[2].Operator)
+		})
+
+		t.Run("Test values are merged and sorted", func(t *testing.T) {
+			assert.Equal(t, []string{"A", "B", "C", "Z"}, matchExpressions[0].Values)
+			assert.Equal(t, []string{"A", "B", "C", "D"}, matchExpressions[1].Values)
+			assert.Equal(t, []string{"D", "E", "F"}, matchExpressions[2].Values)
+		})
+	})
 }

@@ -1,6 +1,8 @@
 package statefulset
 
 import (
+	"sort"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +37,7 @@ func MergeSpecs(originalSpec appsv1.StatefulSetSpec, overrideSpec appsv1.Statefu
 		mergedSpec.RevisionHistoryLimit = overrideSpec.RevisionHistoryLimit
 	}
 
-	return originalSpec
+	return mergedSpec
 }
 
 func mergeLabelSelectors(originalLabelSelector, overrideLabelSelector *metav1.LabelSelector) *metav1.LabelSelector {
@@ -84,9 +86,29 @@ func mergeLabelSelectorRequirements(original, override []metav1.LabelSelectorReq
 				mergedLsr.Values = mergeDistinct(originalLsr.Values, overrideLsr.Values)
 			}
 		}
-		mergedLsrs = append(mergedLsrs, mergedLsr)
+		sort.SliceStable(mergedLsr.Values, func(i, j int) bool {
+			return mergedLsr.Values[i] < mergedLsr.Values[j]
+		})
 
+		mergedLsrs = append(mergedLsrs, mergedLsr)
 	}
+
+	// we need to add any override lsrs that do not exist in the original
+	for _, overrideLsr := range override {
+		existing := getLabelSelectorRequirementByKey(original, overrideLsr.Key)
+		if existing == nil {
+			sort.SliceStable(overrideLsr.Values, func(i, j int) bool {
+				return overrideLsr.Values[i] < overrideLsr.Values[j]
+			})
+			mergedLsrs = append(mergedLsrs, overrideLsr)
+		}
+	}
+
+	// sort them by key
+	sort.SliceStable(mergedLsrs, func(i, j int) bool {
+		return mergedLsrs[i].Key < mergedLsrs[j].Key
+	})
+
 	return mergedLsrs
 }
 
@@ -102,7 +124,7 @@ func getLabelSelectorRequirementByKey(labelSelectorRequirements []metav1.LabelSe
 }
 
 // mergeDistinct accepts two slices of strings, and returns a string slice
-// containing the distinct elements present in both.
+// containing the distinct elements present in both. The elements are returned sorted.
 func mergeDistinct(original, override []string) []string {
 	mergedStrings := make([]string, 0)
 	mergedStrings = append(mergedStrings, original...)
@@ -111,5 +133,6 @@ func mergeDistinct(original, override []string) []string {
 			mergedStrings = append(mergedStrings, s)
 		}
 	}
+
 	return mergedStrings
 }
