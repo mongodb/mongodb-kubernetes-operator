@@ -57,6 +57,13 @@ func WithImagePullPolicy(pullPolicy corev1.PullPolicy) Modification {
 	}
 }
 
+// WithWorkDir sets the container Working Directory
+func WithWorkDir(workDir string) Modification {
+	return func(container *corev1.Container) {
+		container.WorkingDir = workDir
+	}
+}
+
 // WithReadinessProbe modifies the container's Readiness Probe
 func WithReadinessProbe(probeFunc func(*corev1.Probe)) Modification {
 	return func(container *corev1.Container) {
@@ -88,6 +95,13 @@ func WithResourceRequirements(resources corev1.ResourceRequirements) Modificatio
 func WithCommand(cmd []string) Modification {
 	return func(container *corev1.Container) {
 		container.Command = cmd
+	}
+}
+
+// WithArgs sets the containers Args
+func WithArgs(args []string) Modification {
+	return func(container *corev1.Container) {
+		container.Args = args
 	}
 }
 

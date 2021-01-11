@@ -403,57 +403,6 @@ func mergeVolumes(defaultVolumes []corev1.Volume, overrideVolumes []corev1.Volum
 	return mergedVolumes
 }
 
-func mergeVolumeMounts2(defaultMounts, overrideMounts []corev1.VolumeMount) []corev1.VolumeMount {
-	defaultMountsMap := createMountsMap(defaultMounts)
-	overrideMountsMap := createMountsMap(overrideMounts)
-	mergedVolumeMounts := []corev1.VolumeMount{}
-	for _, defaultMount := range defaultMounts {
-		if overrideMount, ok := overrideMountsMap[defaultMount.Name]; ok {
-			// needs merge
-			mergedVolumeMounts = append(mergedVolumeMounts, mergeVolumeMount(defaultMount, overrideMount))
-		} else {
-			mergedVolumeMounts = append(mergedVolumeMounts, defaultMount)
-		}
-	}
-	for _, overrideMount := range overrideMounts {
-		if _, ok := defaultMountsMap[overrideMount.Name]; ok {
-			// already merged
-			continue
-		}
-		mergedVolumeMounts = append(mergedVolumeMounts, overrideMount)
-	}
-	return mergedVolumeMounts
-}
-
-func mergeVolumeMount(original, override corev1.VolumeMount) corev1.VolumeMount {
-	merged := original
-
-	if override.Name != "" {
-		merged.Name = override.Name
-	}
-
-	if override.ReadOnly {
-		merged.ReadOnly = override.ReadOnly
-	}
-
-	if override.MountPath != "" {
-		merged.MountPath = override.MountPath
-	}
-
-	if override.SubPath != "" {
-		merged.SubPath = override.SubPath
-	}
-
-	if override.MountPropagation != nil {
-		merged.MountPropagation = override.MountPropagation
-	}
-
-	if override.SubPathExpr != "" {
-		merged.SubPathExpr = override.SubPathExpr
-	}
-	return merged
-}
-
 func mergeVolumeMounts(defaultMounts, overrideMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {
 	defaultMountsMap := createMountsMap(defaultMounts)
 	overrideMountsMap := createMountsMap(overrideMounts)
@@ -513,50 +462,6 @@ func mergeTolerations(defaultTolerations, overrideTolerations []corev1.Toleratio
 	})
 
 	return mergedTolerations
-}
-
-func mergeContainers2(defaultContainers, customContainers []corev1.Container) []corev1.Container {
-	defaultMap := createContainerMap(defaultContainers)
-	customMap := createContainerMap(customContainers)
-	mergedContainers := []corev1.Container{}
-	for _, defaultContainer := range defaultContainers {
-		if customContainer, ok := customMap[defaultContainer.Name]; ok {
-			// The container is present in both maps, so we need to merge
-			// MergeWithOverride mounts
-			mergedMounts := mergeVolumeMounts2(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
-
-			mergedEnvs := envvar.MergeWithOverride(defaultContainer.Env, customContainer.Env)
-
-			//if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
-			//	return nil, err
-			//}
-			// completely override any resources that were provided
-			// this prevents issues with custom requests giving errors due
-			// to the defaulted limits
-			defaultContainer.Resources = customContainer.Resources
-			defaultContainer.VolumeMounts = mergedMounts
-			defaultContainer.Env = mergedEnvs
-		}
-		// The default container was not modified by the override, so just add it
-		mergedContainers = append(mergedContainers, defaultContainer)
-	}
-
-	// Look for customContainers that were not merged into existing ones
-	for _, customContainer := range customContainers {
-		if _, ok := defaultMap[customContainer.Name]; ok {
-			continue
-		}
-		// Need to add it
-		mergedContainers = append(mergedContainers, customContainer)
-	}
-
-	return mergedContainers
-}
-
-func mergeContainer(defaultContainer, overrideContainer corev1.Container) corev1.Container {
-	merged := defaultContainer
-
-	return merged
 }
 
 func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]corev1.Container, error) {
