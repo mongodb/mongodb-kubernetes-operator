@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MergeSpecs takes an original and an override spec. A new StatefulSetSpec is returned with has had
+// MergeSpecs takes an original and an override spec. A new StatefulSetSpec is returned witch has had
 // any changes from the override applied on top of the original.
 func MergeSpecs(originalSpec appsv1.StatefulSetSpec, overrideSpec appsv1.StatefulSetSpec) appsv1.StatefulSetSpec {
 	mergedSpec := originalSpec
@@ -124,7 +124,7 @@ func getLabelSelectorRequirementByKey(labelSelectorRequirements []metav1.LabelSe
 }
 
 // mergeDistinct accepts two slices of strings, and returns a string slice
-// containing the distinct elements present in both. The elements are returned sorted.
+// containing the distinct elements present in both.
 func mergeDistinct(original, override []string) []string {
 	mergedStrings := make([]string, 0)
 	mergedStrings = append(mergedStrings, original...)
