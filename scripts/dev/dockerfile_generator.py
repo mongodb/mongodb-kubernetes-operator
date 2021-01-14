@@ -18,7 +18,9 @@ def operator_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def test_runner_params(files_to_add: List[str],) -> DockerParameters:
+def test_runner_params(
+    files_to_add: List[str],
+) -> DockerParameters:
     return {
         "builder": True,
         "builder_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller. There were errors using alpine
