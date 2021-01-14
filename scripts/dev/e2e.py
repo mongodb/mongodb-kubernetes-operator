@@ -151,7 +151,8 @@ def create_test_runner_pod(args: argparse.Namespace) -> None:
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
+            dev_config.namespace,
+            field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=30,
@@ -188,7 +189,10 @@ def _get_testrunner_pod_body(args: argparse.Namespace) -> Dict:
     dev_config = load_config(args.config_file)
     return {
         "kind": "Pod",
-        "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
+        "metadata": {
+            "name": TEST_RUNNER_NAME,
+            "namespace": dev_config.namespace,
+        },
         "spec": {
             "restartPolicy": "Never",
             "serviceAccountName": TEST_RUNNER_NAME,
@@ -246,7 +250,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
     )
     parser.add_argument(
-        "--cluster-wide", help="Watch all namespaces", action="store_true",
+        "--cluster-wide",
+        help="Watch all namespaces",
+        action="store_true",
     )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -290,7 +296,9 @@ def prepare_and_run_testrunner(args: argparse.Namespace, dev_config: DevConfig) 
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(
-        corev1, TEST_RUNNER_NAME, dev_config.namespace,
+        corev1,
+        TEST_RUNNER_NAME,
+        dev_config.namespace,
     )
 
     # stream all of the pod output as the pod is running
