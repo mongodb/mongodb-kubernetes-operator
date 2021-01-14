@@ -28,8 +28,8 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb0")
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
+	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestReplicaSetReadinessProbeScaling(t *testing.T) {
 
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members)))
+		t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, rand.Intn(mdb.Spec.Members))) //nolint
 		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetIsReady(&mdb))
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,

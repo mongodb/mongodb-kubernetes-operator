@@ -39,10 +39,12 @@ type flags struct {
 	testImage               string
 	test                    string
 	performCleanup          string
+	clusterWide             bool
 }
 
 func parseFlags() flags {
 	var namespace, deployDir, crdDir, operatorImage, versionUpgradeHookImage, testImage, test, performCleanup *string
+	var clusterWide *bool
 	namespace = flag.String("namespace", "default", "the namespace the operator and tests should be deployed in")
 	deployDir = flag.String("deployDir", "deploy/operator/", "the path to the directory which contains the yaml deployment files")
 	crdDir = flag.String("crdDir", "deploy/crds/", "the path to the directory which contains the yaml crd files")
@@ -50,6 +52,7 @@ func parseFlags() flags {
 	versionUpgradeHookImage = flag.String("versionUpgradeHookImage", "quay.io/mongodb/community-operator-pre-stop-hook:latest", "the version upgrade post-start hook image")
 	testImage = flag.String("testImage", "quay.io/mongodb/community-operator-e2e:latest", "the image which should be used for the operator e2e tests")
 	test = flag.String("test", "", "test e2e test that should be run. (name of folder containing the test)")
+	clusterWide = flag.Bool("clusterWide", false, "flag to indicate e2e test should be run so as to watch all namespaces")
 	performCleanup = flag.String("performCleanup", "1", "specifies whether to performing a cleanup the context or not")
 	flag.Parse()
 
@@ -62,6 +65,7 @@ func parseFlags() flags {
 		testImage:               *testImage,
 		test:                    *test,
 		performCleanup:          *performCleanup,
+		clusterWide:             *clusterWide,
 	}
 }
 
@@ -174,11 +178,17 @@ func deployOperator(f flags, c client.Client) error {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
+	watchNamespace := f.namespace
+	if f.clusterWide {
+		watchNamespace = "*"
+	}
 	if err := buildKubernetesResourceFromYamlFile(c, path.Join(f.deployDir, "operator.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(f.namespace),
 		withOperatorImage(f.operatorImage),
-		withVersionUpgradeHookImage(f.versionUpgradeHookImage)); err != nil {
+		withVersionUpgradeHookImage(f.versionUpgradeHookImage),
+		withEnvVar("WATCH_NAMESPACE", watchNamespace),
+	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
 	fmt.Println("Successfully created the operator Deployment")
@@ -215,10 +225,23 @@ func withTestImage(image string) func(obj runtime.Object) {
 	}
 }
 
+func updateEnvVarList(envVarList []corev1.EnvVar, key, val string) []corev1.EnvVar {
+	for index, envVar := range envVarList {
+		if envVar.Name == key {
+			envVarList[index] = corev1.EnvVar{Name: key, Value: val}
+			return envVarList
+		}
+	}
+	return append(envVarList, corev1.EnvVar{Name: key, Value: val})
+}
+
 func withEnvVar(key, val string) func(obj runtime.Object) {
 	return func(obj runtime.Object) {
 		if testPod, ok := obj.(*corev1.Pod); ok {
-			testPod.Spec.Containers[0].Env = append(testPod.Spec.Containers[0].Env, corev1.EnvVar{Name: key, Value: val})
+			testPod.Spec.Containers[0].Env = updateEnvVarList(testPod.Spec.Containers[0].Env, key, val)
+		}
+		if testDeployment, ok := obj.(*appsv1.Deployment); ok {
+			testDeployment.Spec.Template.Spec.Containers[0].Env = updateEnvVarList(testDeployment.Spec.Template.Spec.Containers[0].Env, key, val)
 		}
 	}
 }

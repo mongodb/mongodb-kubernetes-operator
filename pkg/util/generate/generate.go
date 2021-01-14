@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"hash"
+	"unicode"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 )
@@ -13,6 +14,27 @@ import (
 // final key must be between 6 and at most 1024 characters
 func KeyFileContents() (string, error) {
 	return generateRandomString(500)
+}
+
+// RandomValidDNS1123Label generates a random fixed-length string with characters in a certain range.
+func RandomValidDNS1123Label(n int) (string, error) {
+	str, err := RandomFixedLengthStringOfSize(n)
+	if err != nil {
+		return "", err
+	}
+
+	runes := []rune(str)
+
+	// Make sure that any letters are lowercase and that if any non-alphanumeric characters appear they are set to '0'.
+	for i, r := range runes {
+		if unicode.IsLetter(r) {
+			runes[i] = unicode.ToLower(r)
+		} else if !unicode.IsNumber(r) {
+			runes[i] = rune('0')
+		}
+	}
+
+	return string(runes), nil
 }
 
 func RandomFixedLengthStringOfSize(n int) (string, error) {

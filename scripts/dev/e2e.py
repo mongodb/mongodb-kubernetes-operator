@@ -141,21 +141,13 @@ def _delete_testrunner_pod(config_file: str) -> None:
     )
 
 
-def create_test_runner_pod(
-    test: str,
-    config_file: str,
-    tag: str,
-    perform_cleanup: str,
-    test_runner_image_name: str,
-) -> None:
+def create_test_runner_pod(args: argparse.Namespace) -> None:
     """
     create_test_runner_pod creates the pod which will run all of the tests.
     """
-    dev_config = load_config(config_file)
+    dev_config = load_config(args.config_file)
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(
-        test, config_file, tag, perform_cleanup, test_runner_image_name
-    )
+    pod_body = _get_testrunner_pod_body(args)
 
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
@@ -192,14 +184,8 @@ def wait_for_pod_to_be_running(
         raise Exception("Pod never got into Running state!")
 
 
-def _get_testrunner_pod_body(
-    test: str,
-    config_file: str,
-    tag: str,
-    perform_cleanup: str,
-    test_runner_image_name: str,
-) -> Dict:
-    dev_config = load_config(config_file)
+def _get_testrunner_pod_body(args: argparse.Namespace) -> Dict:
+    dev_config = load_config(args.config_file)
     return {
         "kind": "Pod",
         "metadata": {"name": TEST_RUNNER_NAME, "namespace": dev_config.namespace,},
@@ -209,19 +195,20 @@ def _get_testrunner_pod_body(
             "containers": [
                 {
                     "name": "test-runner",
-                    "image": f"{dev_config.repo_url}/{test_runner_image_name}:{tag}",
+                    "image": f"{dev_config.repo_url}/{dev_config.testrunner_image}:{args.tag}",
                     "imagePullPolicy": "Always",
                     "command": [
                         "./runner",
                         "--operatorImage",
-                        f"{dev_config.repo_url}/{dev_config.operator_image}:{tag}",
+                        f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
                         "--versionUpgradeHookImage",
-                        f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{tag}",
+                        f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{args.tag}",
                         "--testImage",
-                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{tag}",
-                        f"--test={test}",
+                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
+                        f"--test={args.test}",
                         f"--namespace={dev_config.namespace}",
-                        f"--performCleanup={perform_cleanup}",
+                        f"--performCleanup={args.perform_cleanup}",
+                        f"--clusterWide={args.cluster_wide}",
                     ],
                 }
             ],
@@ -257,6 +244,9 @@ def parse_args() -> argparse.Namespace:
         "--perform-cleanup",
         help="Cleanup the context after executing the tests",
         action="store_true",
+    )
+    parser.add_argument(
+        "--cluster-wide", help="Watch all namespaces", action="store_true",
     )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -296,9 +286,7 @@ def prepare_and_run_testrunner(args: argparse.Namespace, dev_config: DevConfig) 
     test_runner_name = dev_config.testrunner_image
     _prepare_testrunner_environment(args.config_file)
 
-    create_test_runner_pod(
-        args.test, args.config_file, args.tag, args.perform_cleanup, test_runner_name,
-    )
+    create_test_runner_pod(args)
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(
