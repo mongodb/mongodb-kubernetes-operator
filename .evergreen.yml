@@ -116,6 +116,7 @@ functions:
         include_expansions_in_env:
           - version_id
           - test
+          - clusterwide
         binary: scripts/ci/run_test.sh
 
   mypy_linting_test:
@@ -178,6 +179,7 @@ task_groups:
     - e2e_test_statefulset_arbitrary_config
     - e2e_test_statefulset_arbitrary_config_update
     - e2e_test_replica_set_mongod_config
+    - e2e_test_replica_set_cross_namespace_deploy
   teardown_task:
     - func: upload_e2e_logs
 
@@ -334,6 +336,13 @@ tasks:
       - func: run_e2e_test
         vars:
           test: replica_set_mongod_config
+
+  - name: e2e_test_replica_set_cross_namespace_deploy
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: replica_set_cross_namespace_deploy
+          clusterwide: true
 
   - name: release_blocker
     commands:

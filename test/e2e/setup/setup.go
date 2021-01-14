@@ -91,7 +91,7 @@ func CreateTLSResources(namespace string, ctx *f.TestCtx) error { //nolint
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
-func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context) (string, error) {
+func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context, namespace string) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
 	if passwordKey == "" {
 		passwordKey = "password"
@@ -102,9 +102,14 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *f.Context) (string, er
 		return "", err
 	}
 
+	nsp := namespace
+	if nsp == "" {
+		nsp = f.Global.OperatorNamespace
+	}
+
 	passwordSecret := secret.Builder().
 		SetName(mdbu.PasswordSecretRef.Name).
-		SetNamespace(f.Global.OperatorNamespace).
+		SetNamespace(nsp).
 		SetField(passwordKey, password).
 		Build()
 

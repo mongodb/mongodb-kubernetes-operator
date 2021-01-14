@@ -40,13 +40,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	// get watch namespace from environment variable
+	// Get watch namespace from environment variable.
 	namespace, nsSpecified := os.LookupEnv("WATCH_NAMESPACE")
 	if !nsSpecified {
 		os.Exit(1)
 	}
 
-	log.Info(fmt.Sprintf("Watching namespace: %s", namespace))
+	// If namespace is a wildcard use the empty string to represent all namespaces
+	watchNamespace := ""
+	if namespace == "*" {
+		log.Info("Watching all namespaces")
+	} else {
+		watchNamespace = namespace
+		log.Sugar().Infof("Watching namespace: %s", watchNamespace)
+	}
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -56,7 +63,7 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: namespace,
+		Namespace: watchNamespace,
 	})
 
 	if err != nil {

@@ -80,7 +80,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...OptionApplier) (*Test
 	if len(users) == 1 {
 		user := users[0]
 		passwordSecret := corev1.Secret{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: f.Global.OperatorNamespace}, &passwordSecret)
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +416,7 @@ func getClientTLSConfig() (*tls.Config, error) {
 	caPool := x509.NewCertPool()
 	caPool.AppendCertsFromPEM(caPEM)
 
-	return &tls.Config{
+	return &tls.Config{ //nolint
 		RootCAs: caPool,
 	}, nil
 }
