@@ -17,26 +17,22 @@ import os
 import sys
 import yaml
 
-TEST_RUNNER_NAME = "test-runner"
+TEST_POD_NAME = "operator-sdk-test"
 
 
-def _load_testrunner_service_account() -> Dict:
-    return load_yaml_from_file("deploy/testrunner/service_account.yaml")
+def _load_test_service_account() -> Dict:
+    return load_yaml_from_file("deploy/operator/service_account.yaml")
 
 
-def _load_testrunner_role() -> Dict:
-    return load_yaml_from_file("deploy/testrunner/role.yaml")
+def _load_test_role() -> Dict:
+    return load_yaml_from_file("deploy/operator/role.yaml")
 
 
-def _load_testrunner_role_binding() -> Dict:
-    return load_yaml_from_file("deploy/testrunner/role_binding.yaml")
+def _load_test_role_binding() -> Dict:
+    return load_yaml_from_file("deploy/operator/role_binding.yaml")
 
 
-def _load_testrunner_cluster_role_binding() -> Dict:
-    return load_yaml_from_file("deploy/testrunner/cluster_role_binding.yaml")
-
-
-def _prepare_testrunner_environment(config_file: str) -> None:
+def _prepare_test_environment(config_file: str) -> None:
     """
     _prepare_testrunner_environment ensures the ServiceAccount,
     Role and ClusterRole and bindings are created for the test runner.
@@ -45,33 +41,24 @@ def _prepare_testrunner_environment(config_file: str) -> None:
     corev1 = client.CoreV1Api()
     dev_config = load_config(config_file)
 
-    _delete_testrunner_pod(config_file)
+    _delete_test_pod(config_file)
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_namespaced_role(
-            dev_config.namespace, _load_testrunner_role()
-        )
+        lambda: rbacv1.create_namespaced_role(dev_config.namespace, _load_test_role())
     )
 
     print("Creating Role Binding")
     k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_namespaced_role_binding(
-            dev_config.namespace, _load_testrunner_role_binding()
-        )
-    )
-
-    print("Creating Cluster Role Binding")
-    k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_cluster_role_binding(
-            _load_testrunner_cluster_role_binding()
+            dev_config.namespace, _load_test_role_binding()
         )
     )
 
     print("Creating ServiceAccount")
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
-            dev_config.namespace, _load_testrunner_service_account()
+            dev_config.namespace, _load_test_service_account()
         )
     )
 
@@ -107,14 +94,6 @@ def create_kube_config(config_file: str) -> None:
     )
 
 
-def build_and_push_testrunner(repo_url: str, tag: str, path: str) -> None:
-    """
-    build_and_push_testrunner builds and pushes the test runner
-    image.
-    """
-    build_and_push_image(repo_url, tag, path, "testrunner")
-
-
 def build_and_push_e2e(repo_url: str, tag: str, path: str) -> None:
     """
     build_and_push_e2e builds and pushes the e2e image.
@@ -129,7 +108,7 @@ def build_and_push_version_upgrade_hook(repo_url: str, tag: str, path: str) -> N
     build_and_push_image(repo_url, tag, path, "versionhook")
 
 
-def _delete_testrunner_pod(config_file: str) -> None:
+def _delete_test_pod(config_file: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
     if it already exists.
@@ -137,22 +116,81 @@ def _delete_testrunner_pod(config_file: str) -> None:
     dev_config = load_config(config_file)
     corev1 = client.CoreV1Api()
     k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace)
+        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
     )
 
 
-def create_test_runner_pod(args: argparse.Namespace) -> None:
-    """
-    create_test_runner_pod creates the pod which will run all of the tests.
-    """
-    dev_config = load_config(args.config_file)
+def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
     corev1 = client.CoreV1Api()
-    pod_body = _get_testrunner_pod_body(args)
-
+    test_pod = {
+        "kind": "Pod",
+        "metadata": {
+            "name": TEST_POD_NAME,
+            "namespace": dev_config.namespace,
+        },
+        "spec": {
+            "restartPolicy": "Never",
+            "serviceAccountName": "mongodb-kubernetes-operator",
+            "containers": [
+                {
+                    "name": TEST_POD_NAME,
+                    "image": f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
+                    "imagePullPolicy": "Always",
+                    "volumeMounts": [
+                        {"mountPath": "/etc/config", "name": "kube-config-volume"}
+                    ],
+                    "env": [
+                        {
+                            "name": "CLUSTER_WIDE",
+                            "value": f"{args.cluster_wide}",
+                        },
+                        {
+                            "name": "OPERATOR_IMAGE",
+                            "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
+                        },
+                        {
+                            "name": "TEST_NAMESPACE",
+                            "value": dev_config.namespace,
+                        },
+                        {
+                            "name": "VERSION_UPGRADE_HOOK_IMAGE",
+                            # TODO: this needs to come from somewhere else
+                            "value": "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2",
+                        },
+                        {
+                            "name": "PERFORM_CLEANUP",
+                            "value": f"{args.perform_cleanup}",
+                        },
+                    ],
+                    "command": [
+                        "/bin/operator-sdk",
+                        "test",
+                        "local",
+                        f"./test/e2e/{args.test}",
+                        "--operator-namespace",
+                        dev_config.namespace,
+                        "--verbose",
+                        "--kubeconfig",
+                        "/etc/config/kubeconfig",
+                        "--go-test-flags",
+                        "-timeout=60m",
+                    ],
+                }
+            ],
+            "volumes": [
+                {
+                    "name": "kube-config-volume",
+                    "configMap": {
+                        "name": "kube-config",
+                    },
+                }
+            ],
+        },
+    }
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
             dev_config.namespace,
-            field_selector=f"metadata.name=={TEST_RUNNER_NAME}",
+            field_selector=f"metadata.name=={TEST_POD_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=30,
@@ -163,7 +201,7 @@ def create_test_runner_pod(args: argparse.Namespace) -> None:
         )
 
     if not k8s_conditions.call_eventually_succeeds(
-        lambda: corev1.create_namespaced_pod(dev_config.namespace, body=pod_body),
+        lambda: corev1.create_namespaced_pod(dev_config.namespace, body=test_pod),
         sleep_time=10,
         timeout=60,
         exceptions_to_ignore=ApiException,
@@ -179,45 +217,10 @@ def wait_for_pod_to_be_running(
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
-        timeout=90,
+        timeout=180,
         exceptions_to_ignore=ApiException,
     ):
         raise Exception("Pod never got into Running state!")
-
-
-def _get_testrunner_pod_body(args: argparse.Namespace) -> Dict:
-    dev_config = load_config(args.config_file)
-    return {
-        "kind": "Pod",
-        "metadata": {
-            "name": TEST_RUNNER_NAME,
-            "namespace": dev_config.namespace,
-        },
-        "spec": {
-            "restartPolicy": "Never",
-            "serviceAccountName": TEST_RUNNER_NAME,
-            "containers": [
-                {
-                    "name": "test-runner",
-                    "image": f"{dev_config.repo_url}/{dev_config.testrunner_image}:{args.tag}",
-                    "imagePullPolicy": "Always",
-                    "command": [
-                        "./runner",
-                        "--operatorImage",
-                        f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
-                        "--versionUpgradeHookImage",
-                        f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{args.tag}",
-                        "--testImage",
-                        f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
-                        f"--test={args.test}",
-                        f"--namespace={dev_config.namespace}",
-                        f"--performCleanup={args.perform_cleanup}",
-                        f"--clusterWide={args.cluster_wide}",
-                    ],
-                }
-            ],
-        },
-    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -230,7 +233,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--build-images",
-        help="Build testrunner, e2e and version upgrade hook images",
+        help="Build e2e and version upgrade hook images",
         action="store_true",
     )
     parser.add_argument(
@@ -259,7 +262,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> None:
-    test_runner_name = dev_config.testrunner_image
     if args.install_operator:
         build_and_push_operator(
             dev_config.repo_url,
@@ -269,11 +271,6 @@ def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> No
         deploy_operator()
 
     if args.build_images:
-        build_and_push_testrunner(
-            dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, test_runner_name, args.tag),
-            ".",
-        )
         build_and_push_e2e(
             dev_config.repo_url,
             "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
@@ -288,22 +285,20 @@ def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> No
         )
 
 
-def prepare_and_run_testrunner(args: argparse.Namespace, dev_config: DevConfig) -> None:
-    test_runner_name = dev_config.testrunner_image
-    _prepare_testrunner_environment(args.config_file)
-
-    create_test_runner_pod(args)
+def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> None:
+    _prepare_test_environment(args.config_file)
+    create_test_pod(args, dev_config)
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(
         corev1,
-        TEST_RUNNER_NAME,
+        TEST_POD_NAME,
         dev_config.namespace,
     )
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
-        TEST_RUNNER_NAME, dev_config.namespace, follow=True, _preload_content=False
+        TEST_POD_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
 
@@ -317,14 +312,14 @@ def main() -> int:
 
     try:
         build_and_push_images(args, dev_config)
-        prepare_and_run_testrunner(args, dev_config)
+        prepare_and_run_test(args, dev_config)
     finally:
         if not args.skip_dump_diagnostic:
             dump_diagnostic.dump_all(dev_config.namespace)
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
-        lambda: corev1.read_namespaced_pod(TEST_RUNNER_NAME, dev_config.namespace),
+        lambda: corev1.read_namespaced_pod(TEST_POD_NAME, dev_config.namespace),
         lambda pod: pod.status.phase == "Succeeded",
         sleep_time=5,
         timeout=60,

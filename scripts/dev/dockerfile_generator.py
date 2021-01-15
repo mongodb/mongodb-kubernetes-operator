@@ -18,17 +18,6 @@ def operator_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def test_runner_params(
-    files_to_add: List[str],
-) -> DockerParameters:
-    return {
-        "builder": True,
-        "builder_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller. There were errors using alpine
-        "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
-        "files_to_add": files_to_add,
-    }
-
-
 def e2e_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "base_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
@@ -55,7 +44,6 @@ def render(image_name: str, files_to_add: List[str], script_location: str) -> st
     param_dict = {
         "unittest": unit_test_params(files_to_add),
         "e2e": e2e_params(files_to_add),
-        "testrunner": test_runner_params(files_to_add),
         "operator": operator_params(files_to_add),
         "python_formatting": python_formatting_params(files_to_add, script_location),
     }
