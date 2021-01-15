@@ -181,6 +181,10 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDB, mdbv1.MongoDB
 							DB:   "admin",
 							Name: "clusterAdmin",
 						},
+						{
+							DB:   "admin",
+							Name: "userAdmin",
+						},
 					},
 					ScramCredentialsSecretName: fmt.Sprintf("%s-my-scram", name),
 				},

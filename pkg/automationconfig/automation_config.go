@@ -21,6 +21,7 @@ type AutomationConfig struct {
 	TLS         TLS                    `json:"tls"`
 	Versions    []MongoDbVersionConfig `json:"mongoDbVersions"`
 	Options     Options                `json:"options"`
+	Roles       []CustomRole           `json:"roles,omitempty"`
 }
 
 type Process struct {
@@ -138,6 +139,31 @@ type Auth struct {
 	KeyFileWindows string `json:"keyfileWindows,omitempty"`
 	// AutoPwd is a required field when going from `Disabled=false` to `Disabled=true`
 	AutoPwd string `json:"autoPwd,omitempty"`
+}
+
+type CustomRole struct {
+	Role                       string                      `json:"role"`
+	DB                         string                      `json:"db"`
+	Privileges                 []Privilege                 `json:"privileges"`
+	Roles                      []Role                      `json:"roles"`
+	AuthenticationRestrictions []AuthenticationRestriction `json:"authenticationRestrictions,omitempty"`
+}
+
+type Privilege struct {
+	Resource Resource `json:"resource"`
+	Actions  []string `json:"actions"`
+}
+
+type Resource struct {
+	DB          string `json:"db"`
+	Collection  string `json:"collection"`
+	AnyResource bool   `json:"anyResource,omitempty"`
+	Cluster     bool   `json:"cluster,omitempty"`
+}
+
+type AuthenticationRestriction struct {
+	ClientSource  []string `json:"clientSource"`
+	ServerAddress []string `json:"serverAddress"`
 }
 
 type MongoDBUser struct {

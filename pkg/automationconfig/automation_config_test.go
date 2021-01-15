@@ -210,3 +210,33 @@ func TestModifications(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, ac.Version)
 }
+
+func TestBuildCustomRole(t *testing.T) {
+	customRole := NewCustomRoleBuilder().
+		WithRole("aRole").
+		WithDB("aDb").
+		AddRole("inheritedRole", "ADb").
+		AddRole("otherInheritedRole", "admin").
+		AddPrivilege("", "", false, false, []string{"anyAction"}).
+		AddPrivilege("", "", true, false, []string{"get"}).
+		AddPrivilege("", "", false, true, []string{"get", "create", "put"}).
+		Build()
+
+	assert.Equal(t, customRole.Role, "aRole")
+	assert.Equal(t, customRole.DB, "aDb")
+	assert.Equal(t, customRole.Roles, []Role{{"inheritedRole", "ADb"}, {"otherInheritedRole", "admin"}})
+	assert.Equal(t, customRole.Privileges, []Privilege{
+		{
+			Resource: Resource{DB: "", Collection: ""},
+			Actions:  []string{"anyAction"},
+		},
+		{
+			Resource: Resource{Cluster: true},
+			Actions:  []string{"get"},
+		},
+		{
+			Resource: Resource{AnyResource: true},
+			Actions:  []string{"get", "create", "put"},
+		},
+	})
+}

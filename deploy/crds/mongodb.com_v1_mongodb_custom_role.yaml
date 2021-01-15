@@ -1,0 +1,46 @@
+---
+apiVersion: mongodb.com/v1
+kind: MongoDB
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      modes: ["SCRAM"]
+  roles:
+    - role: testRole
+      db: admin
+      privileges:
+        - resource:
+            db: "test"
+            collection: ""
+          actions:
+            - find
+      roles: []
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+        - name: testRole
+          db: admin
+      scramCredentialsSecretName: my-scram
+
+# the user credentials will be generated from this secret
+# once the credentials are generated, this secret is no longer required
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+type: Opaque
+stringData:
+  password: 58LObjiMpxcjP1sMDW

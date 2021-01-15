@@ -72,11 +72,57 @@ type MongoDBSpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
+
+	// User-specified custom MongoDB roles that should be configured in the deployment.
+	// +optional
+	Roles []AutomationConfigRole `json:"roles,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
 // replica set members.
 type ReplicaSetHorizonConfiguration []automationconfig.ReplicaSetHorizons
+
+// AutomationConfigRole defines a custom MongoDB role.
+type AutomationConfigRole struct {
+	// The name of the role.
+	Role string `json:"role"`
+	// The database of the role.
+	DB string `json:"db"`
+	// The privileges to grant the role.
+	Privileges []Privilege `json:"privileges"`
+	// An array of roles from which this role inherits privileges.
+	// +optional
+	Roles []Role `json:"roles"`
+	// The authentication restrictions the server enforces on the role.
+	// +optional
+	AuthenticationRestrictions []AuthenticationRestriction `json:"authenticationRestrictions,omitempty"`
+}
+
+// Privilege defines the actions a role is allowed to perform on a given resource.
+type Privilege struct {
+	Resource Resource `json:"resource"`
+	Actions  []string `json:"actions"`
+}
+
+// Resource specifies specifies the resources upon which a privilege permits actions.
+// See https://docs.mongodb.com/manual/reference/resource-document for more.
+type Resource struct {
+	// +optional
+	DB string `json:"db,omitempty"`
+	// +optional
+	Collection string `json:"collection,omitempty"`
+	// +optional
+	Cluster bool `json:"cluster,omitempty"`
+	// +optional
+	AnyResource bool `json:"anyResource,omitempty"`
+}
+
+// AuthenticationRestriction specifies a list of IP addresses and CIDR ranges users
+// are allowed to connect to or from.
+type AuthenticationRestriction struct {
+	ClientSource  []string `json:"clientSource"`
+	ServerAddress []string `json:"serverAddress"`
+}
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
