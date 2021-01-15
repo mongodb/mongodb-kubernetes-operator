@@ -3,6 +3,7 @@ package envvar
 import (
 	"os"
 	"sort"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -33,4 +34,10 @@ func GetEnvOrDefault(envVar, defaultValue string) string {
 		return val
 	}
 	return defaultValue
+}
+
+// ReadBool returns the boolean value of an envvar of the given name.
+func ReadBool(envVarName string) bool {
+	envVar := GetEnvOrDefault(envVarName, "false")
+	return strings.TrimSpace(strings.ToLower(envVar)) == "true"
 }

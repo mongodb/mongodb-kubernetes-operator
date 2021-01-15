@@ -22,19 +22,29 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--release_file", help="Path to the release file", type=str)
     parser.add_argument(
-        "--old_tag", help="the old tag of the image to retag", type=str,
+        "--old_tag",
+        help="the old tag of the image to retag",
+        type=str,
     )
     parser.add_argument(
-        "--username", help="username for the registry", type=str,
+        "--username",
+        help="username for the registry",
+        type=str,
     )
     parser.add_argument(
-        "--password", help="password for the registry", type=str,
+        "--password",
+        help="password for the registry",
+        type=str,
     )
     parser.add_argument(
-        "--registry", help="The docker registry", type=str,
+        "--registry",
+        help="The docker registry",
+        type=str,
     )
     parser.add_argument(
-        "--labels", help="Labels for the new image", type=json.loads,
+        "--labels",
+        help="Labels for the new image",
+        type=json.loads,
     )
     parser.add_argument(
         "--image_type",

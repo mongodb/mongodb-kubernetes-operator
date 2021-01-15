@@ -22,9 +22,9 @@ func TestReplicaSet(t *testing.T) {
 	if shouldCleanup {
 		defer ctx.Cleanup()
 	}
-	mdb, user := e2eutil.NewTestMongoDB("mdb0")
+	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}

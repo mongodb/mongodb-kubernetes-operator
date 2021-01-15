@@ -24,19 +24,19 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler        AuthEnabler
-	processes      []Process
-	replicaSets    []ReplicaSet
-	members        int
-	domain         string
-	name           string
-	fcv            string
-	topology       Topology
-	mongodbVersion string
-	previousAC     AutomationConfig
+	enabler            AuthEnabler
+	processes          []Process
+	replicaSets        []ReplicaSet
+	replicaSetHorizons []ReplicaSetHorizons
+	members            int
+	domain             string
+	name               string
+	fcv                string
+	topology           Topology
+	mongodbVersion     string
+	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
-	toolsVersion  ToolsVersion
 	modifications []Modification
 }
 
@@ -59,6 +59,11 @@ func (b *Builder) SetTopology(topology Topology) *Builder {
 	return b
 }
 
+func (b *Builder) SetReplicaSetHorizons(horizons []ReplicaSetHorizons) *Builder {
+	b.replicaSetHorizons = horizons
+	return b
+}
+
 func (b *Builder) SetMembers(members int) *Builder {
 	b.members = members
 	return b
@@ -76,11 +81,6 @@ func (b *Builder) SetName(name string) *Builder {
 
 func (b *Builder) SetFCV(fcv string) *Builder {
 	b.fcv = fcv
-	return b
-}
-
-func (b *Builder) SetToolsVersion(version ToolsVersion) *Builder {
-	b.toolsVersion = version
 	return b
 }
 
@@ -124,7 +124,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
 		processes[i] = process
-		members[i] = newReplicaSetMember(process, i)
+
+		if b.replicaSetHorizons != nil {
+			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i])
+		} else {
+			members[i] = newReplicaSetMember(process, i, nil)
+		}
 	}
 
 	auth := disabledAuth()
@@ -142,10 +147,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions:     b.versions,
-		ToolsVersion: b.toolsVersion,
-		Options:      Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:         auth,
+		Versions: b.versions,
+		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Auth:     auth,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},

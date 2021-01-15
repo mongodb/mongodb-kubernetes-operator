@@ -232,6 +232,25 @@ func WithReplicas(replicas int) Modification {
 	}
 }
 
+func WithRevisionHistoryLimit(revisionHistoryLimit int) Modification {
+	rhl := int32(revisionHistoryLimit)
+	return func(sts *appsv1.StatefulSet) {
+		sts.Spec.RevisionHistoryLimit = &rhl
+	}
+}
+
+func WithPodManagementPolicyType(policyType appsv1.PodManagementPolicyType) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.PodManagementPolicy = policyType
+	}
+}
+
+func WithSelector(selector *metav1.LabelSelector) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.Selector = selector
+	}
+}
+
 func WithUpdateStrategyType(strategyType appsv1.StatefulSetUpdateStrategyType) Modification {
 	return func(set *appsv1.StatefulSet) {
 		set.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{

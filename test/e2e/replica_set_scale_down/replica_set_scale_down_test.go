@@ -24,9 +24,9 @@ func TestReplicaSetScaleDown(t *testing.T) {
 	if shouldCleanup {
 		defer ctx.Cleanup()
 	}
-	mdb, user := e2eutil.NewTestMongoDB("replica-set-scale-down")
+	mdb, user := e2eutil.NewTestMongoDB("replica-set-scale-down", "")
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}

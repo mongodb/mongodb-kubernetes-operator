@@ -23,10 +23,10 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb-tls")
+	mdb, user := e2eutil.NewTestMongoDB("mdb-tls", "")
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	_, err := setup.GeneratePasswordForUser(user, ctx)
+	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}

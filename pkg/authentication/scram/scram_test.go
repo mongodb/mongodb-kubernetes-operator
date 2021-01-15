@@ -79,23 +79,23 @@ func notFoundError() error {
 
 func TestReadExistingCredentials(t *testing.T) {
 	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "default"}
-	username := "mdbuser-0"
+	user := buildMongoDBUser("mdbuser-0")
 	t.Run("credentials are successfully generated when all fields are present", func(t *testing.T) {
-		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, username)
+		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
 
-		scram1Creds, scram256Creds, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, username)
+		scram1Creds, scram256Creds, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.GetScramCredentialsSecretName())
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
 	})
 
 	t.Run("credentials are not generated if a field is missing", func(t *testing.T) {
-		scramCredsSecret := invalidSecret(mdbObjectKey, username)
-		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, username)
+		scramCredsSecret := invalidSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
+		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.GetScramCredentialsSecretName())
 		assert.Error(t, err)
 	})
 
 	t.Run("credentials are not generated if the secret does not exist", func(t *testing.T) {
-		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, username)
+		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
 		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, "different-username")
 		assert.Error(t, err)
 	})
@@ -127,7 +127,7 @@ func TestEnsureScramCredentials(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("Existing credentials are used when password does not exist, but credentials secret has been created", func(t *testing.T) {
-		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
+		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.GetScramCredentialsSecretName())
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
@@ -142,7 +142,7 @@ func TestEnsureScramCredentials(t *testing.T) {
 			SetField(user.PasswordSecretRef.Key, newPassword).
 			Build()
 
-		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.Name)
+		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.GetScramCredentialsSecretName())
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
@@ -265,6 +265,37 @@ func buildMongoDB(name string) mdbv1.MongoDB {
 	}
 }
 
+func buildMongoDBUser(name string) mdbv1.MongoDBUser {
+	return mdbv1.MongoDBUser{
+		Name: fmt.Sprintf("%s-user", name),
+		DB:   "admin",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Key:  fmt.Sprintf("%s-password", name),
+			Name: fmt.Sprintf("%s-password-secret", name),
+		},
+		Roles: []mdbv1.Role{
+			// roles on testing db for general connectivity
+			{
+				DB:   "testing",
+				Name: "readWrite",
+			},
+			{
+				DB:   "testing",
+				Name: "clusterAdmin",
+			},
+			// admin roles for reading FCV
+			{
+				DB:   "admin",
+				Name: "readWrite",
+			},
+			{
+				DB:   "admin",
+				Name: "clusterAdmin",
+			},
+		},
+	}
+}
+
 func buildMongoDBAndUser(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
 	mdb := buildMongoDB(name)
 	mdb.Spec.Users = []mdbv1.MongoDBUser{
@@ -314,9 +345,9 @@ func assertScramCredsCredentialsValidity(t *testing.T, scram1Creds, scram256Cred
 }
 
 // validScramCredentialsSecret returns a secret that has all valid scram credentials
-func validScramCredentialsSecret(objectKey types.NamespacedName, username string) corev1.Secret {
+func validScramCredentialsSecret(objectKey types.NamespacedName, scramCredentialsSecretName string) corev1.Secret {
 	return secret.Builder().
-		SetName(scramCredentialsSecretName(objectKey.Name, username)).
+		SetName(scramCredentialsSecretName).
 		SetNamespace(objectKey.Namespace).
 		SetField(sha1SaltKey, testSha1Salt).
 		SetField(sha1StoredKeyKey, testSha1StoredKey).
@@ -328,9 +359,9 @@ func validScramCredentialsSecret(objectKey types.NamespacedName, username string
 }
 
 // invalidSecret returns a secret that is incomplete
-func invalidSecret(objectKey types.NamespacedName, username string) corev1.Secret {
+func invalidSecret(objectKey types.NamespacedName, scramCredentialsSecretName string) corev1.Secret {
 	return secret.Builder().
-		SetName(scramCredentialsSecretName(objectKey.Name, username)).
+		SetName(scramCredentialsSecretName).
 		SetNamespace(objectKey.Namespace).
 		SetField(sha1SaltKey, "nxBSYyZZIBZxStyt").
 		SetField(sha1StoredKeyKey, "Bs4sePK0cdMy6n").

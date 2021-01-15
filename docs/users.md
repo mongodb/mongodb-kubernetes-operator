@@ -38,6 +38,7 @@ You cannot disable SCRAM authentication.
    | `spec.users.db` | string | Database that the user authenticates against. Defaults to `admin`. | No |
    | `spec.users.passwordSecretRef.name` | string | Name of the secret that contains the user's plain text password. | Yes|
    | `spec.users.passwordSecretRef.key` | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
+   | `spec.users.scramCredentialsSecretName` | string| ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the operator for storing SCRAM credentials for the user. The name should comply with [DNS1123 subdomain](https://tools.ietf.org/html/rfc1123). Also, please make sure the name is unique among `users`.  | Yes |
    | `spec.users.roles` | array of objects | Configures roles assigned to the user. | Yes |
    | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles). | Yes |
    | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
