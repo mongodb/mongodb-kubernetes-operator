@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -56,6 +58,8 @@ func TestMergeStringSlices(t *testing.T) {
 func TestMergeContainer(t *testing.T) {
 	// TODO: Add additional fields as they are merged
 
+	defaultQuantity := resource.NewQuantity(int64(10), resource.DecimalExponent)
+
 	defaultContainer := container.New(
 		container.WithName("default-container"),
 		container.WithCommand([]string{"a", "b", "c"}),
@@ -63,15 +67,51 @@ func TestMergeContainer(t *testing.T) {
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithWorkDir("default-work-dir"),
 		container.WithArgs([]string{"arg0", "arg1"}),
+		container.WithResourceRequirements(
+			corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					"limit": *defaultQuantity,
+				},
+			}),
+		container.WithEnvs(
+			corev1.EnvVar{
+				Name:  "env0",
+				Value: "val1",
+			},
+			corev1.EnvVar{
+				Name:  "env3",
+				Value: "val3",
+			}),
 	)
 
 	t.Run("Override Fields", func(t *testing.T) {
+		overrideQuantity := resource.NewQuantity(int64(15), resource.BinarySI)
+
 		overrideContainer := container.New(
 			container.WithName("override-container"),
 			container.WithCommand([]string{"d", "f", "e"}),
 			container.WithImage("override-image"),
 			container.WithWorkDir("override-work-dir"),
 			container.WithArgs([]string{"arg3", "arg2"}),
+			container.WithResourceRequirements(
+				corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"limits": *overrideQuantity,
+					},
+					Requests: corev1.ResourceList{
+						"requests": *overrideQuantity,
+					},
+				}),
+			container.WithEnvs(
+				corev1.EnvVar{
+					Name:  "env0",
+					Value: "val2",
+				},
+				corev1.EnvVar{
+					Name:      "env3",
+					ValueFrom: &corev1.EnvVarSource{},
+				},
+			),
 		)
 		mergedContainer := Container(defaultContainer, overrideContainer)
 		assert.Equal(t, overrideContainer.Name, mergedContainer.Name, "Name was overridden, and should be used.")
@@ -80,6 +120,18 @@ func TestMergeContainer(t *testing.T) {
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, overrideContainer.WorkingDir, mergedContainer.WorkingDir)
 		assert.Equal(t, []string{"arg0", "arg1", "arg2", "arg3"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
+
+		assert.Equal(t, overrideContainer.Resources, mergedContainer.Resources)
+
+		t.Run("Env are overridden", func(t *testing.T) {
+			assert.Len(t, mergedContainer.Env, 2)
+			assert.Equal(t, "env0", mergedContainer.Env[0].Name)
+			assert.Equal(t, "val2", mergedContainer.Env[0].Value)
+			assert.Equal(t, "env3", mergedContainer.Env[1].Name)
+			assert.Equal(t, "", mergedContainer.Env[1].Value)
+			assert.NotNil(t, mergedContainer.Env[1].ValueFrom)
+		})
+
 	})
 
 	t.Run("No Override Fields", func(t *testing.T) {
@@ -90,6 +142,18 @@ func TestMergeContainer(t *testing.T) {
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, defaultContainer.WorkingDir, mergedContainer.WorkingDir)
 		assert.Equal(t, defaultContainer.Args, mergedContainer.Args, "Args were not specified. The original Args should be used.")
+
+		assert.Equal(t, defaultContainer.Resources, mergedContainer.Resources)
+
+		t.Run("No Overriden Env", func(t *testing.T) {
+			assert.Len(t, mergedContainer.Env, 2)
+			assert.Equal(t, "env0", mergedContainer.Env[0].Name)
+			assert.Equal(t, "val1", mergedContainer.Env[0].Value)
+			assert.Equal(t, "env3", mergedContainer.Env[1].Name)
+			assert.Equal(t, "val3", mergedContainer.Env[1].Value)
+			assert.Nil(t, mergedContainer.Env[1].ValueFrom)
+		})
+
 	})
 }
 

@@ -43,14 +43,10 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 	}
 
 	merged.Ports = ContainerPortSlicesByName(defaultContainer.Ports, overrideContainer.Ports)
-
-	// TODO: merge Env
-
-	// TODO: merge Resources
-
-	// TODO: merge VolumeMounts
-
-	// TODO: merge VolumeDevices
+	merged.Env = Envs(defaultContainer.Env, overrideContainer.Env)
+	merged.Resources = ResourceRequirements(defaultContainer.Resources, overrideContainer.Resources)
+	merged.VolumeMounts = VolumeMounts(defaultContainer.VolumeMounts, overrideContainer.VolumeMounts)
+	merged.VolumeDevices = VolumeDevices(defaultContainer.VolumeDevices, overrideContainer.VolumeDevices)
 
 	// TODO: merge LivenessProbe
 
@@ -86,6 +82,119 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 		merged.TTY = overrideContainer.TTY
 	}
 
+	return merged
+}
+
+func VolumeDevices(original, override []corev1.VolumeDevice) []corev1.VolumeDevice {
+	var mergedDevicesMap map[string]corev1.VolumeDevice
+	originalDevicesMap := createVolumeDevicesMap(original)
+	overrideDevicesMap := createVolumeDevicesMap(override)
+
+	for k, v := range originalDevicesMap {
+		mergedDevicesMap[k] = v
+	}
+
+	for k, v := range overrideDevicesMap {
+		if orig, ok := originalDevicesMap[k]; ok {
+			mergedDevicesMap[k] = mergeVolumeDevice(orig, v)
+		} else {
+			mergedDevicesMap[k] = v
+		}
+	}
+
+	var mergedDevices []corev1.VolumeDevice
+	for _, v := range mergedDevicesMap {
+		mergedDevices = append(mergedDevices, v)
+	}
+
+	sort.SliceStable(mergedDevices, func(i, j int) bool {
+		return mergedDevices[i].Name < mergedDevices[j].Name
+	})
+	return mergedDevices
+}
+
+func createVolumeDevicesMap(devices []corev1.VolumeDevice) map[string]corev1.VolumeDevice {
+	m := make(map[string]corev1.VolumeDevice)
+	for _, v := range devices {
+		m[v.Name] = v
+	}
+	return m
+}
+
+func mergeVolumeDevice(original, override corev1.VolumeDevice) corev1.VolumeDevice {
+	merged := original
+	if override.Name != "" {
+		merged.Name = override.Name
+	}
+	if override.DevicePath != "" {
+		merged.DevicePath = override.DevicePath
+	}
+	return merged
+}
+
+// Envs merges two slices of EnvVars using their name as the unique
+// identifier.
+func Envs(original, override []corev1.EnvVar) []corev1.EnvVar {
+	mergedEnvsMap := map[string]corev1.EnvVar{}
+
+	originalMap := createEnvMap(original)
+	overrideMap := createEnvMap(override)
+
+	for k, v := range originalMap {
+		mergedEnvsMap[k] = v
+	}
+
+	for k, v := range overrideMap {
+		if orig, ok := originalMap[k]; ok {
+			mergedEnvsMap[k] = mergeSingleEnv(orig, v)
+		} else {
+			mergedEnvsMap[k] = v
+		}
+	}
+
+	var mergedEnvs []corev1.EnvVar
+	for _, v := range mergedEnvsMap {
+		mergedEnvs = append(mergedEnvs, v)
+	}
+
+	sort.SliceStable(mergedEnvs, func(i, j int) bool {
+		return mergedEnvs[i].Name < mergedEnvs[j].Name
+	})
+	return mergedEnvs
+}
+
+func mergeSingleEnv(original, override corev1.EnvVar) corev1.EnvVar {
+	merged := original
+	if override.Value != "" {
+		merged.Value = override.Value
+		merged.ValueFrom = nil
+	}
+
+	if override.ValueFrom != nil {
+		merged.ValueFrom = override.ValueFrom
+		merged.Value = ""
+	}
+	return merged
+}
+
+func createEnvMap(env []corev1.EnvVar) map[string]corev1.EnvVar {
+	m := make(map[string]corev1.EnvVar)
+	for _, e := range env {
+		m[e.Name] = e
+	}
+	return m
+}
+
+// ResourceRequirements merges two resource requirements.
+func ResourceRequirements(original, override corev1.ResourceRequirements) corev1.ResourceRequirements {
+	merged := original
+	if override.Limits != nil {
+		merged.Limits = override.Limits
+	}
+
+	if override.Requests != nil {
+		merged.Requests = override.Requests
+	}
 	return merged
 }
 
@@ -147,6 +256,37 @@ func createContainerPortMap(containerPorts []corev1.ContainerPort) map[string]co
 		containerPortMap[m.Name] = m
 	}
 	return containerPortMap
+}
+
+func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount {
+	var mergedMountsMap map[string]corev1.VolumeMount
+	originalMounts := createVolumeMountMap(original)
+	overrideMounts := createVolumeMountMap(override)
+
+	for k, v := range originalMounts {
+		mergedMountsMap[k] = v
+	}
+
+	for k, v := range overrideMounts {
+		mergedMountsMap[k] = v
+	}
+
+	var mergedMounts []corev1.VolumeMount
+	mergedMounts = append(mergedMounts, mergedMounts...)
+
+	sort.SliceStable(mergedMounts, func(i, j int) bool {
+		return mergedMounts[i].Name < mergedMounts[j].Name
+	})
+
+	return mergedMounts
+}
+
+func createVolumeMountMap(mounts []corev1.VolumeMount) map[string]corev1.VolumeMount {
+	m := make(map[string]corev1.VolumeMount)
+	for _, v := range mounts {
+		m[v.Name] = v
+	}
+	return m
 }
 
 // VolumeMount merges two corev1.VolumeMounts. Any fields in the override take precedence
