@@ -13,7 +13,7 @@ func TestTlsRemoval_RemovesCorrectConfig(t *testing.T) {
 	var opts []*options.ClientOptions
 
 	// configure TLS and hosts
-	opts = withTls(&tls.Config{
+	opts = withTls(&tls.Config{ //nolint
 		ServerName: "some-name",
 	}).ApplyOption(opts...)
 	opts = WithHosts([]string{"host1", "host2", "host3"}).ApplyOption(opts...)

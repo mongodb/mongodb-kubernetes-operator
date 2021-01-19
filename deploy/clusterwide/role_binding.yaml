@@ -1,12 +1,12 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: test-runner
+  name: mongodb-kubernetes-operator
 subjects:
 - kind: ServiceAccount
-  name: test-runner
+  name: mongodb-kubernetes-operator
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: cluster-admin # TODO: create cluster role with only required permissions
+  name: mongodb-kubernetes-operator
   apiGroup: rbac.authorization.k8s.io

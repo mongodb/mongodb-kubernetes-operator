@@ -60,7 +60,7 @@ func statefulSetIsReady(mdb *mdbv1.MongoDB, interval time.Duration, timeout time
 func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDB, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -113,7 +113,7 @@ func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDB) func(t *testing.T) {
 
 func AutomationConfigSecretExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	return func(t *testing.T) {
-		s, err := e2eutil.WaitForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1)
+		s, err := e2eutil.WaitForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1, mdb.Namespace)
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
@@ -279,7 +279,7 @@ func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: f.Global.OperatorNamespace}, &sts)
+		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}

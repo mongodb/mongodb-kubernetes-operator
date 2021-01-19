@@ -1,8 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: test-runner
+  name: mongodb-kubernetes-operator
 rules:
 - apiGroups:
   - ""
@@ -15,7 +15,6 @@ rules:
   - events
   - configmaps
   - secrets
-  - namespaces
   verbs:
   - create
   - delete
@@ -49,7 +48,7 @@ rules:
 - apiGroups:
   - apps
   resourceNames:
-  - test-runner
+  - mongodb-kubernetes-operator
   resources:
   - deployments/finalizers
   verbs:

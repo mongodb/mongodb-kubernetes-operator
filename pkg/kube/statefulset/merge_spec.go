@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MergeSpecs takes an original and an override spec. A new StatefulSetSpec is returned with has had
+// MergeSpecs takes an original and an override spec. A new StatefulSetSpec is returned witch has had
 // any changes from the override applied on top of the original.
 func MergeSpecs(originalSpec appsv1.StatefulSetSpec, overrideSpec appsv1.StatefulSetSpec) appsv1.StatefulSetSpec {
 	mergedSpec := originalSpec

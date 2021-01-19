@@ -27,15 +27,15 @@ func TestReplicaSetMultiple(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
-	mdb0, user0 := e2eutil.NewTestMongoDB("mdb0")
-	mdb1, user1 := e2eutil.NewTestMongoDB("mdb1")
+	mdb0, user0 := e2eutil.NewTestMongoDB("mdb0", "")
+	mdb1, user1 := e2eutil.NewTestMongoDB("mdb1", "")
 
-	_, err := setup.GeneratePasswordForUser(user0, ctx)
+	_, err := setup.GeneratePasswordForUser(user0, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = setup.GeneratePasswordForUser(user1, ctx)
+	_, err = setup.GeneratePasswordForUser(user1, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
