@@ -3,7 +3,8 @@ package statefulset
 import (
 	"sort"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -83,7 +84,7 @@ func mergeLabelSelectorRequirements(original, override []metav1.LabelSelectorReq
 				mergedLsr.Operator = overrideLsr.Operator
 			}
 			if overrideLsr.Values != nil {
-				mergedLsr.Values = mergeDistinct(originalLsr.Values, overrideLsr.Values)
+				mergedLsr.Values = merge.StringSlices(originalLsr.Values, overrideLsr.Values)
 			}
 		}
 		sort.SliceStable(mergedLsr.Values, func(i, j int) bool {
@@ -121,18 +122,4 @@ func getLabelSelectorRequirementByKey(labelSelectorRequirements []metav1.LabelSe
 		}
 	}
 	return nil
-}
-
-// mergeDistinct accepts two slices of strings, and returns a string slice
-// containing the distinct elements present in both.
-func mergeDistinct(original, override []string) []string {
-	mergedStrings := make([]string, 0)
-	mergedStrings = append(mergedStrings, original...)
-	for _, s := range override {
-		if !contains.String(mergedStrings, s) {
-			mergedStrings = append(mergedStrings, s)
-		}
-	}
-
-	return mergedStrings
 }
