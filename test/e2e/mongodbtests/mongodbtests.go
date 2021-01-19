@@ -302,6 +302,11 @@ func ConnectAndVerifyExpectedCustomRoles(mdb *mdbv1.MongoDB, database, username,
 	}
 }
 
+// CustomRolesResult is a type to decode the result of getting rolesInfo.
+type CustomRolesResult struct {
+	Roles []automationconfig.CustomRole
+}
+
 func VerifyExpectedCustomRoles(t *testing.T, mdb *mdbv1.MongoDB, database string, expectedRoles []automationconfig.CustomRole, opts *options.ClientOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -311,7 +316,7 @@ func VerifyExpectedCustomRoles(t *testing.T, mdb *mdbv1.MongoDB, database string
 	}
 
 	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
-		var result bson.M
+		var result CustomRolesResult
 		err = mongoClient.Database(database).
 			RunCommand(ctx, bson.D{
 				{"rolesInfo", 1},            // nolint
@@ -323,19 +328,7 @@ func VerifyExpectedCustomRoles(t *testing.T, mdb *mdbv1.MongoDB, database string
 			return false, nil
 		}
 
-		jsonRoles, err := json.Marshal(result["roles"])
-		if err != nil {
-			t.Fatal(err)
-			return false, nil
-		}
-		var roles []automationconfig.CustomRole
-		err = json.Unmarshal(jsonRoles, &roles)
-		if err != nil {
-			t.Fatal(err)
-			return false, nil
-		}
-
-		assert.Equal(t, roles, expectedRoles)
+		assert.Equal(t, result.Roles, expectedRoles)
 		return true, nil
 	})
 }
