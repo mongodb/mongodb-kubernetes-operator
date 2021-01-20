@@ -259,7 +259,7 @@ func createContainerPortMap(containerPorts []corev1.ContainerPort) map[string]co
 }
 
 func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount {
-	var mergedMountsMap map[string]corev1.VolumeMount
+	mergedMountsMap := map[string]corev1.VolumeMount{}
 	originalMounts := createVolumeMountMap(original)
 	overrideMounts := createVolumeMountMap(override)
 
@@ -268,11 +268,17 @@ func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount 
 	}
 
 	for k, v := range overrideMounts {
-		mergedMountsMap[k] = v
+		if orig, ok := originalMounts[k]; ok {
+			mergedMountsMap[k] = VolumeMount(orig, v)
+		} else {
+			mergedMountsMap[k] = v
+		}
 	}
 
 	var mergedMounts []corev1.VolumeMount
-	mergedMounts = append(mergedMounts, mergedMounts...)
+	for _, mount := range mergedMountsMap {
+		mergedMounts = append(mergedMounts, mount)
+	}
 
 	sort.SliceStable(mergedMounts, func(i, j int) bool {
 		return mergedMounts[i].Name < mergedMounts[j].Name
