@@ -67,6 +67,16 @@ func TestMergeContainer(t *testing.T) {
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithWorkDir("default-work-dir"),
 		container.WithArgs([]string{"arg0", "arg1"}),
+		container.WithVolumeDevices([]corev1.VolumeDevice{
+			{
+				Name:       "name-0",
+				DevicePath: "original-path-0",
+			},
+			{
+				Name:       "name-1",
+				DevicePath: "original-path-1",
+			},
+		}),
 		container.WithVolumeMounts([]corev1.VolumeMount{
 			{
 				Name:             "volume-mount-0",
@@ -111,6 +121,16 @@ func TestMergeContainer(t *testing.T) {
 			container.WithImage("override-image"),
 			container.WithWorkDir("override-work-dir"),
 			container.WithArgs([]string{"arg3", "arg2"}),
+			container.WithVolumeDevices([]corev1.VolumeDevice{
+				{
+					Name:       "name-0",
+					DevicePath: "override-path-0",
+				},
+				{
+					Name:       "name-2",
+					DevicePath: "override-path-2",
+				},
+			}),
 			container.WithVolumeMounts([]corev1.VolumeMount{
 				{
 					Name:             "volume-mount-1",
@@ -160,6 +180,26 @@ func TestMergeContainer(t *testing.T) {
 			assert.NotNil(t, mergedContainer.Env[1].ValueFrom)
 		})
 
+		t.Run("Volume Devices are overridden", func(t *testing.T) {
+			volumeDevices := mergedContainer.VolumeDevices
+			assert.Len(t, volumeDevices, 3)
+			t.Run("VolumeDevice0 was updated", func(t *testing.T) {
+				vd0 := volumeDevices[0]
+				assert.Equal(t, "name-0", vd0.Name)
+				assert.Equal(t, "override-path-0", vd0.DevicePath)
+			})
+			t.Run("VolumeDevice1 remained unchanged", func(t *testing.T) {
+				vd1 := volumeDevices[1]
+				assert.Equal(t, "name-1", vd1.Name)
+				assert.Equal(t, "original-path-1", vd1.DevicePath)
+			})
+			t.Run("VolumeDevice2 was updated", func(t *testing.T) {
+				vd2 := volumeDevices[2]
+				assert.Equal(t, "name-2", vd2.Name)
+				assert.Equal(t, "override-path-2", vd2.DevicePath)
+			})
+		})
+
 		t.Run("Volume Mounts are overridden", func(t *testing.T) {
 			volumeMounts := mergedContainer.VolumeMounts
 			assert.Len(t, volumeMounts, 2)
@@ -202,16 +242,39 @@ func TestMergeContainer(t *testing.T) {
 			assert.Nil(t, mergedContainer.Env[1].ValueFrom)
 		})
 
+		t.Run("Volume Devices are not overridden", func(t *testing.T) {
+			volumeDevices := mergedContainer.VolumeDevices
+			assert.Len(t, volumeDevices, 2)
+			t.Run("VolumeDevice0 was updated", func(t *testing.T) {
+				vd0 := volumeDevices[0]
+				assert.Equal(t, "name-0", vd0.Name)
+				assert.Equal(t, "original-path-0", vd0.DevicePath)
+			})
+			t.Run("VolumeDevice1 remained unchanged", func(t *testing.T) {
+				vd1 := volumeDevices[1]
+				assert.Equal(t, "name-1", vd1.Name)
+				assert.Equal(t, "original-path-1", vd1.DevicePath)
+			})
+		})
+
 		t.Run("Volume Mounts are not overridden", func(t *testing.T) {
 			volumeMounts := mergedContainer.VolumeMounts
-			assert.Len(t, volumeMounts, 1)
-			t.Run("First VolumeMount is still present", func(t *testing.T) {
-				//vm0 := volumeMounts[0]
-				//assert.Equal(t, "volume-mount-0", vm0.Name)
-				//assert.False(t, vm0.ReadOnly)
-				//assert.Equal(t, "original-mount-path", vm0.MountPath)
-				//assert.Equal(t, "original-sub-path", vm0.SubPath)
-				//assert.Equal(t, "original-sub-path-expr", vm0.SubPathExpr)
+			assert.Len(t, volumeMounts, 2)
+			t.Run("First VolumeMount is still present and unchanged", func(t *testing.T) {
+				vm0 := volumeMounts[0]
+				assert.Equal(t, "volume-mount-0", vm0.Name)
+				assert.False(t, vm0.ReadOnly)
+				assert.Equal(t, "original-mount-path", vm0.MountPath)
+				assert.Equal(t, "original-sub-path", vm0.SubPath)
+				assert.Equal(t, "original-sub-path-expr", vm0.SubPathExpr)
+			})
+			t.Run("Second VolumeMount is still present and unchanged", func(t *testing.T) {
+				vm1 := volumeMounts[1]
+				assert.Equal(t, "volume-mount-1", vm1.Name)
+				assert.False(t, vm1.ReadOnly)
+				assert.Equal(t, "original-mount-path-1", vm1.MountPath)
+				assert.Equal(t, "original-sub-path-1", vm1.SubPath)
+				assert.Equal(t, "original-sub-path-expr-1", vm1.SubPathExpr)
 			})
 		})
 

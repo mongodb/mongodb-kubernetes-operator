@@ -86,7 +86,7 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 }
 
 func VolumeDevices(original, override []corev1.VolumeDevice) []corev1.VolumeDevice {
-	var mergedDevicesMap map[string]corev1.VolumeDevice
+	mergedDevicesMap := map[string]corev1.VolumeDevice{}
 	originalDevicesMap := createVolumeDevicesMap(original)
 	overrideDevicesMap := createVolumeDevicesMap(override)
 

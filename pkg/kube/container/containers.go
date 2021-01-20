@@ -153,6 +153,13 @@ func volumeMountToString(v corev1.VolumeMount) string {
 	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "-")
 }
 
+// WithPWithVolumeDevice sets the container's VolumeDevices
+func WithVolumeDevices(devices []corev1.VolumeDevice) Modification {
+	return func(container *corev1.Container) {
+		container.VolumeDevices = devices
+	}
+}
+
 // WithPorts sets the container's Ports
 func WithPorts(ports []corev1.ContainerPort) Modification {
 	return func(container *corev1.Container) {
