@@ -148,8 +148,8 @@ func TestMerge(t *testing.T) {
 				getCustomContainer(),
 			},
 			InitContainers: []corev1.Container{
-				initContainerDefault,
 				initContainerCustom,
+				initContainerDefault,
 			},
 			Volumes:  []corev1.Volume{},
 			Affinity: affinity("zone", "custom"),
@@ -258,12 +258,15 @@ func TestMergeContainer(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, mergedSpec.Spec.Containers, 3)
-	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[2])
+	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[1])
 
 	firstExpected := corev1.Container{
 		Name:         "container-0",
 		VolumeMounts: []corev1.VolumeMount{vol0},
 		Image:        "overridden",
+		Command:      []string{},
+		Args:         []string{},
+		Ports:        []corev1.ContainerPort{},
 		ReadinessProbe: &corev1.Probe{
 			// only "periodSeconds" was overwritten - other fields stayed untouched
 			Handler: corev1.Handler{
@@ -277,16 +280,19 @@ func TestMergeContainer(t *testing.T) {
 	secondExpected := corev1.Container{
 		Name:         "default-side-car",
 		Image:        "image-0",
-		VolumeMounts: []corev1.VolumeMount{sideCarVol, anotherVol},
+		VolumeMounts: []corev1.VolumeMount{anotherVol, sideCarVol},
+		Command:      []string{},
+		Args:         []string{},
+		Ports:        []corev1.ContainerPort{},
 		Env: []corev1.EnvVar{
-			corev1.EnvVar{
+			{
 				Name:  "env_var",
 				Value: "xxx",
 			},
 		},
 		ReadinessProbe: otherDefaultContainer.ReadinessProbe,
 	}
-	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[1])
+	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[2])
 }
 
 func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
@@ -467,8 +473,11 @@ func affinity(antiAffinityKey, nodeAffinityKey string) *corev1.Affinity {
 
 func getDefaultContainer() corev1.Container {
 	return corev1.Container{
-		Name:  "container-0",
-		Image: "image-0",
+		Args:    []string{},
+		Command: []string{},
+		Ports:   []corev1.ContainerPort{},
+		Name:    "container-0",
+		Image:   "image-0",
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{HTTPGet: &corev1.HTTPGetAction{
 				Path: "/foo",

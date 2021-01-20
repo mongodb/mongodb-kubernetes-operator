@@ -3,9 +3,10 @@ package podtemplatespec
 import (
 	"sort"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
+
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -229,27 +230,16 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 }
 
 func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
-	// Containers need to be merged manually
-	mergedContainers, err := mergeContainers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
 
-	mergedTolerations := mergeTolerations(defaultTemplate.Spec.Tolerations, overrideTemplate.Spec.Tolerations)
-
-	// InitContainers need to be merged manually
-	mergedInitContainers, err := mergeContainers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	// Affinity needs to be merged manually
+	mergedContainers := merge.Containers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
+	mergedTolerations := merge.Tolerations(defaultTemplate.Spec.Tolerations, overrideTemplate.Spec.Tolerations)
+	mergedInitContainers := merge.Containers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
 	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	mergedVolumes := mergeVolumes(defaultTemplate.Spec.Volumes, overrideTemplate.Spec.Volumes)
+	mergedVolumes := merge.Volumes(defaultTemplate.Spec.Volumes, overrideTemplate.Spec.Volumes)
 
 	// Everything else can be merged with mergo
 	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
@@ -432,85 +422,6 @@ func createMountsMap(volumeMounts []corev1.VolumeMount) map[string]corev1.Volume
 		mountMap[m.Name] = m
 	}
 	return mountMap
-}
-
-func createTolerationsMap(tolerations []corev1.Toleration) map[string]corev1.Toleration {
-	tolerationsMap := make(map[string]corev1.Toleration)
-	for _, t := range tolerations {
-		tolerationsMap[t.Key] = t
-	}
-	return tolerationsMap
-}
-
-func mergeTolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []corev1.Toleration {
-	mergedTolerations := make([]corev1.Toleration, 0)
-	defaultMap := createTolerationsMap(defaultTolerations)
-	for _, v := range overrideTolerations {
-		defaultMap[v.Key] = v
-	}
-
-	for _, v := range defaultMap {
-		mergedTolerations = append(mergedTolerations, v)
-	}
-
-	if len(mergedTolerations) == 0 {
-		return nil
-	}
-
-	sort.SliceStable(mergedTolerations, func(i, j int) bool {
-		return mergedTolerations[i].Key < mergedTolerations[j].Key
-	})
-
-	return mergedTolerations
-}
-
-func mergeContainers(defaultContainers, customContainers []corev1.Container) ([]corev1.Container, error) {
-	defaultMap := createContainerMap(defaultContainers)
-	customMap := createContainerMap(customContainers)
-	mergedContainers := []corev1.Container{}
-	for _, defaultContainer := range defaultContainers {
-		if customContainer, ok := customMap[defaultContainer.Name]; ok {
-			// The container is present in both maps, so we need to merge
-			// MergeWithOverride mounts
-			mergedMounts, err := mergeVolumeMounts(defaultContainer.VolumeMounts, customContainer.VolumeMounts)
-			if err != nil {
-				return nil, err
-			}
-
-			mergedEnvs := envvar.MergeWithOverride(defaultContainer.Env, customContainer.Env)
-
-			if err := mergo.Merge(&defaultContainer, customContainer, mergo.WithOverride); err != nil { //nolint
-				return nil, err
-			}
-			// completely override any resources that were provided
-			// this prevents issues with custom requests giving errors due
-			// to the defaulted limits
-			defaultContainer.Resources = customContainer.Resources
-			defaultContainer.VolumeMounts = mergedMounts
-			defaultContainer.Env = mergedEnvs
-		}
-		// The default container was not modified by the override, so just add it
-		mergedContainers = append(mergedContainers, defaultContainer)
-	}
-
-	// Look for customContainers that were not merged into existing ones
-	for _, customContainer := range customContainers {
-		if _, ok := defaultMap[customContainer.Name]; ok {
-			continue
-		}
-		// Need to add it
-		mergedContainers = append(mergedContainers, customContainer)
-	}
-
-	return mergedContainers, nil
-}
-
-func createContainerMap(containers []corev1.Container) map[string]corev1.Container {
-	containerMap := make(map[string]corev1.Container)
-	for _, c := range containers {
-		containerMap[c.Name] = c
-	}
-	return containerMap
 }
 
 func mergeAffinity(defaultAffinity, overrideAffinity *corev1.Affinity) (*corev1.Affinity, error) {

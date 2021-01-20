@@ -24,6 +24,45 @@ func StringSlices(slice1, slice2 []string) []string {
 	return mergedStrings
 }
 
+// Containers merges two slices of containers merging each item by container name.
+func Containers(defaultContainers, overrideContainers []corev1.Container) []corev1.Container {
+	mergedContainerMap := map[string]corev1.Container{}
+
+	originalMap := createContainerMap(defaultContainers)
+	overrideMap := createContainerMap(overrideContainers)
+
+	for k, v := range originalMap {
+		mergedContainerMap[k] = v
+	}
+
+	for k, v := range overrideMap {
+		if orig, ok := originalMap[k]; ok {
+			mergedContainerMap[k] = Container(orig, v)
+		} else {
+			mergedContainerMap[k] = v
+		}
+	}
+
+	var mergedContainers []corev1.Container
+	for _, v := range mergedContainerMap {
+		mergedContainers = append(mergedContainers, v)
+	}
+
+	sort.SliceStable(mergedContainers, func(i, j int) bool {
+		return mergedContainers[i].Name < mergedContainers[j].Name
+	})
+	return mergedContainers
+
+}
+
+func createContainerMap(containers []corev1.Container) map[string]corev1.Container {
+	m := make(map[string]corev1.Container)
+	for _, v := range containers {
+		m[v.Name] = v
+	}
+	return m
+}
+
 func Container(defaultContainer, overrideContainer corev1.Container) corev1.Container {
 	merged := defaultContainer
 
@@ -425,4 +464,172 @@ func VolumeMount(original, override corev1.VolumeMount) corev1.VolumeMount {
 		merged.SubPathExpr = override.SubPathExpr
 	}
 	return merged
+}
+
+func Tolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []corev1.Toleration {
+	mergedTolerations := make([]corev1.Toleration, 0)
+	defaultMap := createTolerationsMap(defaultTolerations)
+	for _, v := range overrideTolerations {
+		defaultMap[v.Key] = v
+	}
+
+	for _, v := range defaultMap {
+		mergedTolerations = append(mergedTolerations, v)
+	}
+
+	if len(mergedTolerations) == 0 {
+		return nil
+	}
+
+	sort.SliceStable(mergedTolerations, func(i, j int) bool {
+		return mergedTolerations[i].Key < mergedTolerations[j].Key
+	})
+
+	return mergedTolerations
+}
+
+func createTolerationsMap(tolerations []corev1.Toleration) map[string]corev1.Toleration {
+	tolerationsMap := make(map[string]corev1.Toleration)
+	for _, t := range tolerations {
+		tolerationsMap[t.Key] = t
+	}
+	return tolerationsMap
+}
+
+func Volumes(defaultVolumes []corev1.Volume, overrideVolumes []corev1.Volume) []corev1.Volume {
+	defaultVolumesMap := createVolumesMap(defaultVolumes)
+	overrideVolumesMap := createVolumesMap(overrideVolumes)
+	mergedVolumes := []corev1.Volume{}
+
+	for _, defaultVolume := range defaultVolumes {
+		mergedVolume := defaultVolume
+		if overrideVolume, ok := overrideVolumesMap[defaultVolume.Name]; ok {
+			mergedVolume = Volume(defaultVolume, overrideVolume)
+		}
+		mergedVolumes = append(mergedVolumes, mergedVolume)
+	}
+
+	for _, overrideVolume := range overrideVolumes {
+		if _, ok := defaultVolumesMap[overrideVolume.Name]; ok {
+			// Already Merged
+			continue
+		}
+		mergedVolumes = append(mergedVolumes, overrideVolume)
+	}
+
+	sort.SliceStable(mergedVolumes, func(i, j int) bool {
+		return mergedVolumes[i].Name < mergedVolumes[j].Name
+	})
+	return mergedVolumes
+}
+
+func Volume(defaultVolume corev1.Volume, overrideVolume corev1.Volume) corev1.Volume {
+	// Volume contains only Name and VolumeSource
+
+	// Merge VolumeSource
+	overrideSource := overrideVolume.VolumeSource
+	defaultSource := defaultVolume.VolumeSource
+	mergedVolume := defaultVolume
+
+	// Only one field must be non-nil.
+	// We merge if it is one of the ones we fill from the operator side:
+	// - EmptyDir
+	if overrideSource.EmptyDir != nil && defaultSource.EmptyDir != nil {
+		if overrideSource.EmptyDir.Medium != "" {
+			mergedVolume.EmptyDir.Medium = overrideSource.EmptyDir.Medium
+		}
+		if overrideSource.EmptyDir.SizeLimit != nil {
+			mergedVolume.EmptyDir.SizeLimit = overrideSource.EmptyDir.SizeLimit
+		}
+		return mergedVolume
+	}
+	// - Secret
+	if overrideSource.Secret != nil && defaultSource.Secret != nil {
+		if overrideSource.Secret.SecretName != "" {
+			mergedVolume.Secret.SecretName = overrideSource.Secret.SecretName
+		}
+		mergedVolume.Secret.Items = mergeKeyToPathItems(defaultSource.Secret.Items, overrideSource.Secret.Items)
+		if overrideSource.Secret.DefaultMode != nil {
+			mergedVolume.Secret.DefaultMode = overrideSource.Secret.DefaultMode
+		}
+		return mergedVolume
+	}
+	// - ConfigMap
+	if overrideSource.ConfigMap != nil && defaultSource.ConfigMap != nil {
+		if overrideSource.ConfigMap.LocalObjectReference.Name != "" {
+			mergedVolume.ConfigMap.LocalObjectReference.Name = overrideSource.ConfigMap.LocalObjectReference.Name
+		}
+		mergedVolume.ConfigMap.Items = mergeKeyToPathItems(defaultSource.ConfigMap.Items, overrideSource.ConfigMap.Items)
+		if overrideSource.ConfigMap.DefaultMode != nil {
+			mergedVolume.ConfigMap.DefaultMode = overrideSource.ConfigMap.DefaultMode
+		}
+		if overrideSource.ConfigMap.Optional != nil {
+			mergedVolume.ConfigMap.Optional = overrideSource.ConfigMap.Optional
+		}
+		return mergedVolume
+	}
+
+	// Otherwise we assume that the user provides every field
+	// and we just assign it and nil every other field
+	// We also do that in the case the user provides one of the three listed above
+	// but our volume has a different non-nil entry.
+
+	// this is effectively the same as just returning the overrideSource
+	mergedVolume.VolumeSource = overrideSource
+	return mergedVolume
+}
+
+func createVolumesMap(volumes []corev1.Volume) map[string]corev1.Volume {
+	volumesMap := make(map[string]corev1.Volume)
+	for _, v := range volumes {
+		volumesMap[v.Name] = v
+	}
+	return volumesMap
+}
+
+func mergeKeyToPathItems(defaultItems []corev1.KeyToPath, overrideItems []corev1.KeyToPath) []corev1.KeyToPath {
+	// Merge Items array by KeyToPath.Key entry
+	defaultItemsMap := createKeyToPathMap(defaultItems)
+	overrideItemsMap := createKeyToPathMap(overrideItems)
+	var mergedItems []corev1.KeyToPath
+	for _, defaultItem := range defaultItemsMap {
+		mergedKey := defaultItem
+		if overrideItem, ok := overrideItemsMap[defaultItem.Key]; ok {
+			// Need to merge
+			mergedKey = mergeKeyToPath(defaultItem, overrideItem)
+		}
+		mergedItems = append(mergedItems, mergedKey)
+	}
+	for _, overrideItem := range overrideItemsMap {
+		if _, ok := defaultItemsMap[overrideItem.Key]; ok {
+			// Already merged
+			continue
+		}
+		mergedItems = append(mergedItems, overrideItem)
+
+	}
+	return mergedItems
+}
+
+func mergeKeyToPath(defaultKey corev1.KeyToPath, overrideKey corev1.KeyToPath) corev1.KeyToPath {
+	if defaultKey.Key != overrideKey.Key {
+		// This should not happen as we always merge by Key.
+		// If it does, we return the default as something's wrong
+		return defaultKey
+	}
+	if overrideKey.Path != "" {
+		defaultKey.Path = overrideKey.Path
+	}
+	if overrideKey.Mode != nil {
+		defaultKey.Mode = overrideKey.Mode
+	}
+	return defaultKey
+}
+
+func createKeyToPathMap(items []corev1.KeyToPath) map[string]corev1.KeyToPath {
+	itemsMap := make(map[string]corev1.KeyToPath)
+	for _, v := range items {
+		itemsMap[v.Key] = v
+	}
+	return itemsMap
 }
