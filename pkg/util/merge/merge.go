@@ -47,14 +47,10 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 	merged.Resources = ResourceRequirements(defaultContainer.Resources, overrideContainer.Resources)
 	merged.VolumeMounts = VolumeMounts(defaultContainer.VolumeMounts, overrideContainer.VolumeMounts)
 	merged.VolumeDevices = VolumeDevices(defaultContainer.VolumeDevices, overrideContainer.VolumeDevices)
-
-	// TODO: merge LivenessProbe
-
-	// TODO: merge ReadinessProve
-
-	// TODO: merge StartupProbe
-
-	// TODO: merge Lifecycle
+	merged.LivenessProbe = Probe(defaultContainer.LivenessProbe, overrideContainer.LivenessProbe)
+	merged.ReadinessProbe = Probe(defaultContainer.ReadinessProbe, overrideContainer.ReadinessProbe)
+	merged.StartupProbe = Probe(defaultContainer.StartupProbe, overrideContainer.StartupProbe)
+	merged.Lifecycle = LifeCycle(defaultContainer.Lifecycle, overrideContainer.Lifecycle)
 
 	if overrideContainer.TerminationMessagePath != "" {
 		merged.TerminationMessagePath = overrideContainer.TerminationMessagePath
@@ -68,7 +64,7 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 		merged.ImagePullPolicy = overrideContainer.ImagePullPolicy
 	}
 
-	// TODO: merge SecurityContext
+	merged.SecurityContext = SecurityContext(defaultContainer.SecurityContext, overrideContainer.SecurityContext)
 
 	if overrideContainer.Stdin {
 		merged.Stdin = overrideContainer.Stdin
@@ -85,6 +81,110 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 	return merged
 }
 
+// Probe merges the contents of two probes together.
+func Probe(original, override *corev1.Probe) *corev1.Probe {
+	if override == nil {
+		return original
+	}
+	if original == nil {
+		return override
+	}
+	merged := *original
+	if override.Handler.Exec != nil {
+		merged.Handler.Exec = override.Handler.Exec
+	}
+	if override.Handler.HTTPGet != nil {
+		merged.Handler.HTTPGet = override.Handler.HTTPGet
+	}
+	if override.Handler.TCPSocket != nil {
+		merged.Handler.TCPSocket = override.Handler.TCPSocket
+	}
+	if override.InitialDelaySeconds != 0 {
+		merged.InitialDelaySeconds = override.InitialDelaySeconds
+	}
+	if override.TimeoutSeconds != 0 {
+		merged.TimeoutSeconds = override.TimeoutSeconds
+	}
+	if override.PeriodSeconds != 0 {
+		merged.PeriodSeconds = override.PeriodSeconds
+	}
+
+	if override.SuccessThreshold != 0 {
+		merged.SuccessThreshold = override.SuccessThreshold
+	}
+
+	if override.FailureThreshold != 0 {
+		merged.FailureThreshold = override.FailureThreshold
+	}
+	return &merged
+}
+
+// LifeCycle merges two LifeCycles.
+func LifeCycle(original, override *corev1.Lifecycle) *corev1.Lifecycle {
+	if override == nil {
+		return original
+	}
+	if original == nil {
+		return override
+	}
+	merged := *original
+
+	if override.PostStart != nil {
+		merged.PostStart = override.PostStart
+	}
+	if override.PreStop != nil {
+		merged.PreStop = override.PreStop
+	}
+	return &merged
+}
+
+// SecurityContext merges two security contexts.
+func SecurityContext(original, override *corev1.SecurityContext) *corev1.SecurityContext {
+	if override == nil {
+		return original
+	}
+	if original == nil {
+		return override
+	}
+	merged := *original
+
+	if override.Capabilities != nil {
+		merged.Capabilities = override.Capabilities
+	}
+
+	if override.Privileged != nil {
+		merged.Privileged = override.Privileged
+	}
+
+	if override.SELinuxOptions != nil {
+		merged.SELinuxOptions = override.SELinuxOptions
+	}
+
+	if override.WindowsOptions != nil {
+		merged.WindowsOptions = override.WindowsOptions
+	}
+	if override.RunAsUser != nil {
+		merged.RunAsUser = override.RunAsUser
+	}
+	if override.RunAsGroup != nil {
+		merged.RunAsGroup = override.RunAsGroup
+	}
+	if override.RunAsNonRoot != nil {
+		merged.RunAsNonRoot = override.RunAsNonRoot
+	}
+	if override.ReadOnlyRootFilesystem != nil {
+		merged.ReadOnlyRootFilesystem = override.ReadOnlyRootFilesystem
+	}
+	if override.AllowPrivilegeEscalation != nil {
+		merged.AllowPrivilegeEscalation = override.AllowPrivilegeEscalation
+	}
+	if override.ProcMount != nil {
+		merged.ProcMount = override.ProcMount
+	}
+	return &merged
+}
+
+// VolumeDevices merges two slices of VolumeDevices by name.
 func VolumeDevices(original, override []corev1.VolumeDevice) []corev1.VolumeDevice {
 	mergedDevicesMap := map[string]corev1.VolumeDevice{}
 	originalDevicesMap := createVolumeDevicesMap(original)
@@ -258,6 +358,7 @@ func createContainerPortMap(containerPorts []corev1.ContainerPort) map[string]co
 	return containerPortMap
 }
 
+// VolumeMounts merges two slices of volume mounts by name.
 func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount {
 	mergedMountsMap := map[string]corev1.VolumeMount{}
 	originalMounts := createVolumeMountMap(original)

@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -56,8 +58,6 @@ func TestMergeStringSlices(t *testing.T) {
 }
 
 func TestMergeContainer(t *testing.T) {
-	// TODO: Add additional fields as they are merged
-
 	defaultQuantity := resource.NewQuantity(int64(10), resource.DecimalExponent)
 
 	defaultContainer := container.New(
@@ -67,6 +67,16 @@ func TestMergeContainer(t *testing.T) {
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithWorkDir("default-work-dir"),
 		container.WithArgs([]string{"arg0", "arg1"}),
+		container.WithLivenessProbe(probes.Apply(
+			probes.WithInitialDelaySeconds(10),
+			probes.WithFailureThreshold(20),
+			probes.WithExecCommand([]string{"exec", "command", "liveness"}),
+		)),
+		container.WithReadinessProbe(probes.Apply(
+			probes.WithInitialDelaySeconds(20),
+			probes.WithFailureThreshold(30),
+			probes.WithExecCommand([]string{"exec", "command", "readiness"}),
+		)),
 		container.WithVolumeDevices([]corev1.VolumeDevice{
 			{
 				Name:       "name-0",
@@ -121,6 +131,15 @@ func TestMergeContainer(t *testing.T) {
 			container.WithImage("override-image"),
 			container.WithWorkDir("override-work-dir"),
 			container.WithArgs([]string{"arg3", "arg2"}),
+			container.WithLivenessProbe(probes.Apply(
+				probes.WithInitialDelaySeconds(15),
+				probes.WithExecCommand([]string{"exec", "command", "override"}),
+			)),
+			container.WithReadinessProbe(probes.Apply(
+				probes.WithInitialDelaySeconds(5),
+				probes.WithFailureThreshold(6),
+				probes.WithExecCommand([]string{"exec", "command", "readiness", "override"}),
+			)),
 			container.WithVolumeDevices([]corev1.VolumeDevice{
 				{
 					Name:       "name-0",
@@ -178,6 +197,24 @@ func TestMergeContainer(t *testing.T) {
 			assert.Equal(t, "env3", mergedContainer.Env[1].Name)
 			assert.Equal(t, "", mergedContainer.Env[1].Value)
 			assert.NotNil(t, mergedContainer.Env[1].ValueFrom)
+		})
+
+		t.Run("Probes are overridden", func(t *testing.T) {
+			t.Run("Liveness probe", func(t *testing.T) {
+				livenessProbe := mergedContainer.LivenessProbe
+
+				assert.NotNil(t, livenessProbe)
+				assert.Equal(t, int32(15), livenessProbe.InitialDelaySeconds, "value is specified in override and so should be used.")
+				assert.Equal(t, int32(20), livenessProbe.FailureThreshold, "value is not specified in override so the original should be used.")
+				assert.Equal(t, []string{"exec", "command", "override"}, livenessProbe.Exec.Command, "value is not specified in override so the original should be used.")
+			})
+			t.Run("Readiness probe", func(t *testing.T) {
+				readinessProbe := mergedContainer.ReadinessProbe
+				assert.NotNil(t, readinessProbe)
+				assert.Equal(t, int32(5), readinessProbe.InitialDelaySeconds, "value is specified in override and so should be used.")
+				assert.Equal(t, int32(6), readinessProbe.FailureThreshold, "value is not specified in override so the original should be used.")
+				assert.Equal(t, []string{"exec", "command", "readiness", "override"}, readinessProbe.Exec.Command, "value is not specified in override so the original should be used.")
+			})
 		})
 
 		t.Run("Volume Devices are overridden", func(t *testing.T) {
@@ -240,6 +277,24 @@ func TestMergeContainer(t *testing.T) {
 			assert.Equal(t, "env3", mergedContainer.Env[1].Name)
 			assert.Equal(t, "val3", mergedContainer.Env[1].Value)
 			assert.Nil(t, mergedContainer.Env[1].ValueFrom)
+		})
+
+		t.Run("Probes are not overridden", func(t *testing.T) {
+			t.Run("Liveness probe", func(t *testing.T) {
+				livenessProbe := mergedContainer.LivenessProbe
+
+				assert.NotNil(t, livenessProbe)
+				assert.Equal(t, int32(10), livenessProbe.InitialDelaySeconds, "value is not specified in override so the original should be used.")
+				assert.Equal(t, int32(20), livenessProbe.FailureThreshold, "value is not specified in override so the original should be used.")
+				assert.Equal(t, []string{"exec", "command", "liveness"}, livenessProbe.Exec.Command, "value is not specified in override so the original should be used.")
+			})
+			t.Run("Readiness probe", func(t *testing.T) {
+				readinessProbe := mergedContainer.ReadinessProbe
+				assert.NotNil(t, readinessProbe)
+				assert.Equal(t, int32(20), readinessProbe.InitialDelaySeconds, "value is not specified in override so the original should be used.")
+				assert.Equal(t, int32(30), readinessProbe.FailureThreshold, "value is not specified in override so the original should be used.")
+				assert.Equal(t, []string{"exec", "command", "readiness"}, readinessProbe.Exec.Command, "value is not specified in override so the original should be used.")
+			})
 		})
 
 		t.Run("Volume Devices are not overridden", func(t *testing.T) {
@@ -444,4 +499,40 @@ func TestContainerPortSlicesByName(t *testing.T) {
 		assert.Equal(t, corev1.ProtocolTCP, merged[3].Protocol, "The Protocol should remain unchanged")
 	})
 
+}
+
+func TestMergeSecurityContext(t *testing.T) {
+	privileged := true
+	windowsRunAsUserName := "username"
+	runAsGroup := int64(4)
+	original := &corev1.SecurityContext{
+		Capabilities: nil,
+		Privileged:   &privileged,
+		WindowsOptions: &corev1.WindowsSecurityContextOptions{
+			RunAsUserName: &windowsRunAsUserName,
+		},
+		RunAsGroup: &runAsGroup,
+	}
+
+	runAsGroup = int64(6)
+	override := &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Add: []corev1.Capability{
+				"123",
+				"456",
+			},
+		},
+		Privileged: &privileged,
+		WindowsOptions: &corev1.WindowsSecurityContextOptions{
+			RunAsUserName: &windowsRunAsUserName,
+		},
+		RunAsGroup: &runAsGroup,
+	}
+
+	merged := SecurityContext(original, override)
+
+	assert.Equal(t, int64(6), *merged.RunAsGroup)
+	assert.Equal(t, "username", *merged.WindowsOptions.RunAsUserName)
+	assert.Equal(t, override.Capabilities, merged.Capabilities)
+	assert.True(t, *override.Privileged)
 }
