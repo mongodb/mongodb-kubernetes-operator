@@ -85,6 +85,7 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 	return merged
 }
 
+// VolumeDevices merges two slices of VolumeDevices by name.
 func VolumeDevices(original, override []corev1.VolumeDevice) []corev1.VolumeDevice {
 	mergedDevicesMap := map[string]corev1.VolumeDevice{}
 	originalDevicesMap := createVolumeDevicesMap(original)
@@ -258,6 +259,7 @@ func createContainerPortMap(containerPorts []corev1.ContainerPort) map[string]co
 	return containerPortMap
 }
 
+// VolumeMounts merges two slices of volume mounts by name.
 func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount {
 	mergedMountsMap := map[string]corev1.VolumeMount{}
 	originalMounts := createVolumeMountMap(original)
