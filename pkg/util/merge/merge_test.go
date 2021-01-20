@@ -591,10 +591,10 @@ func TestMergeVolumeAddVolume(t *testing.T) {
 func TestMergeVolumeMounts(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	vol1 := corev1.VolumeMount{Name: "another-mount"}
-	volumeMounts := []corev1.VolumeMount{vol0, vol1}
+	volumeMounts := []corev1.VolumeMount{vol1, vol0}
 
 	mergedVolumeMounts := VolumeMounts(nil, volumeMounts)
-	assert.Equal(t, []corev1.VolumeMount{vol0, vol1}, mergedVolumeMounts)
+	assert.Equal(t, []corev1.VolumeMount{vol1, vol0}, mergedVolumeMounts)
 
 	vol2 := vol1
 	vol2.MountPath = "/somewhere"
