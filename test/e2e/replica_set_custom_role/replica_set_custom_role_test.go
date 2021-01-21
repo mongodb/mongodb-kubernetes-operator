@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -24,18 +23,51 @@ func TestReplicaSetCustomRole(t *testing.T) {
 		defer ctx.Cleanup()
 	}
 
+	someDB := "test"
+	someCollection := "foo"
+	anyDB := ""
+	anyCollection := ""
+
 	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
-	mdb.Spec.Roles = []mdbv1.AutomationConfigRole{{
-		Role: "testRole",
-		DB:   "admin",
-		Privileges: []mdbv1.Privilege{
-			{
-				Resource: mdbv1.Resource{DB: "test", Collection: ""},
-				Actions:  []string{"collStats", "createCollection", "dbStats", "find", "viewRole"},
+	mdb.Spec.Roles = []mdbv1.CustomRole{
+		{
+			Role: "testRole",
+			DB:   "admin",
+			Privileges: []mdbv1.Privilege{
+				{
+					Resource: mdbv1.Resource{DB: &anyDB, Collection: &someCollection},
+					Actions:  []string{"collStats", "find"},
+				},
+				{
+					Resource: mdbv1.Resource{DB: &someDB, Collection: &anyCollection},
+					Actions:  []string{"dbStats"},
+				},
+				{
+					Resource: mdbv1.Resource{DB: &someDB, Collection: &someCollection},
+					Actions:  []string{"collStats", "createCollection", "dbStats", "find"},
+				},
 			},
+			Roles: []mdbv1.Role{},
 		},
-		Roles: []mdbv1.Role{},
-	}}
+		{
+			Role: "testClusterRole",
+			DB:   "admin",
+			Privileges: []mdbv1.Privilege{{
+				Resource: mdbv1.Resource{Cluster: true},
+				Actions:  []string{"dbStats", "find"},
+			}},
+			Roles: []mdbv1.Role{},
+		},
+		{
+			Role: "testAnyResourceRole",
+			DB:   "admin",
+			Privileges: []mdbv1.Privilege{{
+				Resource: mdbv1.Resource{AnyResource: true},
+				Actions:  []string{"anyAction"},
+			}},
+			Roles: []mdbv1.Role{},
+		},
+	}
 
 	password, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
@@ -54,15 +86,8 @@ func TestReplicaSetCustomRole(t *testing.T) {
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
-	roles := []automationconfig.CustomRole{
-		automationconfig.NewCustomRoleBuilder().
-			WithRole("testRole").
-			WithDB("admin").
-			AddPrivilege("test", "", false, false, []string{
-				"collStats", "createCollection", "dbStats", "find", "viewRole",
-			}).
-			Build(),
-	}
+	// Verify automation config roles and roles created in admin database.
+	roles := mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Roles)
 	t.Run("AutomationConfig has the correct custom role", mongodbtests.AutomationConfigHasTheExpectedCustomRoles(&mdb, roles))
 	t.Run("Custom Role was created ", mongodbtests.ConnectAndVerifyExpectedCustomRoles(&mdb, "admin", user.Name, password, roles))
 

@@ -50,8 +50,12 @@ spec:
               description: Members is the number of members in the replica set
               type: integer
             replicaSetHorizons:
-              description: ReplicaSetHorizons allows providing different DNS settings
-                within the Kubernetes cluster and to the Kubernetes cluster.
+              description: ReplicaSetHorizons Add this parameter and values if you
+                need your database to be accessed outside of Kubernetes. This setting
+                allows you to provide different DNS settings within the Kubernetes
+                cluster and to the Kubernetes cluster. The Kubernetes Operator uses
+                split horizon DNS for replica set members. This feature allows communication
+                both within the Kubernetes cluster and from outside Kubernetes.
               items:
                 additionalProperties:
                   type: string
@@ -61,7 +65,7 @@ spec:
               description: User-specified custom MongoDB roles that should be configured
                 in the deployment.
               items:
-                description: AutomationConfigRole defines a custom MongoDB role.
+                description: CustomRole defines a custom MongoDB role.
                 properties:
                   authenticationRestrictions:
                     description: The authentication restrictions the server enforces

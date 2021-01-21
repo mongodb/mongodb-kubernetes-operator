@@ -155,10 +155,10 @@ type Privilege struct {
 }
 
 type Resource struct {
-	DB          string `json:"db"`
-	Collection  string `json:"collection"`
-	AnyResource bool   `json:"anyResource,omitempty"`
-	Cluster     bool   `json:"cluster,omitempty"`
+	DB          *string `json:"db,omitempty"`
+	Collection  *string `json:"collection,omitempty"`
+	AnyResource bool    `json:"anyResource,omitempty"`
+	Cluster     bool    `json:"cluster,omitempty"`
 }
 
 type AuthenticationRestriction struct {

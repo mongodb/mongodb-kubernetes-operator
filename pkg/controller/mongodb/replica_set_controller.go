@@ -557,36 +557,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modificatio
 	}
 
 	return func(config *automationconfig.AutomationConfig) {
-		config.Roles = []automationconfig.CustomRole{}
-
-		for _, role := range mdb.Spec.Roles {
-			b := automationconfig.NewCustomRoleBuilder().WithRole(role.Role).WithDB(role.DB)
-
-			// Add privileges.
-			for _, privilege := range role.Privileges {
-				b = b.AddPrivilege(
-					privilege.Resource.DB,
-					privilege.Resource.Collection,
-					privilege.Resource.Cluster,
-					privilege.Resource.AnyResource,
-					privilege.Actions,
-				)
-			}
-
-			// Add roles.
-			for _, dbRole := range role.Roles {
-				b = b.AddRole(dbRole.Name, dbRole.DB)
-			}
-
-			// Add authentication restrictions (if any).
-			if role.AuthenticationRestrictions != nil {
-				for _, restriction := range role.AuthenticationRestrictions {
-					b = b.AddAuthenticationRestriction(restriction.ClientSource, restriction.ServerAddress)
-				}
-			}
-
-			config.Roles = append(config.Roles, b.Build())
-		}
+		config.Roles = mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Roles)
 	}, nil
 }
 

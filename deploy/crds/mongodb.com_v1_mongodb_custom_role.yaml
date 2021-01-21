@@ -2,7 +2,7 @@
 apiVersion: mongodb.com/v1
 kind: MongoDB
 metadata:
-  name: example-mongodb
+  name: custom-role-mongodb
 spec:
   members: 3
   type: ReplicaSet
@@ -10,13 +10,13 @@ spec:
   security:
     authentication:
       modes: ["SCRAM"]
-  roles:
+  roles: # custom roles are defined here
     - role: testRole
       db: admin
       privileges:
         - resource:
             db: "test"
-            collection: ""
+            collection: "" # an empty string indicates any collection
           actions:
             - find
       roles: []
@@ -30,7 +30,7 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
-        - name: testRole
+        - name: testRole # apply the custom role to the user
           db: admin
       scramCredentialsSecretName: my-scram
 

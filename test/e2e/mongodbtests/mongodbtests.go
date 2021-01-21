@@ -145,7 +145,7 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVe
 func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDB, roles []automationconfig.CustomRole) func(t *testing.T) {
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(t, mdb)
-		assert.Equal(t, roles, currentAc.Roles)
+		assert.ElementsMatch(t, roles, currentAc.Roles)
 	}
 }
 
@@ -328,7 +328,7 @@ func VerifyExpectedCustomRoles(t *testing.T, mdb *mdbv1.MongoDB, database string
 			return false, nil
 		}
 
-		assert.Equal(t, result.Roles, expectedRoles)
+		assert.ElementsMatch(t, result.Roles, expectedRoles)
 		return true, nil
 	})
 }
