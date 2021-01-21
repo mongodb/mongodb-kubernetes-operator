@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -135,7 +136,33 @@ func (m *Tester) HasTlsMode(tlsMode string, tries int, opts ...OptionApplier) fu
 	return m.hasAdminParameter("sslMode", tlsMode, tries, opts...)
 }
 
-func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int, opts ...OptionApplier) func(t *testing.T) {
+// CustomRolesResult is a type to decode the result of getting rolesInfo.
+type CustomRolesResult struct {
+	Roles []automationconfig.CustomRole
+}
+
+func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminCommandResult(func(m *Tester, t *testing.T) bool {
+		var result CustomRolesResult
+		err := m.mongoClient.Database("admin").
+			RunCommand(context.TODO(),
+				bson.D{
+					{Key: "rolesInfo", Value: 1},
+					{Key: "showPrivileges", Value: true},
+					{Key: "showBuiltinRoles", Value: false},
+				}).Decode(&result)
+		if err != nil {
+			t.Fatal(err)
+			return false
+		}
+		assert.ElementsMatch(t, result.Roles, expectedRoles)
+		return true
+	}, tries, opts...)
+}
+
+type verifyAdminResultFunc func(m *Tester, t *testing.T) bool
+
+func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, opts ...OptionApplier) func(t *testing.T) {
 	clientOpts := make([]*options.ClientOptions, 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
@@ -152,31 +179,26 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 		found := false
 		for !found && tries > 0 {
 			<-time.After(10 * time.Second)
-			actualValue, err := m.getAdminSetting(key)
-			t.Logf("Actual Value: %+v, type: %s", actualValue, reflect.TypeOf(actualValue))
-			if err != nil {
-				t.Logf("Unable to get admin setting %s with error : %s", key, err)
-				continue
-			}
-			found = reflect.DeepEqual(expectedValue, actualValue)
+			found = verify(m, t)
 			tries--
 		}
 		assert.True(t, found)
 	}
 }
 
-// getAdminSetting will get a setting from the admin database.
-func (m *Tester) getAdminSetting(key string) (interface{}, error) {
-	var result map[string]interface{}
-	err := m.mongoClient.
-		Database("admin").
-		RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
-		Decode(&result)
-	if err != nil {
-		return nil, err
-	}
-	value := result[key]
-	return value, nil
+func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminCommandResult(func(m *Tester, t *testing.T) bool {
+		var result map[string]interface{}
+		err := m.mongoClient.Database("admin").
+			RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
+			Decode(&result)
+		t.Logf("Actual Value: %+v, type: %s", result, reflect.TypeOf(result))
+		if err != nil {
+			t.Logf("Unable to get admin setting %s with error : %s", key, err)
+			return false
+		}
+		return reflect.DeepEqual(expectedValue, result[key])
+	}, tries, opts...)
 }
 
 func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) func(t *testing.T) {

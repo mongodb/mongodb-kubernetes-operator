@@ -290,49 +290,6 @@ func Connect(mdb *mdbv1.MongoDB, opts *options.ClientOptions) error {
 	})
 }
 
-func ConnectAndVerifyExpectedCustomRoles(mdb *mdbv1.MongoDB, database, username, password string, expectedRoles []automationconfig.CustomRole) func(t *testing.T) {
-	return func(t *testing.T) {
-		if err := VerifyExpectedCustomRoles(t, mdb, database, expectedRoles, options.Client().SetAuth(options.Credential{
-			AuthMechanism: "SCRAM-SHA-256",
-			Username:      username,
-			Password:      password,
-		})); err != nil {
-			t.Fatalf("Error connecting to MongoDB deployment: %s", err)
-		}
-	}
-}
-
-// CustomRolesResult is a type to decode the result of getting rolesInfo.
-type CustomRolesResult struct {
-	Roles []automationconfig.CustomRole
-}
-
-func VerifyExpectedCustomRoles(t *testing.T, mdb *mdbv1.MongoDB, database string, expectedRoles []automationconfig.CustomRole, opts *options.ClientOptions) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
-	if err != nil {
-		return err
-	}
-
-	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
-		var result CustomRolesResult
-		err = mongoClient.Database(database).
-			RunCommand(ctx, bson.D{
-				{"rolesInfo", 1},            // nolint
-				{"showPrivileges", true},    // nolint
-				{"showBuiltinRoles", false}, // nolint
-			}).Decode(&result)
-		if err != nil {
-			t.Fatal(err)
-			return false, nil
-		}
-
-		assert.ElementsMatch(t, result.Roles, expectedRoles)
-		return true, nil
-	})
-}
-
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDB, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}

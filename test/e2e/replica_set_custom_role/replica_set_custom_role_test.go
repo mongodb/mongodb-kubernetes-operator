@@ -69,7 +69,7 @@ func TestReplicaSetCustomRole(t *testing.T) {
 		},
 	}
 
-	password, err := setup.GeneratePasswordForUser(user, ctx, "")
+	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,6 +89,6 @@ func TestReplicaSetCustomRole(t *testing.T) {
 	// Verify automation config roles and roles created in admin database.
 	roles := mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Roles)
 	t.Run("AutomationConfig has the correct custom role", mongodbtests.AutomationConfigHasTheExpectedCustomRoles(&mdb, roles))
-	t.Run("Custom Role was created ", mongodbtests.ConnectAndVerifyExpectedCustomRoles(&mdb, "admin", user.Name, password, roles))
+	t.Run("Custom Role was created ", tester.VerifyRoles(roles, 1))
 
 }
