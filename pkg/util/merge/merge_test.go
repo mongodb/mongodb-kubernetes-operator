@@ -182,11 +182,11 @@ func TestMergeContainer(t *testing.T) {
 		)
 		mergedContainer := Container(defaultContainer, overrideContainer)
 		assert.Equal(t, overrideContainer.Name, mergedContainer.Name, "Name was overridden, and should be used.")
-		assert.Equal(t, []string{"a", "b", "c", "d", "e", "f"}, mergedContainer.Command, "Command was specified in both, so results should be merged.")
+		assert.Equal(t, []string{"a", "b", "c", "d", "f", "e"}, mergedContainer.Command, "Command was specified in both, so results should be merged.")
 		assert.Equal(t, overrideContainer.Image, mergedContainer.Image, "Image was overridden, and should be used.")
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, overrideContainer.WorkingDir, mergedContainer.WorkingDir)
-		assert.Equal(t, []string{"arg0", "arg1", "arg2", "arg3"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
+		assert.Equal(t, []string{"arg0", "arg1", "arg3", "arg2"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
 
 		assert.Equal(t, overrideContainer.Resources, mergedContainer.Resources)
 

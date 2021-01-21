@@ -8,7 +8,7 @@ import (
 )
 
 // StringSlices accepts two slices of strings, and returns a string slice
-// containing the distinct elements present in both. The elements are returned sorted.
+// containing the distinct elements present in both.
 func StringSlices(slice1, slice2 []string) []string {
 	mergedStrings := make([]string, 0)
 	mergedStrings = append(mergedStrings, slice1...)
@@ -17,10 +17,6 @@ func StringSlices(slice1, slice2 []string) []string {
 			mergedStrings = append(mergedStrings, s)
 		}
 	}
-	sort.SliceStable(mergedStrings, func(i, j int) bool {
-		return mergedStrings[i] < mergedStrings[j]
-	})
-
 	return mergedStrings
 }
 
