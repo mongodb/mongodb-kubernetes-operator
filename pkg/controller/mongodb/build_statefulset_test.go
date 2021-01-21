@@ -47,10 +47,10 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
 	assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	assert.Equal(t, operatorServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 4)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 1)
 
-	agentContainer := sts.Spec.Template.Spec.Containers[0]
+	agentContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, "agent-image", agentContainer.Image)
 	probe := agentContainer.ReadinessProbe
 	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
@@ -58,9 +58,9 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *app
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
 	assert.Len(t, agentContainer.VolumeMounts, 4)
 
-	mongodContainer := sts.Spec.Template.Spec.Containers[1]
+	mongodContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
-	assert.NotNil(t, sts.Spec.Template.Spec.Containers[0].ReadinessProbe)
+	assert.NotNil(t, sts.Spec.Template.Spec.Containers[1].ReadinessProbe)
 	assert.Len(t, mongodContainer.VolumeMounts, 4)
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
