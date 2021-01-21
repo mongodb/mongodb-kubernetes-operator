@@ -142,7 +142,7 @@ type CustomRolesResult struct {
 }
 
 func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminCommandResult(func(m *Tester, t *testing.T) bool {
+	return m.hasAdminCommandResult(func(t *testing.T) bool {
 		var result CustomRolesResult
 		err := m.mongoClient.Database("admin").
 			RunCommand(context.TODO(),
@@ -160,7 +160,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 	}, tries, opts...)
 }
 
-type verifyAdminResultFunc func(m *Tester, t *testing.T) bool
+type verifyAdminResultFunc func(t *testing.T) bool
 
 func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, opts ...OptionApplier) func(t *testing.T) {
 	clientOpts := make([]*options.ClientOptions, 0)
@@ -179,7 +179,7 @@ func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, 
 		found := false
 		for !found && tries > 0 {
 			<-time.After(10 * time.Second)
-			found = verify(m, t)
+			found = verify(t)
 			tries--
 		}
 		assert.True(t, found)
@@ -187,17 +187,18 @@ func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, 
 }
 
 func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminCommandResult(func(m *Tester, t *testing.T) bool {
+	return m.hasAdminCommandResult(func(t *testing.T) bool {
 		var result map[string]interface{}
 		err := m.mongoClient.Database("admin").
 			RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
 			Decode(&result)
-		t.Logf("Actual Value: %+v, type: %s", result, reflect.TypeOf(result))
+		actualValue := result[key]
+		t.Logf("Actual Value: %+v, type: %s", actualValue, reflect.TypeOf(actualValue))
 		if err != nil {
 			t.Logf("Unable to get admin setting %s with error : %s", key, err)
 			return false
 		}
-		return reflect.DeepEqual(expectedValue, result[key])
+		return reflect.DeepEqual(expectedValue, actualValue)
 	}, tries, opts...)
 }
 
