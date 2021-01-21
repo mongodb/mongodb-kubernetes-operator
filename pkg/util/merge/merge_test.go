@@ -182,11 +182,11 @@ func TestMergeContainer(t *testing.T) {
 		)
 		mergedContainer := Container(defaultContainer, overrideContainer)
 		assert.Equal(t, overrideContainer.Name, mergedContainer.Name, "Name was overridden, and should be used.")
-		assert.Equal(t, []string{"a", "b", "c", "d", "e", "f"}, mergedContainer.Command, "Command was specified in both, so results should be merged.")
+		assert.Equal(t, []string{"a", "b", "c", "d", "f", "e"}, mergedContainer.Command, "Command was specified in both, so results should be merged.")
 		assert.Equal(t, overrideContainer.Image, mergedContainer.Image, "Image was overridden, and should be used.")
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, overrideContainer.WorkingDir, mergedContainer.WorkingDir)
-		assert.Equal(t, []string{"arg0", "arg1", "arg2", "arg3"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
+		assert.Equal(t, []string{"arg0", "arg1", "arg3", "arg2"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
 
 		assert.Equal(t, overrideContainer.Resources, mergedContainer.Resources)
 
@@ -535,4 +535,69 @@ func TestMergeSecurityContext(t *testing.T) {
 	assert.Equal(t, "username", *merged.WindowsOptions.RunAsUserName)
 	assert.Equal(t, override.Capabilities, merged.Capabilities)
 	assert.True(t, *override.Privileged)
+}
+
+func TestMergeVolumesSecret(t *testing.T) {
+	permission := int32(416)
+	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
+	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{DefaultMode: &permission}}}}
+	mergedVolumes := Volumes(vol0, vol1)
+	assert.Len(t, mergedVolumes, 1)
+	volume := mergedVolumes[0]
+	assert.Equal(t, "volume", volume.Name)
+	assert.Equal(t, corev1.SecretVolumeSource{SecretName: "Secret-name", DefaultMode: &permission}, *volume.Secret)
+}
+
+func TestMergeNonNilValueNotFilledByOperator(t *testing.T) {
+	// Tests that providing a custom volume with a volume source
+	// That the operator does not manage overwrites the original
+	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
+	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{GCEPersistentDisk: &corev1.GCEPersistentDiskVolumeSource{}}}}
+	mergedVolumes := Volumes(vol0, vol1)
+	assert.Len(t, mergedVolumes, 1)
+	volume := mergedVolumes[0]
+	assert.Equal(t, "volume", volume.Name)
+	assert.Equal(t, corev1.GCEPersistentDiskVolumeSource{}, *volume.GCEPersistentDisk)
+	assert.Nil(t, volume.Secret)
+}
+
+func TestMergeNonNilValueFilledByOperatorButDifferent(t *testing.T) {
+	// Tests that providing a custom volume with a volume source
+	// That the operator does manage, but different from the one
+	// That already exists, overwrites the original
+	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
+	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}
+	mergedVolumes := Volumes(vol0, vol1)
+	assert.Len(t, mergedVolumes, 1)
+	volume := mergedVolumes[0]
+	assert.Equal(t, "volume", volume.Name)
+	assert.Equal(t, corev1.EmptyDirVolumeSource{}, *volume.EmptyDir)
+	assert.Nil(t, volume.Secret)
+}
+
+func TestMergeVolumeAddVolume(t *testing.T) {
+	vol0 := []corev1.Volume{{Name: "volume0", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{}}}}
+	vol1 := []corev1.Volume{{Name: "volume1", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}
+	mergedVolumes := Volumes(vol0, vol1)
+	assert.Len(t, mergedVolumes, 2)
+	volume0 := mergedVolumes[0]
+	assert.Equal(t, "volume0", volume0.Name)
+	assert.Equal(t, corev1.SecretVolumeSource{}, *volume0.Secret)
+	volume1 := mergedVolumes[1]
+	assert.Equal(t, "volume1", volume1.Name)
+	assert.Equal(t, corev1.EmptyDirVolumeSource{}, *volume1.EmptyDir)
+}
+
+func TestMergeVolumeMounts(t *testing.T) {
+	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
+	vol1 := corev1.VolumeMount{Name: "another-mount"}
+	volumeMounts := []corev1.VolumeMount{vol1, vol0}
+
+	mergedVolumeMounts := VolumeMounts(nil, volumeMounts)
+	assert.Equal(t, []corev1.VolumeMount{vol1, vol0}, mergedVolumeMounts)
+
+	vol2 := vol1
+	vol2.MountPath = "/somewhere"
+	mergedVolumeMounts = VolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
+	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
 }

@@ -148,8 +148,8 @@ func TestMerge(t *testing.T) {
 				getCustomContainer(),
 			},
 			InitContainers: []corev1.Container{
-				initContainerDefault,
 				initContainerCustom,
+				initContainerDefault,
 			},
 			Volumes:  []corev1.Volume{},
 			Affinity: affinity("zone", "custom"),
@@ -258,12 +258,15 @@ func TestMergeContainer(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, mergedSpec.Spec.Containers, 3)
-	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[2])
+	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[1])
 
 	firstExpected := corev1.Container{
 		Name:         "container-0",
 		VolumeMounts: []corev1.VolumeMount{vol0},
 		Image:        "overridden",
+		Command:      []string{},
+		Args:         []string{},
+		Ports:        []corev1.ContainerPort{},
 		ReadinessProbe: &corev1.Probe{
 			// only "periodSeconds" was overwritten - other fields stayed untouched
 			Handler: corev1.Handler{
@@ -277,16 +280,19 @@ func TestMergeContainer(t *testing.T) {
 	secondExpected := corev1.Container{
 		Name:         "default-side-car",
 		Image:        "image-0",
-		VolumeMounts: []corev1.VolumeMount{sideCarVol, anotherVol},
+		VolumeMounts: []corev1.VolumeMount{anotherVol, sideCarVol},
+		Command:      []string{},
+		Args:         []string{},
+		Ports:        []corev1.ContainerPort{},
 		Env: []corev1.EnvVar{
-			corev1.EnvVar{
+			{
 				Name:  "env_var",
 				Value: "xxx",
 			},
 		},
 		ReadinessProbe: otherDefaultContainer.ReadinessProbe,
 	}
-	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[1])
+	assert.Equal(t, secondExpected, mergedSpec.Spec.Containers[2])
 }
 
 func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
@@ -324,73 +330,6 @@ func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
 	assert.Equal(t, "updated-host-path", mergedPodSpecTemplate.Spec.Volumes[0].VolumeSource.HostPath.Path)
 	assert.Equal(t, "new-volume-2", mergedPodSpecTemplate.Spec.Volumes[1].Name)
 	assert.Equal(t, "new-volume-3", mergedPodSpecTemplate.Spec.Volumes[2].Name)
-}
-
-func TestMergeVolumeMounts(t *testing.T) {
-	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
-	vol1 := corev1.VolumeMount{Name: "another-mount"}
-	volumeMounts := []corev1.VolumeMount{vol0, vol1}
-
-	mergedVolumeMounts, err := mergeVolumeMounts(nil, volumeMounts)
-	assert.NoError(t, err)
-	assert.Equal(t, []corev1.VolumeMount{vol0, vol1}, mergedVolumeMounts)
-
-	vol2 := vol1
-	vol2.MountPath = "/somewhere"
-	mergedVolumeMounts, err = mergeVolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
-	assert.NoError(t, err)
-	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
-}
-
-func TestMergeVolumesSecret(t *testing.T) {
-	permission := int32(416)
-	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
-	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{DefaultMode: &permission}}}}
-	mergedVolumes := mergeVolumes(vol0, vol1)
-	assert.Len(t, mergedVolumes, 1)
-	volume := mergedVolumes[0]
-	assert.Equal(t, "volume", volume.Name)
-	assert.Equal(t, corev1.SecretVolumeSource{SecretName: "Secret-name", DefaultMode: &permission}, *volume.Secret)
-}
-
-func TestMergeNonNilValueNotFilledByOperator(t *testing.T) {
-	// Tests that providing a custom volume with a volume source
-	// That the operator does not manage overwrites the original
-	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
-	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{GCEPersistentDisk: &corev1.GCEPersistentDiskVolumeSource{}}}}
-	mergedVolumes := mergeVolumes(vol0, vol1)
-	assert.Len(t, mergedVolumes, 1)
-	volume := mergedVolumes[0]
-	assert.Equal(t, "volume", volume.Name)
-	assert.Equal(t, corev1.GCEPersistentDiskVolumeSource{}, *volume.GCEPersistentDisk)
-	assert.Nil(t, volume.Secret)
-}
-
-func TestMergeNonNilValueFilledByOperatorButDifferent(t *testing.T) {
-	// Tests that providing a custom volume with a volume source
-	// That the operator does manage, but different from the one
-	// That already exists, overwrites the original
-	vol0 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "Secret-name"}}}}
-	vol1 := []corev1.Volume{{Name: "volume", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}
-	mergedVolumes := mergeVolumes(vol0, vol1)
-	assert.Len(t, mergedVolumes, 1)
-	volume := mergedVolumes[0]
-	assert.Equal(t, "volume", volume.Name)
-	assert.Equal(t, corev1.EmptyDirVolumeSource{}, *volume.EmptyDir)
-	assert.Nil(t, volume.Secret)
-}
-
-func TestMergeVolumeAddVolume(t *testing.T) {
-	vol0 := []corev1.Volume{{Name: "volume0", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{}}}}
-	vol1 := []corev1.Volume{{Name: "volume1", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}
-	mergedVolumes := mergeVolumes(vol0, vol1)
-	assert.Len(t, mergedVolumes, 2)
-	volume0 := mergedVolumes[0]
-	assert.Equal(t, "volume0", volume0.Name)
-	assert.Equal(t, corev1.SecretVolumeSource{}, *volume0.Secret)
-	volume1 := mergedVolumes[1]
-	assert.Equal(t, "volume1", volume1.Name)
-	assert.Equal(t, corev1.EmptyDirVolumeSource{}, *volume1.EmptyDir)
 }
 
 func int64Ref(i int64) *int64 {
@@ -467,8 +406,11 @@ func affinity(antiAffinityKey, nodeAffinityKey string) *corev1.Affinity {
 
 func getDefaultContainer() corev1.Container {
 	return corev1.Container{
-		Name:  "container-0",
-		Image: "image-0",
+		Args:    []string{},
+		Command: []string{},
+		Ports:   []corev1.ContainerPort{},
+		Name:    "container-0",
+		Image:   "image-0",
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{HTTPGet: &corev1.HTTPGetAction{
 				Path: "/foo",
