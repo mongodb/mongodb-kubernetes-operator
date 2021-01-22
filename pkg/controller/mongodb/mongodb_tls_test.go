@@ -80,7 +80,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 }
 
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
-	createAC := func(mdb mdbv1.MongoDB) automationconfig.AutomationConfig {
+	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
 		err := createTLSSecretAndConfigMap(client, mdb)
 		assert.NoError(t, err)
@@ -232,7 +232,7 @@ func TestCombineCertificateAndKey(t *testing.T) {
 	}
 }
 
-func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDB) error {
+func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	s := secret.Builder().
 		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
 		SetNamespace(mdb.Namespace).

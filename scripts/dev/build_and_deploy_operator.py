@@ -49,13 +49,13 @@ def _ensure_crds() -> None:
     crd = _load_mongodb_crd()
 
     k8s_conditions.ignore_if_doesnt_exist(
-        lambda: crdv1.delete_custom_resource_definition("mongodb.mongodb.com")
+        lambda: crdv1.delete_custom_resource_definition("mongodbcommunity.mongodb.com")
     )
 
     # Make sure that the CRD has being deleted before trying to create it again
     if not k8s_conditions.wait(
         lambda: crdv1.list_custom_resource_definition(
-            field_selector="metadata.name==mongodb.mongodb.com"
+            field_selector="metadata.name==mongodbcommunity.mongodb.com"
         ),
         lambda crd_list: len(crd_list.items) == 0,
         timeout=5,
@@ -123,9 +123,7 @@ def main() -> int:
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
-        dev_config.repo_url,
-        f"{dev_config.repo_url}/mongodb-kubernetes-operator",
-        ".",
+        dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", ".",
     )
     deploy_operator()
     return 0

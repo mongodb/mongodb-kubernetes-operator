@@ -32,11 +32,11 @@ To install the MongoDB Community Kubernetes Operator:
 
    a. Invoke the following `kubectl` command:
       ```
-      kubectl create -f deploy/crds/mongodb.com_mongodb_crd.yaml
+      kubectl create -f deploy/crds/mongodb.com_mongodbcommunity_crd.yaml
       ```
    b. Verify that the Custom Resource Definitions installed successfully:
       ```
-      kubectl get crd/mongodb.mongodb.com
+      kubectl get crd/mongodbcommunity.mongodb.com
       ```
 3. Install the Operator.
 

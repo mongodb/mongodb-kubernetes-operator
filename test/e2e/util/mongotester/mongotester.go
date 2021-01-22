@@ -70,7 +70,7 @@ type OptionApplier interface {
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
 // and the hosts from the resource.
-func FromResource(t *testing.T, mdb mdbv1.MongoDB, opts ...OptionApplier) (*Tester, error) {
+func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
 	clientOpts = WithHosts(mdb.Hosts()).ApplyOption(clientOpts...)

@@ -41,28 +41,28 @@ func init() {
 	os.Setenv("AGENT_IMAGE", "agent-image")
 }
 
-func newTestReplicaSet() mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func newTestReplicaSet() mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
 			Namespace:   "my-ns",
 			Annotations: map[string]string{},
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
 			Version: "4.2.2",
 		},
 	}
 }
 
-func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
 			Namespace:   "my-ns",
 			Annotations: map[string]string{},
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Users:   users,
 			Members: 3,
 			Version: "4.2.2",
@@ -75,14 +75,14 @@ func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDB {
 	}
 }
 
-func newTestReplicaSetWithTLS() mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func newTestReplicaSetWithTLS() mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
 			Namespace:   "my-ns",
 			Annotations: map[string]string{},
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
 			Version: "4.2.2",
 			Security: mdbv1.Security{
@@ -490,7 +490,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 }
 
-func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDB) {
+func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -604,7 +604,7 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv
 	return sts
 }
 
-func generatePasswordsForAllUsers(mdb mdbv1.MongoDB, c client.Client) error {
+func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {
 	for _, user := range mdb.Spec.Users {
 
 		key := "password"
@@ -634,17 +634,17 @@ func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err e
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
-func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
+func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
 	setStatefulSetReadyReplicas(t, c, mdb, mdb.StatefulSetReplicasThisReconciliation())
 }
 
 // makeStatefulSetUnReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as unready.
-func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB) {
+func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
 	setStatefulSetReadyReplicas(t, c, mdb, 0)
 }
 
-func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDB, readyReplicas int) {
+func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
 	sts := appsv1.StatefulSet{}
 	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
 	assert.NoError(t, err)
@@ -655,9 +655,9 @@ func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.Mon
 }
 
 // loadTestFixture will create a MongoDB resource from a given fixture
-func loadTestFixture(yamlFileName string) (mdbv1.MongoDB, error) {
+func loadTestFixture(yamlFileName string) (mdbv1.MongoDBCommunity, error) {
 	testPath := fmt.Sprintf("testdata/%s", yamlFileName)
-	mdb := mdbv1.MongoDB{}
+	mdb := mdbv1.MongoDBCommunity{}
 	data, err := ioutil.ReadFile(testPath)
 	if err != nil {
 		return mdb, errors.Errorf("error reading file: %s", err)
