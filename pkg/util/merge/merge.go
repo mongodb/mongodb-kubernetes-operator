@@ -20,6 +20,19 @@ func StringSlices(slice1, slice2 []string) []string {
 	return mergedStrings
 }
 
+// StringToStringMap merges two string maps together with the second map
+// overriding any values also specified in the first.
+func StringToStringMap(map1, map2 map[string]string) map[string]string {
+	mergedMap := make(map[string]string)
+	for k, v := range map1 {
+		mergedMap[k] = v
+	}
+	for k, v := range map2 {
+		mergedMap[k] = v
+	}
+	return mergedMap
+}
+
 // Containers merges two slices of containers merging each item by container name.
 func Containers(defaultContainers, overrideContainers []corev1.Container) []corev1.Container {
 	mergedContainerMap := map[string]corev1.Container{}
@@ -628,4 +641,25 @@ func createKeyToPathMap(items []corev1.KeyToPath) map[string]corev1.KeyToPath {
 		itemsMap[v.Key] = v
 	}
 	return itemsMap
+}
+
+// Affinity merges two corev1.Affinity types.
+func Affinity(defaultAffinity, overrideAffinity *corev1.Affinity) *corev1.Affinity {
+	if defaultAffinity == nil {
+		return overrideAffinity
+	}
+	if overrideAffinity == nil {
+		return defaultAffinity
+	}
+	mergedAffinity := defaultAffinity.DeepCopy()
+	if overrideAffinity.NodeAffinity != nil {
+		mergedAffinity.NodeAffinity = overrideAffinity.NodeAffinity
+	}
+	if overrideAffinity.PodAffinity != nil {
+		mergedAffinity.PodAffinity = overrideAffinity.PodAffinity
+	}
+	if overrideAffinity.PodAntiAffinity != nil {
+		mergedAffinity.PodAntiAffinity = overrideAffinity.PodAntiAffinity
+	}
+	return mergedAffinity
 }

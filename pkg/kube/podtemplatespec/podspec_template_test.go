@@ -155,7 +155,23 @@ func TestMerge(t *testing.T) {
 			Affinity: affinity("zone", "custom"),
 		},
 	}
-	assert.Equal(t, expected, mergedSpec)
+	assert.Equal(t, expected.Name, mergedSpec.Name)
+	assert.Equal(t, expected.Namespace, mergedSpec.Namespace)
+	assert.Equal(t, expected.Labels["app"], mergedSpec.Labels["app"])
+	assert.Equal(t, expected.Labels["custom"], mergedSpec.Labels["custom"])
+	assert.Equal(t, expected.Spec.NodeSelector["node-0"], mergedSpec.Spec.NodeSelector["node-0"])
+	assert.Equal(t, expected.Spec.NodeSelector["node-1"], mergedSpec.Spec.NodeSelector["node-1"])
+	assert.Equal(t, expected.Spec.ServiceAccountName, mergedSpec.Spec.ServiceAccountName)
+	assert.Equal(t, expected.Spec.TerminationGracePeriodSeconds, mergedSpec.Spec.TerminationGracePeriodSeconds)
+	assert.Equal(t, expected.Spec.ActiveDeadlineSeconds, mergedSpec.Spec.ActiveDeadlineSeconds)
+	assert.Equal(t, expected.Spec.NodeName, mergedSpec.Spec.NodeName)
+	assert.Equal(t, expected.Spec.RestartPolicy, mergedSpec.Spec.RestartPolicy)
+	assert.Equal(t, expected.Spec.Volumes, mergedSpec.Spec.Volumes)
+	assert.Equal(t, expected.Spec.Affinity.PodAntiAffinity, mergedSpec.Spec.Affinity.PodAntiAffinity)
+	assert.Equal(t, expected.Spec.Affinity.PodAffinity, mergedSpec.Spec.Affinity.PodAffinity)
+	assert.Equal(t, expected.Spec.Affinity.NodeAffinity, mergedSpec.Spec.Affinity.NodeAffinity)
+	assert.Equal(t, expected.Spec.Containers, mergedSpec.Spec.Containers)
+	assert.Equal(t, expected.Spec.InitContainers, mergedSpec.Spec.InitContainers)
 }
 
 func TestMergeFromEmpty(t *testing.T) {
