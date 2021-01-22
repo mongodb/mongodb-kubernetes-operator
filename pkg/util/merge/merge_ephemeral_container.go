@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// EphemeralContainers merges two slices of EphemeralContainerss merging each item by container name.
+// EphemeralContainers merges two slices of EphemeralContainers merging each item by container name.
 func EphemeralContainers(defaultContainers, overrideContainers []corev1.EphemeralContainer) []corev1.EphemeralContainer {
 	mergedContainerMap := map[string]corev1.EphemeralContainer{}
 
@@ -37,7 +37,7 @@ func EphemeralContainers(defaultContainers, overrideContainers []corev1.Ephemera
 
 }
 
-// EphemeralContainer merges two EphemeralContainerss together.
+// EphemeralContainer merges two EphemeralContainers together.
 func EphemeralContainer(defaultContainer, overrideContainer corev1.EphemeralContainer) corev1.EphemeralContainer {
 	merged := defaultContainer
 
