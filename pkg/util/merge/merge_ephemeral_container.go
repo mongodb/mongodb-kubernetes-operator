@@ -92,6 +92,11 @@ func EphemeralContainer(defaultContainer, overrideContainer corev1.EphemeralCont
 		merged.TTY = overrideContainer.TTY
 	}
 
+	// EphemeralContainer only fields
+	if overrideContainer.TargetContainerName != "" {
+		merged.TargetContainerName = overrideContainer.TargetContainerName
+	}
+
 	return merged
 }
 
