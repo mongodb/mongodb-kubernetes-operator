@@ -273,6 +273,9 @@ type Security struct {
 	// TLS configuration for both client-server and server-server communication
 	// +optional
 	TLS TLS `json:"tls"`
+	// User-specified custom MongoDB roles that should be configured in the deployment.
+	// +optional
+	Roles []CustomRole `json:"roles,omitempty"`
 }
 
 // TLS is the configuration used to set up TLS encryption
@@ -306,10 +309,6 @@ type LocalObjectReference struct {
 type Authentication struct {
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
-
-	// User-specified custom MongoDB roles that should be configured in the deployment.
-	// +optional
-	Roles []CustomRole `json:"roles,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
