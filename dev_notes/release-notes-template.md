@@ -32,9 +32,5 @@
 
 *All the images can be found in:*
 
-https://quay.io/repository/mongodb (ubuntu-based)
-
-https://connect.redhat.com/ (rhel-based)
-
-
+https://quay.io/mongodb
 
