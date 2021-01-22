@@ -551,6 +551,17 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
 	return validation.Validate(prevSpec, mdb.Spec)
 }
 
+func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
+	roles := mdb.Spec.Security.Authentication.Roles
+	if roles == nil {
+		return automationconfig.NOOP(), nil
+	}
+
+	return func(config *automationconfig.AutomationConfig) {
+		config.Roles = mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(roles)
+	}, nil
+}
+
 func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
@@ -568,6 +579,11 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}
 
+	customRolesModification, err := getCustomRolesModification(mdb)
+	if err != nil {
+		return corev1.Secret{}, errors.Errorf("could not configure custom roles: %s", err)
+	}
+
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
 		return corev1.Secret{}, errors.Errorf("could not read existing automation config: %s", err)
@@ -579,6 +595,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		currentAC,
 		authModification,
 		tlsModification,
+		customRolesModification,
 	)
 	if err != nil {
 		return corev1.Secret{}, fmt.Errorf("could not build automation config: %s", err)

@@ -123,15 +123,29 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDB) func(t *testing.T) {
 	}
 }
 
+func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDB) automationconfig.AutomationConfig {
+	currentSecret := corev1.Secret{}
+	currentAc := automationconfig.AutomationConfig{}
+	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
+	assert.NoError(t, err)
+	err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
+	assert.NoError(t, err)
+	return currentAc
+}
+
+// AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
 func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDB, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentSecret := corev1.Secret{}
-		currentAc := automationconfig.AutomationConfig{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
-		assert.NoError(t, err)
-		err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
-		assert.NoError(t, err)
+		currentAc := getAutomationConfig(t, mdb)
 		assert.Equal(t, expectedVersion, currentAc.Version)
+	}
+}
+
+// AutomationConfigHasTheExpectedCustomRoles verifies that the automation config has the expected custom roles.
+func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDB, roles []automationconfig.CustomRole) func(t *testing.T) {
+	return func(t *testing.T) {
+		currentAc := getAutomationConfig(t, mdb)
+		assert.ElementsMatch(t, roles, currentAc.Roles)
 	}
 }
 

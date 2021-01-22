@@ -50,14 +50,15 @@ spec:
               description: Members is the number of members in the replica set
               type: integer
             replicaSetHorizons:
-              description: Add this parameter and values if you need your database
-                to be accessed outside of Kubernetes. This setting allows you to
-                provide different DNS settings within the Kubernetes cluster and
-                to the Kubernetes cluster. The Kubernetes Operator uses split horizon
-                DNS for replica set members. This feature allows communication both
-                within the Kubernetes cluster and from outside Kubernetes.
+              description: ReplicaSetHorizons Add this parameter and values if you
+                need your database to be accessed outside of Kubernetes. This setting
+                allows you to provide different DNS settings within the Kubernetes
+                cluster and to the Kubernetes cluster. The Kubernetes Operator uses
+                split horizon DNS for replica set members. This feature allows communication
+                both within the Kubernetes cluster and from outside Kubernetes.
               items:
-                properties: {}
+                additionalProperties:
+                  type: string
                 type: object
               type: array
             security:
@@ -73,6 +74,93 @@ spec:
                         enum:
                         - SCRAM
                         type: string
+                      type: array
+                    roles:
+                      description: User-specified custom MongoDB roles that should
+                        be configured in the deployment.
+                      items:
+                        description: CustomRole defines a custom MongoDB role.
+                        properties:
+                          authenticationRestrictions:
+                            description: The authentication restrictions the server
+                              enforces on the role.
+                            items:
+                              description: AuthenticationRestriction specifies a list
+                                of IP addresses and CIDR ranges users are allowed
+                                to connect to or from.
+                              properties:
+                                clientSource:
+                                  items:
+                                    type: string
+                                  type: array
+                                serverAddress:
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - clientSource
+                              - serverAddress
+                              type: object
+                            type: array
+                          db:
+                            description: The database of the role.
+                            type: string
+                          privileges:
+                            description: The privileges to grant the role.
+                            items:
+                              description: Privilege defines the actions a role is
+                                allowed to perform on a given resource.
+                              properties:
+                                actions:
+                                  items:
+                                    type: string
+                                  type: array
+                                resource:
+                                  description: Resource specifies specifies the resources
+                                    upon which a privilege permits actions. See https://docs.mongodb.com/manual/reference/resource-document
+                                    for more.
+                                  properties:
+                                    anyResource:
+                                      type: boolean
+                                    cluster:
+                                      type: boolean
+                                    collection:
+                                      type: string
+                                    db:
+                                      type: string
+                                  type: object
+                              required:
+                              - actions
+                              - resource
+                              type: object
+                            type: array
+                          role:
+                            description: The name of the role.
+                            type: string
+                          roles:
+                            description: An array of roles from which this role inherits
+                              privileges.
+                            items:
+                              description: Role is the database role this user should
+                                have
+                              properties:
+                                db:
+                                  description: DB is the database the role can act
+                                    on
+                                  type: string
+                                name:
+                                  description: Name is the name of the role
+                                  type: string
+                              required:
+                              - db
+                              - name
+                              type: object
+                            type: array
+                        required:
+                        - db
+                        - privileges
+                        - role
+                        type: object
                       type: array
                   required:
                   - modes
@@ -169,8 +257,9 @@ spec:
                       type: object
                     type: array
                   scramCredentialsSecretName:
-                    description: ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object
-                      created by the mongoDB operator for storing SCRAM credentials
+                    description: ScramCredentialsSecretName appended by string "scram-credentials"
+                      is the name of the secret object created by the mongoDB operator
+                      for storing SCRAM credentials
                     type: string
                     pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                 required:
@@ -192,9 +281,9 @@ spec:
         status:
           description: MongoDBStatus defines the observed state of MongoDB
           properties:
-            currentStatefulSetReplicas:
-              type: integer
             currentMongoDBMembers:
+              type: integer
+            currentStatefulSetReplicas:
               type: integer
             message:
               type: string
@@ -202,6 +291,11 @@ spec:
               type: string
             phase:
               type: string
+          required:
+          - currentMongoDBMembers
+          - currentStatefulSetReplicas
+          - mongoUri
+          - phase
           type: object
       type: object
   version: v1

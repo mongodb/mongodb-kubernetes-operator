@@ -51,8 +51,12 @@ type MongoDBSpec struct {
 	// +optional
 	FeatureCompatibilityVersion string `json:"featureCompatibilityVersion,omitempty"`
 
-	// ReplicaSetHorizons allows providing different DNS settings within the
-	// Kubernetes cluster and to the Kubernetes cluster.
+	// ReplicaSetHorizons Add this parameter and values if you need your database
+	// to be accessed outside of Kubernetes. This setting allows you to
+	// provide different DNS settings within the Kubernetes cluster and
+	// to the Kubernetes cluster. The Kubernetes Operator uses split horizon
+	// DNS for replica set members. This feature allows communication both
+	// within the Kubernetes cluster and from outside Kubernetes.
 	// +optional
 	ReplicaSetHorizons ReplicaSetHorizonConfiguration `json:"replicaSetHorizons,omitempty"`
 
@@ -77,6 +81,96 @@ type MongoDBSpec struct {
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
 // replica set members.
 type ReplicaSetHorizonConfiguration []automationconfig.ReplicaSetHorizons
+
+// CustomRole defines a custom MongoDB role.
+type CustomRole struct {
+	// The name of the role.
+	Role string `json:"role"`
+	// The database of the role.
+	DB string `json:"db"`
+	// The privileges to grant the role.
+	Privileges []Privilege `json:"privileges"`
+	// An array of roles from which this role inherits privileges.
+	// +optional
+	Roles []Role `json:"roles"`
+	// The authentication restrictions the server enforces on the role.
+	// +optional
+	AuthenticationRestrictions []AuthenticationRestriction `json:"authenticationRestrictions,omitempty"`
+}
+
+// ConvertToAutomationConfigCustomRole converts between a custom role defined by the crd and a custom role
+// that can be used in the automation config.
+func (c CustomRole) ConvertToAutomationConfigCustomRole() automationconfig.CustomRole {
+	ac := automationconfig.CustomRole{Role: c.Role, DB: c.DB, Roles: []automationconfig.Role{}}
+
+	// Add privileges.
+	for _, privilege := range c.Privileges {
+		ac.Privileges = append(ac.Privileges, automationconfig.Privilege{
+			Resource: automationconfig.Resource{
+				DB:          privilege.Resource.DB,
+				Collection:  privilege.Resource.Collection,
+				AnyResource: privilege.Resource.AnyResource,
+				Cluster:     privilege.Resource.Cluster,
+			},
+			Actions: privilege.Actions,
+		})
+	}
+
+	// Add roles.
+	for _, dbRole := range c.Roles {
+		ac.Roles = append(ac.Roles, automationconfig.Role{
+			Role:     dbRole.Name,
+			Database: dbRole.DB,
+		})
+	}
+
+	// Add authentication restrictions (if any).
+	for _, restriction := range c.AuthenticationRestrictions {
+		ac.AuthenticationRestrictions = append(ac.AuthenticationRestrictions,
+			automationconfig.AuthenticationRestriction{
+				ClientSource:  restriction.ClientSource,
+				ServerAddress: restriction.ServerAddress,
+			})
+	}
+
+	return ac
+}
+
+// ConvertCustomRolesToAutomationConfigCustomRole converts custom roles to custom roles
+// that can be used in the automation config.
+func ConvertCustomRolesToAutomationConfigCustomRole(roles []CustomRole) []automationconfig.CustomRole {
+	acRoles := []automationconfig.CustomRole{}
+	for _, role := range roles {
+		acRoles = append(acRoles, role.ConvertToAutomationConfigCustomRole())
+	}
+	return acRoles
+}
+
+// Privilege defines the actions a role is allowed to perform on a given resource.
+type Privilege struct {
+	Resource Resource `json:"resource"`
+	Actions  []string `json:"actions"`
+}
+
+// Resource specifies specifies the resources upon which a privilege permits actions.
+// See https://docs.mongodb.com/manual/reference/resource-document for more.
+type Resource struct {
+	// +optional
+	DB *string `json:"db,omitempty"`
+	// +optional
+	Collection *string `json:"collection,omitempty"`
+	// +optional
+	Cluster bool `json:"cluster,omitempty"`
+	// +optional
+	AnyResource bool `json:"anyResource,omitempty"`
+}
+
+// AuthenticationRestriction specifies a list of IP addresses and CIDR ranges users
+// are allowed to connect to or from.
+type AuthenticationRestriction struct {
+	ClientSource  []string `json:"clientSource"`
+	ServerAddress []string `json:"serverAddress"`
+}
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
@@ -212,6 +306,10 @@ type LocalObjectReference struct {
 type Authentication struct {
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
+
+	// User-specified custom MongoDB roles that should be configured in the deployment.
+	// +optional
+	Roles []CustomRole `json:"roles,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM

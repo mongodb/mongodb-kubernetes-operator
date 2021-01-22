@@ -180,6 +180,7 @@ task_groups:
     - e2e_test_statefulset_arbitrary_config_update
     - e2e_test_replica_set_mongod_config
     - e2e_test_replica_set_cross_namespace_deploy
+    - e2e_test_replica_set_custom_role
   teardown_task:
     - func: upload_e2e_logs
 
@@ -331,6 +332,12 @@ tasks:
         vars:
           test: replica_set_cross_namespace_deploy
           clusterwide: true
+
+  - name: e2e_test_replica_set_custom_role
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: replica_set_custom_role
 
   - name: release_blocker
     commands:
