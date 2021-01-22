@@ -552,12 +552,13 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
-	if mdb.Spec.Roles == nil {
+	roles := mdb.Spec.Security.Authentication.Roles
+	if roles == nil {
 		return automationconfig.NOOP(), nil
 	}
 
 	return func(config *automationconfig.AutomationConfig) {
-		config.Roles = mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Roles)
+		config.Roles = mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(roles)
 	}, nil
 }
 

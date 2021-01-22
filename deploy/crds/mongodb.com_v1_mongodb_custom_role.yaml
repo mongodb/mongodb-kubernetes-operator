@@ -10,16 +10,16 @@ spec:
   security:
     authentication:
       modes: ["SCRAM"]
-  roles: # custom roles are defined here
-    - role: testRole
-      db: admin
-      privileges:
-        - resource:
-            db: "test"
-            collection: "" # an empty string indicates any collection
-          actions:
-            - find
-      roles: []
+      roles: # custom roles are defined here
+        - role: testRole
+          db: admin
+          privileges:
+            - resource:
+                db: "test"
+                collection: "" # an empty string indicates any collection
+              actions:
+                - find
+          roles: []
   users:
     - name: my-user
       db: admin

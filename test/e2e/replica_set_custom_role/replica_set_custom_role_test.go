@@ -29,7 +29,7 @@ func TestReplicaSetCustomRole(t *testing.T) {
 	anyCollection := ""
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
-	mdb.Spec.Roles = []mdbv1.CustomRole{
+	mdb.Spec.Security.Authentication.Roles = []mdbv1.CustomRole{
 		{
 			Role: "testRole",
 			DB:   "admin",
@@ -87,7 +87,7 @@ func TestReplicaSetCustomRole(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	// Verify automation config roles and roles created in admin database.
-	roles := mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Roles)
+	roles := mdbv1.ConvertCustomRolesToAutomationConfigCustomRole(mdb.Spec.Security.Authentication.Roles)
 	t.Run("AutomationConfig has the correct custom role", mongodbtests.AutomationConfigHasTheExpectedCustomRoles(&mdb, roles))
 	t.Run("Custom Role was created ", tester.VerifyRoles(roles, 1))
 

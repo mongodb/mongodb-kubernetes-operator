@@ -17,6 +17,13 @@ func (in *Authentication) DeepCopyInto(out *Authentication) {
 		*out = make([]AuthMode, len(*in))
 		copy(*out, *in)
 	}
+	if in.Roles != nil {
+		in, out := &in.Roles, &out.Roles
+		*out = make([]CustomRole, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -194,13 +201,6 @@ func (in *MongoDBSpec) DeepCopyInto(out *MongoDBSpec) {
 	}
 	in.StatefulSetConfiguration.DeepCopyInto(&out.StatefulSetConfiguration)
 	in.AdditionalMongodConfig.DeepCopyInto(&out.AdditionalMongodConfig)
-	if in.Roles != nil {
-		in, out := &in.Roles, &out.Roles
-		*out = make([]CustomRole, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	return
 }
 

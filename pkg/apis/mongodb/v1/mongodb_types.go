@@ -76,10 +76,6 @@ type MongoDBSpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
-
-	// User-specified custom MongoDB roles that should be configured in the deployment.
-	// +optional
-	Roles []CustomRole `json:"roles,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -310,6 +306,10 @@ type LocalObjectReference struct {
 type Authentication struct {
 	// Modes is an array specifying which authentication methods should be enabled
 	Modes []AuthMode `json:"modes"`
+
+	// User-specified custom MongoDB roles that should be configured in the deployment.
+	// +optional
+	Roles []CustomRole `json:"roles,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
