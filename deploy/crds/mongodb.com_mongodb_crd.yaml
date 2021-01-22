@@ -260,6 +260,7 @@ spec:
                       is the name of the secret object created by the mongoDB operator
                       for storing SCRAM credentials
                     type: string
+                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                 required:
                 - name
                 - passwordSecretRef
