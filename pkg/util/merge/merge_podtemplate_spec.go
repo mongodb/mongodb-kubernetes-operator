@@ -8,6 +8,7 @@ import (
 func PodTemplateSpecs(original, override corev1.PodTemplateSpec) corev1.PodTemplateSpec {
 	merged := original
 
+	merged.Annotations = StringToStringMap(original.Annotations, override.Annotations)
 	merged.Labels = StringToStringMap(original.Labels, override.Labels)
 	merged.Spec.Volumes = Volumes(original.Spec.Volumes, override.Spec.Volumes)
 	merged.Spec.Containers = Containers(original.Spec.Containers, override.Spec.Containers)
