@@ -1,8 +1,6 @@
 package podtemplatespec
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -224,11 +222,6 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 		}
 		container.WithVolumeMounts(volumeMounts)(c)
 	}
-}
-
-func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
-	// TODO: remove in place of direct call to merge.PodTemplateSpecs
-	return merge.PodTemplateSpecs(defaultTemplate, overrideTemplate), nil
 }
 
 // findContainerByName will find either a container or init container by name in a pod template spec

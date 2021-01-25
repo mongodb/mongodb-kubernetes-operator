@@ -3,6 +3,8 @@ package podtemplatespec
 import (
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -115,8 +117,7 @@ func TestMerge(t *testing.T) {
 	defaultSpec := getDefaultPodSpec()
 	customSpec := getCustomPodSpec()
 
-	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
-	assert.NoError(t, err)
+	mergedSpec := merge.PodTemplateSpecs(defaultSpec, customSpec)
 
 	initContainerDefault := getDefaultContainer()
 	initContainerDefault.Name = "init-container-default"
@@ -178,9 +179,7 @@ func TestMergeFromEmpty(t *testing.T) {
 	defaultPodSpec := corev1.PodTemplateSpec{}
 	customPodSpecTemplate := getCustomPodSpec()
 
-	mergedPodTemplateSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
-
-	assert.NoError(t, err)
+	mergedPodTemplateSpec := merge.PodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
 	assert.Equal(t, customPodSpecTemplate, mergedPodTemplateSpec)
 }
 
@@ -188,9 +187,8 @@ func TestMergeWithEmpty(t *testing.T) {
 	defaultPodSpec := getDefaultPodSpec()
 	customPodSpecTemplate := corev1.PodTemplateSpec{}
 
-	mergedPodTemplateSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
+	mergedPodTemplateSpec := merge.PodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
 
-	assert.NoError(t, err)
 	assert.Equal(t, defaultPodSpec, mergedPodTemplateSpec)
 }
 
@@ -198,15 +196,13 @@ func TestMultipleMerges(t *testing.T) {
 	defaultPodSpec := getDefaultPodSpec()
 	customPodSpecTemplate := getCustomPodSpec()
 
-	referenceSpec, err := MergePodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
-	assert.NoError(t, err)
+	referenceSpec := merge.PodTemplateSpecs(defaultPodSpec, customPodSpecTemplate)
 
 	mergedSpec := defaultPodSpec
 
 	// multiple merges must give the same result
 	for i := 0; i < 3; i++ {
-		mergedSpec, err := MergePodTemplateSpecs(mergedSpec, customPodSpecTemplate)
-		assert.NoError(t, err)
+		mergedSpec := merge.PodTemplateSpecs(mergedSpec, customPodSpecTemplate)
 		assert.Equal(t, referenceSpec, mergedSpec)
 	}
 }
@@ -234,8 +230,7 @@ func TestMergeEnvironmentVariables(t *testing.T) {
 	customSpec := getCustomPodSpec()
 	customSpec.Spec.Containers = []corev1.Container{overrideOtherDefaultContainer}
 
-	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
-	assert.NoError(t, err)
+	mergedSpec := merge.PodTemplateSpecs(defaultSpec, customSpec)
 
 	mergedContainer := mergedSpec.Spec.Containers[0]
 
@@ -270,8 +265,7 @@ func TestMergeContainer(t *testing.T) {
 	customSpec := getCustomPodSpec()
 	customSpec.Spec.Containers = []corev1.Container{getCustomContainer(), overrideDefaultContainer, overrideOtherDefaultContainer}
 
-	mergedSpec, err := MergePodTemplateSpecs(defaultSpec, customSpec)
-	assert.NoError(t, err)
+	mergedSpec := merge.PodTemplateSpecs(defaultSpec, customSpec)
 
 	assert.Len(t, mergedSpec.Spec.Containers, 3)
 	assert.Equal(t, getCustomContainer(), mergedSpec.Spec.Containers[1])
@@ -338,8 +332,7 @@ func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
 		Name: "new-volume-3",
 	})
 
-	mergedPodSpecTemplate, err := MergePodTemplateSpecs(defaultPodSpec, overridePodSpec)
-	assert.NoError(t, err)
+	mergedPodSpecTemplate := merge.PodTemplateSpecs(defaultPodSpec, overridePodSpec)
 
 	assert.Len(t, mergedPodSpecTemplate.Spec.Volumes, 3)
 	assert.Equal(t, "new-volume", mergedPodSpecTemplate.Spec.Volumes[0].Name)

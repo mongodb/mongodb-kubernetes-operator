@@ -1,13 +1,7 @@
 package statefulset
 
 import (
-	"sort"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
-
-	"github.com/imdario/mergo"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -280,109 +274,8 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 
 func WithCustomSpecs(spec appsv1.StatefulSetSpec) Modification {
 	return func(set *appsv1.StatefulSet) {
-		m, err := mergeStatefulSetSpecs(set.Spec, spec)
-		if err != nil {
-			return
-		}
-		set.Spec = m
+		set.Spec = merge.StatefulSetSpecs(set.Spec, spec)
 	}
-}
-
-func mergeStatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) (appsv1.StatefulSetSpec, error) {
-	// PodTemplateSpec needs to be manually merged
-	mergedPodTemplateSpec, err := podtemplatespec.MergePodTemplateSpecs(defaultSpec.Template, overrideSpec.Template)
-	if err != nil {
-		return appsv1.StatefulSetSpec{}, err
-	}
-
-	// VolumeClaimTemplates needs to be manually merged
-	mergedVolumeClaimTemplates, err := mergeVolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
-	if err != nil {
-		return appsv1.StatefulSetSpec{}, err
-	}
-
-	// Merging the rest with mergo
-	if err := mergo.Merge(&defaultSpec, overrideSpec, mergo.WithOverride); err != nil {
-		return appsv1.StatefulSetSpec{}, err
-	}
-
-	// Assigning merged vales AFTER the merge with mergo or they would be overwritten
-	defaultSpec.Template = mergedPodTemplateSpec
-	defaultSpec.VolumeClaimTemplates = mergedVolumeClaimTemplates
-	return defaultSpec, nil
-}
-
-func mergeSingleVolumeClaimTemplate(defaultPvc corev1.PersistentVolumeClaim, overridePvc corev1.PersistentVolumeClaim) corev1.PersistentVolumeClaim {
-
-	if overridePvc.Spec.VolumeMode != nil {
-		defaultPvc.Spec.VolumeMode = overridePvc.Spec.VolumeMode
-	}
-
-	if overridePvc.Spec.StorageClassName != nil {
-		defaultPvc.Spec.StorageClassName = overridePvc.Spec.StorageClassName
-	}
-
-	for _, accessMode := range overridePvc.Spec.AccessModes {
-		if !contains.AccessMode(defaultPvc.Spec.AccessModes, accessMode) {
-			defaultPvc.Spec.AccessModes = append(defaultPvc.Spec.AccessModes, accessMode)
-		}
-	}
-
-	if overridePvc.Spec.Selector != nil {
-		defaultPvc.Spec.Selector = overridePvc.Spec.Selector
-	}
-
-	if overridePvc.Spec.Resources.Limits != nil {
-		defaultPvc.Spec.Resources.Limits = overridePvc.Spec.Resources.Limits
-	}
-
-	if overridePvc.Spec.Resources.Requests != nil {
-		defaultPvc.Spec.Resources.Requests = overridePvc.Spec.Resources.Requests
-	}
-
-	if overridePvc.Spec.DataSource != nil {
-		defaultPvc.Spec.DataSource = overridePvc.Spec.DataSource
-	}
-
-	return defaultPvc
-}
-
-func mergeVolumeClaimTemplates(defaultTemplates []corev1.PersistentVolumeClaim, overrideTemplates []corev1.PersistentVolumeClaim) ([]corev1.PersistentVolumeClaim, error) {
-	defaultMountsMap := createVolumeClaimMap(defaultTemplates)
-	overrideMountsMap := createVolumeClaimMap(overrideTemplates)
-
-	mergedMap := map[string]corev1.PersistentVolumeClaim{}
-
-	for _, vct := range defaultMountsMap {
-		mergedMap[vct.Name] = vct
-	}
-
-	for _, overrideClaim := range overrideMountsMap {
-		if defaultClaim, ok := defaultMountsMap[overrideClaim.Name]; ok {
-			mergedMap[overrideClaim.Name] = mergeSingleVolumeClaimTemplate(defaultClaim, overrideClaim)
-		} else {
-			mergedMap[overrideClaim.Name] = overrideClaim
-		}
-	}
-
-	var mergedVolumes []corev1.PersistentVolumeClaim
-	for _, v := range mergedMap {
-		mergedVolumes = append(mergedVolumes, v)
-	}
-
-	sort.SliceStable(mergedVolumes, func(i, j int) bool {
-		return mergedVolumes[i].Name < mergedVolumes[j].Name
-	})
-
-	return mergedVolumes, nil
-}
-
-func createVolumeClaimMap(volumeMounts []corev1.PersistentVolumeClaim) map[string]corev1.PersistentVolumeClaim {
-	mountMap := make(map[string]corev1.PersistentVolumeClaim)
-	for _, m := range volumeMounts {
-		mountMap[m.Name] = m
-	}
-	return mountMap
 }
 
 func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {
