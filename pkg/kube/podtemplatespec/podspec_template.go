@@ -3,7 +3,6 @@ package podtemplatespec
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 
-	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -228,43 +227,8 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 }
 
 func MergePodTemplateSpecs(defaultTemplate, overrideTemplate corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
-
-	mergedContainers := merge.Containers(defaultTemplate.Spec.Containers, overrideTemplate.Spec.Containers)
-	mergedTolerations := merge.Tolerations(defaultTemplate.Spec.Tolerations, overrideTemplate.Spec.Tolerations)
-	mergedInitContainers := merge.Containers(defaultTemplate.Spec.InitContainers, overrideTemplate.Spec.InitContainers)
-	mergedAffinity, err := mergeAffinity(defaultTemplate.Spec.Affinity, overrideTemplate.Spec.Affinity)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	mergedVolumes := merge.Volumes(defaultTemplate.Spec.Volumes, overrideTemplate.Spec.Volumes)
-
-	// Everything else can be merged with mergo
-	mergedPodTemplateSpec := *defaultTemplate.DeepCopy()
-	if err = mergo.Merge(&mergedPodTemplateSpec, overrideTemplate, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	mergedPodTemplateSpec.Spec.Containers = mergedContainers
-	mergedPodTemplateSpec.Spec.Tolerations = mergedTolerations
-	mergedPodTemplateSpec.Spec.InitContainers = mergedInitContainers
-	mergedPodTemplateSpec.Spec.Affinity = mergedAffinity
-	mergedPodTemplateSpec.Spec.Volumes = mergedVolumes
-	return mergedPodTemplateSpec, nil
-}
-
-func mergeAffinity(defaultAffinity, overrideAffinity *corev1.Affinity) (*corev1.Affinity, error) {
-	if defaultAffinity == nil {
-		return overrideAffinity, nil
-	}
-	if overrideAffinity == nil {
-		return defaultAffinity, nil
-	}
-	mergedAffinity := defaultAffinity.DeepCopy()
-	if err := mergo.Merge(mergedAffinity, *overrideAffinity, mergo.WithOverride); err != nil {
-		return nil, err
-	}
-	return mergedAffinity, nil
+	// TODO: remove in place of direct call to merge.PodTemplateSpecs
+	return merge.PodTemplateSpecs(defaultTemplate, overrideTemplate), nil
 }
 
 // findContainerByName will find either a container or init container by name in a pod template spec

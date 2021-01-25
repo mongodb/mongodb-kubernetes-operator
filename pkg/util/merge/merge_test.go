@@ -601,3 +601,37 @@ func TestMergeVolumeMounts(t *testing.T) {
 	mergedVolumeMounts = VolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
 	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
 }
+
+func TestMergeHostAliases(t *testing.T) {
+	ha0 := []corev1.HostAlias{
+		{
+			IP: "1.2.3.4",
+			Hostnames: []string{
+				"abc", "def",
+			},
+		},
+		{
+			IP: "1.2.3.5",
+			Hostnames: []string{
+				"abc",
+			},
+		},
+	}
+
+	ha1 := []corev1.HostAlias{
+		{
+			IP: "1.2.3.4",
+			Hostnames: []string{
+				"abc", "def", "ghi",
+			},
+		},
+	}
+
+	merged := HostAliases(ha0, ha1)
+
+	assert.Len(t, merged, 2)
+	assert.Equal(t, "1.2.3.4", merged[0].IP)
+	assert.Equal(t, []string{"abc", "def", "ghi"}, merged[0].Hostnames)
+	assert.Equal(t, "1.2.3.5", merged[1].IP)
+	assert.Equal(t, []string{"abc"}, merged[1].Hostnames)
+}
