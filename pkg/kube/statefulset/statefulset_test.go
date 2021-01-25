@@ -29,25 +29,25 @@ func TestGetContainerIndexByName(t *testing.T) {
 	}
 
 	stsBuilder := defaultStatefulSetBuilder().SetPodTemplateSpec(podTemplateWithContainers(containers))
-	idx, err := stsBuilder.getContainerIndexByName("container-0")
+	idx, err := stsBuilder.GetContainerIndexByName("container-0")
 
 	assert.NoError(t, err)
 	assert.NotEqual(t, -1, idx)
 	assert.Equal(t, 0, idx)
 
-	idx, err = stsBuilder.getContainerIndexByName("container-1")
+	idx, err = stsBuilder.GetContainerIndexByName("container-1")
 
 	assert.NoError(t, err)
 	assert.NotEqual(t, -1, idx)
 	assert.Equal(t, 1, idx)
 
-	idx, err = stsBuilder.getContainerIndexByName("container-2")
+	idx, err = stsBuilder.GetContainerIndexByName("container-2")
 
 	assert.NoError(t, err)
 	assert.NotEqual(t, -1, idx)
 	assert.Equal(t, 2, idx)
 
-	idx, err = stsBuilder.getContainerIndexByName("doesnt-exist")
+	idx, err = stsBuilder.GetContainerIndexByName("doesnt-exist")
 
 	assert.Error(t, err)
 	assert.Equal(t, -1, idx)
@@ -63,7 +63,7 @@ func TestAddVolumeAndMount(t *testing.T) {
 		Volume:    CreateVolumeFromConfigMap("mount-name", "config-map"),
 	}
 
-	stsBuilder = defaultStatefulSetBuilder().SetPodTemplateSpec(podTemplateWithContainers([]corev1.Container{{Name: "container-name"}})).AddVolumeAndMount("container-name", vmd)
+	stsBuilder = defaultStatefulSetBuilder().SetPodTemplateSpec(podTemplateWithContainers([]corev1.Container{{Name: "container-name"}})).AddVolumeAndMount(vmd, "container-name")
 	sts, err = stsBuilder.Build()
 
 	// assert container was correctly updated with the volumes
@@ -78,7 +78,7 @@ func TestAddVolumeAndMount(t *testing.T) {
 	assert.NotNil(t, sts.Spec.Template.Spec.Volumes[0].VolumeSource.ConfigMap, "volume should have been configured from a config map source")
 	assert.Nil(t, sts.Spec.Template.Spec.Volumes[0].VolumeSource.Secret, "volume should not have been configured from a secret source")
 
-	stsBuilder = defaultStatefulSetBuilder().SetPodTemplateSpec(podTemplateWithContainers([]corev1.Container{{Name: "container-0"}, {Name: "container-1"}})).AddVolumeAndMount("container-0", vmd)
+	stsBuilder = defaultStatefulSetBuilder().SetPodTemplateSpec(podTemplateWithContainers([]corev1.Container{{Name: "container-0"}, {Name: "container-1"}})).AddVolumeAndMount(vmd, "container-0")
 	sts, err = stsBuilder.Build()
 
 	assert.NoError(t, err, "volume should successfully mount when the container exists")
@@ -90,7 +90,7 @@ func TestAddVolumeAndMount(t *testing.T) {
 	}
 
 	// add a 2nd container to previously defined stsBuilder
-	sts, err = stsBuilder.AddVolumeAndMount("container-1", secretVmd).Build()
+	sts, err = stsBuilder.AddVolumeAndMount(secretVmd, "container-1").Build()
 
 	assert.NoError(t, err, "volume should successfully mount when the container exists")
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].VolumeMounts, 1, "volume mount should have been added to the container in the stateful set")
