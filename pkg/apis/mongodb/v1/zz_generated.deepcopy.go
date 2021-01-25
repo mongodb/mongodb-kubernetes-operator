@@ -17,13 +17,6 @@ func (in *Authentication) DeepCopyInto(out *Authentication) {
 		*out = make([]AuthMode, len(*in))
 		copy(*out, *in)
 	}
-	if in.Roles != nil {
-		in, out := &in.Roles, &out.Roles
-		*out = make([]CustomRole, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	return
 }
 
@@ -372,6 +365,13 @@ func (in *Security) DeepCopyInto(out *Security) {
 	*out = *in
 	in.Authentication.DeepCopyInto(&out.Authentication)
 	out.TLS = in.TLS
+	if in.Roles != nil {
+		in, out := &in.Roles, &out.Roles
+		*out = make([]CustomRole, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

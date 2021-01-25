@@ -552,7 +552,7 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
-	roles := mdb.Spec.Security.Authentication.Roles
+	roles := mdb.Spec.Security.Roles
 	if roles == nil {
 		return automationconfig.NOOP(), nil
 	}
