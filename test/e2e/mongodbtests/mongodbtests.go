@@ -69,7 +69,7 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRefe
 		assert.Len(t, ownerReferences, 1, "StatefulSet doesn't have OwnerReferences")
 
 		assert.Equal(t, expectedOwnerReference.APIVersion, ownerReferences[0].APIVersion)
-		assert.Equal(t, "MongoDB", ownerReferences[0].Kind)
+		assert.Equal(t, "MongoDBCommunity", ownerReferences[0].Kind)
 		assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
 		assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 

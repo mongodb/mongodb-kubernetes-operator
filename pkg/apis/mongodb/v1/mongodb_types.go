@@ -441,13 +441,13 @@ func (a automationConfigReplicasScaler) CurrentReplicas() int {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MongoDBList contains a list of MongoDB
-type MongoDBList struct {
+// MongoDBCommunityList contains a list of MongoDB
+type MongoDBCommunityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MongoDBCommunity `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&MongoDBCommunity{}, &MongoDBList{})
+	SchemeBuilder.Register(&MongoDBCommunity{}, &MongoDBCommunityList{})
 }

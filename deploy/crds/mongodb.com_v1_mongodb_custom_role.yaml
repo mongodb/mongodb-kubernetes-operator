@@ -1,6 +1,6 @@
 ---
 apiVersion: mongodb.com/v1
-kind: MongoDB
+kind: MongoDBCommunity
 metadata:
   name: custom-role-mongodb
 spec:
