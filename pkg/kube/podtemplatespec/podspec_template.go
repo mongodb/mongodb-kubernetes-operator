@@ -40,7 +40,7 @@ func WithContainer(name string, containerfunc func(*corev1.Container)) Modificat
 		idx := findIndexByName(name, podTemplateSpec.Spec.Containers)
 		if idx == notFound {
 			// if we are attempting to modify a container that does not exist, we will add a new one
-			podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, corev1.Container{})
+			podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, corev1.Container{Name: name})
 			idx = len(podTemplateSpec.Spec.Containers) - 1
 		}
 		c := &podTemplateSpec.Spec.Containers[idx]
@@ -68,7 +68,7 @@ func WithInitContainer(name string, containerfunc func(*corev1.Container)) Modif
 		idx := findIndexByName(name, podTemplateSpec.Spec.InitContainers)
 		if idx == notFound {
 			// if we are attempting to modify a container that does not exist, we will add a new one
-			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{})
+			podTemplateSpec.Spec.InitContainers = append(podTemplateSpec.Spec.InitContainers, corev1.Container{Name: name})
 			idx = len(podTemplateSpec.Spec.InitContainers) - 1
 		}
 		c := &podTemplateSpec.Spec.InitContainers[idx]

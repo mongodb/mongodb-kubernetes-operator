@@ -1,6 +1,7 @@
 package statefulset
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	"reflect"
 	"testing"
 
@@ -50,7 +51,7 @@ func TestGetLabelSelectorRequirementByKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getLabelSelectorRequirementByKey(tt.args.labelSelectorRequirements, tt.args.key); !reflect.DeepEqual(got, tt.want) {
+			if got := merge.LabelSelectorRequirementByKey(tt.args.labelSelectorRequirements, tt.args.key); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getLabelSelectorRequirementByKey() = %v, want %v", got, tt.want)
 			}
 		})
@@ -115,7 +116,7 @@ func TestMergeSpec(t *testing.T) {
 		}),
 	)
 
-	mergedSpec := MergeSpecs(original.Spec, override.Spec)
+	mergedSpec := merge.StatefulSetSpecs(original.Spec, override.Spec)
 
 	t.Run("Primitive fields of spec have been merged correctly", func(t *testing.T) {
 		assert.Equal(t, "override-svc-name", mergedSpec.ServiceName)

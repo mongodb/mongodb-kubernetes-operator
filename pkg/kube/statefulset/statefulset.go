@@ -78,6 +78,7 @@ type VolumeMountData struct {
 	Name      string
 	MountPath string
 	Volume    corev1.Volume
+	ReadOnly  bool
 }
 
 func CreateVolumeFromConfigMap(name, sourceName string) corev1.Volume {
@@ -285,4 +286,13 @@ func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim
 		}
 	}
 	return notFound
+}
+
+func VolumeMountWithNameExists(mounts []corev1.VolumeMount, volumeName string) bool {
+	for _, mount := range mounts {
+		if mount.Name == volumeName {
+			return true
+		}
+	}
+	return false
 }

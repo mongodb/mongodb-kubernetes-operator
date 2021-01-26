@@ -107,8 +107,8 @@ func (s *Builder) AddVolumes(volumes []corev1.Volume) *Builder {
 	return s
 }
 
-// getContainerIndexByName returns the index of the container with containerName
-func (s Builder) getContainerIndexByName(containerName string) (int, error) {
+// GetContainerIndexByName returns the index of the container with containerName.
+func (s Builder) GetContainerIndexByName(containerName string) (int, error) {
 	for i, c := range s.podTemplateSpec.Spec.Containers {
 		if c.Name == containerName {
 			return i, nil
@@ -117,15 +117,18 @@ func (s Builder) getContainerIndexByName(containerName string) (int, error) {
 	return -1, errors.Errorf("no container with name [%s] found", containerName)
 }
 
-func (s *Builder) AddVolumeAndMount(containerName string, volumeMountData VolumeMountData) *Builder {
+func (s *Builder) AddVolumeAndMount(volumeMountData VolumeMountData, containerNames ...string) *Builder {
 	s.AddVolume(volumeMountData.Volume)
-	s.AddVolumeMount(containerName,
-		corev1.VolumeMount{
-			Name:      volumeMountData.Name,
-			ReadOnly:  true,
-			MountPath: volumeMountData.MountPath,
-		},
-	)
+	for _, containerName := range containerNames {
+		s.AddVolumeMount(
+			containerName,
+			corev1.VolumeMount{
+				Name:      volumeMountData.Name,
+				ReadOnly:  volumeMountData.ReadOnly,
+				MountPath: volumeMountData.MountPath,
+			},
+		)
+	}
 	return s
 }
 
@@ -133,7 +136,7 @@ func (s Builder) buildPodTemplateSpec() (corev1.PodTemplateSpec, error) {
 	podTemplateSpec := s.podTemplateSpec.DeepCopy()
 	var errs error
 	for containerName, volumeMounts := range s.volumeMountsPerContainer {
-		idx, err := s.getContainerIndexByName(containerName)
+		idx, err := s.GetContainerIndexByName(containerName)
 		if err != nil {
 			errs = multierror.Append(errs, err)
 			// other containers may have valid mounts
@@ -152,7 +155,7 @@ func (s Builder) buildPodTemplateSpec() (corev1.PodTemplateSpec, error) {
 	}
 
 	for containerName, overrideReadinessProbe := range s.readinessProbePerContainer {
-		idx, err := s.getContainerIndexByName(containerName)
+		idx, err := s.GetContainerIndexByName(containerName)
 		if err != nil {
 			errs = multierror.Append(errs, err)
 			continue
