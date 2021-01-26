@@ -107,7 +107,7 @@ func (s *Builder) AddVolumes(volumes []corev1.Volume) *Builder {
 	return s
 }
 
-// GetContainerIndexByName returns the index of the container with containerName
+// GetContainerIndexByName returns the index of the container with containerName.
 func (s Builder) GetContainerIndexByName(containerName string) (int, error) {
 	for i, c := range s.podTemplateSpec.Spec.Containers {
 		if c.Name == containerName {
