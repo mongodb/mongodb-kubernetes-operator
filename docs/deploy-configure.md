@@ -4,14 +4,12 @@ The [`/deploy/crds`](../deploy/crds) directory contains example MongoDB resource
 
 ## Table of Contents
 
-- [Deploy and Configure a MongoDB Resource](#deploy-and-configure-a-mongodb-resource)
-  - [Table of Contents](#table-of-contents)
-  - [Deploy a Replica Set](#deploy-a-replica-set)
-  - [Scale a Replica Set](#scale-a-replica-set)
-  - [Upgrade your MongoDB Resource Version and Feature Compatibility Version](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
-    - [Example](#example)
-  - [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
-  - [Define a Custom Database Role](#define-a-custom-database-role)
+- [Deploy a Replica Set](#deploy-a-replica-set)
+- [Scale a Replica Set](#scale-a-replica-set)
+- [Upgrade your MongoDB Resource Version and Feature Compatibility Version](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
+  - [Example](#example)
+- [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
+- [Define a Custom Database Role](#define-a-custom-database-role)
 
 ## Deploy a Replica Set
 

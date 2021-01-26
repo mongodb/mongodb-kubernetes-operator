@@ -11,13 +11,11 @@ Here is a talk from MongoDB Live 2020 about the Community Operator:
 
 ## Table of Contents
 
-- [MongoDB Community Kubernetes Operator](#mongodb-community-kubernetes-operator)
-  - [Table of Contents](#table-of-contents)
-  - [Documentation](#documentation)
-  - [Supported Features](#supported-features)
-    - [Planned Features](#planned-features)
-  - [Contribute](#contribute)
-  - [License](#license)
+- [Documentation](#documentation)
+- [Supported Features](#supported-features)
+  - [Planned Features](#planned-features)
+- [Contribute](#contribute)
+- [License](#license)
 
 ## Documentation
 
