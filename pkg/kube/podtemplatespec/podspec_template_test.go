@@ -351,9 +351,10 @@ func getDefaultPodSpec() corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-default-name",
-			Namespace: "my-default-namespace",
-			Labels:    map[string]string{"app": "operator"},
+			Name:        "my-default-name",
+			Namespace:   "my-default-namespace",
+			Labels:      map[string]string{"app": "operator"},
+			Annotations: map[string]string{},
 		},
 		Spec: corev1.PodSpec{
 			NodeSelector: map[string]string{
@@ -376,7 +377,8 @@ func getCustomPodSpec() corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{"custom": "some"},
+			Labels:      map[string]string{"custom": "some"},
+			Annotations: map[string]string{},
 		},
 		Spec: corev1.PodSpec{
 			NodeSelector: map[string]string{
