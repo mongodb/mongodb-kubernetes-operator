@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +30,10 @@ func NewManager(obj runtime.Object) *MockedManager {
 }
 
 func (m *MockedManager) Add(_ manager.Runnable) error {
+	return nil
+}
+
+func (m *MockedManager) Elected() <-chan struct{} {
 	return nil
 }
 
@@ -96,6 +101,10 @@ func (m *MockedManager) GetRESTMapper() meta.RESTMapper {
 }
 
 func (m *MockedManager) GetWebhookServer() *webhook.Server {
+	return nil
+}
+
+func (m *MockedManager) AddMetricsExtraHandler(path string, handler http.Handler) error {
 	return nil
 }
 

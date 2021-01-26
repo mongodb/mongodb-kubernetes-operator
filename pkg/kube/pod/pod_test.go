@@ -81,7 +81,7 @@ type mockStreamer struct {
 	logs string
 }
 
-func (m mockStreamer) Stream() (io.ReadCloser, error) {
+func (m mockStreamer) Stream(ctx context.Context) (io.ReadCloser, error) {
 	return ioutil.NopCloser(strings.NewReader(m.logs)), nil
 }
 
