@@ -123,7 +123,9 @@ def main() -> int:
     config.load_kube_config()
     dev_config = load_config()
     build_and_push_operator(
-        dev_config.repo_url, f"{dev_config.repo_url}/mongodb-kubernetes-operator", ".",
+        dev_config.repo_url,
+        f"{dev_config.repo_url}/mongodb-kubernetes-operator",
+        ".",
     )
     deploy_operator()
     return 0
