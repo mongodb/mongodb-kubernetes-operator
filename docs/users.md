@@ -40,7 +40,7 @@ You cannot disable SCRAM authentication.
    | `spec.users.passwordSecretRef.key` | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
    | `spec.users.scramCredentialsSecretName` | string| ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the operator for storing SCRAM credentials for the user. The name should comply with [DNS1123 subdomain](https://tools.ietf.org/html/rfc1123). Also, please make sure the name is unique among `users`.  | Yes |
    | `spec.users.roles` | array of objects | Configures roles assigned to the user. | Yes |
-   | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles). | Yes |
+   | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles) and [custom roles](deploy-configure.md#define-a-custom-database-role) that you have defined. | Yes |
    | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
 
    ```
@@ -68,8 +68,8 @@ You cannot disable SCRAM authentication.
              db: <role-2-database>
    ...
    ```
-1. Save the file.
-1. Apply the updated MongoDB resource definition:
+2. Save the file.
+3. Apply the updated MongoDB resource definition:
 
    ```
    kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
