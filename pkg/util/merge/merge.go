@@ -2,6 +2,7 @@ package merge
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	corev1 "k8s.io/api/core/v1"
@@ -430,16 +431,21 @@ func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount 
 	}
 
 	sort.SliceStable(mergedMounts, func(i, j int) bool {
-		return mergedMounts[i].Name < mergedMounts[j].Name
+		return volumeMountToString(mergedMounts[i]) < volumeMountToString(mergedMounts[j])
 	})
 
 	return mergedMounts
 }
 
+// volumeMountToString returns a string consisting of all components of the given VolumeMount.
+func volumeMountToString(v corev1.VolumeMount) string {
+	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "_")
+}
+
 func createVolumeMountMap(mounts []corev1.VolumeMount) map[string]corev1.VolumeMount {
 	m := make(map[string]corev1.VolumeMount)
 	for _, v := range mounts {
-		m[v.Name] = v
+		m[volumeMountToString(v)] = v
 	}
 	return m
 }
