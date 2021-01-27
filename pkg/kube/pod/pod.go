@@ -18,7 +18,7 @@ import (
 )
 
 type Streamer interface {
-	Stream() (io.ReadCloser, error)
+	Stream(ctx context.Context) (io.ReadCloser, error)
 }
 
 // CoreV1FollowStreamer returns a Streamer that will stream the logs to
@@ -34,7 +34,7 @@ func CoreV1FollowStreamer(pod corev1.Pod, corev1Interface typedCorev1.CoreV1Inte
 // GetLogs will follow the logs of the provided pod to the given io.Writer until the pod has
 // been terminated or has completed.
 func GetLogs(writer io.Writer, streamer Streamer) error {
-	podLogs, err := streamer.Stream()
+	podLogs, err := streamer.Stream(context.TODO())
 
 	if err != nil {
 		return errors.Errorf("could not open stream: %s", err)
