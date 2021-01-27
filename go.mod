@@ -26,7 +26,7 @@ require (
 	go.uber.org/zap v1.14.1
 	google.golang.org/appengine v1.6.6 // indirect
 	k8s.io/api v0.17.5
-	k8s.io/apiextensions-apiserver v0.17.5
+	k8s.io/apiextensions-apiserver v0.17.5 // indirect
 	k8s.io/apimachinery v0.17.5
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.5.2
