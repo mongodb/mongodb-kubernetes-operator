@@ -439,7 +439,7 @@ func VolumeMounts(original, override []corev1.VolumeMount) []corev1.VolumeMount 
 
 // volumeMountToString returns a string consisting of all components of the given VolumeMount.
 func volumeMountToString(v corev1.VolumeMount) string {
-	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "-")
+	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "_")
 }
 
 func createVolumeMountMap(mounts []corev1.VolumeMount) map[string]corev1.VolumeMount {
