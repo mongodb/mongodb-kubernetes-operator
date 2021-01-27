@@ -445,7 +445,7 @@ func volumeMountToString(v corev1.VolumeMount) string {
 func createVolumeMountMap(mounts []corev1.VolumeMount) map[string]corev1.VolumeMount {
 	m := make(map[string]corev1.VolumeMount)
 	for _, v := range mounts {
-		m[v.Name] = v
+		m[volumeMountToString(v)] = v
 	}
 	return m
 }

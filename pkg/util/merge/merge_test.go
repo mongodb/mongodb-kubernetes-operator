@@ -239,7 +239,7 @@ func TestMergeContainer(t *testing.T) {
 
 		t.Run("Volume Mounts are overridden", func(t *testing.T) {
 			volumeMounts := mergedContainer.VolumeMounts
-			assert.Len(t, volumeMounts, 2)
+			assert.Len(t, volumeMounts, 3, "volume mounts can have the same name, the uniqness is the combination of name, path and subpath")
 			t.Run("First VolumeMount is still present", func(t *testing.T) {
 				vm0 := volumeMounts[0]
 				assert.Equal(t, "volume-mount-0", vm0.Name)
@@ -249,12 +249,9 @@ func TestMergeContainer(t *testing.T) {
 				assert.Equal(t, "original-sub-path-expr", vm0.SubPathExpr)
 			})
 			t.Run("Second VolumeMount has merged values", func(t *testing.T) {
-				vm1 := volumeMounts[1]
-				assert.Equal(t, "volume-mount-1", vm1.Name)
-				assert.True(t, vm1.ReadOnly)
-				assert.Equal(t, "override-mount-path-1", vm1.MountPath)
-				assert.Equal(t, "override-sub-path-1", vm1.SubPath)
-				assert.Equal(t, "override-sub-path-expr-1", vm1.SubPathExpr)
+				assert.Equal(t, volumeMounts[0], defaultContainer.VolumeMounts[0])
+				assert.Equal(t, volumeMounts[1], defaultContainer.VolumeMounts[1])
+				assert.Equal(t, volumeMounts[2], overrideContainer.VolumeMounts[0])
 			})
 		})
 	})
@@ -586,20 +583,6 @@ func TestMergeVolumeAddVolume(t *testing.T) {
 	volume1 := mergedVolumes[1]
 	assert.Equal(t, "volume1", volume1.Name)
 	assert.Equal(t, corev1.EmptyDirVolumeSource{}, *volume1.EmptyDir)
-}
-
-func TestMergeVolumeMounts(t *testing.T) {
-	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
-	vol1 := corev1.VolumeMount{Name: "another-mount"}
-	volumeMounts := []corev1.VolumeMount{vol1, vol0}
-
-	mergedVolumeMounts := VolumeMounts(nil, volumeMounts)
-	assert.Equal(t, []corev1.VolumeMount{vol1, vol0}, mergedVolumeMounts)
-
-	vol2 := vol1
-	vol2.MountPath = "/somewhere"
-	mergedVolumeMounts = VolumeMounts([]corev1.VolumeMount{vol2}, []corev1.VolumeMount{vol0, vol1})
-	assert.Equal(t, []corev1.VolumeMount{vol2, vol0}, mergedVolumeMounts)
 }
 
 func TestMergeHostAliases(t *testing.T) {
