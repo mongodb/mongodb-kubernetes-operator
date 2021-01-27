@@ -239,7 +239,7 @@ func TestMergeContainer(t *testing.T) {
 
 		t.Run("Volume Mounts are overridden", func(t *testing.T) {
 			volumeMounts := mergedContainer.VolumeMounts
-			assert.Len(t, volumeMounts, 3, "volume mounts can have the same name, the uniqness is the combination of name, path and subpath")
+			assert.Len(t, volumeMounts, 3, "volume mounts can have the same name, the uniqueness is the combination of name, path and subpath")
 			t.Run("First VolumeMount is still present", func(t *testing.T) {
 				vm0 := volumeMounts[0]
 				assert.Equal(t, "volume-mount-0", vm0.Name)
