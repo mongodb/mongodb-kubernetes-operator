@@ -42,6 +42,11 @@ spec:
         spec:
           description: MongoDBSpec defines the desired state of MongoDB
           properties:
+            additionalMongodConfig:
+              description: 'AdditionalMongodConfig is additional configuration that
+                can be passed to each data-bearing mongod at runtime. Uses the same
+                structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
+              type: object
             featureCompatibilityVersion:
               description: FeatureCompatibilityVersion configures the feature compatibility
                 version that will be set for the deployment
@@ -205,6 +210,11 @@ spec:
             statefulSet:
               description: StatefulSetConfiguration holds the optional custom StatefulSet
                 that should be merged into the operator created one.
+              properties:
+                spec:
+                  type: object
+              required:
+              - spec
               type: object
             type:
               description: Type defines which type of MongoDB deployment the resource
@@ -259,8 +269,8 @@ spec:
                     description: ScramCredentialsSecretName appended by string "scram-credentials"
                       is the name of the secret object created by the mongoDB operator
                       for storing SCRAM credentials
-                    type: string
                     pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                    type: string
                 required:
                 - name
                 - passwordSecretRef

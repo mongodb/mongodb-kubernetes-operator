@@ -799,7 +799,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				buildScramPodSpecModification(mdb),
 			),
 		),
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.Spec),
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 	)
 }
 
