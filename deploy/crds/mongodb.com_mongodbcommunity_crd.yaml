@@ -5,11 +5,11 @@ metadata:
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.phase
-    description: Current state of the MongoDBCommunity deployment
+    description: Current state of the MongoDB deployment
     name: Phase
     type: string
   - JSONPath: .status.version
-    description: Version of MongoDBCommunity server
+    description: Version of MongoDB server
     name: Version
     type: string
   group: mongodb.com

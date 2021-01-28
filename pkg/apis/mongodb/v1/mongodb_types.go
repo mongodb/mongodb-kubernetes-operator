@@ -330,8 +330,8 @@ type MongoDBCommunityStatus struct {
 // MongoDBCommunity is the Schema for the mongodbs API
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=mongodbcommunity,scope=Namespaced,shortName=mdbc,singular=mongodbcommunity
-// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDBCommunity deployment"
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDBCommunity server"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDB deployment"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDB server"
 type MongoDBCommunity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

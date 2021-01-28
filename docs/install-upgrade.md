@@ -56,5 +56,5 @@ To upgrade the MongoDB Community Kubernetes Operator:
 1. Change to the directory in which you cloned the repository.
 2. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
    ```
-   kubectl apply -f deploy/crds/mongodb.com_mongodb_crd.yaml
+   kubectl apply -f deploy/crds/mongodb.com_mongodbcommunity_crd.yaml
    ```
