@@ -16,9 +16,6 @@ jobs:
       with:
         go-version: 1.14
 
-    - name: Build
-      run: go build -v ./...
-
     - name: Test pkg
       run: go test -v ./pkg/...
 
