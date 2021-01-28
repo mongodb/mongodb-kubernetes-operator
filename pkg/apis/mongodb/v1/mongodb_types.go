@@ -75,6 +75,7 @@ type MongoDBSpec struct {
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
+	// +optional
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
