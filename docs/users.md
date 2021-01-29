@@ -8,7 +8,7 @@ You cannot disable SCRAM authentication.
 
 1. Copy the following example secret.
 
-     ```
+     ```yaml
      ---
      apiVersion: v1
      kind: Secret
@@ -43,10 +43,10 @@ You cannot disable SCRAM authentication.
    | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles) and [custom roles](deploy-configure.md#define-a-custom-database-role) that you have defined. | Yes |
    | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
 
-   ```
+   ```yaml
    ---
    apiVersion: mongodb.com/v1
-   kind: MongoDB
+   kind: MongoDBCommunity
    metadata:
      name: example-scram-mongodb
    spec:

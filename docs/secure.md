@@ -77,7 +77,7 @@ To secure connections to MongoDB resources using TLS:
 
    ```yaml
    apiVersion: mongodb.com/v1
-   kind: MongoDB
+   kind: MongoDBCommunity
    metadata:
      name: example-mongodb
    spec:
