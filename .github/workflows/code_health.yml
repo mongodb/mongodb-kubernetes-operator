@@ -1,0 +1,15 @@
+name: Code Health
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  Black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Black Check
+        uses: jpetrucciani/black-check@20.8b1
