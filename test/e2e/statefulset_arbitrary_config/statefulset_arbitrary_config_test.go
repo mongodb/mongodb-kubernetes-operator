@@ -31,7 +31,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	}
 
 	overrideSpec := v1.StatefulSetConfiguration{}
-	overrideSpec.Spec.Template.Spec.Containers = []corev1.Container{
+	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers = []corev1.Container{
 		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
 
 	mdb.Spec.StatefulSetConfiguration = overrideSpec
