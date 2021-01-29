@@ -15,9 +15,9 @@ import (
 )
 
 // EnableTLS will upgrade an existing TLS cluster to use TLS.
-func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
+func EnableTLS(mdb *v1.MongoDBCommunity, optional bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *v1.MongoDB) {
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *v1.MongoDBCommunity) {
 			db.Spec.Security.TLS = e2eutil.NewTestTLSConfig(optional)
 		})
 		if err != nil {
@@ -26,7 +26,7 @@ func EnableTLS(mdb *v1.MongoDB, optional bool) func(*testing.T) {
 	}
 }
 
-func RotateCertificate(mdb *v1.MongoDB) func(*testing.T) {
+func RotateCertificate(mdb *v1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		// Load new certificate and key
 		cert, err := ioutil.ReadFile("testdata/tls/server_rotated.crt")

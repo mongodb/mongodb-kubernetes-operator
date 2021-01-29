@@ -39,7 +39,7 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 	})
 }
 
-func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDB, sts *appsv1.StatefulSet) {
+func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity, sts *appsv1.StatefulSet) {
 	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
 	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 1)
 	assert.Equal(t, mdb.ServiceName(), sts.Spec.ServiceName)

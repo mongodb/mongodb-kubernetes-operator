@@ -45,7 +45,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	overrideSpec.Spec.Template.Spec.Containers = []corev1.Container{
 		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
 
-	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDB) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
+	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 	assert.NoError(t, err)
 
 	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(&mdb))

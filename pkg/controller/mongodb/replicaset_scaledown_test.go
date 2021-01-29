@@ -33,7 +33,7 @@ func TestUpdateScalingStatus(t *testing.T) {
 }
 
 func TestHasReachedDesiredNumberOfStatefulSetReplicasReady(t *testing.T) {
-	createStatefulSet := func(c k8sClient.Client, mdb mdbv1.MongoDB) error {
+	createStatefulSet := func(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 		replicas := int32(mdb.Spec.Members)
 		return c.Create(context.TODO(), &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{

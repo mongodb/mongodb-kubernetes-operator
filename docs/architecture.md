@@ -28,7 +28,7 @@ You create and update MongoDB resources by defining a MongoDB resource definitio
    - `automation-config` which is mounted from the previously generated ConfigMap to both the server and agent. Only lives as long as the pod.
    - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook. Only lives as long as the pod.
 
-1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDB resource definition](../deploy/crds/mongodb.com_v1_mongodb_cr.yaml).
+1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDB resource definition](../deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml).
 
 <!--
 <img src="" alt="Architecure diagram of the MongoDB Community Kubernetes Operator">

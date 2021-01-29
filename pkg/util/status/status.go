@@ -10,7 +10,7 @@ import (
 )
 
 type Option interface {
-	ApplyOption(mdb *mdbv1.MongoDB)
+	ApplyOption(mdb *mdbv1.MongoDBCommunity)
 	GetResult() (reconcile.Result, error)
 }
 
@@ -19,7 +19,7 @@ type OptionBuilder interface {
 }
 
 // Update takes the options provided by the given option builder, applies them all and then updates the resource
-func Update(statusWriter client.StatusWriter, mdb *mdbv1.MongoDB, optionBuilder OptionBuilder) (reconcile.Result, error) {
+func Update(statusWriter client.StatusWriter, mdb *mdbv1.MongoDBCommunity, optionBuilder OptionBuilder) (reconcile.Result, error) {
 	options := optionBuilder.GetOptions()
 	for _, opt := range options {
 		opt.ApplyOption(mdb)

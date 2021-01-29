@@ -97,14 +97,14 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 
 }
 
-func newReplicaSet(members int, name, namespace string) MongoDB {
-	return MongoDB{
+func newReplicaSet(members int, name, namespace string) MongoDBCommunity {
+	return MongoDBCommunity{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: MongoDBSpec{
+		Spec: MongoDBCommunitySpec{
 			Members: members,
 		},
 	}

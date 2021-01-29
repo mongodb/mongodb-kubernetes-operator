@@ -26,7 +26,7 @@ import (
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
-func UpdateMongoDBResource(original *mdbv1.MongoDB, updateFunc func(*mdbv1.MongoDB)) error {
+func UpdateMongoDBResource(original *mdbv1.MongoDBCommunity, updateFunc func(*mdbv1.MongoDBCommunity)) error {
 	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
 	if err != nil {
 		return err
@@ -52,16 +52,16 @@ func WaitForSecretToExist(cmName string, retryInterval, timeout time.Duration, n
 }
 
 // WaitForMongoDBToReachPhase waits until the given MongoDB resource reaches the expected phase
-func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDB, phase mdbv1.Phase, retryInterval, timeout time.Duration) error {
-	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDB) bool {
+func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDBCommunity, phase mdbv1.Phase, retryInterval, timeout time.Duration) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDBCommunity) bool {
 		t.Logf("current phase: %s, waiting for phase: %s", db.Status.Phase, phase)
 		return db.Status.Phase == phase
 	})
 }
 
 // waitForMongoDBCondition polls and waits for a given condition to be true
-func waitForMongoDBCondition(mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDB) bool) error {
-	mdbNew := mdbv1.MongoDB{}
+func waitForMongoDBCondition(mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDBCommunity) bool) error {
+	mdbNew := mdbv1.MongoDBCommunity{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
 		err = f.Global.Client.Get(context.TODO(), mdb.NamespacedName(), &mdbNew)
 		if err != nil {
@@ -81,7 +81,7 @@ func WaitForStatefulSetToExist(stsName string, retryInterval, timeout time.Durat
 
 // WaitForStatefulSetToHaveUpdateStrategy waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, strategy appsv1.StatefulSetUpdateStrategyType, retryInterval, timeout time.Duration) error {
+func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return sts.Spec.UpdateStrategy.Type == strategy
 	})
@@ -89,7 +89,7 @@ func WaitForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDB, st
 
 // WaitForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return statefulset.IsReady(sts, mdb.Spec.Members)
 	})
@@ -97,13 +97,13 @@ func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDB, retryInterval
 
 // WaitForStatefulSetToBeReadyAfterScaleDown waits for just the ready replicas to be correct
 // and does not account for the updated replicas
-func WaitForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration) error {
+func WaitForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
 	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
 		return int32(mdb.Spec.Members) == sts.Status.ReadyReplicas
 	})
 }
 
-func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDB, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
+func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := WaitForStatefulSetToExist(mdb.Name, retryInterval, timeout, mdb.Namespace)
 	if err != nil {
 		return errors.Errorf("error waiting for stateful set to be created: %s", err)
@@ -134,17 +134,17 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 	})
 }
 
-func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
+func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
 		mongodbNamespace = f.Global.OperatorNamespace
 	}
-	mdb := mdbv1.MongoDB{
+	mdb := mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: mongodbNamespace,
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Members:                     3,
 			Type:                        "ReplicaSet",
 			Version:                     "4.4.0",

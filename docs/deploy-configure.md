@@ -17,7 +17,7 @@ To deploy your first replica set:
 
 1. Invoke the following `kubectl` command:
    ```
-   kubectl apply -f deploy/crds/mongodb.com_v1_mongodb_cr.yaml --namespace <my-namespace>
+   kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml --namespace <my-namespace>
    ```
 2. Verify that the MongoDB resource deployed:
    ```
@@ -129,7 +129,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
 
 To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the `mongodb` and `mongodb-agent` containers, as well as the operator deployment.
 
-See [here](../deploy/crds/mongodb.com_v1_mongodb_openshift_cr.yaml) for
+See [here](../deploy/crds/mongodb.com_v1_mongodbcommunity_openshift_cr.yaml) for
 an example of how to provide the required configuration for a MongoDB
 replica set.
 

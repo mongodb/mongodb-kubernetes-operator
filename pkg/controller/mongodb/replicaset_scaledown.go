@@ -13,7 +13,7 @@ import (
 
 // updateScalingStatus updates the status fields which are required to keep track of the current
 // scaling state of the resource
-func updateScalingStatus(statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB) error {
+func updateScalingStatus(statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDBCommunity) error {
 	_, err := status.Update(statusWriter, &mdb,
 		statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
@@ -25,7 +25,7 @@ func updateScalingStatus(statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB)
 // checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig ensures that the expected number of StatefulSet
 // replicas are ready. When a member has its process removed from the Automation Config, the pod will eventually
 // become unready. We use this information to determine if we are safe to continue the reconciliation process.
-func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter statefulset.Getter, statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDB) (reconcile.Result, error) {
+func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter statefulset.Getter, statusWriter k8sClient.StatusWriter, mdb mdbv1.MongoDBCommunity) (reconcile.Result, error) {
 	isAtDesiredReplicaCount, err := hasReachedDesiredNumberOfStatefulSetReplicasReady(stsGetter, mdb)
 	if err != nil {
 		return status.Update(statusWriter, &mdb,
@@ -48,7 +48,7 @@ func checkIfStatefulSetMembersHaveBeenRemovedFromTheAutomationConfig(stsGetter s
 
 // hasReachedDesiredNumberOfStatefulSetReplicasReady checks to see if the StatefulSet corresponding
 // to the given MongoDB resource has the expected number of ready replicas.
-func hasReachedDesiredNumberOfStatefulSetReplicasReady(stsGetter statefulset.Getter, mdb mdbv1.MongoDB) (bool, error) {
+func hasReachedDesiredNumberOfStatefulSetReplicasReady(stsGetter statefulset.Getter, mdb mdbv1.MongoDBCommunity) (bool, error) {
 	sts, err := stsGetter.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
 		return false, err
