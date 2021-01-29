@@ -154,6 +154,7 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv
 					Modes: []mdbv1.AuthMode{"SCRAM"},
 				},
 			},
+			AdditionalMongodConfig: mdbv1.MongodConfiguration{},
 			Users: []mdbv1.MongoDBUser{
 				{
 					Name: fmt.Sprintf("%s-user", name),
