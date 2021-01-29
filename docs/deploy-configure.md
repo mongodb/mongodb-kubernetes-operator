@@ -39,7 +39,7 @@ Consider the following example MongoDB resource definition:
 
 ```yaml
 apiVersion: mongodb.com/v1
-kind: MongoDB
+kind: MongoDBCommunity
 metadata:
   name: example-mongodb
 spec:
@@ -56,7 +56,7 @@ To scale a replica set:
 
    ```yaml
    apiVersion: mongodb.com/v1
-   kind: MongoDB
+   kind: MongoDBCommunity
    metadata:
      name: example-mongodb
    spec:
@@ -90,7 +90,7 @@ Consider the following example MongoDB resource definition:
 
 ```yaml
 apiVersion: mongodb.com/v1
-kind: MongoDB
+kind: MongoDBCommunity
 metadata:
   name: example-mongodb
 spec:
@@ -108,7 +108,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
 
    ```yaml
    apiVersion: mongodb.com/v1
-   kind: MongoDB
+   kind: MongoDBCommunity
    metadata:
      name: example-mongodb
    spec:
@@ -165,7 +165,7 @@ To define a custom role:
    ```yaml
    ---
    apiVersion: mongodb.com/v1
-   kind: MongoDB
+   kind: MongoDBCommunity
    metadata:
      name: custom-role-mongodb
    spec:
