@@ -51,7 +51,5 @@ def load_config(config_file_path: str = None) -> DevConfig:
         with open(config_file_path, "r") as f:
             return DevConfig(json.loads(f.read()))
     except FileNotFoundError:
-        print(
-            f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
-        )
+        print(f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'")
         raise
