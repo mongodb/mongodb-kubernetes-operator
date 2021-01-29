@@ -124,7 +124,10 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
     corev1 = client.CoreV1Api()
     test_pod = {
         "kind": "Pod",
-        "metadata": {"name": TEST_POD_NAME, "namespace": dev_config.namespace,},
+        "metadata": {
+            "name": TEST_POD_NAME,
+            "namespace": dev_config.namespace,
+        },
         "spec": {
             "restartPolicy": "Never",
             "serviceAccountName": "mongodb-kubernetes-operator",
@@ -137,12 +140,18 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         {"mountPath": "/etc/config", "name": "kube-config-volume"}
                     ],
                     "env": [
-                        {"name": "CLUSTER_WIDE", "value": f"{args.cluster_wide}",},
+                        {
+                            "name": "CLUSTER_WIDE",
+                            "value": f"{args.cluster_wide}",
+                        },
                         {
                             "name": "OPERATOR_IMAGE",
                             "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
                         },
-                        {"name": "TEST_NAMESPACE", "value": dev_config.namespace,},
+                        {
+                            "name": "TEST_NAMESPACE",
+                            "value": dev_config.namespace,
+                        },
                         {
                             "name": "VERSION_UPGRADE_HOOK_IMAGE",
                             # TODO: this needs to come from somewhere else
@@ -169,13 +178,19 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                 }
             ],
             "volumes": [
-                {"name": "kube-config-volume", "configMap": {"name": "kube-config",},}
+                {
+                    "name": "kube-config-volume",
+                    "configMap": {
+                        "name": "kube-config",
+                    },
+                }
             ],
         },
     }
     if not k8s_conditions.wait(
         lambda: corev1.list_namespaced_pod(
-            dev_config.namespace, field_selector=f"metadata.name=={TEST_POD_NAME}",
+            dev_config.namespace,
+            field_selector=f"metadata.name=={TEST_POD_NAME}",
         ),
         lambda pod_list: len(pod_list.items) == 0,
         timeout=30,
@@ -238,7 +253,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
     )
     parser.add_argument(
-        "--cluster-wide", help="Watch all namespaces", action="store_true",
+        "--cluster-wide",
+        help="Watch all namespaces",
+        action="store_true",
     )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
@@ -274,7 +291,9 @@ def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> Non
     corev1 = client.CoreV1Api()
 
     wait_for_pod_to_be_running(
-        corev1, TEST_POD_NAME, dev_config.namespace,
+        corev1,
+        TEST_POD_NAME,
+        dev_config.namespace,
     )
 
     # stream all of the pod output as the pod is running
