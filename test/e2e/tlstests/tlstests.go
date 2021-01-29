@@ -3,9 +3,8 @@ package tlstests
 import (
 	"context"
 	"io/ioutil"
+	"path"
 	"testing"
-
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -29,9 +28,9 @@ func EnableTLS(mdb *v1.MongoDBCommunity, optional bool) func(*testing.T) {
 func RotateCertificate(mdb *v1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		// Load new certificate and key
-		cert, err := ioutil.ReadFile("testdata/tls/server_rotated.crt")
+		cert, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server_rotated.crt"))
 		assert.NoError(t, err)
-		key, err := ioutil.ReadFile("testdata/tls/server_rotated.key")
+		key, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server_rotated.key"))
 		assert.NoError(t, err)
 
 		certKeySecret := secret.Builder().
@@ -41,7 +40,7 @@ func RotateCertificate(mdb *v1.MongoDBCommunity) func(*testing.T) {
 			SetField("tls.key", string(key)).
 			Build()
 
-		err = f.Global.Client.Update(context.TODO(), &certKeySecret)
+		err = e2eutil.TestClient.Update(context.TODO(), &certKeySecret)
 		assert.NoError(t, err)
 	}
 }

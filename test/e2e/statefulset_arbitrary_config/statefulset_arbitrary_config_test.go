@@ -1,6 +1,8 @@
 package statefulset_arbitrary_config_update
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
@@ -9,12 +11,15 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestStatefulSetArbitraryConfig(t *testing.T) {
