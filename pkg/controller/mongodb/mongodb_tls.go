@@ -32,7 +32,7 @@ const (
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error) {
+func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return true, nil
 	}
@@ -85,7 +85,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDB) (bool, error
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
 // It will also ensure that the combined cert-key secret is created.
-func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
+func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return automationconfig.NOOP(), nil
 	}
@@ -111,7 +111,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDB) (string, error) {
+func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
 	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return "", err
@@ -133,7 +133,7 @@ func combineCertificateAndKey(cert, key string) string {
 
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
-func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB, certKey string) error {
+func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity, certKey string) error {
 	// Calculate file name from certificate and key
 	fileName := tlsOperatorSecretFileName(certKey)
 
@@ -159,7 +159,7 @@ func tlsOperatorSecretFileName(certKey string) string {
 }
 
 // tlsConfigModification will enable TLS in the automation config.
-func tlsConfigModification(mdb mdbv1.MongoDB, certKey string) automationconfig.Modification {
+func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey string) automationconfig.Modification {
 	caCertificatePath := tlsCAMountPath + tlsCACertName
 	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName(certKey)
 
@@ -186,7 +186,7 @@ func tlsConfigModification(mdb mdbv1.MongoDB, certKey string) automationconfig.M
 
 // hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
 // These must be mounted before TLS can be enabled in the automation config.
-func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
+func hasRolledOutTLS(mdb mdbv1.MongoDBCommunity) bool {
 	_, completedRollout := mdb.Annotations[tlsRolledOutAnnotationKey]
 	return completedRollout
 }
@@ -194,7 +194,7 @@ func hasRolledOutTLS(mdb mdbv1.MongoDB) bool {
 // completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
 // At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
 // The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
-func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDBCommunity) error {
 	if !mdb.Spec.Security.TLS.Enabled || hasRolledOutTLS(mdb) {
 		return nil
 	}
@@ -217,7 +217,7 @@ func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDB) error {
 }
 
 // buildTLSPodSpecModification will add the TLS init container and volumes to the pod template if TLS is enabled.
-func buildTLSPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification {
+func buildTLSPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return podtemplatespec.NOOP()
 	}

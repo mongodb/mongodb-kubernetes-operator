@@ -25,13 +25,6 @@ def e2e_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def unit_test_params(files_to_add: List[str]) -> DockerParameters:
-    return {
-        "base_image": f"golang:{GOLANG_TAG}",
-        "files_to_add": files_to_add,
-    }
-
-
 def python_formatting_params(files_to_add: List[str], script: str) -> DockerParameters:
     return {
         "base_image": "python:slim",
@@ -42,7 +35,6 @@ def python_formatting_params(files_to_add: List[str], script: str) -> DockerPara
 
 def render(image_name: str, files_to_add: List[str], script_location: str) -> str:
     param_dict = {
-        "unittest": unit_test_params(files_to_add),
         "e2e": e2e_params(files_to_add),
         "operator": operator_params(files_to_add),
         "python_formatting": python_formatting_params(files_to_add, script_location),

@@ -244,13 +244,13 @@ func TestEnsureEnabler(t *testing.T) {
 	})
 }
 
-func buildMongoDB(name string) mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func buildMongoDB(name string) mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Members:                     3,
 			Type:                        "ReplicaSet",
 			Version:                     "4.0.6",
@@ -296,7 +296,7 @@ func buildMongoDBUser(name string) mdbv1.MongoDBUser {
 	}
 }
 
-func buildMongoDBAndUser(name string) (mdbv1.MongoDB, mdbv1.MongoDBUser) {
+func buildMongoDBAndUser(name string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mdb := buildMongoDB(name)
 	mdb.Spec.Users = []mdbv1.MongoDBUser{
 		{

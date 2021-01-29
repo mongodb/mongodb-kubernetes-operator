@@ -35,8 +35,8 @@ const (
 	defaultPasswordKey = "password"
 )
 
-// MongoDBSpec defines the desired state of MongoDB
-type MongoDBSpec struct {
+// MongoDBCommunitySpec defines the desired state of MongoDB
+type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
 	// +optional
 	Members int `json:"members"`
@@ -337,8 +337,8 @@ type Authentication struct {
 // +kubebuilder:validation:Enum=SCRAM
 type AuthMode string
 
-// MongoDBStatus defines the observed state of MongoDB
-type MongoDBStatus struct {
+// MongoDBCommunityStatus defines the observed state of MongoDB
+type MongoDBCommunityStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
 
@@ -350,20 +350,20 @@ type MongoDBStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MongoDB is the Schema for the mongodbs API
+// MongoDBCommunity is the Schema for the mongodbs API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=mongodb,scope=Namespaced,shortName=mdb
+// +kubebuilder:resource:path=mongodbcommunity,scope=Namespaced,shortName=mdbc,singular=mongodbcommunity
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDB deployment"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDB server"
-type MongoDB struct {
+type MongoDBCommunity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MongoDBSpec   `json:"spec,omitempty"`
-	Status MongoDBStatus `json:"status,omitempty"`
+	Spec   MongoDBCommunitySpec   `json:"spec,omitempty"`
+	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
-func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
+func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 	// determine the correct number of automation config replica set members
 	// based on our desired number, and our current number
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
@@ -373,7 +373,7 @@ func (m MongoDB) AutomationConfigMembersThisReconciliation() int {
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
-func (m MongoDB) MongoURI() string {
+func (m MongoDBCommunity) MongoURI() string {
 	members := make([]string, m.Spec.Members)
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
 	for i := 0; i < m.Spec.Members; i++ {
@@ -382,7 +382,7 @@ func (m MongoDB) MongoURI() string {
 	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
 }
 
-func (m MongoDB) Hosts() []string {
+func (m MongoDBCommunity) Hosts() []string {
 	hosts := make([]string, m.Spec.Members)
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
 	for i := 0; i < m.Spec.Members; i++ {
@@ -393,42 +393,42 @@ func (m MongoDB) Hosts() []string {
 
 // ServiceName returns the name of the Service that should be created for
 // this resource
-func (m MongoDB) ServiceName() string {
+func (m MongoDBCommunity) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m MongoDB) AutomationConfigSecretName() string {
+func (m MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
 
 // TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate
 // As the ConfigMap will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
-func (m MongoDB) TLSConfigMapNamespacedName() types.NamespacedName {
+func (m MongoDBCommunity) TLSConfigMapNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CaConfigMap.Name, Namespace: m.Namespace}
 }
 
 // TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
-func (m MongoDB) TLSSecretNamespacedName() types.NamespacedName {
+func (m MongoDBCommunity) TLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: m.Namespace}
 }
 
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
-func (m MongoDB) TLSOperatorSecretNamespacedName() types.NamespacedName {
+func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
 }
 
-func (m MongoDB) NamespacedName() types.NamespacedName {
+func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
-func (m *MongoDB) ScramCredentialsNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) ScramCredentialsNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 // GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.
 // It uses the major and minor version for whichever version of MongoDB is configured.
-func (m MongoDB) GetFCV() string {
+func (m MongoDBCommunity) GetFCV() string {
 	versionToSplit := m.Spec.FeatureCompatibilityVersion
 	if versionToSplit == "" {
 		versionToSplit = m.Spec.Version
@@ -438,15 +438,15 @@ func (m MongoDB) GetFCV() string {
 	return strings.Join(parts[:minorIndex+1], ".")
 }
 
-func (m MongoDB) DesiredReplicas() int {
+func (m MongoDBCommunity) DesiredReplicas() int {
 	return m.Spec.Members
 }
 
-func (m MongoDB) CurrentReplicas() int {
+func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
-func (m *MongoDB) StatefulSetReplicasThisReconciliation() int {
+func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
 
@@ -464,13 +464,13 @@ func (a automationConfigReplicasScaler) CurrentReplicas() int {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MongoDBList contains a list of MongoDB
-type MongoDBList struct {
+// MongoDBCommunityList contains a list of MongoDB
+type MongoDBCommunityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MongoDB `json:"items"`
+	Items           []MongoDBCommunity `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&MongoDB{}, &MongoDBList{})
+	SchemeBuilder.Register(&MongoDBCommunity{}, &MongoDBCommunityList{})
 }

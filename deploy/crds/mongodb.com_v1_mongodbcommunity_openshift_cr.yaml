@@ -1,8 +1,8 @@
 ---
 apiVersion: mongodb.com/v1
-kind: MongoDB
+kind: MongoDBCommunity
 metadata:
-  name: custom-role-mongodb
+  name: example-openshift-mongodb
 spec:
   members: 3
   type: ReplicaSet
@@ -10,29 +10,30 @@ spec:
   security:
     authentication:
       modes: ["SCRAM"]
-    roles: # custom roles are defined here
-      - role: testRole
-        db: admin
-        privileges:
-          - resource:
-              db: "test"
-              collection: "" # an empty string indicates any collection
-            actions:
-              - find
-        roles: []
   users:
     - name: my-user
       db: admin
-      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+      passwordSecretRef:
         name: my-user-password
       roles:
         - name: clusterAdmin
           db: admin
         - name: userAdminAnyDatabase
           db: admin
-        - name: testRole # apply the custom role to the user
-          db: admin
       scramCredentialsSecretName: my-scram
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: "mongodb-agent"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
+            - name: "mongod"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
