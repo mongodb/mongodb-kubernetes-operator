@@ -50,9 +50,7 @@ def dump_stateful_sets_namespaced(diagnostic_file: TextIO, namespace: str) -> No
 def dump_pod_log_namespaced(namespace: str, name: str, containers: list) -> None:
     for container in containers:
         with open(
-            f"logs/e2e/{name}-{container.name}.log",
-            mode="w",
-            encoding="utf-8",
+            f"logs/e2e/{name}-{container.name}.log", mode="w", encoding="utf-8",
         ) as log_file:
             log = k8s_request_data.get_pod_log_namespaced(
                 namespace, name, container.name
@@ -78,9 +76,7 @@ def dump_secret_keys_namespaced(
     if secret is not None:
         for key in keys:
             with open(
-                f"logs/e2e/{secret_name}-{key}.json",
-                mode="w",
-                encoding="utf-8",
+                f"logs/e2e/{secret_name}-{key}.json", mode="w", encoding="utf-8",
             ) as log_file:
                 if key in secret["data"]:
                     decoded_data = _decode_secret(secret["data"])
