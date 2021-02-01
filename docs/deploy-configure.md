@@ -21,7 +21,7 @@ To deploy your first replica set:
    ```
 2. Verify that the MongoDB resource deployed:
    ```
-   kubectl get mongodb --namespace <my-namespace>
+   kubectl get mongodbcommunity --namespace <my-namespace>
    ```
 3. Connect clients to the MongoDB replica set:
    ```
