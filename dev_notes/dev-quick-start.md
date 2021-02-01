@@ -24,6 +24,7 @@ export KUBECONFIG=~/.kube/kind
 #### get kind credentials
 ```bash
 kind export kubeconfig
+
 # check it worked by running:
 kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 ```

@@ -40,9 +40,9 @@ python ./scripts/dev/build_and_deploy_operator
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
-3. Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
+5. Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
 
-4. You can now deploy your resources following the [docs](../docs/README.md)
+6. You can now deploy your resources following the [docs](../docs/README.md)
 
 
 ## Troubleshooting
