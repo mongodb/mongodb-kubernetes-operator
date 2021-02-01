@@ -57,5 +57,5 @@ kubectl get pods
 
 #### Deploy a Replica Set
 ```bash
-kubectl apply -f deploy/crds/mongodb.com_v1_mongodb_cr.yaml
+kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml
 ```
