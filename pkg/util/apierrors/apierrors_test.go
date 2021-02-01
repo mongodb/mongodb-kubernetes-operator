@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestIsTransient(t *testing.T) {
+func TestIsTransientError(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
@@ -22,15 +22,15 @@ func TestIsTransient(t *testing.T) {
 			true,
 		},
 		{
-			"Test Not Transient Errir",
+			"Test Not Transient Error",
 			fmt.Errorf(" error found deployments.extensions \"default\" not found"),
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsTransient(tt.err); got != tt.want {
-				t.Errorf("IsTransient() = %v, want %v", got, tt.want)
+			if got := IsTransientError(tt.err); got != tt.want {
+				t.Errorf("IsTransientError() = %v, want %v", got, tt.want)
 			}
 		})
 	}
