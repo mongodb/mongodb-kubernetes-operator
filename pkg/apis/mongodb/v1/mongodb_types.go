@@ -75,6 +75,7 @@ type MongoDBCommunitySpec struct {
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
+	// +optional
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
@@ -175,8 +176,30 @@ type AuthenticationRestriction struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
-	// The StatefulSet override options for underlying StatefulSet
-	Spec appsv1.StatefulSetSpec `json:"spec"` // TODO: this pollutes the crd generation
+	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
+}
+
+// StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
+// of MarshalJSON and UnmarshalJSON which delegate to the underlying Spec to avoid CRD pollution.
+
+type StatefulSetSpecWrapper struct {
+	Spec appsv1.StatefulSetSpec `json:"-"`
+}
+
+// MarshalJSON defers JSON encoding to the wrapped map
+func (m *StatefulSetSpecWrapper) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Spec)
+}
+
+// UnmarshalJSON will decode the data into the wrapped map
+func (m *StatefulSetSpecWrapper) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &m.Spec)
+}
+
+func (m *StatefulSetSpecWrapper) DeepCopy() *StatefulSetSpecWrapper {
+	return &StatefulSetSpecWrapper{
+		Spec: m.Spec,
+	}
 }
 
 // MongodConfiguration holds the optional mongod configuration
@@ -224,7 +247,7 @@ type MongoDBUser struct {
 	Roles []Role `json:"roles"`
 
 	// ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
-	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
 }
 
