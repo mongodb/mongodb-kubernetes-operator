@@ -19,19 +19,20 @@ This guide assumes that you have already installed the following tools:
 ./scripts/dev/setup_kind_cluster.sh
 ```
 
-2. Run the following to export the current kind cluster:
+2. Set the kind kubernetes context if you have not already done so:
+```bash
+export KUBECONFIG=~/.kube/kind
+```
+
+3. Run the following to get kind credentials:
 
 ```sh
 kind export kubeconfig
+# check it worked by running:
+kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 ```
 
-And check it worked by running:
-
-```sh
-kubectl cluster-info --context kind-kind --kubeconfig /Users/alyaberciu/.kube/config
-```
-
-3. Build and deploy the operator:
+4. Build and deploy the operator:
 
 ```sh
 python ./scripts/dev/build_and_deploy_operator

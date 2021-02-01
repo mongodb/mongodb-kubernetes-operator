@@ -21,6 +21,13 @@ source path/to/new/virtual/environment/bin/activate
 export KUBECONFIG=~/.kube/kind
 ```
 
+#### get kind credentials
+```bash
+kind export kubeconfig
+# check it worked by running:
+kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
+```
+
 #### create the namespace to work in
 ```bash
 kubectl create namespace mongodb
