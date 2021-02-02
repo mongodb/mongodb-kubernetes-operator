@@ -1,8 +1,6 @@
 package mongodb
 
 import (
-	"errors"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/apierrors"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
@@ -115,7 +113,7 @@ func (o *optionBuilder) withStatefulSetReplicas(members int) *optionBuilder {
 }
 
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
-	if apierrors.IsTransient(errors.New(msg)) {
+	if apierrors.IsTransientMessage(msg) {
 		severityLevel = Debug
 		msg = ""
 	}
