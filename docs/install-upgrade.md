@@ -29,7 +29,6 @@ You can deploy the MongoDB Community Kubernetes Operator with different scopes b
 
 - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
 - [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
-- [Cluster-Wide Scope](#cluster-wide-scope)
 
 #### Operator in Same Namespace as Resources
 
