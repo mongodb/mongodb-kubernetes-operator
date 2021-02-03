@@ -69,8 +69,9 @@ rules:
 - apiGroups:
   - mongodb.com
   resources:
-  - '*'
-  - mongodbs
+  - mongodbcommunity
+  - mongodbcommunity/status
+  - mongodbcommunity/spec
   verbs:
   - create
   - delete
