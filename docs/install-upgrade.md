@@ -4,7 +4,7 @@
 
 - [Install the Operator](#install-the-operator)
   - [Prerequisites](#prerequisites)
-  - [Understand MongoDB Community Kubernetes Operator Deployment Scopes](#understand-mongodb-community-kubernetes-operator-deployment-scopes)
+  - [Understand MongoDB Community Kubernetes Operator Deployment Scopes](#understand-deployment-scopes)
   - [Procedure](#procedure)
 - [Upgrade the Operator](#upgrade-the-operator)
 
@@ -23,7 +23,7 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
    ```
 4. Review the possible Operator [deployment scopes](#understand-mongodb-community-operator-deployment-scopes) and configure the Operator to watch other namespaces, if necessary.
 
-### Understand MongoDB Community Kubernetes Operator Deployment Scopes
+### Understand Deployment Scopes
 
 You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy Ops Manager and MongoDB Kubernetes resources:
 
