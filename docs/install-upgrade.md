@@ -4,7 +4,7 @@
 
 - [Install the Operator](#install-the-operator)
   - [Prerequisites](#prerequisites)
-  - [Understand MongoDB Community Kubernetes Operator Deployment Scopes](#understand-mongodb-community-operator-deployment-scopes)
+  - [Understand MongoDB Community Kubernetes Operator Deployment Scopes](#understand-mongodb-community-kubernetes-operator-deployment-scopes)
   - [Procedure](#procedure)
 - [Upgrade the Operator](#upgrade-the-operator)
 
