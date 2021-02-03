@@ -15,15 +15,16 @@ The [`/deploy/crds`](../deploy/crds) directory contains example MongoDB resource
 
 To deploy your first replica set:
 
-1. Invoke the following `kubectl` command:
+1. Replace `<your-password-here>` in deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml to the password you wish to use.
+2. Invoke the following `kubectl` command:
    ```
    kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml --namespace <my-namespace>
    ```
-2. Verify that the MongoDB resource deployed:
+3. Verify that the MongoDB resource deployed:
    ```
    kubectl get mongodbcommunity --namespace <my-namespace>
    ```
-3. Connect clients to the MongoDB replica set:
+4. Connect clients to the MongoDB replica set:
    ```
    mongo "mongodb://<service-object-name>.<namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>"
    ```
