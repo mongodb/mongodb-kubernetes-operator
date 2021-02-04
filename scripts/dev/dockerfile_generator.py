@@ -25,19 +25,10 @@ def e2e_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def python_formatting_params(files_to_add: List[str], script: str) -> DockerParameters:
-    return {
-        "base_image": "python:slim",
-        "files_to_add": files_to_add,
-        "script_location": script,
-    }
-
-
 def render(image_name: str, files_to_add: List[str], script_location: str) -> str:
     param_dict = {
         "e2e": e2e_params(files_to_add),
         "operator": operator_params(files_to_add),
-        "python_formatting": python_formatting_params(files_to_add, script_location),
     }
 
     render_values = param_dict.get(image_name, dict())
@@ -56,19 +47,8 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=".",
     )
-    parser.add_argument(
-        "--script_location",
-        help="Location of the python script to run. (Used only for python_formatting)",
-        type=str,
-    )
-    args = parser.parse_args()
 
-    if args.script_location is not None and args.image != "python_formatting":
-        parser.error(
-            'The --script_location argument can be used only when the image used is "python_formatting"'
-        )
-
-    return args
+    return parser.parse_args()
 
 
 def main() -> int:
