@@ -25,7 +25,7 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
 
 ### Understand Deployment Scopes
 
-You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy Ops Manager and MongoDB Kubernetes resources:
+You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDB resources:
 
 - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
 - [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
