@@ -1,6 +1,8 @@
 name: Code Health
 
 on:
+  push:
+    branches: [ '*' ]
   pull_request:
     branches: [ master ]
 jobs:
@@ -20,4 +22,4 @@ jobs:
       - name: Mypy linting
         uses: jpetrucciani/mypy-check@master
         with:
-          path: '**/*.py'
+          path: scripts/*/*.py
