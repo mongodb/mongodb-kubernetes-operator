@@ -1,6 +1,8 @@
 name: Code Health
 
 on:
+  push:
+    branches: [ '*' ]
   pull_request:
     branches: [ master ]
 jobs:
@@ -17,5 +19,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: MyPy
+      - name: Mypy linting
         uses: jpetrucciani/mypy-check@master
