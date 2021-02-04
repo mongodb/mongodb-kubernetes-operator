@@ -131,7 +131,7 @@ func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
 	}
 
 	// Watch for changes to primary resource MongoDB
-	err = c.Watch(&source.Kind{Type: &mdbv1.MongoDB{}}, &handler.EnqueueRequestForObject{}, predicates.OnlyOnSpecChange())
+	err = c.Watch(&source.Kind{Type: &mdbv1.MongoDBCommunity{}}, &handler.EnqueueRequestForObject{}, predicates.OnlyOnSpecChange())
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
-	mdb := mdbv1.MongoDB{}
+	mdb := mdbv1.MongoDBCommunity{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, &mdb)
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
@@ -359,7 +359,7 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 // resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
 // and does not keep using OnDelete
-func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBCommunity) error {
 	if !isChangingVersion(mdb) {
 		return nil
 	}
@@ -372,7 +372,7 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDB)
 
 // isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
 // is currently ready.
-func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
+func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDBCommunity, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
 	stsFunc := buildStatefulSetModificationFunction(mdb)
 	stsCopy := existingStatefulSet.DeepCopyObject()
 	stsFunc(existingStatefulSet)
@@ -413,7 +413,7 @@ func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDB, existingSta
 	return areEqual && isReady, nil
 }
 
-func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	svc := buildService(mdb)
 	err := r.client.Create(context.TODO(), &svc)
 	if err != nil && apiErrors.IsAlreadyExists(err) {
@@ -423,7 +423,7 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDB) error {
 	return err
 }
 
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) error {
+func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
 	err = k8sClient.IgnoreNotFound(err)
@@ -440,7 +440,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDB) erro
 // setAnnotations updates the mongodb resource annotations by applying the provided annotations
 // on top of the existing ones
 func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
-	mdb := mdbv1.MongoDB{}
+	mdb := mdbv1.MongoDBCommunity{}
 	return r.client.GetAndUpdate(nsName, &mdb, func() {
 		if mdb.Annotations == nil {
 			mdb.Annotations = map[string]string{}
@@ -451,7 +451,7 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 	})
 }
 
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) error {
 	s, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
 		return err
@@ -459,7 +459,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDB) error {
 	return secret.CreateOrUpdate(r.client, s)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDB, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, mdbVersionConfig automationconfig.MongoDbVersionConfig, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -503,7 +503,7 @@ func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, e
 // that allows all the members of the STS to see each other.
 // TODO: Make sure this Service is as minimal as possible, to not interfere with
 // future implementations and Service Discovery mechanisms we might implement.
-func buildService(mdb mdbv1.MongoDB) corev1.Service {
+func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 	label := make(map[string]string)
 	label["app"] = mdb.ServiceName()
 	return service.Builder().
@@ -517,7 +517,7 @@ func buildService(mdb mdbv1.MongoDB) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB) (automationconfig.AutomationConfig, error) {
+func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
 	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		// If the AC was not found we don't surface it as an error
@@ -535,14 +535,14 @@ func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDB)
 // validateUpdate validates that the new Spec, corresponding to the existing one
 // is still valid. If there is no a previous Spec, then the function assumes this is
 // the first version of the MongoDB resource and skips.
-func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
+func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec, no need to validate
 		return nil
 	}
 
-	prevSpec := mdbv1.MongoDBSpec{}
+	prevSpec := mdbv1.MongoDBCommunitySpec{}
 	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &prevSpec)
 	if err != nil {
 		return err
@@ -551,7 +551,7 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDB) error {
 	return validation.Validate(prevSpec, mdb.Spec)
 }
 
-func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
+func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	roles := mdb.Spec.Security.Roles
 	if roles == nil {
 		return automationconfig.NOOP(), nil
@@ -562,7 +562,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDB) (automationconfig.Modificatio
 	}, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (corev1.Secret, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, error) {
 
 	manifest, err := r.manifestProvider()
 	if err != nil {
@@ -612,7 +612,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDB) (co
 		Build(), nil
 }
 
-func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDB) error {
+func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
 	currentSpec, err := json.Marshal(mdb.Spec)
 	if err != nil {
 		return err
@@ -626,7 +626,7 @@ func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDB) err
 
 // getMongodConfigModification will merge the additional configuration in the CRD
 // into the configuration set up by the operator.
-func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modification {
+func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
 	return func(ac *automationconfig.AutomationConfig) {
 		for i := range ac.Processes {
 			// Mergo requires both objects to have the same type
@@ -638,7 +638,7 @@ func getMongodConfigModification(mdb mdbv1.MongoDB) automationconfig.Modificatio
 
 // getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
 // should be configured with
-func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyType {
+func getUpdateStrategyType(mdb mdbv1.MongoDBCommunity) appsv1.StatefulSetUpdateStrategyType {
 	if !isChangingVersion(mdb) {
 		return appsv1.RollingUpdateStatefulSetStrategyType
 	}
@@ -647,13 +647,13 @@ func getUpdateStrategyType(mdb mdbv1.MongoDB) appsv1.StatefulSetUpdateStrategyTy
 
 // buildStatefulSet takes a MongoDB resource and converts it into
 // the corresponding stateful set
-func buildStatefulSet(mdb mdbv1.MongoDB) (appsv1.StatefulSet, error) {
+func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
 	buildStatefulSetModificationFunction(mdb)(&sts)
 	return sts, nil
 }
 
-func isChangingVersion(mdb mdbv1.MongoDB) bool {
+func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
 	if lastVersion, ok := mdb.Annotations[lastVersionAnnotationKey]; ok {
 		return (mdb.Spec.Version != lastVersion) && lastVersion != ""
 	}
@@ -754,7 +754,7 @@ exec mongod -f /data/automation-mongod.conf ;
 	)
 }
 
-func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modification {
+func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -799,11 +799,11 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDB) statefulset.Modific
 				buildScramPodSpecModification(mdb),
 			),
 		),
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.Spec),
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 	)
 }
 
-func getOwnerReference(mdb mdbv1.MongoDB) metav1.OwnerReference {
+func getOwnerReference(mdb mdbv1.MongoDBCommunity) metav1.OwnerReference {
 	return *metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
 		Group:   mdbv1.SchemeGroupVersion.Group,
 		Version: mdbv1.SchemeGroupVersion.Version,

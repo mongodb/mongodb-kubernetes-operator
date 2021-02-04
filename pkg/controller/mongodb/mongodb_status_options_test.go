@@ -46,14 +46,14 @@ func TestOptionBuilder_FailedPhase(t *testing.T) {
 	assert.Equal(t, mdbv1.Failed, mdb.Status.Phase)
 }
 
-func newReplicaSet(members int, name, namespace string) mdbv1.MongoDB {
-	return mdbv1.MongoDB{
+func newReplicaSet(members int, name, namespace string) mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: mdbv1.MongoDBSpec{
+		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: members,
 		},
 	}

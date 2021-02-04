@@ -31,7 +31,7 @@ const (
 // EnsureScram will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDB) (automationconfig.Modification, error) {
+func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
 		return automationconfig.NOOP(), errors.Errorf("could not generate password: %s", err)
@@ -253,7 +253,7 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 }
 
 // convertMongoDBResourceUsersToAutomationConfigUsers returns a list of users that are able to be set in the AutomationConfig
-func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDB) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDBCommunity) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.Spec.Users {
 		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), u)

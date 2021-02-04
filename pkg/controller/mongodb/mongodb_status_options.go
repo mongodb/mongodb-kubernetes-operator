@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/apierrors"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
 
@@ -51,7 +52,7 @@ type mongoUriOption struct {
 	mongoUri string
 }
 
-func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDB) {
+func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 	mdb.Status.MongoURI = m.mongoUri
 }
 
@@ -77,7 +78,7 @@ type messageOption struct {
 	message message
 }
 
-func (m messageOption) ApplyOption(mdb *mdbv1.MongoDB) {
+func (m messageOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 	mdb.Status.Message = m.message.messageString
 	if m.message.severityLevel == Error {
 		zap.S().Error(m.message.messageString)
@@ -112,6 +113,10 @@ func (o *optionBuilder) withStatefulSetReplicas(members int) *optionBuilder {
 }
 
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
+	if apierrors.IsTransientMessage(msg) {
+		severityLevel = Debug
+		msg = ""
+	}
 	o.options = append(o.options, messageOption{
 		message: message{
 			messageString: msg,
@@ -138,7 +143,7 @@ type phaseOption struct {
 	retryAfter int
 }
 
-func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDB) {
+func (p phaseOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 	mdb.Status.Phase = p.phase
 }
 
@@ -159,7 +164,7 @@ type mongoDBReplicasOption struct {
 	mongoDBMembers int
 }
 
-func (a mongoDBReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+func (a mongoDBReplicasOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 	mdb.Status.CurrentMongoDBMembers = a.mongoDBMembers
 }
 
@@ -171,7 +176,7 @@ type statefulSetReplicasOption struct {
 	replicas int
 }
 
-func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDB) {
+func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 	mdb.Status.CurrentStatefulSetReplicas = s.replicas
 }
 

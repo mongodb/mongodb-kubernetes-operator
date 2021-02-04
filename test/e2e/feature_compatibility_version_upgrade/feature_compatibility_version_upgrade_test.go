@@ -62,7 +62,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		t.Run("Test FCV can be upgraded", func(t *testing.T) {
-			err := e2eutil.UpdateMongoDBResource(&mdb, func(db *mdbv1.MongoDB) {
+			err := e2eutil.UpdateMongoDBResource(&mdb, func(db *mdbv1.MongoDBCommunity) {
 				db.Spec.FeatureCompatibilityVersion = "4.2"
 			})
 			assert.NoError(t, err)

@@ -1,15 +1,21 @@
 ---
 apiVersion: mongodb.com/v1
-kind: MongoDB
+kind: MongoDBCommunity
 metadata:
-  name: example-openshift-mongodb
+  name: example-mongodb
 spec:
   members: 3
   type: ReplicaSet
-  version: "4.2.6"
+  version: "4.2.7"
   security:
     authentication:
       modes: ["SCRAM"]
+    tls:
+      enabled: true
+      certificateKeySecretRef:
+        name: tls-secret-name
+      caConfigMapRef:
+        name: tls-ca-configmap-name
   users:
     - name: my-user
       db: admin
@@ -21,19 +27,6 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: my-scram
-  statefulSet:
-    spec:
-      template:
-        spec:
-          containers:
-            - name: "mongodb-agent"
-              env:
-                - name: MANAGED_SECURITY_CONTEXT
-                  value: "true"
-            - name: "mongod"
-              env:
-                - name: MANAGED_SECURITY_CONTEXT
-                  value: "true"
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
@@ -44,4 +37,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: 58LObjiMpxcjP1sMDW
+  password: <your-password-here>

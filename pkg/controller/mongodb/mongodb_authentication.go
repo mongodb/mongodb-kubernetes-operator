@@ -8,7 +8,7 @@ import (
 
 // buildScramPodSpecModification will add the keyfile volume to the podTemplateSpec
 // the keyfile is owned by the agent, and is required to have 0600 permissions.
-func buildScramPodSpecModification(mdb mdbv1.MongoDB) podtemplatespec.Modification {
+func buildScramPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
 	mode := int32(0600)
 	scramSecretNsName := mdb.ScramCredentialsNamespacedName()
 	keyFileVolume := statefulset.CreateVolumeFromSecret(scramSecretNsName.Name, scramSecretNsName.Name, statefulset.WithSecretDefaultMode(&mode))
