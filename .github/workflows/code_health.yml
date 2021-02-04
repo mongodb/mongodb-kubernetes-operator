@@ -22,4 +22,4 @@ jobs:
       - name: Mypy linting
         uses: jpetrucciani/mypy-check@master
         with:
-          path: */*.py
+          path: \**/*.py
