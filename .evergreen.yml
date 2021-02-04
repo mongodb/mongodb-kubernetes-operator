@@ -102,13 +102,6 @@ functions:
           - clusterwide
         binary: scripts/ci/run_test.sh
 
-  mypy_linting_test:
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/run_mypy_check.sh
-
 
   build_and_push_image:
     - command: subprocess.exec
@@ -203,13 +196,6 @@ tasks:
           image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook:${version_id}
           image_type: versionhook
           expire_after: 48h
-
-  - name: mypy_linting
-    commands:
-        - func: clone
-        - func: setup_virtualenv
-        - func: mypy_linting_test
-
 
   - name: e2e_test_feature_compatibility_version
     commands:
@@ -349,13 +335,6 @@ buildvariants:
         variant: init_test_run
     tasks:
       - name: e2e_test_group
-
-  - name: code_health
-    display_name: code_health
-    run_on:
-      - ubuntu1604-build
-    tasks:
-      - name: mypy_linting
 
   - name: init_test_run
     display_name: init_test_run

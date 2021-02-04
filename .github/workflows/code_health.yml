@@ -11,3 +11,11 @@ jobs:
 
       - name: Black Check
         uses: jpetrucciani/black-check@20.8b1
+
+  Mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: MyPy
+        uses: jpetrucciani/mypy-check@master
