@@ -1,0 +1,23 @@
+name: Code Health
+
+on:
+  pull_request:
+    branches: [ master ]
+jobs:
+  Black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Black Check
+        uses: jpetrucciani/black-check@20.8b1
+
+  Mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Mypy linting
+        uses: jpetrucciani/mypy-check@master
+        with:
+          path: scripts/*/*.py
