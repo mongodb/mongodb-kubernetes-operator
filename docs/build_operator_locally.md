@@ -19,7 +19,20 @@ This guide assumes that you have already installed the following tools:
 ./scripts/dev/setup_kind_cluster.sh
 ```
 
-2. Build and deploy the operator:
+2. Set the kind kubernetes context if you have not already done so:
+```bash
+export KUBECONFIG=~/.kube/kind
+```
+
+3. Run the following to get kind credentials:
+
+```sh
+kind export kubeconfig
+# check it worked by running:
+kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
+```
+
+4. Build and deploy the operator:
 
 ```sh
 python ./scripts/dev/build_and_deploy_operator
@@ -27,9 +40,9 @@ python ./scripts/dev/build_and_deploy_operator
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
-3. Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
+5. Change the [operator yaml file](../deploy/operator.yaml) `image` field to have the image you just built
 
-4. You can now deploy your resources following the [docs](../docs/README.md)
+6. You can now deploy your resources following the [docs](../docs/README.md)
 
 
 ## Troubleshooting
