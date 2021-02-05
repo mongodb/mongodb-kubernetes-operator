@@ -25,7 +25,7 @@ def e2e_params(files_to_add: List[str]) -> DockerParameters:
     }
 
 
-def render(image_name: str, files_to_add: List[str], script_location: str) -> str:
+def render(image_name: str, files_to_add: List[str]) -> str:
     param_dict = {
         "e2e": e2e_params(files_to_add),
         "operator": operator_params(files_to_add),
@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    print(render(args.image, args.files_to_add.split(os.linesep), args.script_location))
+    print(render(args.image, args.files_to_add.split(os.linesep)))
     return 0
 
 

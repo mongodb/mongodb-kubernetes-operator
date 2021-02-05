@@ -97,7 +97,7 @@ def build_and_push_image(repo_url: str, tag: str, path: str, image_type: str) ->
     build_and_push_operator creates the Dockerfile for the operator
     and pushes it to the target repo
     """
-    dockerfile_text = render(image_type, ["."], "")
+    dockerfile_text = render(image_type, ["."])
     with open(f"{path}/Dockerfile", "w") as f:
         f.write(dockerfile_text)
 
