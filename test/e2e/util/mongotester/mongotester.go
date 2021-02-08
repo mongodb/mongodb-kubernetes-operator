@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"path"
 	"reflect"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	corev1 "k8s.io/api/core/v1"
@@ -81,7 +82,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 	if len(users) == 1 {
 		user := users[0]
 		passwordSecret := corev1.Secret{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -431,7 +432,7 @@ func WithoutTls() OptionApplier {
 // getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data
-	caPEM, err := ioutil.ReadFile("testdata/tls/ca.crt")
+	caPEM, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "ca.crt"))
 	if err != nil {
 		return nil, err
 	}

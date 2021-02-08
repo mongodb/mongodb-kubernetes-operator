@@ -9,8 +9,8 @@ realized that is is very important to have a clean environment to work, and as s
 adopted a strategy that makes it easier for everyone to contribute.
 
 This strategy is based on using
-[`operator-sdk`](https://github.com/operator-framework/operator-sdk) for running
-the tests, and making the test-runner itself run as a Kubernetes Pod. This
+[`envtest`](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/envtest) for setting up the tests
+and `go test` for running the tests, and making the test-runner itself run as a Kubernetes Pod. This
 makes it easier to run the tests in environments with access to a Kubernetes
 cluster with no go toolchain installed locally, making it easier to reproduce
 our local working environments in CI/CD systems.
@@ -41,7 +41,7 @@ each one of them in charge of some part of the lifecycle of the MongoDB database
 
 # Developing locally
 
-The operator is built using the latest stable `operator-sdk` and `golang`. We use a simple
+The operator is built using `golang`. We use a simple
 json file that describe some local options that you need to set for the testing environment
 to be able to run properly. Create a json file with the following content:
 
@@ -137,13 +137,13 @@ python scripts/dev/e2e.py --help
 to get a list.
 
 ## Troubleshooting
-When you run a test locally, if the `operator-sdk-test` pod is present, you will have to
+When you run a test locally, if the `e2e-test` pod is present, you will have to
 first manually delete it; failing to do so will cause the `test-runner` pod to fail.
 
 # Writing new E2E tests
 
 You can start with `replica_set` test as an starting point to write a new test.
-The tests are written using `operator-sdk`.
+The tests are written using `envtest` and they are run using `go test`.
 
 Adding a new test is as easy as to create a new directory in `test/e2e` with the
 new E2E test, and to run them:

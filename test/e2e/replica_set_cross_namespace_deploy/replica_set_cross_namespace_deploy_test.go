@@ -2,6 +2,7 @@ package replica_set_cross_namespace_deploy
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
@@ -10,13 +11,16 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestCrossNamespaceDeploy(t *testing.T) {
@@ -28,18 +32,18 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 
 	postfix, err := generate.RandomValidDNS1123Label(5)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 	namespace := fmt.Sprintf("clusterwide-test-%s", postfix)
 
 	err = e2eutil.EnsureNamespace(ctx, namespace)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	err = e2eutil.EnsureServiceAccount(ctx, namespace, "mongodb-kubernetes-operator")
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	// Create a role in the test namespace
@@ -77,12 +81,12 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		},
 		{
 			APIGroups: []string{"mongodb.com"},
-			Resources: []string{"*", "mongodbs"},
+			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
 	})
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	err = e2eutil.EnsureRoleBinding(ctx, namespace, "mongodb-kubernetes-operator",
@@ -95,11 +99,11 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 			Name:     "mongodb-kubernetes-operator",
 		})
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	// Create a cluster role in the default (operator) namespace
-	err = e2eutil.EnsureClusterRole(ctx, f.Global.OperatorNamespace, "mongodb-kubernetes-operator", []rbacv1.PolicyRule{
+	err = e2eutil.EnsureClusterRole(ctx, e2eutil.OperatorNamespace, "mongodb-kubernetes-operator", []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{""},
 			Resources: []string{"pods", "services", "services/finalizers", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"},
@@ -133,26 +137,26 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		},
 		{
 			APIGroups: []string{"mongodb.com"},
-			Resources: []string{"*", "mongodbs"},
+			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
 	})
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
-	err = e2eutil.EnsureClusterRoleBinding(ctx, f.Global.OperatorNamespace, "mongodb-kubernetes-operator",
+	err = e2eutil.EnsureClusterRoleBinding(ctx, e2eutil.OperatorNamespace, "mongodb-kubernetes-operator",
 		[]rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      "mongodb-kubernetes-operator",
-			Namespace: f.Global.OperatorNamespace,
+			Namespace: e2eutil.OperatorNamespace,
 		}}, rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			APIGroup: "rbac.authorization.k8s.io",
 			Name:     "mongodb-kubernetes-operator",
 		})
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0", namespace)

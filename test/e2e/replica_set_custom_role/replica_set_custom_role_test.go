@@ -1,6 +1,8 @@
 package replica_set_custom_role
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
@@ -9,11 +11,14 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetCustomRole(t *testing.T) {
