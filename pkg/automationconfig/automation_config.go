@@ -4,6 +4,7 @@ import (
 	"path"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/stretchr/objx"
 )
 
@@ -11,6 +12,7 @@ const (
 	Mongod                ProcessType = "mongod"
 	DefaultMongoDBDataDir string      = "/data"
 	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
+	SecretKey                         = "cluster-config.json"
 )
 
 type AutomationConfig struct {
@@ -22,6 +24,32 @@ type AutomationConfig struct {
 	Versions    []MongoDbVersionConfig `json:"mongoDbVersions"`
 	Options     Options                `json:"options"`
 	Roles       []CustomRole           `json:"roles,omitempty"`
+}
+
+// EnsurePassword makes sure that there is an Automation Agent password
+// that the agents will use to communicate with the deployments. The password
+// is returned so it can be provided to the other agents
+func (ac *AutomationConfig) EnsurePassword() (string, error) {
+	if ac.Auth.AutoPwd == "" {
+		generatedPassword, err := generate.KeyFileContents()
+		if err != nil {
+			return "", err
+		}
+		ac.Auth.AutoPwd = generatedPassword
+	}
+	return ac.Auth.AutoPwd, nil
+}
+
+// EnsureKeyFileContents makes sure a valid keyfile is generated and used for internal cluster authentication
+func (ac *AutomationConfig) EnsureKeyFileContents() error {
+	if ac.Auth.Key == "" {
+		keyfileContents, err := generate.KeyFileContents()
+		if err != nil {
+			return err
+		}
+		ac.Auth.Key = keyfileContents
+	}
+	return nil
 }
 
 type Process struct {

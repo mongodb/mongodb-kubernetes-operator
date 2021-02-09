@@ -38,6 +38,7 @@ type Builder struct {
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
 	modifications []Modification
+	options       Options
 }
 
 func NewBuilder() *Builder {
@@ -51,6 +52,11 @@ func NewBuilder() *Builder {
 
 func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
 	b.enabler = enabler
+	return b
+}
+
+func (b *Builder) SetOptions(options Options) *Builder {
+	b.options = options
 	return b
 }
 
@@ -148,7 +154,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			},
 		},
 		Versions: b.versions,
-		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
+		Options:  b.options,
 		Auth:     auth,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
