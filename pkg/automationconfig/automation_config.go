@@ -12,18 +12,31 @@ const (
 	Mongod                ProcessType = "mongod"
 	DefaultMongoDBDataDir string      = "/data"
 	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
-	SecretKey                         = "cluster-config.json"
+	ConfigKey             string      = "cluster-config.json"
 )
 
 type AutomationConfig struct {
-	Version     int                    `json:"version"`
-	Processes   []Process              `json:"processes"`
-	ReplicaSets []ReplicaSet           `json:"replicaSets"`
-	Auth        Auth                   `json:"auth"`
-	TLS         TLS                    `json:"tls"`
-	Versions    []MongoDbVersionConfig `json:"mongoDbVersions"`
-	Options     Options                `json:"options"`
-	Roles       []CustomRole           `json:"roles,omitempty"`
+	Version            int                    `json:"version"`
+	Processes          []Process              `json:"processes"`
+	ReplicaSets        []ReplicaSet           `json:"replicaSets"`
+	Auth               Auth                   `json:"auth"`
+	TLS                TLS                    `json:"tls"`
+	Versions           []MongoDbVersionConfig `json:"mongoDbVersions"`
+	BackupVersions     []BackupVersion        `json:"backupVersions"`
+	MonitoringVersions []MonitoringVersion    `json:"monitoringVersions"`
+	Options            Options                `json:"options"`
+	Roles              []CustomRole           `json:"roles,omitempty"`
+}
+
+type BackupVersion struct {
+	BaseUrl string `json:"baseUrl"`
+}
+
+type MonitoringVersion struct {
+	Hostname         string            `json:"hostname"`
+	Name             string            `json:"name"`
+	BaseUrl          string            `json:"baseUrl"`
+	AdditionalParams map[string]string `json:"additionalParams"`
 }
 
 // EnsurePassword makes sure that there is an Automation Agent password
@@ -132,13 +145,22 @@ type ReplicaSetMember struct {
 
 type ReplicaSetHorizons map[string]string
 
-func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons) ReplicaSetMember {
+func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, totalVotesSoFar int) ReplicaSetMember {
+	// ensure that the number of voting members in the replica set is not more than 7
+	// as this is the maximum number of voting members.
+	votes := 1
+	priority := 1
+	if totalVotesSoFar > maxVotingMembers {
+		votes = 0
+		priority = 0
+	}
+
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
-		Priority:    1,
+		Priority:    priority,
 		ArbiterOnly: false,
-		Votes:       1,
+		Votes:       votes,
 		Horizons:    horizons,
 	}
 }

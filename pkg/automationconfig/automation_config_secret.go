@@ -4,19 +4,18 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
-	zap "go.uber.org/zap"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// changeAutomationConfigDataIfNecessary is a function that optionally changes the existing Automation Config Secret in
+// ChangeAutomationConfigDataIfNecessary is a function that optionally changes the existing Automation Config Secret in
 // case if its content is different from the desired Automation Config.
 // Returns true if the data was changed.
 func ChangeAutomationConfigDataIfNecessary(existingSecret *corev1.Secret, targetAutomationConfig *AutomationConfig, log *zap.SugaredLogger) bool {
 	if len(existingSecret.Data) == 0 {
 		log.Debugf("Secret for the Automation Config doesn't exist, it will be created")
 	} else {
-		if existingAutomationConfig, err := fromBytes(existingSecret.Data[mongodb.AutomationConfigKey]); err != nil {
+		if existingAutomationConfig, err := fromBytes(existingSecret.Data[ConfigKey]); err != nil {
 			// in case of any problems deserializing the existing AutomationConfig - just ignore the error and update
 			log.Warnf("There were problems deserializing existing automation config - it will be overwritten (%s)", err.Error())
 		} else {
@@ -55,7 +54,7 @@ func ChangeAutomationConfigDataIfNecessary(existingSecret *corev1.Secret, target
 	if existingSecret.Data == nil {
 		existingSecret.Data = map[string][]byte{}
 	}
-	existingSecret.Data[SecretKey] = bytes
+	existingSecret.Data[ConfigKey] = bytes
 	return true
 }
 
