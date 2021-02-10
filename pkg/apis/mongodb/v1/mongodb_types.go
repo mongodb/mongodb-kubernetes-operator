@@ -394,7 +394,7 @@ type MongoDBCommunity struct {
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
 	return scram.Options{
 		AuthoritativeSet:   true,
-		KeyFile:            scram.AgentName,
+		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
 		AutoAuthMechanisms: []string{scram.Sha256},
 		AgentName:          scram.AgentName,
 		AutoAuthMechanism:  scram.Sha256,

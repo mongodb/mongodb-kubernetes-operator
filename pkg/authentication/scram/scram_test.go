@@ -169,7 +169,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 	})
 }
 
-func TestEnsureEnabler(t *testing.T) {
+func TestConfigureScram(t *testing.T) {
 	t.Run("Should fail if there is no password present for the user", func(t *testing.T) {
 		mdb, _ := buildConfigurableAndUser("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
@@ -226,7 +226,13 @@ func TestEnsureEnabler(t *testing.T) {
 
 func buildConfigurable(name string, users ...User) Configurable {
 	return mockConfigurable{
-		opts:  Options{},
+		opts: Options{
+			AuthoritativeSet:   false,
+			KeyFile:            "/path/to/keyfile",
+			AutoAuthMechanisms: []string{Sha256},
+			AgentName:          AgentName,
+			AutoAuthMechanism:  Sha256,
+		},
 		users: users,
 		nsName: types.NamespacedName{
 			Name:      name,
