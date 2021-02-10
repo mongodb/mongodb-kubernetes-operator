@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -251,6 +253,22 @@ type MongoDBUser struct {
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
 }
 
+func (m MongoDBUser) GetUsername() string {
+	return m.Name
+}
+
+func (m MongoDBUser) GetDatabase() string {
+	return m.DB
+}
+
+func (m MongoDBUser) GetScramRoles() []scram.Role {
+	var roles []scram.Role
+	for _, r := range m.Roles {
+		roles = append(roles, r)
+	}
+	return roles
+}
+
 func (m MongoDBUser) GetPasswordSecretKey() string {
 	if m.PasswordSecretRef.Key == "" {
 		return defaultPasswordKey
@@ -288,6 +306,14 @@ type Role struct {
 	DB string `json:"db"`
 	// Name is the name of the role
 	Name string `json:"name"`
+}
+
+func (r Role) GetName() string {
+	return r.Name
+}
+
+func (r Role) GetDatabase() string {
+	return r.DB
 }
 
 type Security struct {
@@ -363,6 +389,28 @@ type MongoDBCommunity struct {
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
+// GetScramOptions returns a set of Options that are used to configure scram
+// authentication.
+func (m MongoDBCommunity) GetScramOptions() scram.Options {
+	return scram.Options{
+		AuthoritativeSet:   true,
+		KeyFile:            scram.AgentName,
+		AutoAuthMechanisms: []string{scram.Sha256},
+		AgentName:          scram.AgentName,
+		AutoAuthMechanism:  scram.Sha256,
+	}
+}
+
+// GetScramUsers converts all of the users from the spec into users
+// that can be used to configure scram authentication.
+func (m MongoDBCommunity) GetScramUsers() []scram.User {
+	var users []scram.User
+	for _, u := range m.Spec.Users {
+		users = append(users, u)
+	}
+	return users
+}
+
 func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 	// determine the correct number of automation config replica set members
 	// based on our desired number, and our current number
@@ -422,7 +470,7 @@ func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
-func (m *MongoDBCommunity) ScramCredentialsNamespacedName() types.NamespacedName {
+func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 

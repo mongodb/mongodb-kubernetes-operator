@@ -129,7 +129,7 @@ type Auth struct {
 	AutoAuthMechanism string `json:"autoAuthMechanism"`
 	// DeploymentAuthMechanisms is a list of possible auth mechanisms that can be used within deployments
 	DeploymentAuthMechanisms []string `json:"deploymentAuthMechanisms,omitempty"`
-	// AutoUser is the MongoDB Automation Agent user, when x509 is enabled, it should be set to the subject of the AA's certificate
+	// AutoUser is the MongoDB Automation Agent user, when x509 is disabled, it should be set to the subject of the AA's certificate
 	AutoUser string `json:"autoUser,omitempty"`
 	// Key is the contents of the KeyFile, the automation agent will ensure this a KeyFile with these contents exists at the `KeyFile` path
 	Key string `json:"key,omitempty"`
