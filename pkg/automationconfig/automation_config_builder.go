@@ -10,6 +10,7 @@ type Topology string
 
 const (
 	ReplicaSetTopology Topology = "ReplicaSet"
+	maxVotingMembers   int      = 7
 )
 
 type Modification func(*AutomationConfig)
@@ -30,18 +31,28 @@ type Builder struct {
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
-	versions      []MongoDbVersionConfig
-	modifications []Modification
-	auth          *Auth
+	versions           []MongoDbVersionConfig
+	backupVersions     []BackupVersion
+	monitoringVersions []MonitoringVersion
+	modifications      []Modification
+	options            Options
+	auth               *Auth
 }
 
 func NewBuilder() *Builder {
 	return &Builder{
-		processes:     []Process{},
-		replicaSets:   []ReplicaSet{},
-		versions:      []MongoDbVersionConfig{},
-		modifications: []Modification{},
+		processes:          []Process{},
+		replicaSets:        []ReplicaSet{},
+		versions:           []MongoDbVersionConfig{},
+		modifications:      []Modification{},
+		backupVersions:     []BackupVersion{},
+		monitoringVersions: []MonitoringVersion{},
 	}
+}
+
+func (b *Builder) SetOptions(options Options) *Builder {
+	b.options = options
+	return b
 }
 
 func (b *Builder) SetTopology(topology Topology) *Builder {
@@ -89,6 +100,16 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
+func (b *Builder) SetBackupVersions(versions []BackupVersion) *Builder {
+	b.backupVersions = versions
+	return b
+}
+
+func (b *Builder) SetMonitoringVersions(versions []MonitoringVersion) *Builder {
+	b.monitoringVersions = versions
+	return b
+}
+
 func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Builder {
 	b.previousAC = previousAC
 	return b
@@ -113,18 +134,17 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
-		opts := []func(*Process){
-			withFCV(b.fcv),
-		}
 
-		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
+		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, withFCV(b.fcv))
 		processes[i] = process
 
+		totalVotes := 0
 		if b.replicaSetHorizons != nil {
-			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i])
+			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i], totalVotes)
 		} else {
-			members[i] = newReplicaSetMember(process, i, nil)
+			members[i] = newReplicaSetMember(process, i, nil, totalVotes)
 		}
+		totalVotes += members[i].Votes
 	}
 
 	if b.auth == nil {
@@ -142,9 +162,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions: b.versions,
-		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     *b.auth,
+		Versions:           b.versions,
+		Auth:               *b.auth,
+		MonitoringVersions: b.monitoringVersions,
+		BackupVersions:     b.backupVersions,
+		Options:            b.options,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},

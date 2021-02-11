@@ -474,6 +474,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, mdbVersionConfig automati
 		SetFCV(mdb.GetFCV()).
 		SetAuth(auth).
 		AddVersion(mdbVersionConfig).
+		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...)
 	newAc, err := builder.Build()
