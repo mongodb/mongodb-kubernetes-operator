@@ -149,7 +149,7 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	)
 }
 
-// ensureScramCredentials will ensure that the Sha1 & ScramSha256 credentials exist and are stored in the credentials
+// ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials
 // secret corresponding to user of the given MongoDB deployment.
 func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User, mdbNamespacedName types.NamespacedName) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 
