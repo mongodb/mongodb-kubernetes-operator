@@ -31,7 +31,9 @@ spec:
             - name: OPERATOR_NAME
               value: "mongodb-kubernetes-operator"
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
-              value: quay.io/mongodb/mongodb-agent:10.19.0.6562-1
+              value: localhost:5000/mongodb-agent
+            - name: READINESS_PROBE_IMAGE
+              value: curlimages/curl:7.75.0
             - name: VERSION_UPGRADE_HOOK_IMAGE
               value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
             - name: MONGODB_IMAGE

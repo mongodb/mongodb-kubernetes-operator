@@ -61,6 +61,7 @@ const (
 	agentImageEnv                = "AGENT_IMAGE"
 	clusterDNSName               = "CLUSTER_DNS_NAME"
 	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
+	readinessProbeImageEnv       = "READINESS_PROBE_IMAGE"
 	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 	mongodbImageEnv              = "MONGODB_IMAGE"
 	mongodbRepoUrl               = "MONGODB_REPO_URL"
@@ -68,16 +69,17 @@ const (
 	podNamespaceEnv              = "POD_NAMESPACE"
 	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
 
-	AutomationConfigKey            = "cluster-config.json"
-	agentName                      = "mongodb-agent"
-	mongodbName                    = "mongod"
-	versionUpgradeHookName         = "mongod-posthook"
-	dataVolumeName                 = "data-volume"
-	versionManifestFilePath        = "/usr/local/version_manifest.json"
-	readinessProbePath             = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
-	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
-	operatorServiceAccountName     = "mongodb-kubernetes-operator"
-	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
+	AutomationConfigKey             = "cluster-config.json"
+	agentName                       = "mongodb-agent"
+	mongodbName                     = "mongod"
+	versionUpgradeHookName          = "mongod-posthook"
+	dataVolumeName                  = "data-volume"
+	versionManifestFilePath         = "/usr/local/version_manifest.json"
+	readinessProbeInitContainerName = "readiness-probe"
+	readinessProbePath              = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
+	clusterFilePath                 = "/var/lib/automation/config/cluster-config.json"
+	operatorServiceAccountName      = "mongodb-kubernetes-operator"
+	agentHealthStatusFilePathValue  = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
@@ -714,6 +716,19 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 	)
 }
 
+func readinessProbeInit(volumeMounts []corev1.VolumeMount) container.Modification {
+	return container.Apply(
+		container.WithName(readinessProbeInitContainerName),
+		container.WithCommand([]string{
+			"/bin/bash",
+			"-c",
+			"curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readiness -o /var/lib/mongodb-mms-automation/probes/readinessprobe && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe",
+		}),
+		container.WithImage(os.Getenv(readinessProbeImageEnv)),
+		container.WithVolumeMounts(volumeMounts),
+	)
+}
+
 func getMongoDBImage(version string) string {
 	repoUrl := os.Getenv(mongodbRepoUrl)
 	if strings.HasSuffix(repoUrl, "/") {
@@ -770,6 +785,11 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
 	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
 
+	readinessProbeVolume := statefulset.CreateVolumeFromEmptyDir("probes")
+	readinessProbeVolumeMount := statefulset.CreateVolumeMount(readinessProbeVolume.Name, "/probes", statefulset.WithReadOnly(false))
+	sharedReadinessProbeVolume := statefulset.CreateVolumeFromEmptyDir("probes")
+	sharedReadinessProbeVolumeMount := statefulset.CreateVolumeMount(sharedReadinessProbeVolume.Name, "/var/lib/mongodb-mms-automation/probes", statefulset.WithReadOnly(false))
+
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
@@ -790,11 +810,13 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
+				podtemplatespec.WithVolume(readinessProbeVolume),
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
+				podtemplatespec.WithInitContainer(readinessProbeInitContainerName, readinessProbeInit([]corev1.VolumeMount{readinessProbeVolumeMount, sharedReadinessProbeVolumeMount})),
 				buildTLSPodSpecModification(mdb),
 				buildScramPodSpecModification(mdb),
 			),
