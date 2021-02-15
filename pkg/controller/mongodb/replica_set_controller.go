@@ -1,13 +1,14 @@
 package mongodb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 
@@ -38,7 +39,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
@@ -250,7 +250,10 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	r.log.Debug("Creating/Updating StatefulSet")
-	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+
+	sts := statefulset.New(buildStatefulSetModificationFunction(mdb))
+
+	if sts, err = statefulset.CreateOrUpdate(r.client, sts); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error creating/updating StatefulSet: %s", err)).
@@ -258,31 +261,13 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
-	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
-	if err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Info, fmt.Sprintf("Error getting StatefulSet: %s", err)).
-				withPendingPhase(0),
-		)
-	}
-
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
-	ready, err := r.isStatefulSetReady(mdb, &currentSts)
-	if err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error checking StatefulSet status: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	if !ready {
+	if !statefulset.IsReady(sts, mdb.StatefulSetReplicasThisReconciliation()) {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				// need to update the current replicas as they get ready so eventually the desired number becomes
 				// ready one at a time
-				withStatefulSetReplicas(int(currentSts.Status.ReadyReplicas)).
+				withStatefulSetReplicas(int(sts.Status.ReadyReplicas)).
 				withMessage(Info, fmt.Sprintf("StatefulSet %s/%s is not yet ready, retrying in 10 seconds", mdb.Namespace, mdb.Name)).
 				withPendingPhase(10),
 		)
@@ -370,49 +355,6 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBC
 	return err
 }
 
-// isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
-// is currently ready.
-func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDBCommunity, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
-	stsFunc := buildStatefulSetModificationFunction(mdb)
-	stsCopy := existingStatefulSet.DeepCopyObject()
-	stsFunc(existingStatefulSet)
-
-	stsCopyBytes, err := json.Marshal(stsCopy)
-	if err != nil {
-		return false, errors.Errorf("unable to marshal StatefulSet copy: %s", err)
-	}
-
-	stsBytes, err := json.Marshal(existingStatefulSet)
-	if err != nil {
-		return false, errors.Errorf("unable to marshal existing StatefulSet: %s", err)
-	}
-
-	//comparison is done with bytes instead of reflect.DeepEqual as there are
-	//some issues with nil/empty maps not being compared correctly otherwise
-	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
-
-	isReady := statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
-
-	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
-		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
-		annotations := map[string]string{
-			hasLeftReadyStateAnnotationKey: trueAnnotation,
-		}
-		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-			return false, errors.Errorf("could not set %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
-		}
-	}
-
-	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == trueAnnotation
-	r.log.Infow("StatefulSet Readiness", "isReady", isReady, "hasPerformedUpgrade", hasPerformedUpgrade, "areEqual", areEqual)
-
-	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-		return areEqual && isReady && hasPerformedUpgrade, nil
-	}
-
-	return areEqual && isReady, nil
-}
-
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	svc := buildService(mdb)
 	err := r.client.Create(context.TODO(), &svc)
@@ -421,20 +363,6 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 		return nil
 	}
 	return err
-}
-
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
-	set := appsv1.StatefulSet{}
-	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
-	err = k8sClient.IgnoreNotFound(err)
-	if err != nil {
-		return errors.Errorf("error getting StatefulSet: %s", err)
-	}
-	buildStatefulSetModificationFunction(mdb)(&set)
-	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
-		return errors.Errorf("error creating/updating StatefulSet: %s", err)
-	}
-	return nil
 }
 
 // setAnnotations updates the mongodb resource annotations by applying the provided annotations
