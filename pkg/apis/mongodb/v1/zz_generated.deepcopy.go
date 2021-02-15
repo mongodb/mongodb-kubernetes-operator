@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	automationconfig "github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -229,7 +230,7 @@ func (in *MongoDBUser) DeepCopyInto(out *MongoDBUser) {
 	out.PasswordSecretRef = in.PasswordSecretRef
 	if in.Roles != nil {
 		in, out := &in.Roles, &out.Roles
-		*out = make([]Role, len(*in))
+		*out = make([]scram.Role, len(*in))
 		copy(*out, *in)
 	}
 	return

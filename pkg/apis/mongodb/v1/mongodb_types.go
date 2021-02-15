@@ -246,7 +246,7 @@ type MongoDBUser struct {
 	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
 
 	// Roles is an array of roles assigned to this user
-	Roles []Role `json:"roles"`
+	Roles []scram.Role `json:"roles"`
 
 	// ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
@@ -262,11 +262,7 @@ func (m MongoDBUser) GetDatabase() string {
 }
 
 func (m MongoDBUser) GetScramRoles() []scram.Role {
-	var roles []scram.Role
-	for _, r := range m.Roles {
-		roles = append(roles, r)
-	}
-	return roles
+	return m.Roles
 }
 
 func (m MongoDBUser) GetPasswordSecretKey() string {
@@ -406,7 +402,14 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	var users []scram.User
 	for _, u := range m.Spec.Users {
-		users = append(users, u)
+		users = append(users, scram.User{
+			Username:                   u.Name,
+			Database:                   u.DB,
+			Roles:                      u.Roles,
+			PasswordSecretKey:          u.PasswordSecretRef.Key,
+			PasswordSecretName:         u.PasswordSecretRef.Name,
+			ScramCredentialsSecretName: u.ScramCredentialsSecretName,
+		})
 	}
 	return users
 }

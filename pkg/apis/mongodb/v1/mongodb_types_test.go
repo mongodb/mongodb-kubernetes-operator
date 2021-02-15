@@ -3,6 +3,8 @@ package v1
 import (
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,24 +39,24 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 			MongoDBUser{
 				Name: "mdb-0",
 				DB:   "admin",
-				Roles: []Role{
+				Roles: []scram.Role{
 					// roles on testing db for general connectivity
 					{
-						DB:   "testing",
-						Name: "readWrite",
+						Database: "testing",
+						Name:     "readWrite",
 					},
 					{
-						DB:   "testing",
-						Name: "clusterAdmin",
+						Database: "testing",
+						Name:     "clusterAdmin",
 					},
 					// admin roles for reading FCV
 					{
-						DB:   "admin",
-						Name: "readWrite",
+						Database: "admin",
+						Name:     "readWrite",
 					},
 					{
-						DB:   "admin",
-						Name: "clusterAdmin",
+						Database: "admin",
+						Name:     "clusterAdmin",
 					},
 				},
 				ScramCredentialsSecretName: "scram-credential-secret-name-0",
@@ -65,24 +67,24 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 			MongoDBUser{
 				Name: "mdb-1",
 				DB:   "admin",
-				Roles: []Role{
+				Roles: []scram.Role{
 					// roles on testing db for general connectivity
 					{
-						DB:   "testing",
-						Name: "readWrite",
+						Database: "testing",
+						Name:     "readWrite",
 					},
 					{
-						DB:   "testing",
-						Name: "clusterAdmin",
+						Database: "testing",
+						Name:     "clusterAdmin",
 					},
 					// admin roles for reading FCV
 					{
-						DB:   "admin",
-						Name: "readWrite",
+						Database: "admin",
+						Name:     "readWrite",
 					},
 					{
-						DB:   "admin",
-						Name: "clusterAdmin",
+						Database: "admin",
+						Name:     "clusterAdmin",
 					},
 				},
 				ScramCredentialsSecretName: "scram-credential-secret-name-1",
