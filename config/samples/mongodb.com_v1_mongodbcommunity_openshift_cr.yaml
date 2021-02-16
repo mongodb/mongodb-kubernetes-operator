@@ -1,8 +1,8 @@
 ---
-apiVersion: mongodb.com/v1
+apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
-  name: example-mongodb
+  name: example-openshift-mongodb
 spec:
   members: 3
   type: ReplicaSet
@@ -13,7 +13,7 @@ spec:
   users:
     - name: my-user
       db: admin
-      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+      passwordSecretRef:
         name: my-user-password
       roles:
         - name: clusterAdmin
@@ -21,6 +21,20 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: my-scram
+  statefulSet:
+    serviceName: example-openshift-mongodb-svc
+    selector: {}
+    template:
+      spec:
+        containers:
+          - name: "mongodb-agent"
+            env:
+              - name: MANAGED_SECURITY_CONTEXT
+                value: "true"
+          - name: "mongod"
+            env:
+              - name: MANAGED_SECURITY_CONTEXT
+                value: "true"
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required

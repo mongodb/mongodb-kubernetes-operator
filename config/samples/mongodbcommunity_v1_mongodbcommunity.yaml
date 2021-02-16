@@ -1,0 +1,7 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mongodbcommunity-sample
+spec:
+  # Add fields here
+  foo: bar

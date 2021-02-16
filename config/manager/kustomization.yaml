@@ -1,0 +1,11 @@
+resources:
+- manager.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: mongodb-kubernetes-operator
+  newName: quay.io/mongodb/mongodb-kubernetes-operator:0.5.0

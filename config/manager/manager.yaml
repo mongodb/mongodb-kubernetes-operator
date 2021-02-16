@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,7 +18,7 @@ spec:
         - name: mongodb-kubernetes-operator
           image: quay.io/mongodb/mongodb-kubernetes-operator:0.5.0
           command:
-            - mongodb-kubernetes-operator
+            - /usr/local/bin/entrypoint
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
