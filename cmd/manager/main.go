@@ -5,14 +5,14 @@ import (
 	"os"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	controllers "github.com/mongodb/mongodb-kubernetes-operator/controllers"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	manager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 

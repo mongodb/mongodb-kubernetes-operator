@@ -147,7 +147,7 @@ type ReplicaSetReconciler struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r ReplicaSetReconciler) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
