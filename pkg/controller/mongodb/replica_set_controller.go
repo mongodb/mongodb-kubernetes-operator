@@ -273,30 +273,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 		)
 	}
 
-	r.log.Debug("Resetting StatefulSet UpdateStrategy")
-	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	r.log.Debug("Setting MongoDB Annotations")
-	annotations := map[string]string{
-		lastVersionAnnotationKey:       mdb.Spec.Version,
-		hasLeftReadyStateAnnotationKey: "false",
-	}
-	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().

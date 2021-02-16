@@ -185,59 +185,6 @@ func getVolumeByName(sts appsv1.StatefulSet, volumeName string) (corev1.Volume, 
 	return corev1.Volume{}, errors.Errorf("volume with name %s, not found", volumeName)
 }
 
-func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
-	mdb := newTestReplicaSet()
-	mgr := client.NewManager(&mdb)
-	mgrClient := mgr.GetClient()
-	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
-	assertReconciliationSuccessful(t, res, err)
-
-	// fetch updated resource after first reconciliation
-	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &mdb)
-
-	sts := appsv1.StatefulSet{}
-	err = mgrClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
-	assert.NoError(t, err)
-	assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-
-	mdbRef := &mdb
-	mdbRef.Spec.Version = "4.2.3"
-
-	_ = mgrClient.Update(context.TODO(), &mdb)
-
-	// agents start the upgrade, they are not all ready
-	sts.Status.UpdatedReplicas = 1
-	sts.Status.ReadyReplicas = 2
-	err = mgrClient.Update(context.TODO(), &sts)
-	assert.NoError(t, err)
-	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
-
-	// the request is requeued as the agents are still doing the upgrade
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assert.NoError(t, err)
-	assert.Equal(t, res.RequeueAfter, time.Second*10)
-
-	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
-	assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-	// upgrade is now complete
-	sts.Status.UpdatedReplicas = 3
-	sts.Status.ReadyReplicas = 3
-	err = mgrClient.Update(context.TODO(), &sts)
-	assert.NoError(t, err)
-
-	// reconcilliation is successful
-	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assertReconciliationSuccessful(t, res, err)
-
-	sts = appsv1.StatefulSet{}
-	err = mgrClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
-	assert.NoError(t, err)
-
-	assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type,
-		"The StatefulSet should have be re-configured to use RollingUpdates after it reached the ready state")
-}
-
 func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, Same Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()

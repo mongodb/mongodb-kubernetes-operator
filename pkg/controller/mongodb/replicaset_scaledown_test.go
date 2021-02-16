@@ -75,19 +75,37 @@ func TestHasReachedDesiredNumberOfStatefulSetReplicasReady(t *testing.T) {
 	})
 
 	t.Run("Returns false when the StatefulSet exists and is not ready", func(t *testing.T) {
-		// Arrange
 		mdb := newTestReplicaSet()
-		mgr := client.NewManager(&mdb)
-		err := createStatefulSet(mgr.Client, mdb)
-		assert.NoError(t, err)
-		makeStatefulSetUnReady(t, mgr.Client, mdb)
+		replicas := int32(mdb.Spec.Members)
 
-		// Act
-		hasReached, err := hasReachedDesiredNumberOfStatefulSetReplicasReady(mgr.Client, mdb)
+		// return an unready statefulset
+		hasReached, err := hasReachedDesiredNumberOfStatefulSetReplicasReady(mockStatefulSetGetter{sts: appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mdb.Name,
+				Namespace: mdb.Namespace,
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: &replicas,
+			},
+			Status: appsv1.StatefulSetStatus{
+				Replicas:        3,
+				ReadyReplicas:   0,
+				CurrentReplicas: 0,
+				UpdatedReplicas: 0,
+			},
+		}}, mdb)
 
 		// Assert
 		assert.NoError(t, err, "should be no error when the StatefulSet exists")
 		assert.False(t, hasReached, "Should not be ready when the stateful set is not ready")
 	})
 
+}
+
+type mockStatefulSetGetter struct {
+	sts appsv1.StatefulSet
+}
+
+func (s mockStatefulSetGetter) GetStatefulSet(k8sClient.ObjectKey) (appsv1.StatefulSet, error) {
+	return s.sts, nil
 }

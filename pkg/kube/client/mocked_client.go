@@ -78,6 +78,7 @@ func (m *mockedClient) Create(_ context.Context, obj runtime.Object, _ ...k8sCli
 func makeStatefulSetReady(set *appsv1.StatefulSet) {
 	set.Status.UpdatedReplicas = *set.Spec.Replicas
 	set.Status.ReadyReplicas = *set.Spec.Replicas
+	set.Status.ObservedGeneration = set.Generation
 }
 
 func (m *mockedClient) List(_ context.Context, _ runtime.Object, _ ...k8sClient.ListOption) error {
@@ -100,6 +101,11 @@ func (m *mockedClient) Update(_ context.Context, obj runtime.Object, _ ...k8sCli
 	if err != nil {
 		return err
 	}
+	switch v := obj.(type) {
+	case *appsv1.StatefulSet:
+		makeStatefulSetReady(v)
+	}
+
 	relevantMap[objKey] = obj
 	return nil
 }

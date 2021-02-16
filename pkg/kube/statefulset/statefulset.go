@@ -55,7 +55,11 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (
 	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(sts)
+			err = getUpdateCreator.CreateStatefulSet(sts)
+			if err != nil {
+				return appsv1.StatefulSet{}, err
+			}
+			return getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 		}
 		return appsv1.StatefulSet{}, err
 	}
