@@ -8,12 +8,13 @@ spec:
   version: "4.2.6"
   persistent: true
   statefulSet:
-    volumeClaimTemplates:
-      - metadata:
-          name: data-volume
-        spec:
-          accessModes: [ "ReadWriteOnce" ]
-          storageClassName: "my-storage-class"
-          resources:
-            requests:
-              storage: 1Gi
+    spec:
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: "my-storage-class"
+            resources:
+              requests:
+                storage: 1Gi

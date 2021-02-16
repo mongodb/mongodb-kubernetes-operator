@@ -192,15 +192,6 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv
 					ScramCredentialsSecretName: fmt.Sprintf("%s-my-scram", name),
 				},
 			},
-			StatefulSetConfiguration: appsv1.StatefulSetSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{},
-					},
-				},
-				Selector:    &metav1.LabelSelector{},
-				ServiceName: fmt.Sprintf("%s-svc", name),
-			},
 		},
 	}
 	return mdb, mdb.Spec.Users[0]

@@ -1,5 +1,4 @@
 {% extends "Dockerfile.template" %}
 
 {% block command -%}
-CMD ["go", "test", "local",  "./test/e2e",  "--namespace", "default", "--verbose", "--kubeconfig", "/etc/config/kubeconfig" ]
 {% endblock -%}

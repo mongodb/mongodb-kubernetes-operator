@@ -20,14 +20,15 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
   statefulSet:
-    template:
-      spec:
-        containers:
-          - name: "mongodb-agent"
-            env:
-              - name: MANAGED_SECURITY_CONTEXT
-                value: "true"
-          - name: "mongod"
-            env:
-              - name: MANAGED_SECURITY_CONTEXT
-                value: "true"
+    spec:
+      template:
+        spec:
+          containers:
+            - name: "mongodb-agent"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"
+            - name: "mongod"
+              env:
+                - name: MANAGED_SECURITY_CONTEXT
+                  value: "true"

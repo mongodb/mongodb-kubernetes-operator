@@ -8,14 +8,15 @@ spec:
   version: "4.2.6"
   persistent: true
   statefulSet:
-    template:
-      spec:
-        containers:
-          - name: mongodb-agent
-        tolerations:
-          - key: "example-key"
-            operator: "Exists"
-            effect: "NoSchedule"
-          - key: "example-key-2"
-            operator: "Equal"
-            effect: "NoExecute"
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb-agent
+          tolerations:
+            - key: "example-key"
+              operator: "Exists"
+              effect: "NoSchedule"
+            - key: "example-key-2"
+              operator: "Equal"
+              effect: "NoExecute"

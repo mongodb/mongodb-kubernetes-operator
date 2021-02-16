@@ -8,11 +8,12 @@ spec:
   version: "4.2.6"
   persistent: true
   statefulSet:
-    volumeClaimTemplates:
-      - metadata:
-          name: volume-claim-templates
-        spec:
-          accessModes: [ "ReadWriteOnce" ]
-          resources:
-            requests:
-              storage: 1Gi
+    spec:
+      volumeClaimTemplates:
+        - metadata:
+            name: volume-claim-templates
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 1Gi
