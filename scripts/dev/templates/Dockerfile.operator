@@ -1,8 +1,17 @@
 {% extends "Dockerfile.template" %}
 
 {% block build_binary -%}
-# TODO: This build takes longer than it needs to and can still be optimized
-RUN go build -o build/_output/bin/mongodb-kubernetes-operator github.com/mongodb/mongodb-kubernetes-operator/cmd/manager
+
+# Copy the go source
+COPY cmd/manager/main.go cmd/manager/main.go
+COPY api/ api/
+COPY controllers/ controllers/
+COPY pkg/ pkg/
+COPY build/bin/ build/bin/
+COPY testdata/tls/ testdata/tls/
+
+# Build the operator
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager cmd/manager/main.go
 
 ENV manifest_version=4.4
 RUN mkdir -p /content/ \
@@ -13,13 +22,15 @@ RUN mkdir -p /content/ \
 {% block build_second_stage -%}
 FROM {{base_image}}
 
-ENV OPERATOR=/usr/local/bin/mongodb-kubernetes-operator \
+ENV OPERATOR=manager \
     USER_UID=1001 \
     USER_NAME=mongodb-kubernetes-operator
 
-# copy the operator binary and version manifest
-COPY --from=builder /go/build/_output/bin/mongodb-kubernetes-operator ${OPERATOR}
-COPY --from=builder /go/build/bin /usr/local/bin
+# Copy the operator binary and version manifest
+WORKDIR /
+COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/build/bin /usr/local/bin
+COPY --from=builder /workspace/testdata/tls/ /testdata/tls/
 COPY --from=builder /content/version_manifest.json /usr/local/version_manifest.json
 
 RUN  /usr/local/bin/user_setup

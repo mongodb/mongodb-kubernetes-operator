@@ -1,0 +1,13 @@
+domain: mongodb.com
+layout: go.kubebuilder.io/v3
+projectName: mko-v1
+repo: github.com/mongodb/mongodb-kubernetes-operator
+resources:
+- crdVersion: v1
+  group: mongodbcommunity
+  kind: MongoDBCommunity
+  version: v1
+version: 3-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}

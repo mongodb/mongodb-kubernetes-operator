@@ -1,7 +1,5 @@
 {% extends "Dockerfile.template" %}
 
 {% block command -%}
-# Operator SDK expects all deployment files to exist in the deploy directory
-RUN mv deploy/operator/* deploy/
-CMD ["/bin/operator-sdk", "test", "local",  "./test/e2e",  "--namespace", "default", "--verbose", "--kubeconfig", "/etc/config/kubeconfig" ]
+CMD ["go", "test", "local",  "./test/e2e",  "--namespace", "default", "--verbose", "--kubeconfig", "/etc/config/kubeconfig" ]
 {% endblock -%}
