@@ -1,4 +1,4 @@
-package mongodb
+package controllers
 
 import (
 	"crypto/sha256"
@@ -20,7 +20,7 @@ import (
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
 const (

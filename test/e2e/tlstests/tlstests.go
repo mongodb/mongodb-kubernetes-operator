@@ -8,7 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 )

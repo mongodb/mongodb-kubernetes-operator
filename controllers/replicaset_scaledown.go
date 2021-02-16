@@ -1,9 +1,9 @@
-package mongodb
+package controllers
 
 import (
 	"fmt"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"

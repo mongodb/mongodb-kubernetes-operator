@@ -1,4 +1,4 @@
-package mongodb
+package controllers
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
