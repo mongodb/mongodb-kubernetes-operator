@@ -1,4 +1,5 @@
 {% extends "Dockerfile.template" %}
 
-{% block command -%}
+{% block build_binary -%}
+COPY testdata/tls/ testdata/tls/
 {% endblock -%}

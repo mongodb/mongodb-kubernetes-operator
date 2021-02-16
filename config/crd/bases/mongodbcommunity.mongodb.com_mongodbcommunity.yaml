@@ -52,7 +52,6 @@ spec:
                 can be passed to each data-bearing mongod at runtime. Uses the same
                 structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             featureCompatibilityVersion:
               description: FeatureCompatibilityVersion configures the feature compatibility
                 version that will be set for the deployment
@@ -222,7 +221,6 @@ spec:
               required:
               - spec
               type: object
-              x-kubernetes-preserve-unknown-fields: true
             type:
               description: Type defines which type of MongoDB deployment the resource
                 should create
