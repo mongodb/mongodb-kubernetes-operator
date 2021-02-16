@@ -84,8 +84,7 @@ const (
 	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
-	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
-	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
+	tlsRolledOutAnnotationKey = "mongodb.com/v1.tlsRolledOut"
 
 	trueAnnotation = "true"
 )
@@ -316,19 +315,6 @@ func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.R
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 	return res, err
-}
-
-// resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
-// and does not keep using OnDelete
-func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBCommunity) error {
-	if !isChangingVersion(mdb) {
-		return nil
-	}
-	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
-		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-	})
-	return err
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {

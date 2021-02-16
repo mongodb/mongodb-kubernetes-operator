@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/objx"
-
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -27,7 +27,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	k8sClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -126,7 +126,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	// TODO: Create builder/yaml fixture of some type to construct MDB objects for unit tests
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
@@ -146,7 +146,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	_ = os.Setenv(mongodbImageEnv, "mongo")
 
 	mdb := newTestReplicaSet()
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -215,7 +215,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -235,12 +235,12 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err := getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, currentAc.Version)
 
@@ -251,7 +251,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err = getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, currentAc.Version)
 }
@@ -259,19 +259,19 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err := getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err = getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 }
@@ -285,12 +285,12 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mongodConfig.Set("arbitrary.config.path", "value")
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err := getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	assert.NoError(t, err)
 
 	for _, p := range currentAc.Processes {
@@ -309,7 +309,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 
 func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	mdb := newScramReplicaSet()
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 
 	c := mgr.Client
 
@@ -351,7 +351,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	mdb := newTestReplicaSet()
 	mdb.Spec.Members = 5
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -364,7 +364,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	// scale members from five to three
 	mdb.Spec.Members = 3
 
-	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	err = mgr.Client.Update(context.TODO(), &mdb)
 	assert.NoError(t, err)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
@@ -377,7 +377,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
 	assert.NoError(t, err)
 
-	assert.Equal(t, true, res.Requeue)
+	assert.True(t, res.Requeue)
 	assert.Equal(t, 4, mdb.Status.CurrentMongoDBMembers)
 
 	makeStatefulSetReady(t, mgr.GetClient(), mdb)
@@ -395,7 +395,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -438,12 +438,12 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 }
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := getCurrentAutomationConfig(client.NewClient(mgr.GetClient()), mdb)
+	currentAc, err := getCurrentAutomationConfig(k8sClient.NewClient(mgr.GetClient()), mdb)
 	t.Run("Automation Config is configured with SCRAM", func(t *testing.T) {
 		assert.NotEmpty(t, currentAc.Auth.Key)
 		assert.NoError(t, err)
@@ -463,7 +463,7 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -540,7 +540,7 @@ func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
 func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv1.StatefulSet {
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)
-	mgr := client.NewManager(&mdb)
+	mgr := k8sClient.NewManager(&mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
 	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: mdb.NamespacedName()})
@@ -551,7 +551,7 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv
 	return sts
 }
 
-func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {
+func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c k8sClient.Client) error {
 	for _, user := range mdb.Spec.Users {
 
 		key := "password"
@@ -581,17 +581,11 @@ func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err e
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
-func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
+func makeStatefulSetReady(t *testing.T, c client.Client, mdb mdbv1.MongoDBCommunity) {
 	setStatefulSetReadyReplicas(t, c, mdb, mdb.StatefulSetReplicasThisReconciliation())
 }
 
-// makeStatefulSetUnReady updates the StatefulSet corresponding to the
-// provided MongoDB resource to mark it as unready.
-func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
-	setStatefulSetReadyReplicas(t, c, mdb, 0)
-}
-
-func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
+func setStatefulSetReadyReplicas(t *testing.T, c client.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
 	sts := appsv1.StatefulSet{}
 	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
 	assert.NoError(t, err)

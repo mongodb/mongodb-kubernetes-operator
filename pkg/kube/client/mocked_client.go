@@ -13,7 +13,8 @@ import (
 
 // mockedClient dynamically creates maps to store instances of runtime.Object
 type mockedClient struct {
-	backingMap map[reflect.Type]map[k8sClient.ObjectKey]runtime.Object
+	makeReadyOnUpdate bool
+	backingMap        map[reflect.Type]map[k8sClient.ObjectKey]runtime.Object
 }
 
 // notFoundError returns an error which returns true for "errors.IsNotFound"
@@ -27,6 +28,10 @@ func alreadyExistsError() error {
 
 func NewMockedClient() k8sClient.Client {
 	return &mockedClient{backingMap: map[reflect.Type]map[k8sClient.ObjectKey]runtime.Object{}}
+}
+
+func NewMockedClient2() k8sClient.Client {
+	return &mockedClient{makeReadyOnUpdate: false, backingMap: map[reflect.Type]map[k8sClient.ObjectKey]runtime.Object{}}
 }
 
 func (m *mockedClient) ensureMapFor(obj runtime.Object) map[k8sClient.ObjectKey]runtime.Object {
@@ -103,9 +108,28 @@ func (m *mockedClient) Update(_ context.Context, obj runtime.Object, _ ...k8sCli
 	}
 	switch v := obj.(type) {
 	case *appsv1.StatefulSet:
-		makeStatefulSetReady(v)
-	}
+		oldSts := appsv1.StatefulSet{}
+		err := m.Get(context.TODO(), objKey, &oldSts)
+		if err != nil {
+			return err
+		}
 
+		if v.Status.ReadyReplicas == 0 {
+			v.Status.ReadyReplicas = oldSts.Status.ReadyReplicas
+		}
+
+		if v.Status.ObservedGeneration == 0 {
+			v.Status.ObservedGeneration = oldSts.Status.ObservedGeneration
+		}
+
+		if v.Status.Replicas == 0 {
+			v.Status.Replicas = oldSts.Status.Replicas
+		}
+
+		if v.Status.UpdatedReplicas == 0 {
+			v.Status.UpdatedReplicas = oldSts.Status.UpdatedReplicas
+		}
+	}
 	relevantMap[objKey] = obj
 	return nil
 }
