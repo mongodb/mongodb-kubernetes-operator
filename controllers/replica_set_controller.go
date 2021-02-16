@@ -1,4 +1,4 @@
-package mongodb
+package controllers
 
 import (
 	"bytes"
@@ -23,8 +23,8 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/validation"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/watch"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
 
@@ -33,9 +33,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/predicates"
-
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -49,12 +47,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -98,50 +94,35 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
-// Add creates a new MongoDB Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr, readVersionManifestFromDisk))
-}
-
 // ManifestProvider is a function which returns the VersionManifest which
 // contains the list of all available MongoDB versions
 type ManifestProvider func() (automationconfig.VersionManifest, error)
 
-func newReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
+func NewReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
+
+	mp := manifestProvider
+	if mp == nil {
+		mp = readVersionManifestFromDisk
+	}
 
 	return &ReplicaSetReconciler{
 		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
-		manifestProvider: manifestProvider,
+		manifestProvider: mp,
 		log:              zap.S(),
 		secretWatcher:    &secretWatcher,
 	}
 }
 
-// add sets up a controller for the Reconciler on the manager. It will
-// also configure the necessary watches.
-func add(mgr manager.Manager, r *ReplicaSetReconciler) error {
-	// Create a new controller
-	c, err := controller.New("replicaset-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to primary resource MongoDB
-	err = c.Watch(&source.Kind{Type: &mdbv1.MongoDBCommunity{}}, &handler.EnqueueRequestForObject{}, predicates.OnlyOnSpecChange())
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// SetupWithManager sets up the controller with the Manager and configures the necessary watches.
+func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&mdbv1.MongoDBCommunity{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Secret{}).
+		Complete(r)
 }
 
 // ReplicaSetReconciler reconciles a MongoDB ReplicaSet
@@ -155,12 +136,18 @@ type ReplicaSetReconciler struct {
 	secretWatcher    *watch.ResourceWatcher
 }
 
+// +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list
+
 // Reconcile reads that state of the cluster for a MongoDB object and makes changes based on the state read
 // and what is in the MongoDB.Spec
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReplicaSetReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r ReplicaSetReconciler) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
@@ -799,14 +786,14 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 				buildScramPodSpecModification(mdb),
 			),
 		),
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration),
 	)
 }
 
 func getOwnerReference(mdb mdbv1.MongoDBCommunity) metav1.OwnerReference {
 	return *metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-		Group:   mdbv1.SchemeGroupVersion.Group,
-		Version: mdbv1.SchemeGroupVersion.Version,
+		Group:   mdbv1.GroupVersion.Group,
+		Version: mdbv1.GroupVersion.Version,
 		Kind:    mdb.Kind,
 	})
 }

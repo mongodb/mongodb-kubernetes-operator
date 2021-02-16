@@ -69,7 +69,7 @@ type MongoDBCommunitySpec struct {
 	Users []MongoDBUser `json:"users"`
 
 	// +optional
-	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
+	StatefulSetConfiguration appsv1.StatefulSetSpec `json:"statefulSet,omitempty"`
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
@@ -171,35 +171,6 @@ type Resource struct {
 type AuthenticationRestriction struct {
 	ClientSource  []string `json:"clientSource"`
 	ServerAddress []string `json:"serverAddress"`
-}
-
-// StatefulSetConfiguration holds the optional custom StatefulSet
-// that should be merged into the operator created one.
-type StatefulSetConfiguration struct {
-	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
-}
-
-// StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
-// of MarshalJSON and UnmarshalJSON which delegate to the underlying Spec to avoid CRD pollution.
-
-type StatefulSetSpecWrapper struct {
-	Spec appsv1.StatefulSetSpec `json:"-"`
-}
-
-// MarshalJSON defers JSON encoding to the wrapped map
-func (m *StatefulSetSpecWrapper) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Spec)
-}
-
-// UnmarshalJSON will decode the data into the wrapped map
-func (m *StatefulSetSpecWrapper) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &m.Spec)
-}
-
-func (m *StatefulSetSpecWrapper) DeepCopy() *StatefulSetSpecWrapper {
-	return &StatefulSetSpecWrapper{
-		Spec: m.Spec,
-	}
 }
 
 // MongodConfiguration holds the optional mongod configuration
@@ -348,7 +319,8 @@ type MongoDBCommunityStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // MongoDBCommunity is the Schema for the mongodbs API
 // +kubebuilder:subresource:status
@@ -462,7 +434,7 @@ func (a automationConfigReplicasScaler) CurrentReplicas() int {
 	return a.current
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // MongoDBCommunityList contains a list of MongoDB
 type MongoDBCommunityList struct {

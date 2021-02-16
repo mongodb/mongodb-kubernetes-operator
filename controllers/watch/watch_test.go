@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	"github.com/stretchr/testify/assert"
 
@@ -46,7 +46,6 @@ func TestWatcher(t *testing.T) {
 		queue := controllertest.Queue{Interface: workqueue.New()}
 
 		watcher.Create(event.CreateEvent{
-			Meta:   obj.GetObjectMeta(),
 			Object: obj,
 		}, queue)
 
@@ -61,7 +60,6 @@ func TestWatcher(t *testing.T) {
 		watcher.Watch(objNsName, mdb2.NamespacedName())
 
 		watcher.Create(event.CreateEvent{
-			Meta:   obj.GetObjectMeta(),
 			Object: obj,
 		}, queue)
 
@@ -75,7 +73,6 @@ func TestWatcher(t *testing.T) {
 		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Create(event.CreateEvent{
-			Meta:   obj.GetObjectMeta(),
 			Object: obj,
 		}, queue)
 
@@ -88,9 +85,7 @@ func TestWatcher(t *testing.T) {
 		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Update(event.UpdateEvent{
-			MetaOld:   obj.GetObjectMeta(),
 			ObjectOld: obj,
-			MetaNew:   obj.GetObjectMeta(),
 			ObjectNew: obj,
 		}, queue)
 
@@ -103,7 +98,6 @@ func TestWatcher(t *testing.T) {
 		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Delete(event.DeleteEvent{
-			Meta:   obj.GetObjectMeta(),
 			Object: obj,
 		}, queue)
 
@@ -116,7 +110,6 @@ func TestWatcher(t *testing.T) {
 		watcher.Watch(objNsName, mdb1.NamespacedName())
 
 		watcher.Generic(event.GenericEvent{
-			Meta:   obj.GetObjectMeta(),
 			Object: obj,
 		}, queue)
 

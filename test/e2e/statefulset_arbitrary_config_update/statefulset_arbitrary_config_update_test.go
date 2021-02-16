@@ -7,7 +7,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -46,11 +46,11 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	t.Run("Test basic connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
-	overrideSpec := v1.StatefulSetConfiguration{}
-	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers = []corev1.Container{
-		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
-
-	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
+	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) {
+		mdb.Spec.StatefulSetConfiguration.Template.Spec.Containers = []corev1.Container{
+			{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}},
+		}
+	})
 	assert.NoError(t, err)
 
 	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(&mdb))

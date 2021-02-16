@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
 // TestClient is the global client used by e2e tests.
@@ -71,8 +71,7 @@ func newE2ETestClient(config *rest.Config, scheme *runtime.Scheme) (*E2ETestClie
 }
 
 // Create wraps client.Create to provide post-test cleanup functionality.
-func (c *E2ETestClient) Create(ctx context.Context, obj runtime.Object, cleanupOptions *CleanupOptions) error {
-	objCopy := obj.DeepCopyObject()
+func (c *E2ETestClient) Create(ctx context.Context, obj client.Object, cleanupOptions *CleanupOptions) error {
 	err := c.Client.Create(ctx, obj)
 	if err != nil {
 		return err
@@ -83,7 +82,7 @@ func (c *E2ETestClient) Create(ctx context.Context, obj runtime.Object, cleanupO
 	}
 
 	cleanupOptions.TestContext.AddCleanupFunc(func() error {
-		err := TestClient.Delete(ctx, objCopy)
+		err := TestClient.Delete(ctx, obj)
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
@@ -94,17 +93,17 @@ func (c *E2ETestClient) Create(ctx context.Context, obj runtime.Object, cleanupO
 }
 
 // Delete wraps client.Delete.
-func (c *E2ETestClient) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *E2ETestClient) Delete(ctx context.Context, obj client.Object) error {
 	return c.Client.Delete(ctx, obj)
 }
 
 // Update wraps client.Update.
-func (c *E2ETestClient) Update(ctx context.Context, obj runtime.Object) error {
+func (c *E2ETestClient) Update(ctx context.Context, obj client.Object) error {
 	return c.Client.Update(ctx, obj)
 }
 
 // Get wraps client.Get.
-func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 	return c.Client.Get(ctx, key, obj)
 }
 

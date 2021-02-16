@@ -1,12 +1,11 @@
 apiVersion: mongodb.com/v1
 kind: MongoDB
 metadata:
-  name: change-data-volume-mdb
+  name: example-openshift-mongodb
 spec:
   members: 3
   type: ReplicaSet
   version: "4.2.6"
-  persistent: true
   security:
     authentication:
       modes: ["SCRAM"]
@@ -21,12 +20,14 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
   statefulSet:
-    spec:
-      volumeClaimTemplates:
-        - metadata:
-            name: data-volume
-          spec:
-            accessModes: [ "ReadWriteOnce", "ReadWriteMany" ]
-            resources:
-              requests:
-                storage: 50Gi
+    template:
+      spec:
+        containers:
+          - name: "mongodb-agent"
+            env:
+              - name: MANAGED_SECURITY_CONTEXT
+                value: "true"
+          - name: "mongod"
+            env:
+              - name: MANAGED_SECURITY_CONTEXT
+                value: "true"

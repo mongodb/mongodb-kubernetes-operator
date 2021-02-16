@@ -1,4 +1,4 @@
-package mongodb
+package controllers
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
@@ -26,8 +26,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
-	r := newReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
-	res, err := r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	r := NewReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
 	sts := appsv1.StatefulSet{}

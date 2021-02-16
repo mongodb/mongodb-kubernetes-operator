@@ -39,19 +39,19 @@ func (w ResourceWatcher) Watch(watchedName, dependentName types.NamespacedName) 
 }
 
 func (w ResourceWatcher) Create(event event.CreateEvent, queue workqueue.RateLimitingInterface) {
-	w.handleEvent(event.Meta, queue)
+	w.handleEvent(event.Object, queue)
 }
 
 func (w ResourceWatcher) Update(event event.UpdateEvent, queue workqueue.RateLimitingInterface) {
-	w.handleEvent(event.MetaOld, queue)
+	w.handleEvent(event.ObjectOld, queue)
 }
 
 func (w ResourceWatcher) Delete(event event.DeleteEvent, queue workqueue.RateLimitingInterface) {
-	w.handleEvent(event.Meta, queue)
+	w.handleEvent(event.Object, queue)
 }
 
 func (w ResourceWatcher) Generic(event event.GenericEvent, queue workqueue.RateLimitingInterface) {
-	w.handleEvent(event.Meta, queue)
+	w.handleEvent(event.Object, queue)
 }
 
 // handleEvent is called when an event is received for an object.
