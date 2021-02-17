@@ -3,7 +3,7 @@ package status
 import (
 	"context"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

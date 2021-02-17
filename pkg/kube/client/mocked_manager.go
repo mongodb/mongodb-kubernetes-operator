@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -21,7 +22,7 @@ type MockedManager struct {
 	Client Client
 }
 
-func NewManager(obj runtime.Object) *MockedManager {
+func NewManager(obj k8sClient.Object) *MockedManager {
 	c := NewMockedClient()
 	if obj != nil {
 		_ = c.Create(context.TODO(), obj)
@@ -45,7 +46,7 @@ func (m *MockedManager) SetFields(interface{}) error {
 
 // Start starts all registered Controllers and blocks until the Stop channel is closed.
 // Returns an error if there is an error starting any controller.
-func (m *MockedManager) Start(<-chan struct{}) error {
+func (m *MockedManager) Start(context.Context) error {
 	return nil
 }
 
@@ -115,5 +116,9 @@ func (m *MockedManager) AddHealthzCheck(name string, check healthz.Checker) erro
 
 // AddReadyzCheck allows you to add Readyz checker
 func (m *MockedManager) AddReadyzCheck(name string, check healthz.Checker) error {
+	return nil
+}
+
+func (m *MockedManager) GetLogger() logr.Logger {
 	return nil
 }

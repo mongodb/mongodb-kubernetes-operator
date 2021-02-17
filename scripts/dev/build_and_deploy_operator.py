@@ -33,7 +33,9 @@ def _load_operator_deployment(operator_image: str) -> Dict:
 
 
 def _load_mongodb_crd() -> Dict:
-    return load_yaml_from_file("deploy/crds/mongodb.com_mongodbcommunity_crd.yaml")
+    return load_yaml_from_file(
+        "config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml"
+    )
 
 
 def load_yaml_from_file(path: str) -> Dict:

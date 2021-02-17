@@ -69,7 +69,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - mongodb.com
+  - mongodbcommunity.mongodb.com
   resources:
   - mongodbcommunity
   - mongodbcommunity/status

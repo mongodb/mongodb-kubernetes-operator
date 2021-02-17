@@ -9,14 +9,15 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ghodss/yaml"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -24,13 +25,13 @@ import (
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
 const (
 	performCleanup = "PERFORM_CLEANUP"
-	deployDir      = "/go/deploy"
+	deployDir      = "/workspace/config/manager"
+	roleDir        = "/workspace/config/rbac"
 )
 
 func InitTest(t *testing.T) (*e2eutil.Context, bool) {
@@ -124,21 +125,21 @@ func deployOperator() error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator cluster role: %s", err)
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator cluster role binding: %s", err)
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building operator role binding: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "operator.yaml"),
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "manager.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
@@ -153,7 +154,7 @@ func deployOperator() error {
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
 // provided will be applied before creation.
-func buildKubernetesResourceFromYamlFile(yamlFilePath string, obj runtime.Object, options ...func(obj runtime.Object)) error {
+func buildKubernetesResourceFromYamlFile(yamlFilePath string, obj client.Object, options ...func(obj runtime.Object)) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return errors.Errorf("error reading file: %s", err)
@@ -180,7 +181,7 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	return json.Unmarshal(jsonBytes, &obj)
 }
 
-func createOrUpdate(obj runtime.Object) error {
+func createOrUpdate(obj client.Object) error {
 	if err := e2eutil.TestClient.Create(context.TODO(), obj, &e2eutil.CleanupOptions{}); err != nil {
 		if apiErrors.IsAlreadyExists(err) {
 			return e2eutil.TestClient.Update(context.TODO(), obj)

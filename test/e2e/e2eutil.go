@@ -9,21 +9,20 @@ import (
 
 	"github.com/pkg/errors"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const TestdataDir = "/go/testdata/tls"
+const TestdataDir = "/workspace/testdata/tls"
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
@@ -125,7 +124,7 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 
 // waitForRuntimeObjectToExist waits until a runtime.Object of the given name exists
 // using the provided retryInterval and timeout provided.
-func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj runtime.Object, namespace string) error {
+func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
 		err = TestClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, obj)
 		if err != nil {
@@ -211,13 +210,10 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	}
 }
 
-func ensureObject(ctx *Context, obj runtime.Object) error {
-	key, err := k8sClient.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+func ensureObject(ctx *Context, obj k8sClient.Object) error {
+	key := k8sClient.ObjectKeyFromObject(obj)
 
-	err = TestClient.Get(context.TODO(), key, obj)
+	err := TestClient.Get(context.TODO(), key, obj)
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
 			return err

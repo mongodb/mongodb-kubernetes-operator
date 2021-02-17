@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

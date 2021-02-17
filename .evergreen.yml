@@ -19,17 +19,6 @@ functions:
       params:
         directory: mongodb-kubernetes-operator
 
-  setup_operator_sdk:
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: mongodb-kubernetes-operator/scripts/ci
-        command: go run download.go
-        env:
-          URL: https://github.com/operator-framework/operator-sdk/releases/download/v0.19.4/operator-sdk-v0.19.4-s390x-linux-gnu
-          FILENAME: operator-sdk
-          DIR: ${workdir}/bin
-
   # upload_e2e_logs has the responsibility of dumping as much information as
   # possible into the S3 bucket
   upload_e2e_logs:
