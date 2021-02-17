@@ -184,3 +184,52 @@ func TestModifications(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, ac.Version)
 }
+
+func TestMongoDBVersionsConfig(t *testing.T) {
+
+	t.Run("Dummy Config is used when no versions are set", func(t *testing.T) {
+		ac, err := NewBuilder().SetMongoDBVersion("4.4.2").Build()
+		assert.NoError(t, err)
+
+		versions := ac.Versions
+		assert.Len(t, versions, 1)
+		v := versions[0]
+		dummyConfig := buildDummyMongoDbVersionConfig("4.4.2")
+		assert.Equal(t, v, dummyConfig)
+	})
+
+	t.Run("Dummy Config is not used when versions are set", func(t *testing.T) {
+		ac, err := NewBuilder().SetMongoDBVersion("4.4.2").AddVersion(MongoDbVersionConfig{
+			Name: "4.4.2",
+			Builds: []BuildConfig{
+				{
+					Platform:     "linux",
+					Url:          "url",
+					GitVersion:   "gitVersion",
+					Architecture: "arch",
+					Flavor:       "flavor",
+					MinOsVersion: "minOs",
+					MaxOsVersion: "maxOs",
+				},
+			},
+		}).Build()
+
+		assert.NoError(t, err)
+
+		versions := ac.Versions
+		assert.Len(t, versions, 1)
+		v := versions[0]
+		dummyConfig := buildDummyMongoDbVersionConfig("4.4.2")
+		assert.NotEqual(t, v, dummyConfig)
+
+		b := versions[0].Builds[0]
+		assert.Equal(t, "linux", b.Platform)
+		assert.Equal(t, "url", b.Url)
+		assert.Equal(t, "gitVersion", b.GitVersion)
+		assert.Equal(t, "arch", b.Architecture)
+		assert.Equal(t, "minOs", b.MinOsVersion)
+		assert.Equal(t, "maxOs", b.MaxOsVersion)
+
+	})
+
+}

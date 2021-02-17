@@ -138,7 +138,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	}
 
 	if len(b.versions) == 0 {
-		b.versions = append(b.versions, buildDummyGenericMongoDbVersionConfig(b.mongodbVersion))
+		b.versions = append(b.versions, buildDummyMongoDbVersionConfig(b.mongodbVersion))
 	}
 
 	currentAc := AutomationConfig{
@@ -196,10 +196,10 @@ func withFCV(fcv string) func(*Process) {
 	}
 }
 
-// buildDummyGenericMongoDbVersionConfig create a MongoDbVersionConfig which
+// buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which
 // will be valid for any version of MongoDB. This is used as a default if no
 // versions are manually specified.
-func buildDummyGenericMongoDbVersionConfig(version string) MongoDbVersionConfig {
+func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
 	return MongoDbVersionConfig{
 		Name: version,
 		Builds: []BuildConfig{
