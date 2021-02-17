@@ -261,14 +261,6 @@ func (m MongoDBUser) GetDatabase() string {
 	return m.DB
 }
 
-func (m MongoDBUser) GetScramRoles() []scram.Role {
-	var roles []scram.Role
-	for _, r := range m.Roles {
-		roles = append(roles, r)
-	}
-	return roles
-}
-
 func (m MongoDBUser) GetPasswordSecretKey() string {
 	if m.PasswordSecretRef.Key == "" {
 		return defaultPasswordKey
@@ -407,7 +399,21 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	var users []scram.User
 	for _, u := range m.Spec.Users {
-		users = append(users, u)
+		var roles []scram.Role
+		for _, r := range u.Roles {
+			roles = append(roles, scram.Role{
+				Name:     r.Name,
+				Database: r.DB,
+			})
+		}
+		users = append(users, scram.User{
+			Username:                   u.Name,
+			Database:                   u.DB,
+			Roles:                      roles,
+			PasswordSecretKey:          u.PasswordSecretRef.Key,
+			PasswordSecretName:         u.PasswordSecretRef.Name,
+			ScramCredentialsSecretName: u.ScramCredentialsSecretName,
+		})
 	}
 	return users
 }
