@@ -96,7 +96,7 @@ func main() {
 	}
 
 	// Setup Controller.
-	if err = controllers.NewReconciler(mgr, nil).SetupWithManager(mgr); err != nil {
+	if err = controllers.NewReconciler(mgr).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller")
 		os.Exit(1)
 	}
