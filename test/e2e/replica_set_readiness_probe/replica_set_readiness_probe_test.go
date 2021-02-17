@@ -10,7 +10,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"

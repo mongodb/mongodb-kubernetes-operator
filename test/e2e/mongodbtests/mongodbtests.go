@@ -11,9 +11,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -116,7 +116,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
-		assert.Contains(t, s.Data, mongodb.AutomationConfigKey)
+		assert.Contains(t, s.Data, controllers.AutomationConfigKey)
 
 		t.Log("The Secret contained the automation config")
 	}
@@ -127,7 +127,7 @@ func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationco
 	currentAc := automationconfig.AutomationConfig{}
 	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 	assert.NoError(t, err)
-	err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
+	err = json.Unmarshal(currentSecret.Data[controllers.AutomationConfigKey], &currentAc)
 	assert.NoError(t, err)
 	return currentAc
 }
@@ -165,8 +165,8 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
 		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
-				Group:   mdbv1.SchemeGroupVersion.Group,
-				Version: mdbv1.SchemeGroupVersion.Version,
+				Group:   mdbv1.GroupVersion.Group,
+				Version: mdbv1.GroupVersion.Version,
 				Kind:    mdb.Kind,
 			})))
 		t.Run("Test Status Was Updated", Status(mdb,

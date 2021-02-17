@@ -70,17 +70,12 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 			Verbs:         []string{"update"},
 		},
 		{
-			APIGroups: []string{""},
-			Resources: []string{"pods"},
-			Verbs:     []string{"get"},
-		},
-		{
 			APIGroups: []string{"apps"},
 			Resources: []string{"replicasets", "deployments"},
 			Verbs:     []string{"get"},
 		},
 		{
-			APIGroups: []string{"mongodb.com"},
+			APIGroups: []string{"mongodbcommunity.mongodb.com"},
 			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
@@ -126,17 +121,12 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 			Verbs:         []string{"update"},
 		},
 		{
-			APIGroups: []string{""},
-			Resources: []string{"pods"},
-			Verbs:     []string{"get"},
-		},
-		{
 			APIGroups: []string{"apps"},
 			Resources: []string{"replicasets", "deployments"},
 			Verbs:     []string{"get"},
 		},
 		{
-			APIGroups: []string{"mongodb.com"},
+			APIGroups: []string{"mongodbcommunity.mongodb.com"},
 			Resources: []string{"mongodbcommunity", "mongodbcommunity/status", "mongodbcommunity/spec"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},

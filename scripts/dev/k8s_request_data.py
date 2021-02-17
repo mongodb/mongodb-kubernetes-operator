@@ -19,7 +19,11 @@ def get_all_mongodb_namespaced(namespace: str) -> Optional[List]:
     try:
         return list(
             customv1.list_namespaced_custom_object(
-                "mongodb.com", "v1", namespace, "mongodbcommunity", pretty=True
+                "mongodbcommunity.mongodb.com",
+                "v1",
+                namespace,
+                "mongodbcommunity",
+                pretty=True,
             )["items"]
         )
     except ApiException as e:
