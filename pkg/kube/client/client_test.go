@@ -23,7 +23,7 @@ func TestChangingName_CreatesNewObject(t *testing.T) {
 	assert.NoError(t, err)
 
 	newCm := corev1.ConfigMap{}
-	objectKey, err := k8sClient.ObjectKeyFromObject(&cm)
+	objectKey := k8sClient.ObjectKeyFromObject(&cm)
 	assert.NoError(t, err)
 
 	err = client.Get(context.TODO(), objectKey, &newCm)
@@ -34,7 +34,7 @@ func TestChangingName_CreatesNewObject(t *testing.T) {
 
 	newCm.Name = "new-name"
 
-	objectKey, _ = k8sClient.ObjectKeyFromObject(&newCm)
+	objectKey = k8sClient.ObjectKeyFromObject(&newCm)
 	_ = configmap.CreateOrUpdate(client, newCm)
 
 	_ = client.Get(context.TODO(), objectKey, &newCm)
@@ -57,7 +57,7 @@ func TestAddingDataField_ModifiesExistingObject(t *testing.T) {
 	_ = configmap.CreateOrUpdate(client, cm)
 
 	newCm := corev1.ConfigMap{}
-	objectKey, err := k8sClient.ObjectKeyFromObject(&newCm)
+	objectKey := k8sClient.ObjectKeyFromObject(&newCm)
 	assert.NoError(t, err)
 	_ = client.Get(context.TODO(), objectKey, &newCm)
 

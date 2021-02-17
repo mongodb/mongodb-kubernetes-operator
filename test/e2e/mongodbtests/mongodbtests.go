@@ -11,11 +11,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/controller/mongodb"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -60,7 +59,7 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, tim
 func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -117,7 +116,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
-		assert.Contains(t, s.Data, mongodb.AutomationConfigKey)
+		assert.Contains(t, s.Data, controllers.AutomationConfigKey)
 
 		t.Log("The Secret contained the automation config")
 	}
@@ -126,9 +125,9 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 	currentSecret := corev1.Secret{}
 	currentAc := automationconfig.AutomationConfig{}
-	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
+	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 	assert.NoError(t, err)
-	err = json.Unmarshal(currentSecret.Data[mongodb.AutomationConfigKey], &currentAc)
+	err = json.Unmarshal(currentSecret.Data[controllers.AutomationConfigKey], &currentAc)
 	assert.NoError(t, err)
 	return currentAc
 }
@@ -150,9 +149,9 @@ func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, role
 }
 
 // CreateMongoDBResource creates the MongoDB resource
-func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *f.Context) func(*testing.T) {
+func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) func(*testing.T) {
 	return func(t *testing.T) {
-		if err := f.Global.Client.Create(context.TODO(), mdb, &f.CleanupOptions{TestContext: ctx}); err != nil {
+		if err := e2eutil.TestClient.Create(context.TODO(), mdb, &e2eutil.CleanupOptions{TestContext: ctx}); err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
@@ -166,8 +165,8 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
 		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
-				Group:   mdbv1.SchemeGroupVersion.Group,
-				Version: mdbv1.SchemeGroupVersion.Version,
+				Group:   mdbv1.GroupVersion.Group,
+				Version: mdbv1.GroupVersion.Version,
 				Kind:    mdb.Kind,
 			})))
 		t.Run("Test Status Was Updated", Status(mdb,
@@ -189,7 +188,7 @@ func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 				Namespace: mdb.Namespace,
 			},
 		}
-		if err := f.Global.Client.Delete(context.TODO(), &pod); err != nil {
+		if err := e2eutil.TestClient.Delete(context.TODO(), &pod); err != nil {
 			t.Fatal(err)
 		}
 
@@ -214,7 +213,7 @@ func Connectivity(mdb *mdbv1.MongoDBCommunity, username, password string) func(t
 // Status compares the given status to the actual status of the MongoDB resource
 func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunityStatus) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
+		if err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
 			t.Fatalf("error getting MongoDB resource: %s", err)
 		}
 		assert.Equal(t, expectedStatus, mdb.Status)
@@ -293,7 +292,7 @@ func Connect(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
-		err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}

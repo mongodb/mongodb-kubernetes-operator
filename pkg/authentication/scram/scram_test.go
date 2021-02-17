@@ -8,7 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"go.uber.org/zap"
 

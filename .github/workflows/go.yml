@@ -16,6 +16,15 @@ jobs:
       with:
         go-version: 1.14
 
+    - name: Test api
+      run: go test -v ./api/...
+
+    - name: Test cmd
+      run: go test -v ./cmd/...
+
+    - name: Test controllers
+      run: go test -v ./controllers/...
+
     - name: Test pkg
       run: go test -v ./pkg/...
 

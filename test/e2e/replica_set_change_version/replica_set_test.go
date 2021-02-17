@@ -1,6 +1,8 @@
 package replica_set
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,13 +11,16 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 
 	appsv1 "k8s.io/api/apps/v1"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetUpgradeVersion(t *testing.T) {

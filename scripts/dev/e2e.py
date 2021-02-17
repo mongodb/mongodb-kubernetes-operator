@@ -17,19 +17,19 @@ import os
 import sys
 import yaml
 
-TEST_POD_NAME = "operator-sdk-test"
+TEST_POD_NAME = "e2e-test"
 
 
 def _load_test_service_account() -> Dict:
-    return load_yaml_from_file("deploy/operator/service_account.yaml")
+    return load_yaml_from_file("deploy/e2e/service_account.yaml")
 
 
 def _load_test_role() -> Dict:
-    return load_yaml_from_file("deploy/operator/role.yaml")
+    return load_yaml_from_file("deploy/e2e/role.yaml")
 
 
 def _load_test_role_binding() -> Dict:
-    return load_yaml_from_file("deploy/operator/role_binding.yaml")
+    return load_yaml_from_file("deploy/e2e/role_binding.yaml")
 
 
 def _prepare_test_environment(config_file: str) -> None:
@@ -45,14 +45,12 @@ def _prepare_test_environment(config_file: str) -> None:
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_namespaced_role(dev_config.namespace, _load_test_role())
+        lambda: rbacv1.create_cluster_role(_load_test_role())
     )
 
     print("Creating Role Binding")
     k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_namespaced_role_binding(
-            dev_config.namespace, _load_test_role_binding()
-        )
+        lambda: rbacv1.create_cluster_role_binding(_load_test_role_binding())
     )
 
     print("Creating ServiceAccount")
@@ -130,7 +128,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         },
         "spec": {
             "restartPolicy": "Never",
-            "serviceAccountName": "mongodb-kubernetes-operator",
+            "serviceAccountName": "e2e-test",
             "containers": [
                 {
                     "name": TEST_POD_NAME,
@@ -163,17 +161,11 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                     ],
                     "command": [
-                        "/bin/operator-sdk",
+                        "go",
                         "test",
-                        "local",
-                        f"./test/e2e/{args.test}",
-                        "--operator-namespace",
-                        dev_config.namespace,
-                        "--verbose",
-                        "--kubeconfig",
-                        "/etc/config/kubeconfig",
-                        "--go-test-flags",
+                        "-v",
                         "-timeout=60m",
+                        f"./test/e2e/{args.test}",
                     ],
                 }
             ],
@@ -221,6 +213,7 @@ def wait_for_pod_to_be_running(
         exceptions_to_ignore=ApiException,
     ):
         raise Exception("Pod never got into Running state!")
+    print("Pod is running")
 
 
 def parse_args() -> argparse.Namespace:

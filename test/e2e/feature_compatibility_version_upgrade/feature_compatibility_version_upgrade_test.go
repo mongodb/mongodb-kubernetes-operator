@@ -1,21 +1,26 @@
 package feature_compatibility_version_upgrade
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {

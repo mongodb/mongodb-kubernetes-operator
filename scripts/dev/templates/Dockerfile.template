@@ -8,22 +8,16 @@ FROM {{base_image}}
 {% block packages -%}
 {% endblock -%}
 
-ENV OPERATOR_SDK_VERSION v0.19.4
 ENV GO111MODULE=on
 ENV GOPATH ""
 
-RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu \
-    && mv operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /bin/operator-sdk \
-    && chmod +x /bin/operator-sdk
-
+WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download
 
 {% for file in files_to_add %}
 ADD {{file}} {{file}}
 {% endfor %}
-
-RUN /bin/operator-sdk generate k8s
 
 # build the binary
 {% block build_binary -%}

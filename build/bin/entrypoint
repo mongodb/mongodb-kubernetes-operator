@@ -9,4 +9,5 @@ if ! whoami >/dev/null 2>&1; then
   fi
 fi
 
-exec "${OPERATOR}" "$@"
+echo "Running ./${OPERATOR}"
+"./${OPERATOR}" "$@"

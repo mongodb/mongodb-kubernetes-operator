@@ -76,6 +76,7 @@ tags
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 *mypy_cache
+bin/
 venv/
 local-config.json
 .idea
@@ -84,5 +85,6 @@ __pycache__
 Dockerfile
 Dockerfile_python_formatting
 logs/*
+testbin/bin
 # OSX Trash
 .DS_Store

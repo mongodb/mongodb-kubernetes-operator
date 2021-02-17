@@ -9,39 +9,39 @@ import (
 
 	"github.com/pkg/errors"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const TestdataDir = "/workspace/testdata/tls"
+
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
 func UpdateMongoDBResource(original *mdbv1.MongoDBCommunity, updateFunc func(*mdbv1.MongoDBCommunity)) error {
-	err := f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
+	err := TestClient.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
 	if err != nil {
 		return err
 	}
 
 	updateFunc(original)
 
-	return f.Global.Client.Update(context.TODO(), original)
+	return TestClient.Update(context.TODO(), original)
 }
 
 // WaitForConfigMapToExist waits until a ConfigMap of the given name exists
 // using the provided retryInterval and timeout
 func WaitForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{}
-	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm, f.Global.OperatorNamespace)
+	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm, OperatorNamespace)
 }
 
 // WaitForSecretToExist waits until a Secret of the given name exists
@@ -63,7 +63,7 @@ func WaitForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDBCommunity, phase
 func waitForMongoDBCondition(mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDBCommunity) bool) error {
 	mdbNew := mdbv1.MongoDBCommunity{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), mdb.NamespacedName(), &mdbNew)
+		err = TestClient.Get(context.TODO(), mdb.NamespacedName(), &mdbNew)
 		if err != nil {
 			return false, err
 		}
@@ -111,7 +111,7 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 
 	sts := appsv1.StatefulSet{}
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), mdb.NamespacedName(), &sts)
+		err = TestClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
 		if err != nil {
 			return false, err
 		}
@@ -124,9 +124,9 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 
 // waitForRuntimeObjectToExist waits until a runtime.Object of the given name exists
 // using the provided retryInterval and timeout provided.
-func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj runtime.Object, namespace string) error {
+func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Global.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, obj)
+		err = TestClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, obj)
 		if err != nil {
 			return false, client.IgnoreNotFound(err)
 		}
@@ -137,7 +137,7 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
-		mongodbNamespace = f.Global.OperatorNamespace
+		mongodbNamespace = OperatorNamespace
 	}
 	mdb := mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
@@ -210,24 +210,21 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	}
 }
 
-func ensureObject(ctx *f.Context, obj runtime.Object) error {
-	key, err := k8sClient.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+func ensureObject(ctx *Context, obj k8sClient.Object) error {
+	key := k8sClient.ObjectKeyFromObject(obj)
 
-	err = f.Global.Client.Get(context.TODO(), key, obj)
+	err := TestClient.Get(context.TODO(), key, obj)
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
 			return err
 		}
-		err = f.Global.Client.Create(context.TODO(), obj, &f.CleanupOptions{TestContext: ctx})
+		err = TestClient.Create(context.TODO(), obj, &CleanupOptions{TestContext: ctx})
 		if err != nil {
 			return err
 		}
 	} else {
 		fmt.Printf("%s %s/%s already exists!\n", reflect.TypeOf(obj), key.Namespace, key.Name)
-		err = f.Global.Client.Update(context.TODO(), obj)
+		err = TestClient.Update(context.TODO(), obj)
 		if err != nil {
 			return err
 		}
@@ -236,7 +233,7 @@ func ensureObject(ctx *f.Context, obj runtime.Object) error {
 }
 
 // EnsureNamespace checks that the given namespace exists and creates it if not.
-func EnsureNamespace(ctx *f.Context, namespace string) error {
+func EnsureNamespace(ctx *Context, namespace string) error {
 	return ensureObject(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
@@ -245,7 +242,7 @@ func EnsureNamespace(ctx *f.Context, namespace string) error {
 }
 
 // EnsureServiceAccount checks that the given ServiceAccount exists and creates it if not.
-func EnsureServiceAccount(ctx *f.Context, namespace string, svcAcctName string) error {
+func EnsureServiceAccount(ctx *Context, namespace string, svcAcctName string) error {
 	return ensureObject(ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      svcAcctName,
@@ -255,7 +252,7 @@ func EnsureServiceAccount(ctx *f.Context, namespace string, svcAcctName string) 
 }
 
 // EnsureRole checks that the given role exists and creates it with the given rules if not.
-func EnsureRole(ctx *f.Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
+func EnsureRole(ctx *Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
 	return ensureObject(ctx, &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -266,7 +263,7 @@ func EnsureRole(ctx *f.Context, namespace string, roleName string, rules []rbacv
 }
 
 // EnsureClusterRole checks that the given cluster role exists and creates it with the given rules if not.
-func EnsureClusterRole(ctx *f.Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
+func EnsureClusterRole(ctx *Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
 	return ensureObject(ctx, &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -277,7 +274,7 @@ func EnsureClusterRole(ctx *f.Context, namespace string, roleName string, rules 
 }
 
 // EnsureRoleBinding checks that the given role binding exists and creates it with the given subjects and roleRef if not.
-func EnsureRoleBinding(ctx *f.Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
+func EnsureRoleBinding(ctx *Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
 	return ensureObject(ctx, &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -289,7 +286,7 @@ func EnsureRoleBinding(ctx *f.Context, namespace string, roleBindingName string,
 }
 
 // EnsureClusterRoleBinding checks that the given cluster role exists and creates it with the given subjects and roleRef if not.
-func EnsureClusterRoleBinding(ctx *f.Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
+func EnsureClusterRoleBinding(ctx *Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
 	return ensureObject(ctx, &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,

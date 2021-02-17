@@ -1,6 +1,8 @@
 package replica_set_tls
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
@@ -8,11 +10,14 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetTLS(t *testing.T) {

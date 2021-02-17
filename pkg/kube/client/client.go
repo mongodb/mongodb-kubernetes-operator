@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -25,7 +24,7 @@ func NewClient(c k8sClient.Client) Client {
 type Client interface {
 	k8sClient.Client
 	// TODO: remove this function, add mongodb package which has GetAndUpdate function
-	GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error
+	GetAndUpdate(nsName types.NamespacedName, obj k8sClient.Object, updateFunc func()) error
 	configmap.GetUpdateCreateDeleter
 	service.GetUpdateCreator
 	secret.GetUpdateCreateDeleter
@@ -39,7 +38,7 @@ type client struct {
 // GetAndUpdate fetches the most recent version of the runtime.Object with the provided
 // nsName and applies the update function. The update function should update "obj" from
 // an outer scope
-func (c client) GetAndUpdate(nsName types.NamespacedName, obj runtime.Object, updateFunc func()) error {
+func (c client) GetAndUpdate(nsName types.NamespacedName, obj k8sClient.Object, updateFunc func()) error {
 	err := c.Get(context.TODO(), nsName, obj)
 	if err != nil {
 		return err

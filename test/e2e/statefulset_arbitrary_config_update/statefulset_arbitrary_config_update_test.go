@@ -1,21 +1,26 @@
 package statefulset_arbitrary_config
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestStatefulSetArbitraryConfig(t *testing.T) {
@@ -46,6 +51,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
 
 	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
+
 	assert.NoError(t, err)
 
 	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(&mdb))

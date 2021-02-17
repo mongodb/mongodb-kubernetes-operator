@@ -1,19 +1,24 @@
 package replica_set_scale_up
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/pkg/apis/mongodb/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	f "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 func TestMain(m *testing.M) {
-	f.MainEntry(m)
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
 }
 
 func TestReplicaSetScaleUp(t *testing.T) {
