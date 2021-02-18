@@ -284,14 +284,6 @@ type Role struct {
 	Name string `json:"name"`
 }
 
-func (r Role) GetName() string {
-	return r.Name
-}
-
-func (r Role) GetDatabase() string {
-	return r.DB
-}
-
 type Security struct {
 	// +optional
 	Authentication Authentication `json:"authentication"`
