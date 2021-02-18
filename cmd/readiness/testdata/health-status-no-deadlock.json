@@ -1,0 +1,81 @@
+{
+  "statuses": {
+    "wicklow-0-2": {
+      "IsInGoalState": false,
+      "LastMongoUpTime": 1579704888,
+      "ExpectedToBeUp": true
+    }
+  },
+  "mmsStatus": {
+    "wicklow-0-2": {
+      "name": "wicklow-0-2",
+      "lastGoalVersionAchieved": -1,
+      "plans": [
+        {
+          "started": "2020-01-22T14:47:09.3943094Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "Download",
+              "moveDoc": "Download mongodb binaries",
+              "steps": [
+                {
+                  "step": "Download",
+                  "stepDoc": "Download mongodb binaries (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2020-01-22T14:47:09.398723407Z",
+                  "completed": "2020-01-22T14:47:14.026809676Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": "2020-01-22T14:47:14.02694938Z",
+                  "completed": "2020-01-22T14:47:15.014096704Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "WaitRsInit",
+              "moveDoc": "Wait for the replica set to be initialized by another member",
+              "steps": [
+                {
+                  "step": "WaitRsInit",
+                  "stepDoc": "Wait for the replica set to be initialized by another member",
+                  "isWaitStep": true,
+                  "started": "2020-01-22T14:47:15.014328536Z",
+                  "completed": null,
+                  "result": "wait"
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": "2020-01-22T14:47:18.323900219Z",
+                  "completed": null,
+                  "result": "wait"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCode": 0,
+      "errorString": ""
+    }
+  }
+}
