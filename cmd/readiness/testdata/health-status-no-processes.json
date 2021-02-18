@@ -1,0 +1,12 @@
+{
+  "statuses": {
+    "foo": {
+      "IsInGoalState": false,
+      "LastMongoUpTime": 1568188790,
+      "ExpectedToBeUp": true
+    }
+  },
+  "mmsStatus": {
+
+  }
+}

@@ -3,14 +3,15 @@ module github.com/mongodb/mongodb-kubernetes-operator
 go 1.14
 
 require (
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.3.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.10
 	github.com/klauspost/compress v1.9.8 // indirect
-	github.com/onsi/ginkgo v1.14.1
-	github.com/onsi/gomega v1.10.2
+	github.com/onsi/ginkgo v1.14.1 // indirect
+	github.com/onsi/gomega v1.10.2 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cast v1.3.0
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.5.1
 	github.com/xdg/stringprep v1.0.0
@@ -19,7 +20,7 @@ require (
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	k8s.io/api v0.19.2
-	k8s.io/apiextensions-apiserver v0.19.2
+	k8s.io/apiextensions-apiserver v0.19.2 // indirect
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 	sigs.k8s.io/controller-runtime v0.7.0
