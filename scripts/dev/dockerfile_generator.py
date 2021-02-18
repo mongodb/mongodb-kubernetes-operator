@@ -8,7 +8,7 @@ from typing import List, Dict, Union
 
 DockerParameters = Dict[str, Union[bool, str, List[str]]]
 
-GOLANG_TAG = "1.14"
+GOLANG_TAG = "1.15"
 
 
 def operator_params(files_to_add: List[str]) -> DockerParameters:
