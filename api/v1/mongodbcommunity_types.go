@@ -253,27 +253,11 @@ type MongoDBUser struct {
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
 }
 
-func (m MongoDBUser) GetUsername() string {
-	return m.Name
-}
-
-func (m MongoDBUser) GetDatabase() string {
-	return m.DB
-}
-
 func (m MongoDBUser) GetPasswordSecretKey() string {
 	if m.PasswordSecretRef.Key == "" {
 		return defaultPasswordKey
 	}
 	return m.PasswordSecretRef.Key
-}
-
-func (m MongoDBUser) GetPasswordSecretName() string {
-	return m.PasswordSecretRef.Name
-}
-
-func (m MongoDBUser) GetUserName() string {
-	return m.Name
 }
 
 // GetScramCredentialsSecretName gets the final SCRAM credentials secret-name by appending the user provided
@@ -410,9 +394,9 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 			Username:                   u.Name,
 			Database:                   u.DB,
 			Roles:                      roles,
-			PasswordSecretKey:          u.PasswordSecretRef.Key,
+			PasswordSecretKey:          u.GetPasswordSecretKey(),
 			PasswordSecretName:         u.PasswordSecretRef.Name,
-			ScramCredentialsSecretName: u.ScramCredentialsSecretName,
+			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
 		})
 	}
 	return users
