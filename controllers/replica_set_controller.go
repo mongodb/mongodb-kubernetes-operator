@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -69,7 +68,6 @@ const (
 	mongodbName                    = "mongod"
 	versionUpgradeHookName         = "mongod-posthook"
 	dataVolumeName                 = "data-volume"
-	versionManifestFilePath        = "/usr/local/version_manifest.json"
 	readinessProbePath             = "/var/lib/mongodb-mms-automation/probes/readinessprobe"
 	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
@@ -94,25 +92,15 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
-// ManifestProvider is a function which returns the VersionManifest which
-// contains the list of all available MongoDB versions
-type ManifestProvider func() (automationconfig.VersionManifest, error)
-
-func NewReconciler(mgr manager.Manager, manifestProvider ManifestProvider) *ReplicaSetReconciler {
+func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
 
-	mp := manifestProvider
-	if mp == nil {
-		mp = readVersionManifestFromDisk
-	}
-
 	return &ReplicaSetReconciler{
-		client:           kubernetesClient.NewClient(mgrClient),
-		scheme:           mgr.GetScheme(),
-		manifestProvider: mp,
-		log:              zap.S(),
-		secretWatcher:    &secretWatcher,
+		client:        kubernetesClient.NewClient(mgrClient),
+		scheme:        mgr.GetScheme(),
+		log:           zap.S(),
+		secretWatcher: &secretWatcher,
 	}
 }
 
@@ -129,11 +117,10 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client           kubernetesClient.Client
-	scheme           *runtime.Scheme
-	manifestProvider func() (automationconfig.VersionManifest, error)
-	log              *zap.SugaredLogger
-	secretWatcher    *watch.ResourceWatcher
+	client        kubernetesClient.Client
+	scheme        *runtime.Scheme
+	log           *zap.SugaredLogger
+	secretWatcher *watch.ResourceWatcher
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
@@ -446,7 +433,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 	return secret.CreateOrUpdate(r.client, s)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, mdbVersionConfig automationconfig.MongoDbVersionConfig, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -460,7 +447,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, mdbVersionConfig automati
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		SetAuth(auth).
-		AddVersion(mdbVersionConfig).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...)
 	newAc, err := builder.Build()
@@ -469,22 +455,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, mdbVersionConfig automati
 	}
 
 	return newAc, nil
-}
-
-func readVersionManifestFromDisk() (automationconfig.VersionManifest, error) {
-	versionManifestBytes, err := ioutil.ReadFile(versionManifestFilePath)
-	if err != nil {
-		return automationconfig.VersionManifest{}, err
-	}
-	return versionManifestFromBytes(versionManifestBytes)
-}
-
-func versionManifestFromBytes(bytes []byte) (automationconfig.VersionManifest, error) {
-	versionManifest := automationconfig.VersionManifest{}
-	if err := json.Unmarshal(bytes, &versionManifest); err != nil {
-		return automationconfig.VersionManifest{}, err
-	}
-	return versionManifest, nil
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -551,12 +521,6 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, error) {
-
-	manifest, err := r.manifestProvider()
-	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not read version manifest from disk: %s", err)
-	}
-
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
 		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
@@ -579,7 +543,6 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommu
 
 	ac, err := buildAutomationConfig(
 		mdb,
-		manifest.BuildsForVersion(mdb.Spec.Version),
 		auth,
 		currentAC,
 		tlsModification,
