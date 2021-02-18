@@ -31,7 +31,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/mongodb/mongodb-kubernetes-operator:0.5.0 # replace with localhost:5000/mongodb-kubernetes-operator locally
+IMG ?= <operator-registry>/mongodb-kubernetes-operator
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=true,crdVersions=v1beta1"

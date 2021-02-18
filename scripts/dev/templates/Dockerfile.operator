@@ -12,10 +12,6 @@ COPY build/bin/ build/bin/
 # Build the operator
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager cmd/manager/main.go
 
-ENV manifest_version=4.4
-RUN mkdir -p /content/ \
-        && chmod -R +r /content/ \
-        && curl --fail --retry 3 -o /content/version_manifest.json "https://opsmanager.mongodb.com/static/version_manifest/${manifest_version}.json"
 {% endblock -%}
 
 {% block build_second_stage -%}
@@ -29,7 +25,6 @@ ENV OPERATOR=manager \
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/build/bin /usr/local/bin
-COPY --from=builder /content/version_manifest.json /usr/local/version_manifest.json
 
 RUN  /usr/local/bin/user_setup
 

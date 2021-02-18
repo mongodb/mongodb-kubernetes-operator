@@ -137,6 +137,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		auth = b.enabler.EnableAuth(auth)
 	}
 
+	if len(b.versions) == 0 {
+		b.versions = append(b.versions, buildDummyMongoDbVersionConfig(b.mongodbVersion))
+	}
+
 	currentAc := AutomationConfig{
 		Version:   b.previousAC.Version,
 		Processes: processes,
@@ -189,5 +193,28 @@ func toHostName(name string, index int) string {
 func withFCV(fcv string) func(*Process) {
 	return func(process *Process) {
 		process.FeatureCompatibilityVersion = fcv
+	}
+}
+
+// buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which
+// will be valid for any version of MongoDB. This is used as a default if no
+// versions are manually specified.
+func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
+	return MongoDbVersionConfig{
+		Name: version,
+		Builds: []BuildConfig{
+			{
+				Platform:     "linux",
+				Architecture: "amd64",
+				Flavor:       "rhel",
+				Modules:      []string{},
+			},
+			{
+				Platform:     "linux",
+				Architecture: "amd64",
+				Flavor:       "ubuntu",
+				Modules:      []string{},
+			},
+		},
 	}
 }
