@@ -42,7 +42,7 @@ You scope the Operator to a namespace. The Operator watches MongoDB resources in
 
 To configure the Operator to watch resources in other namespaces:
 
-1. In the Operator [resource definition](../deploy/operator/operator.yaml), set the `WATCH_NAMESPACE` environment variable to one of the following values:
+1. In the Operator [resource definition](config/manager/operator.yaml), set the `WATCH_NAMESPACE` environment variable to one of the following values:
 
    - the namespace that you want the Operator to watch, or
    - `*` to configure the Operator to watch all namespaces in the cluster.
@@ -77,24 +77,40 @@ To configure the Operator to watch resources in other namespaces:
 
 The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
+The Operator can be installed using the [Makefile](/Makefile) provided by `operator-sdk`
+
 To install the MongoDB Community Kubernetes Operator:
 
 1. Change to the directory in which you cloned the repository.
 2. Install the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
 
-   a. Invoke the following `kubectl` command:
+   a. Invoke the following command:
       ```
-      kubectl create -f deploy/crds/mongodb.com_mongodbcommunity_crd.yaml
+      apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
       ```
    b. Verify that the Custom Resource Definitions installed successfully:
       ```
-      kubectl get crd/mongodbcommunity.mongodb.com
+      kubectl get crd/mongodbcommunity.mongodbcommunity.mongodb.com
       ```
-3. Install the Operator.
+3. Install the necessary roles and role-bindings:
+
+    a. Invoke the following command:
+    ```
+    kubectl apply -f config/rbac/
+    ```
+    b. Verify that the resources have been created:
+    ```
+    kubectl get role mongodb-kubernetes-operator
+
+    kubectl get rolebinding mongodb-kubernetes-operator
+
+    kubectl get serviceaccount mongodb-kubernetes-operator
+    ```
+4. Install the Operator.
 
    a. Invoke the following `kubectl` command to install the Operator in the specified namespace:
       ```
-      kubectl create -f deploy/operator/ --namespace <my-namespace>
+      kubectl create -f config/manager/manager.yaml --namespace <my-namespace>
       ```
    b. Verify that the Operator installed successsfully:
       ```
@@ -103,10 +119,12 @@ To install the MongoDB Community Kubernetes Operator:
 
 ## Upgrade the Operator
 
-To upgrade the MongoDB Community Kubernetes Operator:
+To upgrade the MongoDB Community Kubernetes Operator to a specific version:
 
-1. Change to the directory in which you cloned the repository.
-2. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
+1. Change the version in the [operator yaml file](/config/manager/manager.yaml)
+2. Change to the directory in which you cloned the repository.
+3. Checkout the specific tag matching the operator version (e.g. `v0.5.1`)
+4. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
    ```
-   kubectl apply -f deploy/crds/mongodb.com_mongodbcommunity_crd.yaml
+   k apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
    ```
