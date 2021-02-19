@@ -35,7 +35,7 @@ kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 4. Build and deploy the operator:
 
 ```sh
-python ./scripts/dev/build_and_deploy_operator	make docker-build docker-push IMG=localhost:5000/mongodb-kubernetes-operator
+python ./scripts/dev/build_and_deploy_operator.py
 ```
 
 
