@@ -616,12 +616,6 @@ func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCom
 	setStatefulSetReadyReplicas(t, c, mdb, mdb.StatefulSetReplicasThisReconciliation())
 }
 
-// makeStatefulSetUnReady updates the StatefulSet corresponding to the
-// provided MongoDB resource to mark it as unready.
-func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
-	setStatefulSetReadyReplicas(t, c, mdb, 0)
-}
-
 func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
 	sts := appsv1.StatefulSet{}
 	err := c.Get(context.TODO(), mdb.NamespacedName(), &sts)
