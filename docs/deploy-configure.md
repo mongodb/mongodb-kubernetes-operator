@@ -1,6 +1,6 @@
 # Deploy and Configure a MongoDB Resource #
 
-The [`/config/samples`](/config/samples) directory contains example MongoDB resources that you can modify and deploy.
+The [`/config/samples`](../config/samples) directory contains example MongoDB resources that you can modify and deploy.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ The [`/config/samples`](/config/samples) directory contains example MongoDB reso
 
 To deploy your first replica set:
 
-1. Replace `<your-password-here>` in [config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml](config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml) to the password you wish to use.
+1. Replace `<your-password-here>` in [config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml](../config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml) to the password you wish to use.
 2. Invoke the following `kubectl` command:
    ```
    kubectl apply -f config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml --namespace <my-namespace>

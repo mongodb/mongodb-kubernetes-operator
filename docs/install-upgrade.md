@@ -42,7 +42,7 @@ You scope the Operator to a namespace. The Operator watches MongoDB resources in
 
 To configure the Operator to watch resources in other namespaces:
 
-1. In the Operator [resource definition](config/manager/operator.yaml), set the `WATCH_NAMESPACE` environment variable to one of the following values:
+1. In the Operator [resource definition](../config/manager/manager.yaml), set the `WATCH_NAMESPACE` environment variable to one of the following values:
 
    - the namespace that you want the Operator to watch, or
    - `*` to configure the Operator to watch all namespaces in the cluster.
@@ -77,7 +77,7 @@ To configure the Operator to watch resources in other namespaces:
 
 The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
-The Operator can be installed using the [Makefile](/Makefile) provided by `operator-sdk`
+The Operator can be installed using the [Makefile](../Makefile) provided by `operator-sdk`
 
 To install the MongoDB Community Kubernetes Operator:
 
@@ -121,7 +121,7 @@ To install the MongoDB Community Kubernetes Operator:
 
 To upgrade the MongoDB Community Kubernetes Operator to a specific version:
 
-1. Change the version in the [operator yaml file](/config/manager/manager.yaml)
+1. Change the version in the [operator yaml file](../config/manager/manager.yaml)
 2. Change to the directory in which you cloned the repository.
 3. Checkout the specific tag matching the operator version (e.g. `v0.5.1`)
 4. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
