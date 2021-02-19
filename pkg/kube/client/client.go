@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
@@ -29,6 +31,7 @@ type Client interface {
 	service.GetUpdateCreator
 	secret.GetUpdateCreateDeleter
 	statefulset.GetUpdateCreateDeleter
+	pod.Getter
 }
 
 type client struct {
@@ -76,6 +79,15 @@ func (c client) DeleteConfigMap(key k8sClient.ObjectKey) error {
 		},
 	}
 	return c.Delete(context.TODO(), &cm)
+}
+
+// GetPod provides a thin wrapper and client.client to access corev1.Pod types
+func (c client) GetPod(objectKey k8sClient.ObjectKey) (corev1.Pod, error) {
+	p := corev1.Pod{}
+	if err := c.Get(context.TODO(), objectKey, &p); err != nil {
+		return corev1.Pod{}, err
+	}
+	return p, nil
 }
 
 // GetSecret provides a thin wrapper and client.Client to access corev1.Secret types
