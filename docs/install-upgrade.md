@@ -126,5 +126,5 @@ To upgrade the MongoDB Community Kubernetes Operator to a specific version:
 3. Checkout the specific tag matching the operator version (e.g. `v0.5.1`)
 4. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
    ```
-   k apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+   kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
    ```
