@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -72,7 +71,7 @@ const (
 	versionUpgradeHookName         = "mongod-posthook"
 	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
 	dataVolumeName                 = "data-volume"
-	readinessProbePath             = "/scripts/readinessprobe"
+	readinessProbePath             = "/opt/scripts/readinessprobe"
 	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
@@ -302,12 +301,9 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
-	ready, err := r.isStatefulSetReady(mdb, &currentSts)
-	if err != nil {
-		return false, fmt.Errorf("error checking StatefulSet status: %s", err)
-	}
 
-	return ready, nil
+	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
+	return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 }
 
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
@@ -360,6 +356,10 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		automationConfigFirst = false
 	}
 
+	//if isChangingVersion(mdb) {
+	//	automationConfigFirst = false
+	//}
+
 	return runInGivenOrder(automationConfigFirst,
 		func() (bool, error) {
 			r.log.Infof("Deploying AutomationConfig")
@@ -382,49 +382,6 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBC
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
 	return err
-}
-
-// isStatefulSetReady checks to see if the stateful set corresponding to the given MongoDB resource
-// is currently ready.
-func (r *ReplicaSetReconciler) isStatefulSetReady(mdb mdbv1.MongoDBCommunity, existingStatefulSet *appsv1.StatefulSet) (bool, error) {
-	stsFunc := buildStatefulSetModificationFunction(mdb)
-	stsCopy := existingStatefulSet.DeepCopyObject()
-	stsFunc(existingStatefulSet)
-
-	stsCopyBytes, err := json.Marshal(stsCopy)
-	if err != nil {
-		return false, errors.Errorf("unable to marshal StatefulSet copy: %s", err)
-	}
-
-	stsBytes, err := json.Marshal(existingStatefulSet)
-	if err != nil {
-		return false, errors.Errorf("unable to marshal existing StatefulSet: %s", err)
-	}
-
-	//comparison is done with bytes instead of reflect.DeepEqual as there are
-	//some issues with nil/empty maps not being compared correctly otherwise
-	areEqual := bytes.Equal(stsCopyBytes, stsBytes)
-
-	isReady := statefulset.IsReady(*existingStatefulSet, mdb.StatefulSetReplicasThisReconciliation())
-
-	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType && !isReady {
-		r.log.Info("StatefulSet has left ready state, version upgrade in progress")
-		annotations := map[string]string{
-			hasLeftReadyStateAnnotationKey: trueAnnotation,
-		}
-		if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-			return false, errors.Errorf("could not set %s annotation to true: %s", hasLeftReadyStateAnnotationKey, err)
-		}
-	}
-
-	hasPerformedUpgrade := mdb.Annotations[hasLeftReadyStateAnnotationKey] == trueAnnotation
-	r.log.Infow("StatefulSet Readiness", "isReady", isReady, "hasPerformedUpgrade", hasPerformedUpgrade, "areEqual", areEqual)
-
-	if existingStatefulSet.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-		return areEqual && isReady && hasPerformedUpgrade, nil
-	}
-
-	return areEqual && isReady, nil
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
@@ -707,7 +664,7 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
 		container.WithName(readinessProbeContainerName),
-		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/scripts/readinessprobe"}),
+		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
 		container.WithImage(os.Getenv(readinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
@@ -772,7 +729,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 
 	// scripts volume is only required on the mongodb-agent pod.
 	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
-	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/scripts", statefulset.WithReadOnly(false))
+	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
 
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
@@ -800,7 +757,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume, scriptsVolumeMount})),
 				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{hooksVolumeMount})),
+				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 				buildTLSPodSpecModification(mdb),
 				buildScramPodSpecModification(mdb),
 			),
