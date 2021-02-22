@@ -178,14 +178,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	// at this stage we know we have successfully updated the automation config with the correct number of
-	// members and the stateful set has the expected number of ready replicas. We can update our status
-	// so we calculate these fields correctly going forward
-	if err := updateScalingStatus(r.client.Status(), mdb); err != nil {
-		r.log.Errorf("Failed updating the status of the MongoDB resource: %s", err)
-		return result.Failed()
-	}
-
 	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
@@ -224,7 +216,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
 				withFailedPhase(),
 		)
@@ -238,7 +229,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
 				withFailedPhase(),
 		)
@@ -247,7 +237,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err := r.completeTLSRollout(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
 				withFailedPhase(),
 		)
@@ -311,13 +300,15 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
 // The returned boolean indicates whether or not that Agents have all reached goal state.
 func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	if err := r.ensureAutomationConfig(mdb); err != nil {
-		return false, fmt.Errorf("failed to ensure AutomationConfig: %s", err)
-	}
+	r.log.Infof("Creating/Updating AutomationConfig")
 
 	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil && !apiErrors.IsNotFound(err) {
 		return false, fmt.Errorf("failed to get StatefulSet: %s", err)
+	}
+
+	if err := r.ensureAutomationConfig(mdb); err != nil {
+		return false, fmt.Errorf("failed to ensure AutomationConfig: %s", err)
 	}
 
 	// the StatefulSet has not yet been created, so the next stage of reconciliation will be
@@ -328,7 +319,7 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 
 	ac, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return false, fmt.Errorf("failed to get AutomationConfig: %s", err)
+		return false, errors.Errorf("failed to get AutomationConfig: %s", err)
 	}
 
 	// Note: we pass in the expected number of replicas this reconciliation as we scale members one at a time. If we were
@@ -366,11 +357,9 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 
 	return functions.RunSequentially(shouldReverse,
 		func() (bool, error) {
-			r.log.Infof("Creating/Updating AutomationConfig")
 			return r.deployAutomationConfig(mdb)
 		},
 		func() (bool, error) {
-			r.log.Infof("Creating/Updating StatefulSet")
 			return r.deployStatefulSet(mdb)
 		})
 }
@@ -543,6 +532,7 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommu
 		tlsModification,
 		customRolesModification,
 	)
+
 	if err != nil {
 		return corev1.Secret{}, fmt.Errorf("could not build automation config: %s", err)
 	}
