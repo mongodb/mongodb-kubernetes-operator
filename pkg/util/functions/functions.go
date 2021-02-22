@@ -21,7 +21,7 @@ func runInOrder(funcs ...func() (bool, error)) (bool, error) {
 			return false, nil
 		}
 	}
-	return false, nil
+	return true, nil
 }
 
 func runReversed(funcs ...func() (bool, error)) (bool, error) {
