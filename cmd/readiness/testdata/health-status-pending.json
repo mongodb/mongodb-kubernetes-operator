@@ -1,0 +1,100 @@
+{
+  "statuses": {
+    "foo": {
+      "IsInGoalState": false,
+      "LastMongoUpTime": 1568188790,
+      "ExpectedToBeUp": true
+    }
+  },
+  "mmsStatus": {
+    "foo": {
+      "name": "foo",
+      "lastGoalVersionAchieved": -1,
+      "plans": [
+        {
+          "started": "2019-09-11T07:58:22.834514922Z",
+          "completed": "2019-09-11T07:58:42.834514922Z",
+          "moves": []
+        },
+        {
+          "started": "2019-09-11T07:58:43.834514922Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "Download",
+              "moveDoc": "Download mongodb binaries",
+              "steps": [
+                {
+                  "step": "Download",
+                  "stepDoc": "Download mongodb binaries (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2019-09-11T07:58:43.83456958Z",
+                  "completed": "2019-09-11T07:58:58.535663992Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": "2019-09-11T07:58:58.535793305Z",
+                  "completed": "2019-09-11T07:59:02.025389368Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "WaitAllRsMembersUp",
+              "moveDoc": "Wait until all members of this process' repl set are up",
+              "steps": [
+                {
+                  "step": "WaitAllRsMembersUp",
+                  "stepDoc": "Wait until all members of this process' repl set are up",
+                  "isWaitStep": true,
+                  "started": "2059-09-11T07:59:02.026037414Z",
+                  "completed": null,
+                  "result": "wait"
+                }
+              ]
+            },
+            {
+              "move": "RsInit",
+              "moveDoc": "Initialize a replica set including the current MongoDB process",
+              "steps": [
+                {
+                  "step": "RsInit",
+                  "stepDoc": "Initialize a replica set",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCode": 0,
+      "errorString": ""
+    }
+  }
+}

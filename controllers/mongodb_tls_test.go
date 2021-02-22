@@ -26,7 +26,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr, mockManifestProvider(mdb.Spec.Version))
+	r := NewReconciler(mgr)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -85,14 +85,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		err := createTLSSecretAndConfigMap(client, mdb)
 		assert.NoError(t, err)
 
-		manifest, err := mockManifestProvider(mdb.Spec.Version)()
-		assert.NoError(t, err)
-		versionConfig := manifest.BuildsForVersion(mdb.Spec.Version)
-
 		tlsModification, err := getTLSConfigModification(client, mdb)
 		assert.NoError(t, err)
 
-		ac, err := buildAutomationConfig(mdb, versionConfig, automationconfig.AutomationConfig{}, tlsModification)
+		ac, err := buildAutomationConfig(mdb, automationconfig.AutomationConfig{}, tlsModification)
 		assert.NoError(t, err)
 
 		return ac

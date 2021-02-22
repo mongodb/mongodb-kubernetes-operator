@@ -1,0 +1,81 @@
+{
+  "statuses": {
+    "bar": {
+      "IsInGoalState": true,
+      "LastMongoUpTime": 1568222195,
+      "ExpectedToBeUp": true
+    }
+  },
+  "mmsStatus": {
+    "bar": {
+      "name": "bar",
+      "lastGoalVersionAchieved": 5,
+      "plans": [
+        {
+          "started": "2019-09-11T14:20:40.631348806Z",
+          "completed": "2019-09-11T14:21:42.034934358Z",
+          "moves": [
+            {
+              "move": "Download",
+              "moveDoc": "Download mongodb binaries",
+              "steps": [
+                {
+                  "step": "Download",
+                  "stepDoc": "Download mongodb binaries (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2019-09-11T14:20:40.631404367Z",
+                  "completed": "2019-09-11T14:20:55.645615846Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": "2019-09-11T14:20:55.645743003Z",
+                  "completed": "2019-09-11T14:20:59.325129842Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "WaitRsInit",
+              "moveDoc": "Wait for the replica set to be initialized by another member",
+              "steps": [
+                {
+                  "step": "WaitRsInit",
+                  "stepDoc": "Wait for the replica set to be initialized by another member",
+                  "isWaitStep": true,
+                  "started": "2019-09-11T14:20:59.325272608Z",
+                  "completed": null,
+                  "result": "wait"
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCode": 0,
+      "errorString": ""
+    }
+  }
+}

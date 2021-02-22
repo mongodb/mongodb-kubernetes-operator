@@ -105,7 +105,7 @@ completion. If the objects complete with a Success status, it means that the
 tests were run successfully.
 
 The available tests can be found in the `tests/e2e` directory, at the time of this
-writting we have:
+writing we have:
 
 ```sh
 $ ls -l test/e2e
