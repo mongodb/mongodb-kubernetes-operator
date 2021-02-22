@@ -294,12 +294,12 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Info("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
-		return false, fmt.Errorf("error creating/updating StatefulSet: %s", err)
+		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
 	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
-		return false, fmt.Errorf("error getting StatefulSet: %s", err)
+		return false, errors.Errorf("error getting StatefulSet: %s", err)
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
