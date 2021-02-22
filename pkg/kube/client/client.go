@@ -81,7 +81,7 @@ func (c client) DeleteConfigMap(key k8sClient.ObjectKey) error {
 	return c.Delete(context.TODO(), &cm)
 }
 
-// GetPod provides a thin wrapper and client.client to access corev1.Pod types
+// GetPod provides a thin wrapper and client.client to access corev1.Pod types.
 func (c client) GetPod(objectKey k8sClient.ObjectKey) (corev1.Pod, error) {
 	p := corev1.Pod{}
 	if err := c.Get(context.TODO(), objectKey, &p); err != nil {
