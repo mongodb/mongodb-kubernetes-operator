@@ -160,7 +160,8 @@ func WithReadOnly(readonly bool) func(*corev1.VolumeMount) {
 func IsReady(sts appsv1.StatefulSet, expectedReplicas int) bool {
 	allUpdated := int32(expectedReplicas) == sts.Status.UpdatedReplicas
 	allReady := int32(expectedReplicas) == sts.Status.ReadyReplicas
-	return allUpdated && allReady
+	atExpectedGeneration := sts.Generation == sts.Status.ObservedGeneration
+	return allUpdated && allReady && atExpectedGeneration
 }
 
 type Modification func(*appsv1.StatefulSet)

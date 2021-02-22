@@ -35,7 +35,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that all TLS volumes have been added.
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 6)
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
 		VolumeSource: corev1.VolumeSource{
@@ -68,7 +68,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		MountPath: tlsCAMountPath,
 	}
 
-	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 1)
+	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Contains(t, agentContainer.VolumeMounts, tlsSecretVolumeMount)
