@@ -191,19 +191,6 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	assert.NoError(t, err)
 	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
 
-	// the request is requeued as the agents are still doing the upgrade
-	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assert.NoError(t, err)
-	assert.Equal(t, res.RequeueAfter, time.Second*10)
-
-	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
-	assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-	// upgrade is now complete
-	sts.Status.UpdatedReplicas = 3
-	sts.Status.ReadyReplicas = 3
-	err = mgrClient.Update(context.TODO(), &sts)
-	assert.NoError(t, err)
-
 	// reconcilliation is successful
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)

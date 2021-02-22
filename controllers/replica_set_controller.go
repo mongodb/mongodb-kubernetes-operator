@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
@@ -343,30 +345,32 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
 func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	automationConfigFirst := true
+	shouldReverse := false
 
 	// when enabling TLS, we need to make sure that the StatefulSet is fully configured first
 	// otherwise the agents will not reach goal state as the hosts will not exist.
 	if mdb.Spec.Security.TLS.Enabled {
-		automationConfigFirst = false
+		shouldReverse = true
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
 	if mdb.Spec.Members > mdb.Status.CurrentMongoDBMembers && mdb.Status.CurrentMongoDBMembers > 0 {
-		automationConfigFirst = false
+		shouldReverse = true
 	}
 
-	//if isChangingVersion(mdb) {
-	//	automationConfigFirst = false
-	//}
+	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
+	// state on the new version.
+	if isChangingVersion(mdb) {
+		shouldReverse = true
+	}
 
-	return runInGivenOrder(automationConfigFirst,
+	return functions.RunSequentially(shouldReverse,
 		func() (bool, error) {
-			r.log.Infof("Deploying AutomationConfig")
+			r.log.Infof("Creating/Updating AutomationConfig")
 			return r.deployAutomationConfig(mdb)
 		},
 		func() (bool, error) {
-			r.log.Infof("Deploying StatefulSet")
+			r.log.Infof("Creating/Updating StatefulSet")
 			return r.deployStatefulSet(mdb)
 		})
 }
@@ -434,7 +438,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, currentAc automationconfi
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
-	builder := automationconfig.NewBuilder().
+	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
@@ -444,13 +448,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, currentAc automationconfi
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
 		AddModifications(getMongodConfigModification(mdb)).
-		AddModifications(modifications...)
-	newAc, err := builder.Build()
-	if err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-
-	return newAc, nil
+		AddModifications(modifications...).
+		Build()
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -795,29 +794,4 @@ func defaultPvc() persistentvolumeclaim.Modification {
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
 		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
 	)
-}
-
-func runInGivenOrder(shouldRunInOrder bool, funcs ...func() (bool, error)) (bool, error) {
-	if shouldRunInOrder {
-		for _, fn := range funcs {
-			ready, err := fn()
-			if err != nil {
-				return ready, err
-			}
-			if !ready {
-				return false, nil
-			}
-		}
-	} else {
-		for i := len(funcs) - 1; i >= 0; i-- {
-			ready, err := funcs[i]()
-			if err != nil {
-				return ready, err
-			}
-			if !ready {
-				return false, nil
-			}
-		}
-	}
-	return true, nil
 }
