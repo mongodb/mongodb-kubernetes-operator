@@ -289,6 +289,18 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
+
+	if isReady {
+		r.log.Infow("StatefulSet is ready",
+			"replicas", currentSts.Spec.Replicas,
+			"currentReadyReplicas", currentSts.Status.CurrentReplicas,
+			"updatedReplicas", currentSts.Status.UpdatedReplicas,
+			"generation", currentSts.Generation,
+			"observedGeneration", currentSts.Status.ObservedGeneration,
+			"updateStrategy", currentSts.Spec.UpdateStrategy.Type,
+		)
+	}
+
 	return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 }
 
@@ -327,33 +339,40 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 	return ready, nil
 }
 
-// deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
-// have been successfully created. A boolean is returned indicating if the process is complete
-// and an error if there was one.
-func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	shouldReverse := false
-
+func (r *ReplicaSetReconciler) shouldReverse(mdb mdbv1.MongoDBCommunity) bool {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
 	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
 		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
-		shouldReverse = true
+		return true
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
 	if scale.IsScalingUp(mdb) {
 		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
-		shouldReverse = true
+		return true
+	}
+
+	if scale.IsScalingDown(mdb) {
+		r.log.Debug("Scaling down the ReplicaSet, the Automation Config must be updated first")
+		return false
 	}
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
 	if isChangingVersion(mdb) {
 		r.log.Debug("Version change in progress, the StatefulSet must be updated first")
-		shouldReverse = true
+		return true
 	}
 
-	return functions.RunSequentially(shouldReverse,
+	return false
+}
+
+// deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
+// have been successfully created. A boolean is returned indicating if the process is complete
+// and an error if there was one.
+func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
+	return functions.RunSequentially(r.shouldReverse(mdb),
 		func() (bool, error) {
 			return r.deployAutomationConfig(mdb)
 		},
@@ -603,6 +622,9 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 
 func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
 	prevSpec := getPreviousSpec(mdb)
+
+	zap.S().Infow("Is Changing Version", "prevVersion", prevSpec.Version, "currVersion", mdb.Spec.Version, "isChangingVersion", prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version)
+
 	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
 }
 
