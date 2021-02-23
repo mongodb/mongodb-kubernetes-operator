@@ -51,8 +51,8 @@ type Role struct {
 	Database string
 }
 
-// User is an interface which must be implemented by a type which will map to an
-// automationconfig.MongoDBUser.
+// User is a struct which holds all of the values required to create an AutomationConfig user
+// and references to the credentials for the specific user.
 type User struct {
 	// Username is the username of the user.
 	Username string

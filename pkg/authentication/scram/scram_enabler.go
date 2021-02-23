@@ -85,10 +85,5 @@ func validateScramOptions(opts Options) error {
 	if opts.KeyFile == "" {
 		errs = multierror.Append(errs, errors.New("KeyFile must be specified"))
 	}
-
-	if errs != nil {
-		return errs
-	}
-
-	return nil
+	return errs
 }

@@ -373,23 +373,23 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 // GetScramUsers converts all of the users from the spec into users
 // that can be used to configure scram authentication.
 func (m MongoDBCommunity) GetScramUsers() []scram.User {
-	var users []scram.User
-	for _, u := range m.Spec.Users {
-		var roles []scram.Role
-		for _, r := range u.Roles {
-			roles = append(roles, scram.Role{
+	users := make([]scram.User, len(m.Spec.Users))
+	for i, u := range m.Spec.Users {
+		roles := make([]scram.Role, len(u.Roles))
+		for j, r := range u.Roles {
+			roles[j] = scram.Role{
 				Name:     r.Name,
 				Database: r.DB,
-			})
+			}
 		}
-		users = append(users, scram.User{
+		users[i] = scram.User{
 			Username:                   u.Name,
 			Database:                   u.DB,
 			Roles:                      roles,
 			PasswordSecretKey:          u.GetPasswordSecretKey(),
 			PasswordSecretName:         u.PasswordSecretRef.Name,
 			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
-		})
+		}
 	}
 	return users
 }
