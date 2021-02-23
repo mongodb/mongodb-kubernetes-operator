@@ -96,7 +96,7 @@ To install the MongoDB Community Kubernetes Operator:
 
     a. Invoke the following command:
     ```
-    kubectl apply -f config/rbac/
+    kubectl apply -k config/rbac/
     ```
     b. Verify that the resources have been created:
     ```
