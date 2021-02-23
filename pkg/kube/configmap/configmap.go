@@ -1,7 +1,6 @@
 package configmap
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -45,6 +44,11 @@ type GetUpdateCreateDeleter interface {
 	Creator
 	Deleter
 }
+
+const (
+	newlineString   = "\n"
+	equalSignString = "="
+)
 
 // ReadKey accepts a ConfigMap Getter, the object of the ConfigMap to get, and the key within
 // the config map to read. It returns the string value, and an error if one occurred.
@@ -94,11 +98,11 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, cm corev1.ConfigMap) erro
 // filelikePropertiesToMap converts a file-like field in a ConfigMap to a map[string]string.
 func filelikePropertiesToMap(s string) (map[string]string, error) {
 	keyValPairs := map[string]string{}
-	s = strings.TrimRight(s, "\n")
-	for _, keyValPair := range strings.Split(s, "\n") {
-		splittedPair := strings.Split(keyValPair, "=")
+	s = strings.TrimRight(s, newlineString)
+	for _, keyValPair := range strings.Split(s, newlineString) {
+		splittedPair := strings.Split(keyValPair, equalSignString)
 		if len(splittedPair) != 2 {
-			return nil, fmt.Errorf("%s is not a valid key-value pair", keyValPair)
+			return nil, errors.Errorf("%s is not a valid key-value pair", keyValPair)
 		}
 		keyValPairs[splittedPair[0]] = splittedPair[1]
 	}
@@ -113,7 +117,7 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	}
 	mappingString, ok := cmData[externalKey]
 	if !ok {
-		return "", fmt.Errorf("key %s is not present in ConfigMap %s", externalKey, objectKey)
+		return "", errors.Errorf("key %s is not present in ConfigMap %s", externalKey, objectKey)
 	}
 	mapping, err := filelikePropertiesToMap(mappingString)
 	if err != nil {
@@ -121,7 +125,7 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	}
 	value, ok := mapping[internalKey]
 	if !ok {
-		return "", fmt.Errorf("key %s is not present in the %s field of ConfigMap %s", internalKey, externalKey, objectKey)
+		return "", errors.Errorf("key %s is not present in the %s field of ConfigMap %s", internalKey, externalKey, objectKey)
 	}
 	return value, nil
 }

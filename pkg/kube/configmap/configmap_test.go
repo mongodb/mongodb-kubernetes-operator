@@ -85,6 +85,34 @@ func TestReadFileLikeField(t *testing.T) {
 	assert.Equal(t, "1", data)
 }
 
+func TestReadFileLikeField_InvalidExternalKey(t *testing.T) {
+	getter := newGetter(
+		Builder().
+			SetName("name").
+			SetNamespace("namespace").
+			SetField("key1", "value1=1\nvalue2=2").
+			Build(),
+	)
+
+	_, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key2", "value1")
+	assert.Error(t, err)
+	assert.Equal(t, "key key2 is not present in ConfigMap namespace/name", err.Error())
+}
+
+func TestReadFileLikeField_InvalidInternalKey(t *testing.T) {
+	getter := newGetter(
+		Builder().
+			SetName("name").
+			SetNamespace("namespace").
+			SetField("key1", "value1=1\nvalue2=2").
+			Build(),
+	)
+
+	_, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key1", "value3")
+	assert.Error(t, err)
+	assert.Equal(t, "key value3 is not present in the key1 field of ConfigMap namespace/name", err.Error())
+}
+
 type configMapGetUpdater struct {
 	cm corev1.ConfigMap
 }
