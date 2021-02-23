@@ -214,19 +214,28 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	//r.log.Debug("Setting MongoDB Annotations")
-	//annotations := map[string]string{
-	//	lastVersionAnnotationKey: mdb.Spec.Version,
-	//}
-	//
-	//if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
+	// fetch latest version of the resource so we can set annotations
+	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Failed fetching MongoDBCommunity resource: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	r.log.Debug("Setting MongoDB Annotations")
+	annotations := map[string]string{
+		lastVersionAnnotationKey: mdb.Spec.Version,
+	}
+
+	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
@@ -360,16 +369,6 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBC
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
 	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
-		annotations := map[string]string{
-			lastVersionAnnotationKey: mdb.Spec.Version,
-		}
-		if mdb.Annotations == nil {
-			mdb.Annotations = map[string]string{}
-		}
-		for key, val := range annotations {
-			mdb.Annotations[key] = val
-		}
-
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
 	return err
