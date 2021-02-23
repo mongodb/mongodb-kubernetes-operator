@@ -108,8 +108,6 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mdbv1.MongoDBCommunity{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Secret{}).
 		Complete(r)
 }
 
@@ -173,27 +171,21 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
-		r.log.Errorf(fmt.Sprintf("Error validating TLS config: %s", err))
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
 				withFailedPhase(),
 		)
 	}
+
 	if !isTLSValid {
-		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
 				withPendingPhase(10),
 		)
-	}
-
-	if mdb.Spec.Security.TLS.Enabled {
-		r.log.Infof("Successfully validated TLS config")
 	}
 
 	ready, err := r.deployMongoDBReplicaSet(mdb)
@@ -241,7 +233,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-			withPendingPhase(0),
+			withPendingPhase(10),
 		)
 	}
 
@@ -334,17 +326,20 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
 	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
+		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
 		shouldReverse = true
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if mdb.Spec.Members > mdb.Status.CurrentMongoDBMembers && mdb.Status.CurrentMongoDBMembers > 0 {
-		shouldReverse = true
-	}
+	//if mdb.Spec.Members > mdb.Status.CurrentMongoDBMembers && mdb.Status.CurrentMongoDBMembers > 0 {
+	//	r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
+	//	shouldReverse = true
+	//}
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
 	if isChangingVersion(mdb) {
+		r.log.Debug("Version change in progress, the StatefulSet must be updated first")
 		shouldReverse = true
 	}
 

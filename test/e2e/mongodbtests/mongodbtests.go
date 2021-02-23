@@ -28,7 +28,7 @@ import (
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
 func StatefulSetIsReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
-	return statefulSetIsReady(mdb, time.Second*15, time.Minute*5)
+	return statefulSetIsReady(mdb, time.Second*15, time.Minute*8)
 }
 
 // StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
