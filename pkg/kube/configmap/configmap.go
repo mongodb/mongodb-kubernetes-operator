@@ -46,8 +46,8 @@ type GetUpdateCreateDeleter interface {
 }
 
 const (
-	newlineString   = "\n"
-	equalSignString = "="
+	lineSeparator     = "\n"
+	keyValueSeparator = "="
 )
 
 // ReadKey accepts a ConfigMap Getter, the object of the ConfigMap to get, and the key within
@@ -98,9 +98,9 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, cm corev1.ConfigMap) erro
 // filelikePropertiesToMap converts a file-like field in a ConfigMap to a map[string]string.
 func filelikePropertiesToMap(s string) (map[string]string, error) {
 	keyValPairs := map[string]string{}
-	s = strings.TrimRight(s, newlineString)
-	for _, keyValPair := range strings.Split(s, newlineString) {
-		splittedPair := strings.Split(keyValPair, equalSignString)
+	s = strings.TrimRight(s, lineSeparator)
+	for _, keyValPair := range strings.Split(s, lineSeparator) {
+		splittedPair := strings.Split(keyValPair, keyValueSeparator)
 		if len(splittedPair) != 2 {
 			return nil, errors.Errorf("%s is not a valid key-value pair", keyValPair)
 		}
