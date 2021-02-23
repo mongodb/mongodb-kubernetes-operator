@@ -4,9 +4,52 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
+
+func EnsureAutomationConfigSecret(secretGetUpdateCreator secret.GetUpdateCreator, ac AutomationConfig) (corev1.Secret, error) {
+	return corev1.Secret{}, nil
+}
+
+// EnsureSecret fetches the existing Secret and applies the callback to it and pushes changes back.
+// The callback is expected to update the data in Secret or return false if no update/create is needed
+// Returns the final Secret (could be the initial one or the one after the update)
+func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, nsName client.ObjectKey, owner metav1.OwnerReference, callback func(*corev1.Secret) bool) (corev1.Secret, error) {
+	existingSecret, err := secretGetUpdateCreator.GetSecret(nsName)
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			newSecret := secret.Builder().
+				SetName(nsName.Name).
+				SetNamespace(nsName.Namespace).
+				SetOwnerReferences([]metav1.OwnerReference{owner}).
+				Build()
+
+			if !callback(&newSecret) {
+				return corev1.Secret{}, nil
+			}
+
+			if err := secretGetUpdateCreator.CreateSecret(newSecret); err != nil {
+				return corev1.Secret{}, err
+			}
+			return newSecret, nil
+		}
+		return corev1.Secret{}, err
+	}
+	// We are updating the existing Secret
+	if !callback(&existingSecret) {
+		return existingSecret, nil
+	}
+	if err := secretGetUpdateCreator.UpdateSecret(existingSecret); err != nil {
+		return corev1.Secret{}, err
+	}
+	return existingSecret, nil
+}
 
 // ChangeAutomationConfigDataIfNecessary is a function that optionally changes the existing Automation Config Secret in
 // case if its content is different from the desired Automation Config.

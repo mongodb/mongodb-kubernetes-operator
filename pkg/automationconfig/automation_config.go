@@ -2,6 +2,7 @@ package automationconfig
 
 import (
 	"path"
+	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
@@ -289,4 +290,11 @@ type BuildConfig struct {
 type MongoDbVersionConfig struct {
 	Name   string        `json:"name"`
 	Builds []BuildConfig `json:"builds"`
+}
+
+// AreEqual returns whether or not the given AutomationConfigs have the same contents.
+// the comparison does not take version into account.
+func AreEqual(ac0, ac1 AutomationConfig) bool {
+	ac0.Version = ac1.Version
+	return reflect.DeepEqual(ac0, ac1)
 }

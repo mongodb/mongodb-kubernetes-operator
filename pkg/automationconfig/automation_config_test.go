@@ -233,3 +233,38 @@ func TestMongoDBVersionsConfig(t *testing.T) {
 	})
 
 }
+
+func TestAreEqual(t *testing.T) {
+	t.Run("Automation Configs with same values are equal", func(t *testing.T) {
+		assert.Equal(t,
+			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+		)
+	})
+
+	t.Run("Automation Configs with same values but different version are equal", func(t *testing.T) {
+		assert.Equal(t,
+			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 10),
+		)
+	})
+
+	t.Run("Automation Configs with different values are not equal", func(t *testing.T) {
+		assert.NotEqual(t,
+			createAutomationConfig("name0", "differentVersion", "domain0", Options{DownloadBase: "downloadBase1"}, Auth{Disabled: false}, 2, 2),
+			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+		)
+	})
+}
+
+func createAutomationConfig(name, version, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
+	ac, _ := NewBuilder().
+		SetName(name).
+		SetMongoDBVersion(version).
+		SetOptions(opts).
+		SetDomain(domain).
+		SetMembers(members).
+		SetAuth(auth).
+		Build()
+	return ac
+}
