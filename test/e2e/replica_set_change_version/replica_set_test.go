@@ -33,7 +33,6 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 
 	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
 	mdb.Spec.Version = "4.4.0"
-	mdb.Spec.FeatureCompatibilityVersion = "4.2"
 
 	_, err := setup.GeneratePasswordForUser(user, ctx, "")
 	if err != nil {
@@ -51,7 +50,7 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
-	// Upgrade version to 4.4.0
+	// Upgrade version to 4.4.1
 	t.Run("MongoDB is reachable while version is upgraded", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.4.1"))

@@ -205,7 +205,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Resetting StatefulSet UpdateStrategy")
+	r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate and Setting Annotations")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
@@ -214,19 +214,19 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Setting MongoDB Annotations")
-	annotations := map[string]string{
-		lastVersionAnnotationKey: mdb.Spec.Version,
-	}
-
-	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
+	//r.log.Debug("Setting MongoDB Annotations")
+	//annotations := map[string]string{
+	//	lastVersionAnnotationKey: mdb.Spec.Version,
+	//}
+	//
+	//if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
@@ -331,10 +331,10 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	//if mdb.Spec.Members > mdb.Status.CurrentMongoDBMembers && mdb.Status.CurrentMongoDBMembers > 0 {
-	//	r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
-	//	shouldReverse = true
-	//}
+	if scale.IsScalingUp(mdb) {
+		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
+		shouldReverse = true
+	}
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
@@ -360,6 +360,16 @@ func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBC
 	}
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
 	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
+		annotations := map[string]string{
+			lastVersionAnnotationKey: mdb.Spec.Version,
+		}
+		if mdb.Annotations == nil {
+			mdb.Annotations = map[string]string{}
+		}
+		for key, val := range annotations {
+			mdb.Annotations[key] = val
+		}
+
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
 	return err
