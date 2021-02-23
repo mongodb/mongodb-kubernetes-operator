@@ -108,23 +108,8 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}
 	})
 
-	t.Run("With TLS enabled, during rollout", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLS()
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            "",
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.False(t, process.Args26.Has("net.tls"))
-		}
-	})
-
 	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tlsRolledOutAnnotationKey] = "true"
 		ac := createAC(mdb)
 
 		assert.Equal(t, automationconfig.TLS{
@@ -144,7 +129,6 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tlsRolledOutAnnotationKey] = "true"
 		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 

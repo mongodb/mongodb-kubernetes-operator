@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -100,14 +98,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), err
 	}
 
-	// The config is only updated after the certs and keys have been rolled out to all pods.
-	// The agent needs these to be in place before the config is updated.
-	// Once the config is updated, the agents will gradually enable TLS in accordance with: https://docs.mongodb.com/manual/tutorial/upgrade-cluster-to-ssl/
-	if hasRolledOutTLS(mdb) {
-		return tlsConfigModification(mdb, certKey), nil
-	}
-
-	return automationconfig.NOOP(), nil
+	return tlsConfigModification(mdb, certKey), nil
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
@@ -182,38 +173,6 @@ func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey string) automatio
 			args.Set("net.tls.allowConnectionsWithoutCertificates", true)
 		}
 	}
-}
-
-// hasRolledOutTLS determines if the TLS key and certs have been mounted to all pods.
-// These must be mounted before TLS can be enabled in the automation config.
-func hasRolledOutTLS(mdb mdbv1.MongoDBCommunity) bool {
-	_, completedRollout := mdb.Annotations[tlsRolledOutAnnotationKey]
-	return completedRollout
-}
-
-// completeTLSRollout will update the automation config and set an annotation indicating that TLS has been rolled out.
-// At this stage, TLS hasn't yet been enabled but the keys and certs have all been mounted.
-// The automation config will be updated and the agents will continue work on gradually enabling TLS across the replica set.
-func (r *ReplicaSetReconciler) completeTLSRollout(mdb mdbv1.MongoDBCommunity) error {
-	if !mdb.Spec.Security.TLS.Enabled || hasRolledOutTLS(mdb) {
-		return nil
-	}
-
-	r.log.Debug("Completing TLS rollout")
-
-	if mdb.Annotations == nil {
-		mdb.Annotations = make(map[string]string)
-	}
-	mdb.Annotations[tlsRolledOutAnnotationKey] = trueAnnotation
-	if err := r.ensureAutomationConfig(mdb); err != nil {
-		return errors.Errorf("could not update automation config after TLS rollout: %s", err)
-	}
-
-	if err := r.setAnnotations(mdb.NamespacedName(), mdb.Annotations); err != nil {
-		return errors.Errorf("could not set TLS annotation: %s", err)
-	}
-
-	return nil
 }
 
 // buildTLSPodSpecModification will add the TLS init container and volumes to the pod template if TLS is enabled.
