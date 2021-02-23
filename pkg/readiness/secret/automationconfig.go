@@ -1,0 +1,30 @@
+package secret
+
+import (
+	"encoding/json"
+
+	"github.com/spf13/cast"
+	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	appDBAutomationConfigKey = "cluster-config.json"
+)
+
+func ReadAutomationConfigVersionFromSecret(namespace string, clientSet kubernetes.Interface, automationConfigMap string) (int64, error) {
+	secretReader := newKubernetesSecretReader(clientSet)
+	theSecret, err := secretReader.ReadSecret(namespace, automationConfigMap)
+	if err != nil {
+		return -1, err
+	}
+	var existingDeployment map[string]interface{}
+	if err := json.Unmarshal(theSecret.Data[appDBAutomationConfigKey], &existingDeployment); err != nil {
+		return -1, err
+	}
+
+	version, ok := existingDeployment["version"]
+	if !ok {
+		return -1, err
+	}
+	return cast.ToInt64(version), nil
+}

@@ -11,6 +11,7 @@ require (
 	github.com/onsi/ginkgo v1.14.1 // indirect
 	github.com/onsi/gomega v1.10.2 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cast v1.3.0
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.5.1
 	github.com/xdg/stringprep v1.0.0
