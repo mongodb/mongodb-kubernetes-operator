@@ -70,6 +70,21 @@ func TestReadData(t *testing.T) {
 	assert.Equal(t, "value2", data["key2"])
 }
 
+func TestReadFileLikeField(t *testing.T) {
+	getter := newGetter(
+		Builder().
+			SetName("name").
+			SetNamespace("namespace").
+			SetField("key1", "value1=1\nvalue2=2").
+			Build(),
+	)
+
+	data, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key1", "value1")
+	assert.NoError(t, err)
+
+	assert.Equal(t, "1", data)
+}
+
 type configMapGetUpdater struct {
 	cm corev1.ConfigMap
 }
