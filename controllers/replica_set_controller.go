@@ -82,11 +82,6 @@ const (
 	// configured
 	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
-	// tlsRolledOutAnnotationKey indicates if TLS has been fully rolled out
-	tlsRolledOutAnnotationKey      = "mongodb.com/v1.tlsRolledOut"
-	hasLeftReadyStateAnnotationKey = "mongodb.com/v1.hasLeftReadyStateAnnotationKey"
-
-	trueAnnotation = "true"
 )
 
 func init() {
@@ -181,6 +176,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
+		r.log.Errorf(fmt.Sprintf("Error validating TLS config: %s", err))
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
@@ -188,11 +184,16 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 	if !isTLSValid {
+		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
 				withPendingPhase(10),
 		)
+	}
+
+	if mdb.Spec.Security.TLS.Enabled {
+		r.log.Infof("Successfully validated TLS config")
 	}
 
 	ready, err := r.deployMongoDBReplicaSet(mdb)
@@ -223,21 +224,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	r.log.Debug("Setting MongoDB Annotations")
 	annotations := map[string]string{
-		lastVersionAnnotationKey:       mdb.Spec.Version,
-		hasLeftReadyStateAnnotationKey: "false",
+		lastVersionAnnotationKey: mdb.Spec.Version,
 	}
+
 	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	if err := r.completeTLSRollout(mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error completing TLS rollout: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -338,9 +331,9 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	shouldReverse := false
 
-	// when enabling TLS, we need to make sure that the StatefulSet is fully configured first
-	// otherwise the agents will not reach goal state as the hosts will not exist.
-	if mdb.Spec.Security.TLS.Enabled {
+	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
+	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if err == nil && mdb.Spec.Security.TLS.Enabled {
 		shouldReverse = true
 	}
 
