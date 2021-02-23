@@ -134,6 +134,7 @@ func TestHasOptions(t *testing.T) {
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
+		SetOptions(Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		Build()
 
 	assert.NoError(t, err)

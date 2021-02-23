@@ -13,11 +13,6 @@ const (
 	maxVotingMembers   int      = 7
 )
 
-// AuthEnabler is an interface which can configure authentication settings
-type AuthEnabler interface {
-	EnableAuth(auth Auth) Auth
-}
-
 type Modification func(*AutomationConfig)
 
 func NOOP() Modification {
@@ -25,7 +20,6 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler            AuthEnabler
 	processes          []Process
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
@@ -40,8 +34,8 @@ type Builder struct {
 	versions           []MongoDbVersionConfig
 	backupVersions     []BackupVersion
 	monitoringVersions []MonitoringVersion
-	modifications      []Modification
 	options            Options
+	modifications      []Modification
 	auth               *Auth
 }
 
@@ -54,11 +48,6 @@ func NewBuilder() *Builder {
 		backupVersions:     []BackupVersion{},
 		monitoringVersions: []MonitoringVersion{},
 	}
-}
-
-func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
-	b.enabler = enabler
-	return b
 }
 
 func (b *Builder) SetOptions(options Options) *Builder {
