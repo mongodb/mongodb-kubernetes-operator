@@ -223,18 +223,19 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Setting MongoDB Annotations")
-	annotations := map[string]string{
-		lastVersionAnnotationKey: mdb.Spec.Version,
-	}
-
-	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
-				withFailedPhase(),
-		)
-	}
+	//
+	//r.log.Debug("Setting MongoDB Annotations")
+	//annotations := map[string]string{
+	//	lastVersionAnnotationKey: mdb.Spec.Version,
+	//}
+	//
+	//if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
 
 	if scale.IsStillScaling(mdb) {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
@@ -557,6 +558,20 @@ func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommu
 	return r.setAnnotations(mdb.NamespacedName(), annotations)
 }
 
+func getPreviousSpec(mdb mdbv1.MongoDBCommunity) mdbv1.MongoDBCommunitySpec {
+
+	previousSpec, ok := mdb.Annotations[lastSuccessfulConfiguration]
+	if !ok {
+		return mdbv1.MongoDBCommunitySpec{}
+	}
+
+	spec := mdbv1.MongoDBCommunitySpec{}
+	if err := json.Unmarshal([]byte(previousSpec), &spec); err != nil {
+		return mdbv1.MongoDBCommunitySpec{}
+	}
+	return spec
+}
+
 // getMongodConfigModification will merge the additional configuration in the CRD
 // into the configuration set up by the operator.
 func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
@@ -587,10 +602,8 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
-	if lastVersion, ok := mdb.Annotations[lastVersionAnnotationKey]; ok {
-		return (mdb.Spec.Version != lastVersion) && lastVersion != ""
-	}
-	return false
+	prevSpec := getPreviousSpec(mdb)
+	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {

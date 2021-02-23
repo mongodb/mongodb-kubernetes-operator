@@ -28,7 +28,7 @@ import (
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
 func StatefulSetIsReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
-	return statefulSetIsReady(mdb, time.Second*15, time.Minute*8)
+	return statefulSetIsReady(mdb, time.Second*15, time.Minute*12)
 }
 
 // StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
@@ -91,7 +91,7 @@ func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.S
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*8)
+		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*12)
 		if err != nil {
 			t.Fatal(err)
 		}
