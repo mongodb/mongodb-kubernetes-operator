@@ -414,11 +414,12 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not build automation config: %s", err)
 	}
 
-	s, err := r.buildAutomationConfigSecret(mdb, ac)
-	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not build automation config secret: %s", err)
-	}
-	return ac, secret.CreateOrUpdate(r.client, s)
+	return automationconfig.EnsureSecret(
+		r.client,
+		types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace},
+		[]metav1.OwnerReference{getOwnerReference(mdb)},
+		ac,
+	)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -531,19 +532,6 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		tlsModification,
 		customRolesModification,
 	)
-}
-
-func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity, ac automationconfig.AutomationConfig) (corev1.Secret, error) {
-	acBytes, err := json.Marshal(ac)
-	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("could not marshal automation config: %s", err)
-	}
-
-	return secret.Builder().
-		SetName(mdb.AutomationConfigSecretName()).
-		SetNamespace(mdb.Namespace).
-		SetField(AutomationConfigKey, string(acBytes)).
-		Build(), nil
 }
 
 func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
