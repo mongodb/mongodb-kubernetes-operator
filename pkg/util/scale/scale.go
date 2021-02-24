@@ -33,7 +33,7 @@ func IsScalingDown(replicaSetScaler ReplicaSetScaler) bool {
 }
 
 func IsScalingUp(replicaSetScaler ReplicaSetScaler) bool {
-	return IsStillScaling(replicaSetScaler) && !IsScalingDown(replicaSetScaler)
+	return replicaSetScaler.DesiredReplicas() > replicaSetScaler.CurrentReplicas() && replicaSetScaler.CurrentReplicas() != 0
 }
 
 // AnyAreStillScaling reports true if any of one the provided members is still scaling

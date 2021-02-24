@@ -215,13 +215,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	// fetch latest version of the resource so we can set annotations
-	if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Failed fetching MongoDBCommunity resource: %s", err)).
-				withFailedPhase(),
-		)
-	}
+	//if err := r.client.Get(context.TODO(), mdb.NamespacedName(), &mdb); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Failed fetching MongoDBCommunity resource: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
 
 	//
 	//r.log.Debug("Setting MongoDB Annotations")
@@ -314,7 +314,8 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 		return false, fmt.Errorf("failed to get StatefulSet: %s", err)
 	}
 
-	if err := r.ensureAutomationConfig(mdb); err != nil {
+	ac, err := r.ensureAutomationConfig(mdb)
+	if err != nil {
 		return false, fmt.Errorf("failed to ensure AutomationConfig: %s", err)
 	}
 
@@ -324,11 +325,7 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 		return true, nil
 	}
 
-	ac, err := getCurrentAutomationConfig(r.client, mdb)
-	if err != nil {
-		return false, errors.Errorf("failed to get AutomationConfig: %s", err)
-	}
-
+	r.log.Debugf("Waiting for agents to reach version %d", ac.Version)
 	// Note: we pass in the expected number of replicas this reconciliation as we scale members one at a time. If we were
 	// to pass in the final member count, we would be waiting for agents that do not exist yet to be ready.
 	ready, err := agent.AllReachedGoalState(sts, r.client, mdb.StatefulSetReplicasThisReconciliation(), ac.Version, r.log)
@@ -432,12 +429,12 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 	})
 }
 
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) error {
-	s, err := r.buildAutomationConfigSecret(mdb)
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
+	s, ac, err := r.buildAutomationConfigSecret(mdb)
 	if err != nil {
-		return err
+		return automationconfig.AutomationConfig{}, err
 	}
-	return secret.CreateOrUpdate(r.client, s)
+	return ac, secret.CreateOrUpdate(r.client, s)
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -521,25 +518,25 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 	}, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, error) {
+func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, automationconfig.AutomationConfig, error) {
 	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not ensure scram credentials: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, errors.Errorf("could not ensure scram credentials: %s", err)
 	}
 
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}
 
 	customRolesModification, err := getCustomRolesModification(mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not configure custom roles: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, errors.Errorf("could not configure custom roles: %s", err)
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not read existing automation config: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
 	ac, err := buildAutomationConfig(
@@ -551,18 +548,18 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommu
 	)
 
 	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("could not build automation config: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, fmt.Errorf("could not build automation config: %s", err)
 	}
 	acBytes, err := json.Marshal(ac)
 	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("could not marshal automation config: %s", err)
+		return corev1.Secret{}, automationconfig.AutomationConfig{}, fmt.Errorf("could not marshal automation config: %s", err)
 	}
 
 	return secret.Builder().
 		SetName(mdb.AutomationConfigSecretName()).
 		SetNamespace(mdb.Namespace).
 		SetField(AutomationConfigKey, string(acBytes)).
-		Build(), nil
+		Build(), ac, nil
 }
 
 func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
