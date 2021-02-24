@@ -8,26 +8,34 @@ import (
 )
 
 func TestScramAutomationConfig(t *testing.T) {
-	modificationFunc := automationConfigModification("password", "keyfilecontents", []automationconfig.MongoDBUser{})
-	config := automationconfig.AutomationConfig{}
+	auth := automationconfig.Auth{}
+	opts := Options{
+		AuthoritativeSet:   false,
+		KeyFile:            AutomationAgentKeyFilePathInContainer,
+		AutoAuthMechanisms: []string{Sha256},
+		AgentName:          "mms-automation",
+		AutoAuthMechanism:  Sha256,
+	}
+
+	err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+	assert.NoError(t, err)
 
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
-		modificationFunc(&config)
-
-		assert.Equal(t, AgentName, config.Auth.AutoUser)
-		assert.Equal(t, "keyfilecontents", config.Auth.Key)
-		assert.Equal(t, "password", config.Auth.AutoPwd)
-		assert.Equal(t, scram256, config.Auth.AutoAuthMechanism)
-		assert.Len(t, config.Auth.DeploymentAuthMechanisms, 1)
-		assert.Len(t, config.Auth.AutoAuthMechanisms, 1)
-		assert.Equal(t, []string{scram256}, config.Auth.DeploymentAuthMechanisms)
-		assert.Equal(t, []string{scram256}, config.Auth.AutoAuthMechanisms)
-		assert.Equal(t, automationAgentKeyFilePathInContainer, config.Auth.KeyFile)
-		assert.Equal(t, automationAgentWindowsKeyFilePath, config.Auth.KeyFileWindows)
+		assert.Equal(t, AgentName, auth.AutoUser)
+		assert.Equal(t, "keyfilecontents", auth.Key)
+		assert.Equal(t, "password", auth.AutoPwd)
+		assert.Equal(t, Sha256, auth.AutoAuthMechanism)
+		assert.Len(t, auth.DeploymentAuthMechanisms, 1)
+		assert.Len(t, auth.AutoAuthMechanisms, 1)
+		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
+		assert.Equal(t, []string{Sha256}, auth.AutoAuthMechanisms)
+		assert.Equal(t, AutomationAgentKeyFilePathInContainer, auth.KeyFile)
+		assert.Equal(t, automationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
-		modificationFunc(&config)
-		assert.Equal(t, []string{scram256}, config.Auth.DeploymentAuthMechanisms)
+		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
 	})
 }

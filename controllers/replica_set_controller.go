@@ -433,7 +433,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 	return secret.CreateOrUpdate(r.client, s)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -446,6 +446,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, currentAc automationconfi
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
 		SetFCV(mdb.GetFCV()).
+		SetAuth(auth).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...)
 	newAc, err := builder.Build()
@@ -520,11 +521,6 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, error) {
-	authModification, err := scram.EnsureScram(r.client, mdb.ScramCredentialsNamespacedName(), mdb)
-	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not ensure scram credentials: %s", err)
-	}
-
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
 		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
@@ -540,10 +536,15 @@ func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommu
 		return corev1.Secret{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
+	auth := automationconfig.Auth{}
+	if err := scram.Enable(&auth, r.client, mdb); err != nil {
+		return corev1.Secret{}, errors.Errorf("could not configure scram authentication: %s", err)
+	}
+
 	ac, err := buildAutomationConfig(
 		mdb,
+		auth,
 		currentAC,
-		authModification,
 		tlsModification,
 		customRolesModification,
 	)
