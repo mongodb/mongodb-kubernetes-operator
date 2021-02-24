@@ -222,9 +222,19 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	})
 	t.Run("On Version Change", func(t *testing.T) {
 		mdb := newTestReplicaSet()
+
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.2.0"
+
+		prevSpec := mdbv1.MongoDBCommunitySpec{
+			Version: "4.2.0",
+		}
+
+		bytes, err := json.Marshal(prevSpec)
+		assert.NoError(t, err)
+
+		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
+
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
