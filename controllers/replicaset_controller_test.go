@@ -344,7 +344,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 
 	c := mgr.Client
 
-	scramNsName := mdb.ScramCredentialsNamespacedName()
+	scramNsName := mdb.GetAgentScramCredentialsNamespacedName()
 	err := secret.CreateOrUpdate(c,
 		secret.Builder().
 			SetName(scramNsName.Name).
@@ -483,7 +483,7 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 		assert.False(t, currentAc.Auth.Disabled)
 	})
 	t.Run("Secret with credentials was created", func(t *testing.T) {
-		secretNsName := mdb.ScramCredentialsNamespacedName()
+		secretNsName := mdb.GetAgentScramCredentialsNamespacedName()
 		s, err := mgr.Client.GetSecret(secretNsName)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
