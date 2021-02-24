@@ -22,8 +22,8 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
    ```
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
    ```
-4. Review the possible Operator [deployment scopes](#understand-mongodb-community-operator-deployment-scopes) and configure the Operator to watch other namespaces, if necessary.
-5. Configure the [MongoDB Docker image or container registry](#configure-the-mongodb-docker-image-or-container-registry), if necessary.
+4. **Optional** Review the possible Operator [deployment scopes](#understand-mongodb-community-operator-deployment-scopes) and configure the Operator to watch other namespaces.
+5. **Optional** Configure the [MongoDB Docker image or container registry](#configure-the-mongodb-docker-image-or-container-registry).
 
 ### Understand Deployment Scopes
 
