@@ -67,7 +67,6 @@ const (
 	podNamespaceEnv              = "POD_NAMESPACE"
 	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
 
-	AutomationConfigKey            = "cluster-config.json"
 	agentName                      = "mongodb-agent"
 	mongodbName                    = "mongod"
 	versionUpgradeHookName         = "mongod-posthook"
@@ -467,7 +466,7 @@ func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDBC
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
 

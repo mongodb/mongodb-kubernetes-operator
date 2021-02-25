@@ -115,8 +115,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, mdb.Namespace, s.Namespace)
 	assert.Equal(t, mdb.AutomationConfigSecretName(), s.Name)
-	assert.Contains(t, s.Data, AutomationConfigKey)
-	assert.NotEmpty(t, s.Data[AutomationConfigKey])
+	assert.Contains(t, s.Data, automationconfig.ConfigKey)
+	assert.NotEmpty(t, s.Data[automationconfig.ConfigKey])
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
