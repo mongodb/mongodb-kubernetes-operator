@@ -78,7 +78,7 @@ def dump_secret_keys_namespaced(
     if secret is not None:
         for key in keys:
             with open(
-                f"logs/e2e/{secret_name}-{key}.json",
+                f"logs/e2e/{secret_name}-{key}",
                 mode="w",
                 encoding="utf-8",
             ) as log_file:

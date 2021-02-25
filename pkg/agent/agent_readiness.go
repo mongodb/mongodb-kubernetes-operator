@@ -49,7 +49,7 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 		return false, nil
 	}
 
-	log.Infof("All %d Agents have reached Goal sate", desiredMemberCount)
+	log.Infof("All %d Agents have reached Goal state", desiredMemberCount)
 	return true, nil
 }
 

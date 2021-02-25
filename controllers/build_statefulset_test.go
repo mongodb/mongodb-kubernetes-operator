@@ -41,7 +41,7 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 
 func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity, sts *appsv1.StatefulSet) {
 	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
-	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 1)
+	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 	assert.Equal(t, mdb.ServiceName(), sts.Spec.ServiceName)
 	assert.Equal(t, mdb.Name, sts.Name)
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
@@ -56,7 +56,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
 	assert.Equal(t, probes.New(defaultReadiness()).FailureThreshold, probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
-	assert.Len(t, agentContainer.VolumeMounts, 4)
+	assert.Len(t, agentContainer.VolumeMounts, 5)
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
