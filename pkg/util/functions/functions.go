@@ -3,9 +3,9 @@ package functions
 // RunSequentially executes a series of functions sequentially. Each function returns a boolean
 // indicating if the function was successfully, and an error indicating if something went wrong.
 // if any function returns an error, an early exit happens. The first parameter indicates if the functions
-// should run in the order provided. A value of true indicates they should run in reverse.
-func RunSequentially(reversed bool, funcs ...func() (bool, error)) (bool, error) {
-	if !reversed {
+// should run in the order provided. A value of false indicates they should run in reverse.
+func RunSequentially(runSequentially bool, funcs ...func() (bool, error)) (bool, error) {
+	if runSequentially {
 		return runInOrder(funcs...)
 	}
 	return runReversed(funcs...)
@@ -13,11 +13,11 @@ func RunSequentially(reversed bool, funcs ...func() (bool, error)) (bool, error)
 
 func runInOrder(funcs ...func() (bool, error)) (bool, error) {
 	for _, fn := range funcs {
-		ready, err := fn()
+		successful, err := fn()
 		if err != nil {
-			return ready, err
+			return successful, err
 		}
-		if !ready {
+		if !successful {
 			return false, nil
 		}
 	}
@@ -26,11 +26,11 @@ func runInOrder(funcs ...func() (bool, error)) (bool, error) {
 
 func runReversed(funcs ...func() (bool, error)) (bool, error) {
 	for i := len(funcs) - 1; i >= 0; i-- {
-		ready, err := funcs[i]()
+		successful, err := funcs[i]()
 		if err != nil {
-			return ready, err
+			return successful, err
 		}
-		if !ready {
+		if !successful {
 			return false, nil
 		}
 	}
