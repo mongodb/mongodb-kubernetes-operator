@@ -419,6 +419,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 		[]metav1.OwnerReference{getOwnerReference(mdb)},
 		ac,
 	)
+
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
