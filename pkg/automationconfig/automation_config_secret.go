@@ -2,139 +2,65 @@ package automationconfig
 
 import (
 	"encoding/json"
-	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func EnsureAutomationConfigSecret(secretGetUpdateCreator secret.GetUpdateCreator, ac AutomationConfig) (corev1.Secret, error) {
-	return corev1.Secret{}, nil
-}
+const ConfigKey = "cluster-config.json"
 
-// EnsureSecret fetches the existing Secret and applies the callback to it and pushes changes back.
-// The callback is expected to update the data in Secret or return false if no update/create is needed
-// Returns the final Secret (could be the initial one or the one after the update)
-func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, nsName client.ObjectKey, owner metav1.OwnerReference, callback func(*corev1.Secret) bool) (corev1.Secret, error) {
-	existingSecret, err := secretGetUpdateCreator.GetSecret(nsName)
+// EnsureSecret makes sure that the AutomationConfig secret exists with the desired config.
+// if the desired config is the same as the current contents, no change is made.
+// The most recent AutomationConfig is returned. If no change is made, it will return the existing one, if there
+// is a change, the new AutomationConfig is returned.
+func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
+	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			newSecret := secret.Builder().
-				SetName(nsName.Name).
-				SetNamespace(nsName.Namespace).
-				SetOwnerReferences([]metav1.OwnerReference{owner}).
-				Build()
-
-			if !callback(&newSecret) {
-				return corev1.Secret{}, nil
-			}
-
-			if err := secretGetUpdateCreator.CreateSecret(newSecret); err != nil {
-				return corev1.Secret{}, err
-			}
-			return newSecret, nil
+			return createNewAutomationConfigSecret(secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
 		}
-		return corev1.Secret{}, err
-	}
-	// We are updating the existing Secret
-	if !callback(&existingSecret) {
-		return existingSecret, nil
-	}
-	if err := secretGetUpdateCreator.UpdateSecret(existingSecret); err != nil {
-		return corev1.Secret{}, err
-	}
-	return existingSecret, nil
-}
-
-// ChangeAutomationConfigDataIfNecessary is a function that optionally changes the existing Automation Config Secret in
-// case if its content is different from the desired Automation Config.
-// Returns true if the data was changed.
-func ChangeAutomationConfigDataIfNecessary(existingSecret *corev1.Secret, targetAutomationConfig *AutomationConfig, log *zap.SugaredLogger) bool {
-	if len(existingSecret.Data) == 0 {
-		log.Debugf("Secret for the Automation Config doesn't exist, it will be created")
-	} else {
-		if existingAutomationConfig, err := fromBytes(existingSecret.Data[ConfigKey]); err != nil {
-			// in case of any problems deserializing the existing AutomationConfig - just ignore the error and update
-			log.Warnf("There were problems deserializing existing automation config - it will be overwritten (%s)", err.Error())
-		} else {
-			// Otherwise there is an existing automation config and we need to compare it with the Operator version
-
-			// Aligning the versions to make deep comparison correct
-			targetAutomationConfig.Version = existingAutomationConfig.Version
-
-			log.Debug("Ensuring authentication credentials")
-			if err := ensureConsistentAgentAuthenticationCredentials(targetAutomationConfig, existingAutomationConfig, log); err != nil {
-				log.Warnf("error ensuring consistent authentication credentials: %s", err)
-				return false
-			}
-
-			// If the deployments are the same - we shouldn't perform the update
-			// We cannot compare the deployments directly as the "operator" version contains some struct members
-			// So we need to turn them into maps
-			if reflect.DeepEqual(existingAutomationConfig, targetAutomationConfig) {
-				log.Debugf("Automation Config hasn't changed - not updating Secret")
-				return false
-			}
-
-			// Otherwise we increase the version
-			targetAutomationConfig.Version = existingAutomationConfig.Version + 1
-			log.Debugf("Automation Config change detected, increasing version: %d -> %d", existingAutomationConfig.Version, existingAutomationConfig.Version+1)
-		}
+		return AutomationConfig{}, err
 	}
 
-	// By this time we have the AutomationConfig we want to push
-	bytes, err := json.Marshal(targetAutomationConfig)
+	acBytes, err := json.Marshal(desiredAutomationConfig)
 	if err != nil {
-		// this definitely cannot happen and means the dev error
-		log.Errorf("Failed to serialize automation config! %s", err)
-		return false
+		return AutomationConfig{}, err
 	}
-	if existingSecret.Data == nil {
-		existingSecret.Data = map[string][]byte{}
+	if existingAcBytes, ok := existingSecret.Data[ConfigKey]; !ok {
+		// the secret exists but the key is not present. We can update the secret
+		existingSecret.Data[ConfigKey] = acBytes
+	} else {
+		// the secret already exists, we should check to see if we're making any changes.
+		existingAutomationConfig, err := FromBytes(existingAcBytes)
+		if err != nil {
+			return AutomationConfig{}, err
+		}
+		// we are attempting to update with the same version, no change is required.
+		if AreEqual(desiredAutomationConfig, existingAutomationConfig) {
+			return existingAutomationConfig, nil
+		}
+		existingSecret.Data[ConfigKey] = acBytes
 	}
-	existingSecret.Data[ConfigKey] = bytes
-	return true
+	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 
-// ensureConsistentAgentAuthenticationCredentials makes sure that if there are existing authentication credentials
-// specified, we use those instead of always generating new ones which would cause constant remounting of the config map
-func ensureConsistentAgentAuthenticationCredentials(newAutomationConfig *AutomationConfig, existingAutomationConfig *AutomationConfig, log *zap.SugaredLogger) error {
-	// we will keep existing automation agent password
-	if existingAutomationConfig.Auth.AutoPwd != "" {
-		log.Debug("Agent password has already been generated, using existing password")
-		newAutomationConfig.Auth.AutoPwd = existingAutomationConfig.Auth.AutoPwd
-	} else {
-		log.Debug("Generating new automation agent password")
-		if _, err := newAutomationConfig.EnsurePassword(); err != nil {
-			return err
-		}
+func createNewAutomationConfigSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomation AutomationConfig) (AutomationConfig, error) {
+	acBytes, err := json.Marshal(desiredAutomation)
+	if err != nil {
+		return AutomationConfig{}, err
 	}
 
-	// keep existing keyfile contents
-	if existingAutomationConfig.Auth.Key != "" {
-		log.Debug("Keyfile contents have already been generated, using existing keyfile contents")
-		newAutomationConfig.Auth.Key = existingAutomationConfig.Auth.Key
-	} else {
-		log.Debug("Generating new keyfile contents")
-		if err := newAutomationConfig.EnsureKeyFileContents(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+	newSecret := secret.Builder().
+		SetName(secretNsName.Name).
+		SetNamespace(secretNsName.Namespace).
+		SetField(ConfigKey, string(acBytes)).
+		SetOwnerReferences(owner).
+		Build()
 
-// fromBytes takes in jsonBytes representing the Deployment
-// and constructs an instance of AutomationConfig with all the concrete structs
-// filled out.
-func fromBytes(jsonBytes []byte) (*AutomationConfig, error) {
-	ac := AutomationConfig{}
-	if err := json.Unmarshal(jsonBytes, &ac); err != nil {
-		return nil, err
+	if err := secretGetUpdateCreator.CreateSecret(newSecret); err != nil {
+		return AutomationConfig{}, err
 	}
-	return &ac, nil
+	return desiredAutomation, nil
 }

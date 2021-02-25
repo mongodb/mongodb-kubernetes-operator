@@ -67,7 +67,6 @@ const (
 	podNamespaceEnv              = "POD_NAMESPACE"
 	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
 
-	AutomationConfigKey            = "cluster-config.json"
 	agentName                      = "mongodb-agent"
 	mongodbName                    = "mongod"
 	versionUpgradeHookName         = "mongod-posthook"
@@ -108,8 +107,6 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mdbv1.MongoDBCommunity{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.Secret{}).
 		Complete(r)
 }
 
@@ -173,27 +170,21 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Validating TLS Config")
 	isTLSValid, err := r.validateTLSConfig(mdb)
 	if err != nil {
-		r.log.Errorf(fmt.Sprintf("Error validating TLS config: %s", err))
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
 				withFailedPhase(),
 		)
 	}
+
 	if !isTLSValid {
-		r.log.Infof("TLS config is not yet valid, retrying in 10 seconds")
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
 				withPendingPhase(10),
 		)
-	}
-
-	if mdb.Spec.Security.TLS.Enabled {
-		r.log.Infof("Successfully validated TLS config")
 	}
 
 	ready, err := r.deployMongoDBReplicaSet(mdb)
@@ -213,24 +204,11 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Resetting StatefulSet UpdateStrategy")
+	r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
 	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	r.log.Debug("Setting MongoDB Annotations")
-	annotations := map[string]string{
-		lastVersionAnnotationKey: mdb.Spec.Version,
-	}
-
-	if err := r.setAnnotations(mdb.NamespacedName(), annotations); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error setting annotations: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -241,7 +219,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-			withPendingPhase(0),
+			withPendingPhase(10),
 		)
 	}
 
@@ -287,6 +265,16 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
+
+	if isReady {
+		r.log.Infow("StatefulSet is ready",
+			"replicas", currentSts.Spec.Replicas,
+			"generation", currentSts.Generation,
+			"observedGeneration", currentSts.Status.ObservedGeneration,
+			"updateStrategy", currentSts.Spec.UpdateStrategy.Type,
+		)
+	}
+
 	return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 }
 
@@ -300,7 +288,8 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 		return false, fmt.Errorf("failed to get StatefulSet: %s", err)
 	}
 
-	if err := r.ensureAutomationConfig(mdb); err != nil {
+	ac, err := r.ensureAutomationConfig(mdb)
+	if err != nil {
 		return false, fmt.Errorf("failed to ensure AutomationConfig: %s", err)
 	}
 
@@ -310,11 +299,7 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 		return true, nil
 	}
 
-	ac, err := getCurrentAutomationConfig(r.client, mdb)
-	if err != nil {
-		return false, errors.Errorf("failed to get AutomationConfig: %s", err)
-	}
-
+	r.log.Debugf("Waiting for agents to reach version %d", ac.Version)
 	// Note: we pass in the expected number of replicas this reconciliation as we scale members one at a time. If we were
 	// to pass in the final member count, we would be waiting for agents that do not exist yet to be ready.
 	ready, err := agent.AllReachedGoalState(sts, r.client, mdb.StatefulSetReplicasThisReconciliation(), ac.Version, r.log)
@@ -325,30 +310,42 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 	return ready, nil
 }
 
-// deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
-// have been successfully created. A boolean is returned indicating if the process is complete
-// and an error if there was one.
-func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	shouldReverse := false
-
+// shouldRunInOrder returns true if the order of execution of the AutomationConfig & StatefulSet
+// functions should be sequential or not. A value of false indicates they will run in reversed order.
+func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
 	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
-		shouldReverse = true
+		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
+		return false
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if mdb.Spec.Members > mdb.Status.CurrentMongoDBMembers && mdb.Status.CurrentMongoDBMembers > 0 {
-		shouldReverse = true
+	if scale.IsScalingUp(mdb) {
+		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
+		return false
+	}
+
+	if scale.IsScalingDown(mdb) {
+		r.log.Debug("Scaling down the ReplicaSet, the Automation Config must be updated first")
+		return true
 	}
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
 	if isChangingVersion(mdb) {
-		shouldReverse = true
+		r.log.Debug("Version change in progress, the StatefulSet must be updated first")
+		return false
 	}
 
-	return functions.RunSequentially(shouldReverse,
+	return true
+}
+
+// deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
+// have been successfully created. A boolean is returned indicating if the process is complete
+// and an error if there was one.
+func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
+	return functions.RunSequentially(r.shouldRunInOrder(mdb),
 		func() (bool, error) {
 			return r.deployAutomationConfig(mdb)
 		},
@@ -408,12 +405,21 @@ func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annota
 	})
 }
 
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) error {
-	s, err := r.buildAutomationConfigSecret(mdb)
+// ensureAutomationConfig makes sure the AutomationConfig secret has been successfully created. The automation config
+// that was updated/created is returned.
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
+	ac, err := r.buildAutomationConfig(mdb)
 	if err != nil {
-		return err
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not build automation config: %s", err)
 	}
-	return secret.CreateOrUpdate(r.client, s)
+
+	return automationconfig.EnsureSecret(
+		r.client,
+		types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace},
+		[]metav1.OwnerReference{getOwnerReference(mdb)},
+		ac,
+	)
+
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
@@ -462,7 +468,7 @@ func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDBC
 	}
 
 	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal(currentSecret.Data[AutomationConfigKey], &currentAc); err != nil {
+	if err := json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
 
@@ -499,48 +505,34 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 	}, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfigSecret(mdb mdbv1.MongoDBCommunity) (corev1.Secret, error) {
+func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
 	tlsModification, err := getTLSConfigModification(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not configure TLS modification: %s", err)
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}
 
 	customRolesModification, err := getCustomRolesModification(mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not configure custom roles: %s", err)
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure custom roles: %s", err)
 	}
 
 	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
 	if err != nil {
-		return corev1.Secret{}, errors.Errorf("could not read existing automation config: %s", err)
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
 	auth := automationconfig.Auth{}
 	if err := scram.Enable(&auth, r.client, mdb); err != nil {
-		return corev1.Secret{}, errors.Errorf("could not configure scram authentication: %s", err)
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 
-	ac, err := buildAutomationConfig(
+	return buildAutomationConfig(
 		mdb,
 		auth,
 		currentAC,
 		tlsModification,
 		customRolesModification,
 	)
-
-	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("could not build automation config: %s", err)
-	}
-	acBytes, err := json.Marshal(ac)
-	if err != nil {
-		return corev1.Secret{}, fmt.Errorf("could not marshal automation config: %s", err)
-	}
-
-	return secret.Builder().
-		SetName(mdb.AutomationConfigSecretName()).
-		SetNamespace(mdb.Namespace).
-		SetField(AutomationConfigKey, string(acBytes)).
-		Build(), nil
 }
 
 func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
@@ -553,6 +545,21 @@ func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommu
 		lastSuccessfulConfiguration: string(currentSpec),
 	}
 	return r.setAnnotations(mdb.NamespacedName(), annotations)
+}
+
+// getPreviousSpec returns the last spec of the resource that was successfully achieved.
+func getPreviousSpec(mdb mdbv1.MongoDBCommunity) mdbv1.MongoDBCommunitySpec {
+
+	previousSpec, ok := mdb.Annotations[lastSuccessfulConfiguration]
+	if !ok {
+		return mdbv1.MongoDBCommunitySpec{}
+	}
+
+	spec := mdbv1.MongoDBCommunitySpec{}
+	if err := json.Unmarshal([]byte(previousSpec), &spec); err != nil {
+		return mdbv1.MongoDBCommunitySpec{}
+	}
+	return spec
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD
@@ -584,11 +591,10 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 	return sts, nil
 }
 
+// isChangingVersion returns true if an attempted version change is occurring.
 func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
-	if lastVersion, ok := mdb.Annotations[lastVersionAnnotationKey]; ok {
-		return (mdb.Spec.Version != lastVersion) && lastVersion != ""
-	}
-	return false
+	prevSpec := getPreviousSpec(mdb)
+	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
@@ -645,6 +651,8 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 	)
 }
 
+// readinessProbeInit returns a modification function which will add the readiness probe container.
+// this container will copy the readiness probe binary into the /opt/scripts directory.
 func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
 		container.WithName(readinessProbeContainerName),

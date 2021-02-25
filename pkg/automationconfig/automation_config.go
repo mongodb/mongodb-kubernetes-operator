@@ -1,6 +1,7 @@
 package automationconfig
 
 import (
+	"encoding/json"
 	"path"
 	"reflect"
 
@@ -13,7 +14,6 @@ const (
 	Mongod                ProcessType = "mongod"
 	DefaultMongoDBDataDir string      = "/data"
 	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
-	ConfigKey             string      = "cluster-config.json"
 )
 
 type AutomationConfig struct {
@@ -297,4 +297,13 @@ type MongoDbVersionConfig struct {
 func AreEqual(ac0, ac1 AutomationConfig) bool {
 	ac0.Version = ac1.Version
 	return reflect.DeepEqual(ac0, ac1)
+}
+
+func FromBytes(acBytes []byte) (AutomationConfig, error) {
+	ac := AutomationConfig{}
+	if err := json.Unmarshal(acBytes, &ac); err != nil {
+		return AutomationConfig{}, err
+	}
+	return ac, nil
+
 }

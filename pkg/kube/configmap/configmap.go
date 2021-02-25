@@ -1,6 +1,8 @@
 package configmap
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,6 +44,11 @@ type GetUpdateCreateDeleter interface {
 	Creator
 	Deleter
 }
+
+const (
+	lineSeparator     = "\n"
+	keyValueSeparator = "="
+)
 
 // ReadKey accepts a ConfigMap Getter, the object of the ConfigMap to get, and the key within
 // the config map to read. It returns the string value, and an error if one occurred.
@@ -86,4 +93,39 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, cm corev1.ConfigMap) erro
 		return err
 	}
 	return getUpdateCreator.UpdateConfigMap(cm)
+}
+
+// filelikePropertiesToMap converts a file-like field in a ConfigMap to a map[string]string.
+func filelikePropertiesToMap(s string) (map[string]string, error) {
+	keyValPairs := map[string]string{}
+	s = strings.TrimRight(s, lineSeparator)
+	for _, keyValPair := range strings.Split(s, lineSeparator) {
+		splittedPair := strings.Split(keyValPair, keyValueSeparator)
+		if len(splittedPair) != 2 {
+			return nil, errors.Errorf("%s is not a valid key-value pair", keyValPair)
+		}
+		keyValPairs[splittedPair[0]] = splittedPair[1]
+	}
+	return keyValPairs, nil
+}
+
+// ReadFileLikeField reads a ConfigMap with file-like properties and returns the value inside one of the fields.
+func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey string, internalKey string) (string, error) {
+	cmData, err := ReadData(getter, objectKey)
+	if err != nil {
+		return "", err
+	}
+	mappingString, ok := cmData[externalKey]
+	if !ok {
+		return "", errors.Errorf("key %s is not present in ConfigMap %s", externalKey, objectKey)
+	}
+	mapping, err := filelikePropertiesToMap(mappingString)
+	if err != nil {
+		return "", err
+	}
+	value, ok := mapping[internalKey]
+	if !ok {
+		return "", errors.Errorf("key %s is not present in the %s field of ConfigMap %s", internalKey, externalKey, objectKey)
+	}
+	return value, nil
 }

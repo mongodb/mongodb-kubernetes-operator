@@ -115,8 +115,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, mdb.Namespace, s.Namespace)
 	assert.Equal(t, mdb.AutomationConfigSecretName(), s.Name)
-	assert.Contains(t, s.Data, AutomationConfigKey)
-	assert.NotEmpty(t, s.Data[AutomationConfigKey])
+	assert.Contains(t, s.Data, automationconfig.ConfigKey)
+	assert.NotEmpty(t, s.Data[automationconfig.ConfigKey])
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
@@ -222,9 +222,19 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	})
 	t.Run("On Version Change", func(t *testing.T) {
 		mdb := newTestReplicaSet()
+
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.2.0"
+
+		prevSpec := mdbv1.MongoDBCommunitySpec{
+			Version: "4.2.0",
+		}
+
+		bytes, err := json.Marshal(prevSpec)
+		assert.NoError(t, err)
+
+		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
+
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
