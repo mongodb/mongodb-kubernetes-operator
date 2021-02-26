@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
@@ -116,7 +115,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
-		assert.Contains(t, s.Data, controllers.AutomationConfigKey)
+		assert.Contains(t, s.Data, automationconfig.ConfigKey)
 
 		t.Log("The Secret contained the automation config")
 	}
@@ -127,7 +126,7 @@ func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationco
 	currentAc := automationconfig.AutomationConfig{}
 	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 	assert.NoError(t, err)
-	err = json.Unmarshal(currentSecret.Data[controllers.AutomationConfigKey], &currentAc)
+	err = json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc)
 	assert.NoError(t, err)
 	return currentAc
 }
