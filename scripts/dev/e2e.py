@@ -164,7 +164,8 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         "go",
                         "test",
                         "-v",
-                        "-timeout=60m",
+                        "-timeout=30m",
+                        "-failfast",
                         f"./test/e2e/{args.test}",
                     ],
                 }
