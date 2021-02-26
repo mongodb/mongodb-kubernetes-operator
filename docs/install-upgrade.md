@@ -86,7 +86,7 @@ To install the MongoDB Community Kubernetes Operator:
 
    a. Invoke the following command:
       ```
-      apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+      kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
       ```
    b. Verify that the Custom Resource Definitions installed successfully:
       ```
