@@ -1,7 +1,9 @@
 package automationconfig
 
 import (
+	"encoding/json"
 	"path"
+	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
@@ -239,4 +241,17 @@ type BuildConfig struct {
 type MongoDbVersionConfig struct {
 	Name   string        `json:"name"`
 	Builds []BuildConfig `json:"builds"`
+}
+
+func AreEqual(ac0, ac1 AutomationConfig) bool {
+	ac0.Version = ac1.Version
+	return reflect.DeepEqual(ac0, ac1)
+}
+
+func FromBytes(acBytes []byte) (AutomationConfig, error) {
+	ac := AutomationConfig{}
+	if err := json.Unmarshal(acBytes, &ac); err != nil {
+		return AutomationConfig{}, err
+	}
+	return ac, nil
 }
