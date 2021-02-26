@@ -12,11 +12,6 @@ const (
 	ReplicaSetTopology Topology = "ReplicaSet"
 )
 
-// AuthEnabler is an interface which can configure authentication settings
-type AuthEnabler interface {
-	EnableAuth(auth Auth) Auth
-}
-
 type Modification func(*AutomationConfig)
 
 func NOOP() Modification {
@@ -24,7 +19,6 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler            AuthEnabler
 	processes          []Process
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
@@ -38,6 +32,7 @@ type Builder struct {
 	// MongoDB installable versions
 	versions      []MongoDbVersionConfig
 	modifications []Modification
+	auth          *Auth
 }
 
 func NewBuilder() *Builder {
@@ -47,11 +42,6 @@ func NewBuilder() *Builder {
 		versions:      []MongoDbVersionConfig{},
 		modifications: []Modification{},
 	}
-}
-
-func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
-	b.enabler = enabler
-	return b
 }
 
 func (b *Builder) SetTopology(topology Topology) *Builder {
@@ -104,6 +94,11 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 	return b
 }
 
+func (b *Builder) SetAuth(auth Auth) *Builder {
+	b.auth = &auth
+	return b
+}
+
 func (b *Builder) AddModifications(mod ...Modification) *Builder {
 	b.modifications = append(b.modifications, mod...)
 	return b
@@ -132,9 +127,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		}
 	}
 
-	auth := disabledAuth()
-	if b.enabler != nil {
-		auth = b.enabler.EnableAuth(auth)
+	if b.auth == nil {
+		disabled := disabledAuth()
+		b.auth = &disabled
 	}
 
 	if len(b.versions) == 0 {
@@ -153,7 +148,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		},
 		Versions: b.versions,
 		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     auth,
+		Auth:     *b.auth,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 		},
