@@ -26,7 +26,7 @@ type Builder struct {
 	members            int
 	domain             string
 	name               string
-	fcv                string
+	fcv                *string
 	topology           Topology
 	mongodbVersion     string
 	previousAC         AutomationConfig
@@ -37,16 +37,21 @@ type Builder struct {
 	options            Options
 	modifications      []Modification
 	auth               *Auth
+	wiredTigerCache    *float32
+	//logPath            string
+	systemLog            SystemLog
+	processModifications []func(int, *Process)
 }
 
 func NewBuilder() *Builder {
 	return &Builder{
-		processes:          []Process{},
-		replicaSets:        []ReplicaSet{},
-		versions:           []MongoDbVersionConfig{},
-		modifications:      []Modification{},
-		backupVersions:     []BackupVersion{},
-		monitoringVersions: []MonitoringVersion{},
+		processes:            []Process{},
+		replicaSets:          []ReplicaSet{},
+		versions:             []MongoDbVersionConfig{},
+		modifications:        []Modification{},
+		backupVersions:       []BackupVersion{},
+		monitoringVersions:   []MonitoringVersion{},
+		processModifications: []func(int, *Process){},
 	}
 }
 
@@ -80,7 +85,7 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
-func (b *Builder) SetFCV(fcv string) *Builder {
+func (b *Builder) SetFCV(fcv *string) *Builder {
 	b.fcv = fcv
 	return b
 }
@@ -120,6 +125,21 @@ func (b *Builder) SetAuth(auth Auth) *Builder {
 	return b
 }
 
+func (b *Builder) SetWiredTigerCache(cache *float32) *Builder {
+	b.wiredTigerCache = cache
+	return b
+}
+
+func (b *Builder) SetSystemLog(sysLog SystemLog) *Builder {
+	b.systemLog = sysLog
+	return b
+}
+
+func (b *Builder) AddProcessModification(f func(int, *Process)) *Builder {
+	b.processModifications = append(b.processModifications, f)
+	return b
+}
+
 func (b *Builder) AddModifications(mod ...Modification) *Builder {
 	b.modifications = append(b.modifications, mod...)
 	return b
@@ -135,7 +155,22 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
 
-		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, withFCV(b.fcv))
+		process := newProcessBuilder().
+			SetName(toProcessName(b.name, i)).
+			SetHostName(h).
+			SetReplicaSetName(b.name).
+			SetPort(27017).
+			SetDbPath(DefaultMongoDBDataDir).
+			SetVersion(b.mongodbVersion).
+			SetFCV(b.fcv).
+			SetWiredTigerCache(b.wiredTigerCache).
+			//SetSystemLog(b.systemLog).
+			Build()
+
+		for _, mod := range b.processModifications {
+			mod(i, &process)
+		}
+
 		processes[i] = process
 
 		totalVotes := 0
@@ -202,15 +237,8 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	return currentAc, nil
 }
 
-func toHostName(name string, index int) string {
+func toProcessName(name string, index int) string {
 	return fmt.Sprintf("%s-%d", name, index)
-}
-
-// Process functional options
-func withFCV(fcv string) func(*Process) {
-	return func(process *Process) {
-		process.FeatureCompatibilityVersion = fcv
-	}
 }
 
 // buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which

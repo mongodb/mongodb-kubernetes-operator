@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"encoding/json"
-	"path"
 	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
@@ -78,31 +77,16 @@ type Process struct {
 	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
-func newProcess(name, hostName, version, replSetName string, opts ...func(process *Process)) Process {
-	args26 := objx.New(map[string]interface{}{})
-	args26.Set("net.port", 27017)
-	args26.Set("storage.dbPath", DefaultMongoDBDataDir)
-	args26.Set("replication.replSetName", replSetName)
-
-	p := Process{
-		Name:                        name,
-		HostName:                    hostName,
-		FeatureCompatibilityVersion: "4.0",
-		ProcessType:                 Mongod,
-		Version:                     version,
-		SystemLog: SystemLog{
-			Destination: "file",
-			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-		},
-		AuthSchemaVersion: 5,
-		Args26:            args26,
-	}
-
-	for _, opt := range opts {
-		opt(&p)
-	}
-
+func (p *Process) SetArgs26Field(fieldName string, value interface{}) *Process {
+	p.ensureArgs26()
+	p.Args26.Set(fieldName, value)
 	return p
+}
+
+func (p *Process) ensureArgs26() {
+	if p.Args26 == nil {
+		p.Args26 = objx.New(map[string]interface{}{})
+	}
 }
 
 type TLSMode string
@@ -305,5 +289,4 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 		return AutomationConfig{}, err
 	}
 	return ac, nil
-
 }

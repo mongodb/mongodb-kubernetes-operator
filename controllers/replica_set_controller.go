@@ -426,6 +426,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
+	fcv := mdb.GetFCV()
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -434,7 +435,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetFCV(mdb.GetFCV()).
+		SetFCV(&fcv).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		AddModifications(getMongodConfigModification(mdb)).
