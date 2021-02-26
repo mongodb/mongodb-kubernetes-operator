@@ -77,9 +77,13 @@ spec:
               properties:
                 authentication:
                   properties:
+                    ignoreUnknownUsers:
+                      description: IgnoreUnknownUsers set to true will ensure any
+                        users added manually (not through the CRD) will not be removed.
+                      type: boolean
                     modes:
                       description: Modes is an array specifying which authentication
-                        methods should be enabled
+                        methods should be enabled.
                       items:
                         enum:
                         - SCRAM

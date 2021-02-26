@@ -465,6 +465,48 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 }
 
+func TestIgnoreUnknownUsers(t *testing.T) {
+
+	t.Run("Ignore Unnkown Users set to true", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = true
+
+		mgr := client.NewManager(&mdb)
+		r := NewReconciler(mgr)
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+		assertReconciliationSuccessful(t, res, err)
+
+		s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+		assert.NoError(t, err)
+
+		bytes := s.Data[automationconfig.ConfigKey]
+		ac, err := automationconfig.FromBytes(bytes)
+		assert.NoError(t, err)
+
+		assert.False(t, ac.Auth.AuthoritativeSet)
+	})
+
+	t.Run("IgnoreUnknownUsers set to false", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = false
+
+		mgr := client.NewManager(&mdb)
+		r := NewReconciler(mgr)
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+		assertReconciliationSuccessful(t, res, err)
+
+		s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+		assert.NoError(t, err)
+
+		bytes := s.Data[automationconfig.ConfigKey]
+		ac, err := automationconfig.FromBytes(bytes)
+		assert.NoError(t, err)
+
+		assert.True(t, ac.Auth.AuthoritativeSet)
+	})
+
+}
+
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)

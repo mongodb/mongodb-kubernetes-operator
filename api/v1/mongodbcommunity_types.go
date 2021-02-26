@@ -324,8 +324,13 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
-	// Modes is an array specifying which authentication methods should be enabled
+	// Modes is an array specifying which authentication methods should be enabled.
 	Modes []AuthMode `json:"modes"`
+
+	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
+	// will not be removed.
+	// +optional
+	IgnoreUnknownUsers bool `json:"ignoreUnknownUsers"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
@@ -362,7 +367,7 @@ type MongoDBCommunity struct {
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
 	return scram.Options{
-		AuthoritativeSet:   true,
+		AuthoritativeSet:   !m.Spec.Security.Authentication.IgnoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
 		AutoAuthMechanisms: []string{scram.Sha256},
 		AgentName:          scram.AgentName,
