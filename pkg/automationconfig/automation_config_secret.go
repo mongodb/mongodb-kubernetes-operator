@@ -18,8 +18,13 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 	if err != nil && !apiErrors.IsNotFound(err) {
 		return AutomationConfig{}, err
 	}
-	acBytes := acSecret.Data[ConfigKey]
-	return FromBytes(acBytes)
+
+	// the secret not existing is perfectly fine, this will happen during the first reconciliation.
+	if apiErrors.IsNotFound(err) {
+		return AutomationConfig{}, nil
+	}
+
+	return FromBytes(acSecret.Data[ConfigKey])
 }
 
 // EnsureSecret makes sure that the AutomationConfig secret exists with the desired config.

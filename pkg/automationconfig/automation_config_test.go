@@ -25,12 +25,13 @@ func defaultMongoDbVersion(version string) MongoDbVersionConfig {
 }
 
 func TestBuildAutomationConfig(t *testing.T) {
+	fcv := "4.0"
 	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
-		SetFCV("4.0").
+		SetFCV(&fcv).
 		Build()
 
 	assert.NoError(t, err)
