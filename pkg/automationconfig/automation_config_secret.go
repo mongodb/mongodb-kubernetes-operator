@@ -11,6 +11,17 @@ import (
 
 const ConfigKey = "cluster-config.json"
 
+// ReadFromSecret returns the AutomationConfig present in the given Secret. If the Secret is not
+// found, it is not considered an error and an empty AutomationConfig is returned.
+func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
+	acSecret, err := secretGetter.GetSecret(secretNsName)
+	if err != nil && !apiErrors.IsNotFound(err) {
+		return AutomationConfig{}, err
+	}
+	acBytes := acSecret.Data[ConfigKey]
+	return FromBytes(acBytes)
+}
+
 // EnsureSecret makes sure that the AutomationConfig secret exists with the desired config.
 // if the desired config is the same as the current contents, no change is made.
 // The most recent AutomationConfig is returned. If no change is made, it will return the existing one, if there

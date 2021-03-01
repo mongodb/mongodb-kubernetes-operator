@@ -164,7 +164,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			SetVersion(b.mongodbVersion).
 			SetFCV(b.fcv).
 			SetWiredTigerCache(b.wiredTigerCache).
-			//SetSystemLog(b.systemLog).
 			Build()
 
 		for _, mod := range b.processModifications {
