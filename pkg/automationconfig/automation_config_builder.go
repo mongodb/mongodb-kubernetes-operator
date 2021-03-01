@@ -1,8 +1,6 @@
 package automationconfig
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"path"
 )
@@ -227,22 +225,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		modification(&currentAc)
 	}
 
-	// Here we compare the bytes of the two automationconfigs,
-	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
-	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
-	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
-
-	newAcBytes, err := json.Marshal(b.previousAC)
+	areEqual, err := AreEqual(b.previousAC, currentAc)
 	if err != nil {
 		return AutomationConfig{}, err
 	}
 
-	currentAcBytes, err := json.Marshal(currentAc)
-	if err != nil {
-		return AutomationConfig{}, err
-	}
-
-	if !bytes.Equal(newAcBytes, currentAcBytes) {
+	if !areEqual {
 		currentAc.Version++
 	}
 	return currentAc, nil

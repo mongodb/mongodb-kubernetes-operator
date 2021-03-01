@@ -54,7 +54,11 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 			return AutomationConfig{}, err
 		}
 		// we are attempting to update with the same version, no change is required.
-		if AreEqual(desiredAutomationConfig, existingAutomationConfig) {
+		areEqual, err := AreEqual(desiredAutomationConfig, existingAutomationConfig)
+		if err != nil {
+			return AutomationConfig{}, err
+		}
+		if areEqual {
 			return existingAutomationConfig, nil
 		}
 		existingSecret.Data[ConfigKey] = acBytes

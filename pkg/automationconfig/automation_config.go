@@ -1,11 +1,10 @@
 package automationconfig
 
 import (
+	"bytes"
 	"encoding/json"
-	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/stretchr/objx"
 )
 
@@ -37,32 +36,6 @@ type MonitoringVersion struct {
 	Name             string            `json:"name"`
 	BaseUrl          string            `json:"baseUrl"`
 	AdditionalParams map[string]string `json:"additionalParams"`
-}
-
-// EnsurePassword makes sure that there is an Automation Agent password
-// that the agents will use to communicate with the deployments. The password
-// is returned so it can be provided to the other agents
-func (ac *AutomationConfig) EnsurePassword() (string, error) {
-	if ac.Auth.AutoPwd == "" {
-		generatedPassword, err := generate.KeyFileContents()
-		if err != nil {
-			return "", err
-		}
-		ac.Auth.AutoPwd = generatedPassword
-	}
-	return ac.Auth.AutoPwd, nil
-}
-
-// EnsureKeyFileContents makes sure a valid keyfile is generated and used for internal cluster authentication
-func (ac *AutomationConfig) EnsureKeyFileContents() error {
-	if ac.Auth.Key == "" {
-		keyfileContents, err := generate.KeyFileContents()
-		if err != nil {
-			return err
-		}
-		ac.Auth.Key = keyfileContents
-	}
-	return nil
 }
 
 type Process struct {
@@ -299,9 +272,22 @@ type MongoDbVersionConfig struct {
 
 // AreEqual returns whether or not the given AutomationConfigs have the same contents.
 // the comparison does not take version into account.
-func AreEqual(ac0, ac1 AutomationConfig) bool {
+func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
+	// Here we compare the bytes of the two automationconfigs,
+	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
+	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
+	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
 	ac0.Version = ac1.Version
-	return reflect.DeepEqual(ac0, ac1)
+	ac0Bytes, err := json.Marshal(ac0)
+	if err != nil {
+		return false, err
+	}
+
+	ac1Bytes, err := json.Marshal(ac1)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(ac0Bytes, ac1Bytes), nil
 }
 
 func FromBytes(acBytes []byte) (AutomationConfig, error) {
