@@ -35,7 +35,7 @@ type MonitoringVersion struct {
 	Hostname         string            `json:"hostname"`
 	Name             string            `json:"name"`
 	BaseUrl          string            `json:"baseUrl"`
-	AdditionalParams map[string]string `json:"additionalParams"`
+	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
 type Process struct {
