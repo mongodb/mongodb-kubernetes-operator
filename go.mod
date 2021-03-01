@@ -3,7 +3,6 @@ module github.com/mongodb/mongodb-kubernetes-operator
 go 1.14
 
 require (
-	github.com/blang/semver v3.5.0+incompatible
 	github.com/go-logr/logr v0.3.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.10
