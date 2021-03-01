@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path"
 )
 
 type Topology string
@@ -155,16 +156,27 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
 
-		process := newProcessBuilder().
-			SetName(toProcessName(b.name, i)).
-			SetHostName(h).
-			SetReplicaSetName(b.name).
-			SetPort(27017).
-			SetDbPath(DefaultMongoDBDataDir).
-			SetVersion(b.mongodbVersion).
-			SetFCV(b.fcv).
-			SetWiredTigerCache(b.wiredTigerCache).
-			Build()
+		fcv := "4.0"
+		if b.fcv != nil {
+			fcv = *b.fcv
+		}
+
+		process := Process{
+			Name:                        toProcessName(b.name, i),
+			HostName:                    h,
+			FeatureCompatibilityVersion: fcv,
+			ProcessType:                 Mongod,
+			Version:                     b.mongodbVersion,
+			AuthSchemaVersion:           5,
+			SystemLog: SystemLog{
+				Destination: "file",
+				Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+			},
+		}
+
+		process.SetPort(27017)
+		process.SetStoragePath(DefaultMongoDBDataDir)
+		process.SetReplicaSetName(b.name)
 
 		for _, mod := range b.processModifications {
 			mod(i, &process)

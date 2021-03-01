@@ -77,6 +77,27 @@ type Process struct {
 	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
+func (p *Process) SetPort(port int) *Process {
+	return p.SetArgs26Field("net.port", port)
+}
+
+func (p *Process) SetStoragePath(storagePath string) *Process {
+	return p.SetArgs26Field("storage.dbPath", storagePath)
+}
+
+func (p *Process) SetReplicaSetName(replSetName string) *Process {
+	return p.SetArgs26Field("replication.replSetName", replSetName)
+}
+
+func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
+	if cacheSizeGb == nil {
+		return p
+	}
+	return p.SetArgs26Field("storage.wiredTiger.engineConfig.cacheSizeGB", cacheSizeGb)
+}
+
+// SetArgs26Field should be used whenever any args26 field needs to be set. It ensures
+// that the args26 map is non nil and assingns the given value.
 func (p *Process) SetArgs26Field(fieldName string, value interface{}) *Process {
 	p.ensureArgs26()
 	p.Args26.Set(fieldName, value)
