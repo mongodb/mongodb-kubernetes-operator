@@ -1,14 +1,13 @@
 package controllers
 
 import (
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 )
 
 // buildScramPodSpecModification will add the keyfile volume to the podTemplateSpec
 // the keyfile is owned by the agent, and is required to have 0600 permissions.
-func buildScramPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
+func buildScramPodSpecModification() podtemplatespec.Modification {
 	mode := int32(0600)
 	keyfileVolumeName := "keyfile-volume"
 	keyFileVolume := statefulset.CreateVolumeFromSecret(keyfileVolumeName, keyfileVolumeName, statefulset.WithSecretDefaultMode(&mode))
