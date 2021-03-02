@@ -34,35 +34,63 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-	SystemLog                   SystemLog   `json:"systemLog"`
-	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
 func newProcess(name, hostName, version, replSetName string, opts ...func(process *Process)) Process {
-	args26 := objx.New(map[string]interface{}{})
-	args26.Set("net.port", 27017)
-	args26.Set("storage.dbPath", DefaultMongoDBDataDir)
-	args26.Set("replication.replSetName", replSetName)
-
-	p := Process{
+	p := &Process{
 		Name:                        name,
 		HostName:                    hostName,
 		FeatureCompatibilityVersion: "4.0",
 		ProcessType:                 Mongod,
 		Version:                     version,
-		SystemLog: SystemLog{
-			Destination: "file",
-			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-		},
-		AuthSchemaVersion: 5,
-		Args26:            args26,
+		AuthSchemaVersion:           5,
+		Args26:                      objx.New(map[string]interface{}{}),
 	}
+
+	p.SetPort(27017)
+	p.SetStoragePath(DefaultMongoDBDataDir)
+	p.SetReplicaSetName(replSetName)
+	p.SetSystemLog(SystemLog{
+		Destination: "file",
+		Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+	})
 
 	for _, opt := range opts {
-		opt(&p)
+		opt(p)
 	}
 
+	return *p
+}
+
+func (p *Process) SetPort(port int) *Process {
+	return p.SetArgs26Field("net.port", port)
+}
+
+func (p *Process) SetStoragePath(storagePath string) *Process {
+	return p.SetArgs26Field("storage.dbPath", storagePath)
+}
+
+func (p *Process) SetReplicaSetName(replSetName string) *Process {
+	return p.SetArgs26Field("replication.replSetName", replSetName)
+}
+
+func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
+	return p.SetArgs26Field("systemLog.path", systemLog.Path).
+		SetArgs26Field("systemLog.destination", systemLog.Destination)
+}
+
+// SetArgs26Field should be used whenever any args26 field needs to be set. It ensures
+// that the args26 map is non nil and assingns the given value.
+func (p *Process) SetArgs26Field(fieldName string, value interface{}) *Process {
+	p.ensureArgs26()
+	p.Args26.Set(fieldName, value)
 	return p
+}
+
+func (p *Process) ensureArgs26() {
+	if p.Args26 == nil {
+		p.Args26 = objx.New(map[string]interface{}{})
+	}
 }
 
 type TLSMode string
