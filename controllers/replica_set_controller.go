@@ -72,6 +72,7 @@ const (
 	versionUpgradeHookName         = "mongod-posthook"
 	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
 	dataVolumeName                 = "data-volume"
+	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
 	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
@@ -426,6 +427,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
+	zap.S().Infof("IS THIS EVEN HAPPENING!?")
 	fcv := mdb.GetFCV()
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
@@ -438,7 +440,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(&fcv).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
-		AddModifications(getMongodConfigModification(mdb)).
+		//AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
 }
@@ -727,7 +729,8 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	dataVolume := statefulset.CreateVolumeMount(dataVolumeName, "/data")
+	dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
+	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
 
 	return statefulset.Apply(
 		statefulset.WithName(mdb.Name),
@@ -738,7 +741,8 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
 		statefulset.WithReplicas(mdb.StatefulSetReplicasThisReconciliation()),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
-		statefulset.WithVolumeClaim(dataVolumeName, defaultPvc()),
+		statefulset.WithVolumeClaim(dataVolumeName, dataPvc()),
+		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				podtemplatespec.WithPodLabels(labels),
@@ -747,8 +751,8 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolume, scriptsVolumeMount})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolume, hooksVolumeMount})),
+				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount})),
+				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 				buildTLSPodSpecModification(mdb),
@@ -782,9 +786,17 @@ func defaultReadiness() probes.Modification {
 	)
 }
 
-func defaultPvc() persistentvolumeclaim.Modification {
+func dataPvc() persistentvolumeclaim.Modification {
 	return persistentvolumeclaim.Apply(
 		persistentvolumeclaim.WithName(dataVolumeName),
+		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
+		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
+	)
+}
+
+func logsPvc() persistentvolumeclaim.Modification {
+	return persistentvolumeclaim.Apply(
+		persistentvolumeclaim.WithName(logVolumeName),
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
 		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
 	)

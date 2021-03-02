@@ -146,7 +146,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			fcv = *b.fcv
 		}
 
-		process := Process{
+		process := &Process{
 			Name:                        toProcessName(b.name, i),
 			HostName:                    h,
 			FeatureCompatibilityVersion: fcv,
@@ -163,16 +163,16 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		process.SetReplicaSetName(b.name)
 
 		for _, mod := range b.processModifications {
-			mod(i, &process)
+			mod(i, process)
 		}
 
-		processes[i] = process
+		processes[i] = *process
 
 		totalVotes := 0
 		if b.replicaSetHorizons != nil {
-			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i], totalVotes)
+			members[i] = newReplicaSetMember(*process, i, b.replicaSetHorizons[i], totalVotes)
 		} else {
-			members[i] = newReplicaSetMember(process, i, nil, totalVotes)
+			members[i] = newReplicaSetMember(*process, i, nil, totalVotes)
 		}
 		totalVotes += members[i].Votes
 	}

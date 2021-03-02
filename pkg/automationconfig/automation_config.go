@@ -46,8 +46,8 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-	SystemLog                   SystemLog   `json:"systemLog"`
-	WiredTiger                  WiredTiger  `json:"wiredTiger"`
+	//SystemLog                   SystemLog   `json:"systemLog"`
+	//WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -63,10 +63,10 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 }
 
 func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
-	p.SystemLog = systemLog
-	return p
-	//return p.SetArgs26Field("systemLog.path", systemLog.Path).
-	//	SetArgs26Field("systemLog.destination", systemLog.Destination)
+	//p.SystemLog = systemLog
+	//return p
+	return p.SetArgs26Field("systemLog.path", systemLog.Path).
+		SetArgs26Field("systemLog.destination", systemLog.Destination)
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
@@ -74,9 +74,9 @@ func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
 	if cacheSizeGb == nil {
 		return p
 	}
-	p.WiredTiger = WiredTiger{
-		EngineConfig: EngineConfig{CacheSizeGB: *cacheSizeGb},
-	}
+	//p.WiredTiger = WiredTiger{
+	//	EngineConfig: EngineConfig{CacheSizeGB: *cacheSizeGb},
+	//}
 	return p.SetArgs26Field("storage.wiredTiger.engineConfig.cacheSizeGB", cacheSizeGb)
 }
 
