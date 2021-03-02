@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	appDBAutomationConfigKey = "cluster-config.json"
+	automationConfigKey = "cluster-config.json"
 )
 
 func ReadAutomationConfigVersionFromSecret(namespace string, clientSet kubernetes.Interface, automationConfigMap string) (int64, error) {
@@ -18,7 +18,7 @@ func ReadAutomationConfigVersionFromSecret(namespace string, clientSet kubernete
 		return -1, err
 	}
 	var existingDeployment map[string]interface{}
-	if err := json.Unmarshal(theSecret.Data[appDBAutomationConfigKey], &existingDeployment); err != nil {
+	if err := json.Unmarshal(theSecret.Data[automationConfigKey], &existingDeployment); err != nil {
 		return -1, err
 	}
 

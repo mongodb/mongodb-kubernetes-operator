@@ -115,8 +115,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, mdb.Namespace, s.Namespace)
 	assert.Equal(t, mdb.AutomationConfigSecretName(), s.Name)
-	assert.Contains(t, s.Data, AutomationConfigKey)
-	assert.NotEmpty(t, s.Data[AutomationConfigKey])
+	assert.Contains(t, s.Data, automationconfig.ConfigKey)
+	assert.NotEmpty(t, s.Data[automationconfig.ConfigKey])
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
@@ -191,19 +191,6 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	assert.NoError(t, err)
 	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
 
-	// the request is requeued as the agents are still doing the upgrade
-	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assert.NoError(t, err)
-	assert.Equal(t, res.RequeueAfter, time.Second*10)
-
-	_ = mgrClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
-	assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-	// upgrade is now complete
-	sts.Status.UpdatedReplicas = 3
-	sts.Status.ReadyReplicas = 3
-	err = mgrClient.Update(context.TODO(), &sts)
-	assert.NoError(t, err)
-
 	// reconcilliation is successful
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -235,9 +222,19 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	})
 	t.Run("On Version Change", func(t *testing.T) {
 		mdb := newTestReplicaSet()
+
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.2.0"
+
+		prevSpec := mdbv1.MongoDBCommunitySpec{
+			Version: "4.2.0",
+		}
+
+		bytes, err := json.Marshal(prevSpec)
+		assert.NoError(t, err)
+
+		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
+
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
@@ -614,12 +611,6 @@ func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err e
 // provided MongoDB resource to mark it as ready for the case of `statefulset.IsReady`
 func makeStatefulSetReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
 	setStatefulSetReadyReplicas(t, c, mdb, mdb.StatefulSetReplicasThisReconciliation())
-}
-
-// makeStatefulSetUnReady updates the StatefulSet corresponding to the
-// provided MongoDB resource to mark it as unready.
-func makeStatefulSetUnReady(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity) {
-	setStatefulSetReadyReplicas(t, c, mdb, 0)
 }
 
 func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
