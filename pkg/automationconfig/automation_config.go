@@ -46,8 +46,6 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-	SystemLog                   SystemLog   `json:"systemLog"`
-	WiredTiger                  WiredTiger  `json:"wiredTiger"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -60,6 +58,11 @@ func (p *Process) SetStoragePath(storagePath string) *Process {
 
 func (p *Process) SetReplicaSetName(replSetName string) *Process {
 	return p.SetArgs26Field("replication.replSetName", replSetName)
+}
+
+func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
+	return p.SetArgs26Field("systemLog.path", systemLog.Path).
+		SetArgs26Field("systemLog.destination", systemLog.Destination)
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {

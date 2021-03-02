@@ -30,15 +30,12 @@ type Builder struct {
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
-	versions           []MongoDbVersionConfig
-	backupVersions     []BackupVersion
-	monitoringVersions []MonitoringVersion
-	options            Options
-	modifications      []Modification
-	auth               *Auth
-	wiredTigerCache    *float32
-	//logPath            string
-	systemLog            SystemLog
+	versions             []MongoDbVersionConfig
+	backupVersions       []BackupVersion
+	monitoringVersions   []MonitoringVersion
+	options              Options
+	modifications        []Modification
+	auth                 *Auth
 	processModifications []func(int, *Process)
 }
 
@@ -124,16 +121,6 @@ func (b *Builder) SetAuth(auth Auth) *Builder {
 	return b
 }
 
-func (b *Builder) SetWiredTigerCache(cache *float32) *Builder {
-	b.wiredTigerCache = cache
-	return b
-}
-
-func (b *Builder) SetSystemLog(sysLog SystemLog) *Builder {
-	b.systemLog = sysLog
-	return b
-}
-
 func (b *Builder) AddProcessModification(f func(int, *Process)) *Builder {
 	b.processModifications = append(b.processModifications, f)
 	return b
@@ -166,12 +153,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			ProcessType:                 Mongod,
 			Version:                     b.mongodbVersion,
 			AuthSchemaVersion:           5,
-			SystemLog: SystemLog{
-				Destination: "file",
-				Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-			},
 		}
-
+		process.SetSystemLog(SystemLog{
+			Destination: "file",
+			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+		})
 		process.SetPort(27017)
 		process.SetStoragePath(DefaultMongoDBDataDir)
 		process.SetReplicaSetName(b.name)
