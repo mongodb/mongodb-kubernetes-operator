@@ -64,7 +64,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "data-volume")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "healthstatus")
-	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "keyfile-volume")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-agent-scram-credentials")
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
@@ -75,7 +75,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "healthstatus")
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "hooks")
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "logs-volume")
-	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "keyfile-volume")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "my-rs-agent-scram-credentials")
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
 	assert.Equal(t, versionUpgradeHookName, initContainer.Name)
