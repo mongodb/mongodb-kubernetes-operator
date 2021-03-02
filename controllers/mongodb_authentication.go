@@ -10,8 +10,8 @@ import (
 // the keyfile is owned by the agent, and is required to have 0600 permissions.
 func buildScramPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
 	mode := int32(0600)
-	scramSecretNsName := mdb.GetAgentScramCredentialsNamespacedName()
-	keyFileVolume := statefulset.CreateVolumeFromSecret(scramSecretNsName.Name, scramSecretNsName.Name, statefulset.WithSecretDefaultMode(&mode))
+	keyfileVolumeName := "keyfile-volume"
+	keyFileVolume := statefulset.CreateVolumeFromSecret(keyfileVolumeName, keyfileVolumeName, statefulset.WithSecretDefaultMode(&mode))
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
