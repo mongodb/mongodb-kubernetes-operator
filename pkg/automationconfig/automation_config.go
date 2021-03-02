@@ -64,9 +64,9 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 
 func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 	p.SystemLog = systemLog
-
-	return p.SetArgs26Field("systemLog.path", systemLog.Path).
-		SetArgs26Field("systemLog.destination", systemLog.Destination)
+	return p
+	//return p.SetArgs26Field("systemLog.path", systemLog.Path).
+	//	SetArgs26Field("systemLog.destination", systemLog.Destination)
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
