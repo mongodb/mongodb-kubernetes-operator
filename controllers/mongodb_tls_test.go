@@ -97,10 +97,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb := newTestReplicaSet()
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            "",
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			assert.False(t, process.Args26.Has("net.tls"))
@@ -111,10 +111,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
@@ -131,10 +131,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")

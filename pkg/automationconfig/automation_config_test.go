@@ -48,7 +48,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
 
-	assert.Empty(t, ac.TLS.CAFilePath, "the config shouldn't have a trusted CA")
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
 
 	assert.Len(t, ac.ReplicaSets, 1)
 	rs := ac.ReplicaSets[0]

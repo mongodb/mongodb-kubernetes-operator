@@ -15,11 +15,16 @@ const (
 )
 
 type AutomationConfig struct {
-	Version            int                    `json:"version"`
-	Processes          []Process              `json:"processes"`
-	ReplicaSets        []ReplicaSet           `json:"replicaSets"`
-	Auth               Auth                   `json:"auth"`
-	TLS                TLS                    `json:"tls"`
+	Version     int          `json:"version"`
+	Processes   []Process    `json:"processes"`
+	ReplicaSets []ReplicaSet `json:"replicaSets"`
+	Auth        Auth         `json:"auth"`
+
+	// TLSConfig and SSLConfig exist to allow configuration of older agents which accept the "ssl" field rather or "tls"
+	// only one of these should be set.
+	TLSConfig *TLS `json:"tls,omitempty"`
+	SSLConfig *TLS `json:"ssl,omitempty"`
+
 	Versions           []MongoDbVersionConfig `json:"mongoDbVersions"`
 	BackupVersions     []BackupVersion        `json:"backupVersions"`
 	MonitoringVersions []MonitoringVersion    `json:"monitoringVersions"`

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/pkg/errors"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
 )
 
@@ -40,6 +42,8 @@ type Builder struct {
 	modifications        []Modification
 	auth                 *Auth
 	cafilePath           string
+	sslConfig            *TLS
+	tlsConfig            *TLS
 }
 
 func NewBuilder() *Builder {
@@ -51,6 +55,8 @@ func NewBuilder() *Builder {
 		backupVersions:       []BackupVersion{},
 		monitoringVersions:   []MonitoringVersion{},
 		processModifications: []func(int, *Process){},
+		tlsConfig:            nil,
+		sslConfig:            nil,
 	}
 }
 
@@ -66,6 +72,16 @@ func (b *Builder) SetTopology(topology Topology) *Builder {
 
 func (b *Builder) SetReplicaSetHorizons(horizons []ReplicaSetHorizons) *Builder {
 	b.replicaSetHorizons = horizons
+	return b
+}
+
+func (b *Builder) SetTLSConfig(tlsConfig TLS) *Builder {
+	b.tlsConfig = &tlsConfig
+	return b
+}
+
+func (b *Builder) SetSSLConfig(sslConfig TLS) *Builder {
+	b.sslConfig = &sslConfig
 	return b
 }
 
@@ -209,10 +225,24 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		Versions:           b.versions,
 		Options:            b.options,
 		Auth:               *b.auth,
-		TLS: TLS{
+		TLSConfig: &TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
 			CAFilePath:            b.cafilePath,
 		},
+	}
+
+	if b.tlsConfig != nil && b.sslConfig != nil {
+		return AutomationConfig{}, errors.Errorf("must specify only one of tlsConfig and sslConfig")
+	}
+
+	if b.tlsConfig != nil {
+		currentAc.SSLConfig = nil
+		currentAc.TLSConfig = b.tlsConfig
+	}
+
+	if b.sslConfig != nil {
+		currentAc.TLSConfig = nil
+		currentAc.SSLConfig = b.sslConfig
 	}
 
 	// Apply all modifications
