@@ -73,7 +73,7 @@ func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
 }
 
 // SetArgs26Field should be used whenever any args26 field needs to be set. It ensures
-// that the args26 map is non nil and assingns the given value.
+// that the args26 map is non nil and assigns the given value.
 func (p *Process) SetArgs26Field(fieldName string, value interface{}) *Process {
 	p.ensureArgs26()
 	p.Args26.Set(fieldName, value)
