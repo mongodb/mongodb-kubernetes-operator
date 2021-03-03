@@ -109,3 +109,25 @@ func HasAllKeys(secret corev1.Secret, keys ...string) bool {
 	}
 	return true
 }
+
+// EnsureSecretWithKey makes sure the Secret with the given name has a key with the given value if the key is not already present.
+// if the key is present, it will return the existing value associated with this key.
+func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, nsName types.NamespacedName, key, value string) (string, error) {
+	existingSecret, err0 := secretGetUpdateCreateDeleter.GetSecret(nsName)
+	if err0 != nil {
+		if apiErrors.IsNotFound(err0) {
+			s := Builder().
+				SetNamespace(nsName.Namespace).
+				SetName(nsName.Name).
+				SetField(key, value).
+				Build()
+
+			if err1 := secretGetUpdateCreateDeleter.CreateSecret(s); err1 != nil {
+				return "", err1
+			}
+			return value, nil
+		}
+		return "", err0
+	}
+	return string(existingSecret.Data[key]), nil
+}
