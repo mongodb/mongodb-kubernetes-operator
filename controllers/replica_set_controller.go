@@ -427,7 +427,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
-	zap.S().Infof("IS THIS EVEN HAPPENING!?")
 	fcv := mdb.GetFCV()
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
