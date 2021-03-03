@@ -38,8 +38,12 @@ type mockConfigurable struct {
 	nsName types.NamespacedName
 }
 
-func (m mockConfigurable) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: m.nsName.Name + "-scram-credentials", Namespace: m.nsName.Namespace}
+func (m mockConfigurable) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.nsName.Name + "-agent-password", Namespace: m.nsName.Namespace}
+}
+
+func (m mockConfigurable) GetAgentKeyfileSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.nsName.Name + "-keyfile", Namespace: m.nsName.Namespace}
 }
 
 func (m mockConfigurable) GetScramOptions() Options {
