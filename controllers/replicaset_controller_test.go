@@ -341,13 +341,22 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 
 	c := mgr.Client
 
-	scramNsName := mdb.GetAgentScramCredentialsNamespacedName()
+	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 	err := secret.CreateOrUpdate(c,
 		secret.Builder().
-			SetName(scramNsName.Name).
-			SetNamespace(scramNsName.Namespace).
-			SetField(scram.AgentPasswordKey, "my-pass").
+			SetName(keyFileNsName.Name).
+			SetNamespace(keyFileNsName.Namespace).
 			SetField(scram.AgentKeyfileKey, "my-keyfile").
+			Build(),
+	)
+	assert.NoError(t, err)
+
+	passwordNsName := mdb.GetAgentPasswordSecretNamespacedName()
+	err = secret.CreateOrUpdate(c,
+		secret.Builder().
+			SetName(passwordNsName.Name).
+			SetNamespace(passwordNsName.Namespace).
+			SetField(scram.AgentPasswordKey, "my-pass").
 			Build(),
 	)
 	assert.NoError(t, err)
@@ -479,12 +488,18 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 		assert.NotEmpty(t, currentAc.Auth.AutoPwd)
 		assert.False(t, currentAc.Auth.Disabled)
 	})
-	t.Run("Secret with credentials was created", func(t *testing.T) {
-		secretNsName := mdb.GetAgentScramCredentialsNamespacedName()
+	t.Run("Secret with password was created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()
+		s, err := mgr.Client.GetSecret(secretNsName)
+		assert.NoError(t, err)
+		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
+	})
+
+	t.Run("Secret with keyfile was created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 		s, err := mgr.Client.GetSecret(secretNsName)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
-		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
 }
 
@@ -511,9 +526,9 @@ func TestOpenshift_Configuration(t *testing.T) {
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 	sts := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
 
-	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 3)
 
-	pvcSpec := sts.Spec.VolumeClaimTemplates[1].Spec
+	pvcSpec := sts.Spec.VolumeClaimTemplates[2].Spec
 
 	storage := pvcSpec.Resources.Requests[corev1.ResourceStorage]
 	storageRef := &storage
@@ -525,7 +540,7 @@ func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 
 func TestChangeDataVolume_Configuration(t *testing.T) {
 	sts := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
-	assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
 
