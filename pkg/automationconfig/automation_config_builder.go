@@ -3,6 +3,8 @@ package automationconfig
 import (
 	"fmt"
 	"path"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
 )
 
 type Topology string
@@ -34,9 +36,10 @@ type Builder struct {
 	backupVersions       []BackupVersion
 	monitoringVersions   []MonitoringVersion
 	options              Options
+	processModifications []func(int, *Process)
 	modifications        []Modification
 	auth                 *Auth
-	processModifications []func(int, *Process)
+	cafilePath           string
 }
 
 func NewBuilder() *Builder {
@@ -83,6 +86,11 @@ func (b *Builder) SetName(name string) *Builder {
 
 func (b *Builder) SetFCV(fcv *string) *Builder {
 	b.fcv = fcv
+	return b
+}
+
+func (b *Builder) SetCAFilePath(caFilePath string) *Builder {
+	b.cafilePath = caFilePath
 	return b
 }
 
@@ -141,15 +149,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
 
-		fcv := "4.0"
-		if b.fcv != nil {
-			fcv = *b.fcv
-		}
-
 		process := &Process{
 			Name:                        toProcessName(b.name, i),
 			HostName:                    h,
-			FeatureCompatibilityVersion: fcv,
+			FeatureCompatibilityVersion: versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion),
 			ProcessType:                 Mongod,
 			Version:                     b.mongodbVersion,
 			AuthSchemaVersion:           5,
@@ -158,6 +161,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		})
+
+		if b.fcv != nil {
+			process.FeatureCompatibilityVersion = *b.fcv
+		}
 
 		process.SetPort(27017)
 		process.SetStoragePath(DefaultMongoDBDataDir)
@@ -204,6 +211,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		Auth:               *b.auth,
 		TLS: TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
+			CAFilePath:            b.cafilePath,
 		},
 	}
 
