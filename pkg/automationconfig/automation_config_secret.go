@@ -63,6 +63,7 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 		}
 		existingSecret.Data[ConfigKey] = acBytes
 	}
+
 	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 
