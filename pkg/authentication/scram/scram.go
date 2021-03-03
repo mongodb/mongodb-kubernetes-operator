@@ -35,8 +35,11 @@ type Configurable interface {
 	// GetScramUsers returns a list of users which will be mapped to users in the AutomationConfig.
 	GetScramUsers() []User
 
-	// GetAgentScramCredentialsNamespacedName returns the NamespacedName of the secret which will store the generated credentials for the agent.
-	GetAgentScramCredentialsNamespacedName() types.NamespacedName
+	// GetAgentPasswordSecretNamespacedName returns the NamespacedName of the secret which stores the generated password for the agent.
+	GetAgentPasswordSecretNamespacedName() types.NamespacedName
+
+	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 
 	// NamespacedName returns the NamespacedName for the resource that is being configured.
 	NamespacedName() types.NamespacedName
@@ -111,41 +114,22 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	if err != nil {
 		return err
 	}
-	agentCredentialsNsName := mdb.GetAgentScramCredentialsNamespacedName()
-	agentSecret, err := secretGetUpdateCreateDeleter.GetSecret(agentCredentialsNsName)
+
+	// ensure that the agent password secret exists or read existing password.
+	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), AgentPasswordKey, generatedPassword)
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
-			s := secret.Builder().
-				SetNamespace(agentCredentialsNsName.Namespace).
-				SetName(agentCredentialsNsName.Name).
-				SetField(AgentPasswordKey, generatedPassword).
-				SetField(AgentKeyfileKey, generatedContents).
-				Build()
-
-			if err := configureScramInAutomationConfig(auth, generatedPassword, generatedContents, desiredUsers, mdb.GetScramOptions()); err != nil {
-				return err
-			}
-
-			return secretGetUpdateCreateDeleter.CreateSecret(s)
-		}
 		return err
 	}
 
-	// ensure that we have both a password and keyfile contents for the Automation Agent
-	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
-		agentSecret.Data[AgentPasswordKey] = []byte(generatedPassword)
-	}
-
-	if _, ok := agentSecret.Data[AgentKeyfileKey]; !ok {
-		agentSecret.Data[AgentKeyfileKey] = []byte(generatedContents)
-	}
-
-	if err := secret.CreateOrUpdate(secretGetUpdateCreateDeleter, agentSecret); err != nil {
+	// ensure that the agent keyfile secret exists or read existing keyfile.
+	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), AgentKeyfileKey, generatedContents)
+	if err != nil {
 		return err
 	}
+
 	return configureScramInAutomationConfig(auth,
-		string(agentSecret.Data[AgentPasswordKey]),
-		string(agentSecret.Data[AgentKeyfileKey]), desiredUsers, mdb.GetScramOptions(),
+		agentPassword,
+		agentKeyFile, desiredUsers, mdb.GetScramOptions(),
 	)
 }
 

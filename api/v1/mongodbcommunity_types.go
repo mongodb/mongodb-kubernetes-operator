@@ -358,6 +358,14 @@ type MongoDBCommunity struct {
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
+func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name + "-agent-password", Namespace: m.Namespace}
+}
+
+func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name + "-keyfile", Namespace: m.Namespace}
+}
+
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
