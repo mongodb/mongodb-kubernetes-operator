@@ -63,3 +63,10 @@ func BuildDefaultStorageRequirements() corev1.ResourceList {
 	res[corev1.ResourceStorage] = g10
 	return res
 }
+
+func BuildStorageRequirements(amount string) corev1.ResourceList {
+	g10, _ := resource.ParseQuantity(amount)
+	res := corev1.ResourceList{}
+	res[corev1.ResourceStorage] = g10
+	return res
+}

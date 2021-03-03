@@ -66,7 +66,6 @@ func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
-
 	if cacheSizeGb == nil {
 		return p
 	}

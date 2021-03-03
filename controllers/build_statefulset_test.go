@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -58,13 +60,36 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
 	assert.Len(t, agentContainer.VolumeMounts, 5)
 
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "agent-scripts")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "data-volume")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "healthstatus")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-agent-scram-credentials")
+
 	mongodContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
 	assert.NotNil(t, sts.Spec.Template.Spec.Containers[1].ReadinessProbe)
-	assert.Len(t, mongodContainer.VolumeMounts, 4)
+	assert.Len(t, mongodContainer.VolumeMounts, 5)
+
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "data-volume")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "healthstatus")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "hooks")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "logs-volume")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "my-rs-agent-scram-credentials")
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
 	assert.Equal(t, versionUpgradeHookName, initContainer.Name)
 	assert.Equal(t, "version-upgrade-hook-image", initContainer.Image)
 	assert.Len(t, initContainer.VolumeMounts, 1)
+}
+
+func assertContainsVolumeMountWithName(t *testing.T, mounts []corev1.VolumeMount, name string) {
+	found := false
+	for _, m := range mounts {
+		if m.Name == name {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Mounts should have contained a mount with name %s, but didn't. Actual mounts: %v", name, mounts)
 }

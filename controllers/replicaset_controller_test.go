@@ -526,9 +526,9 @@ func TestOpenshift_Configuration(t *testing.T) {
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 	sts := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
 
-	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 3)
 
-	pvcSpec := sts.Spec.VolumeClaimTemplates[1].Spec
+	pvcSpec := sts.Spec.VolumeClaimTemplates[2].Spec
 
 	storage := pvcSpec.Resources.Requests[corev1.ResourceStorage]
 	storageRef := &storage
@@ -540,7 +540,7 @@ func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 
 func TestChangeDataVolume_Configuration(t *testing.T) {
 	sts := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
-	assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
 
