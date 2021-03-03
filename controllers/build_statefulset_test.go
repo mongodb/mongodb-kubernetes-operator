@@ -58,13 +58,13 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
 	assert.Equal(t, probes.New(defaultReadiness()).FailureThreshold, probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
-	assert.Len(t, agentContainer.VolumeMounts, 5)
+	assert.Len(t, agentContainer.VolumeMounts, 6)
 
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "agent-scripts")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "data-volume")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "healthstatus")
-	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-agent-scram-credentials")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-keyfile")
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
@@ -75,7 +75,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "healthstatus")
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "hooks")
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "logs-volume")
-	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "my-rs-agent-scram-credentials")
+	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "my-rs-keyfile")
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
 	assert.Equal(t, versionUpgradeHookName, initContainer.Name)
