@@ -158,6 +158,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		})
+
 		process.SetPort(27017)
 		process.SetStoragePath(DefaultMongoDBDataDir)
 		process.SetReplicaSetName(b.name)

@@ -440,7 +440,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(&fcv).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
-		//AddModifications(getMongodConfigModification(mdb)).
+		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
 }
