@@ -122,7 +122,7 @@ functions:
 
 task_groups:
 - name: e2e_test_group
-  max_hosts: 4
+  max_hosts: 8
   setup_group:
     - func: clone
     - func: setup_virtualenv
