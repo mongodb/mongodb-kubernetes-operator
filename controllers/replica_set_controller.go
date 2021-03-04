@@ -19,8 +19,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
@@ -462,21 +460,6 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		Build()
 }
 
-func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
-	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
-	if err != nil {
-		// If the AC was not found we don't surface it as an error
-		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
-	}
-
-	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc); err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-
-	return currentAc, nil
-}
-
 // validateUpdate validates that the new Spec, corresponding to the existing one
 // is still valid. If there is no a previous Spec, then the function assumes this is
 // the first version of the MongoDB resource and skips.
@@ -518,7 +501,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure custom roles: %s", err)
 	}
 
-	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
+	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
 	}

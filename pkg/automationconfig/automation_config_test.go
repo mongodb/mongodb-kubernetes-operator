@@ -240,8 +240,8 @@ func TestAreEqual(t *testing.T) {
 	t.Run("Automation Configs with same values are equal", func(t *testing.T) {
 
 		areEqual, err := AreEqual(
-			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
-			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
 		)
 
 		assert.NoError(t, err)
@@ -251,8 +251,8 @@ func TestAreEqual(t *testing.T) {
 	t.Run("Automation Configs with same values but different version are equal", func(t *testing.T) {
 
 		areEqual, err := AreEqual(
-			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
-			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 10),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 10),
 		)
 
 		assert.NoError(t, err)
@@ -263,7 +263,7 @@ func TestAreEqual(t *testing.T) {
 
 		areEqual, err := AreEqual(
 			createAutomationConfig("name0", "differentVersion", "domain0", Options{DownloadBase: "downloadBase1"}, Auth{Disabled: false}, 2, 2),
-			createAutomationConfig("name0", "version0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
 		)
 
 		assert.NoError(t, err)
@@ -271,14 +271,16 @@ func TestAreEqual(t *testing.T) {
 	})
 }
 
-func createAutomationConfig(name, version, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
+func createAutomationConfig(name, mongodbVersion, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
 	ac, _ := NewBuilder().
 		SetName(name).
-		SetMongoDBVersion(version).
+		SetMongoDBVersion(mongodbVersion).
 		SetOptions(opts).
 		SetDomain(domain).
 		SetMembers(members).
 		SetAuth(auth).
 		Build()
+
+	ac.Version = acVersion
 	return ac
 }

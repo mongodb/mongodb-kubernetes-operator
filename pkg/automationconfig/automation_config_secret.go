@@ -3,6 +3,8 @@ package automationconfig
 import (
 	"encoding/json"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,15 +17,9 @@ const ConfigKey = "cluster-config.json"
 // found, it is not considered an error and an empty AutomationConfig is returned.
 func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
 	acSecret, err := secretGetter.GetSecret(secretNsName)
-	if err != nil && !apiErrors.IsNotFound(err) {
-		return AutomationConfig{}, err
+	if err != nil {
+		return AutomationConfig{}, client.IgnoreNotFound(err)
 	}
-
-	// the secret not existing is perfectly fine, this will happen during the first reconciliation.
-	if apiErrors.IsNotFound(err) {
-		return AutomationConfig{}, nil
-	}
-
 	return FromBytes(acSecret.Data[ConfigKey])
 }
 
