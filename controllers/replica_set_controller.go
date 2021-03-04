@@ -186,6 +186,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
+	if err := r.ensureTLSResources(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
 	ready, err := r.deployMongoDBReplicaSet(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -246,6 +254,23 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 	return res, err
+}
+
+// ensureTLSResources creates any required TLS resources that the MongoDBCommunity
+// requires for TLS configuration.
+func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) error {
+	if !mdb.Spec.Security.TLS.Enabled {
+		return nil
+	}
+	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
+	// require the contents.
+	if mdb.Spec.Security.TLS.Enabled {
+		r.log.Infof("TLS is enabled, creating/updating TLS secret")
+		if err := ensureTLSSecret(r.client, mdb); err != nil {
+			return errors.Errorf("could not ensure TLS secret: %s", err)
+		}
+	}
+	return nil
 }
 
 // deployStatefulSet deploys the backing StatefulSet of the MongoDBCommunity resource.
