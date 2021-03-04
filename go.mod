@@ -11,15 +11,14 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.3.0
 	github.com/stretchr/objx v0.3.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0
-	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
-	k8s.io/api v0.19.2
-	k8s.io/apimachinery v0.19.2
-	k8s.io/client-go v0.19.2
+	k8s.io/api v0.20.4
+	k8s.io/apimachinery v0.20.4
+	k8s.io/client-go v0.20.4
 	sigs.k8s.io/controller-runtime v0.7.0
 	sigs.k8s.io/yaml v1.2.0
 )
