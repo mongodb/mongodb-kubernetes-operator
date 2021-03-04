@@ -703,7 +703,32 @@ exec mongod -f /data/automation-mongod.conf ;
 	)
 }
 
+type statefulSetSpec interface {
+	ServiceName() string
+	GetName() string
+	GetNamespace() string
+	GetVersion() string
+	AutomationConfigSecretName() string
+	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
+}
+
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
+	commonModification := BuildCommonStatefulSetModificationFunction(mdb, mdb)
+	return statefulset.Apply(
+		commonModification,
+		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
+		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
+		statefulset.WithPodSpecTemplate(
+			podtemplatespec.Apply(
+				buildTLSPodSpecModification(mdb),
+			),
+		),
+
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
+	)
+}
+
+func BuildCommonStatefulSetModificationFunction(mdb statefulSetSpec, scaler scale.ReplicaSetScaler) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -730,14 +755,12 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
 
 	return statefulset.Apply(
-		statefulset.WithName(mdb.Name),
-		statefulset.WithNamespace(mdb.Namespace),
+		statefulset.WithName(mdb.GetName()),
+		statefulset.WithNamespace(mdb.GetNamespace()),
 		statefulset.WithServiceName(mdb.ServiceName()),
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
-		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.StatefulSetReplicasThisReconciliation()),
-		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
+		statefulset.WithReplicas(scale.ReplicasThisReconciliation(scaler)),
 		statefulset.WithVolumeClaim(dataVolumeName, dataPvc()),
 		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
@@ -749,15 +772,12 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
+				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.GetVersion(), []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
-				buildTLSPodSpecModification(mdb),
 				buildScramPodSpecModification(mdb),
 			),
-		),
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
-	)
+		))
 }
 
 func getOwnerReference(mdb mdbv1.MongoDBCommunity) metav1.OwnerReference {

@@ -461,6 +461,13 @@ func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
+func (m MongoDBCommunity) GetName() string {
+	return m.Name
+}
+func (m MongoDBCommunity) GetNamespace() string {
+	return m.Namespace
+}
+
 func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
@@ -483,6 +490,10 @@ func (m MongoDBCommunity) DesiredReplicas() int {
 
 func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
+}
+
+func (m MongoDBCommunity) GetVersion() string {
+	return m.Spec.Version
 }
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
