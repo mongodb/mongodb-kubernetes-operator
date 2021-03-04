@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/xdg/stringprep v1.0.0
 	go.mongodb.org/mongo-driver v1.3.2
-	go.uber.org/zap v1.15.0
+	go.uber.org/zap v1.16.0
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	k8s.io/api v0.19.2
