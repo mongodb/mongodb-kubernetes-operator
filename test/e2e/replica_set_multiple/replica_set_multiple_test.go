@@ -72,7 +72,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 	t.Run("MongoDB is reachable while being scaled up", func(t *testing.T) {
 		defer tester0.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb0, 5))
-		t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetIsReady(&mdb0))
+		t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetBecomesReady(&mdb0))
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb0))
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,

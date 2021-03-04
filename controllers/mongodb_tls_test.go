@@ -150,25 +150,27 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(client, mdb)
+		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecretAndConfigMap(c, mdb)
 		assert.NoError(t, err)
 
-		_, err = getTLSConfigModification(client, mdb)
+		r := NewReconciler(client.NewManagerWithClient(c))
+
+		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contain the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
 
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(client, mdb)
+		k8sclient := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecretAndConfigMap(k8sclient, mdb)
 		assert.NoError(t, err)
 
 		// Create operator-managed secret
@@ -177,16 +179,18 @@ func TestTLSOperatorSecret(t *testing.T) {
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
 			SetField(tlsOperatorSecretFileName(""), "").
 			Build()
-		err = client.CreateSecret(s)
+		err = k8sclient.CreateSecret(s)
 		assert.NoError(t, err)
 
-		_, err = getTLSConfigModification(client, mdb)
+		r := NewReconciler(client.NewManagerWithClient(k8sclient))
+
+		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been updated with the concatenated
 		// certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(k8sclient, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})

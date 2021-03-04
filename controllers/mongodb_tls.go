@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -94,11 +96,6 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), err
 	}
 
-	err = ensureTLSSecret(getUpdateCreator, mdb, certKey)
-	if err != nil {
-		return automationconfig.NOOP(), err
-	}
-
 	return tlsConfigModification(mdb, certKey), nil
 }
 
@@ -125,7 +122,11 @@ func combineCertificateAndKey(cert, key string) string {
 
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
-func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity, certKey string) error {
+func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	certKey, err := getCertAndKey(getUpdateCreator, mdb)
+	if err != nil {
+		return errors.Errorf("could not get cert and key: %s", err)
+	}
 	// Calculate file name from certificate and key
 	fileName := tlsOperatorSecretFileName(certKey)
 
