@@ -19,8 +19,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-
 	"github.com/imdario/mergo"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
@@ -452,6 +450,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
+	fcv := mdb.GetFCV()
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -460,7 +459,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetFCV(mdb.GetFCV()).
+		SetFCV(&fcv).
+		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
@@ -483,21 +483,6 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetPort(27017).
 		SetPublishNotReadyAddresses(true).
 		Build()
-}
-
-func getCurrentAutomationConfig(getUpdater secret.GetUpdater, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
-	currentSecret, err := getUpdater.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
-	if err != nil {
-		// If the AC was not found we don't surface it as an error
-		return automationconfig.AutomationConfig{}, k8sClient.IgnoreNotFound(err)
-	}
-
-	currentAc := automationconfig.AutomationConfig{}
-	if err := json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc); err != nil {
-		return automationconfig.AutomationConfig{}, err
-	}
-
-	return currentAc, nil
 }
 
 // validateUpdate validates that the new Spec, corresponding to the existing one
@@ -541,7 +526,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure custom roles: %s", err)
 	}
 
-	currentAC, err := getCurrentAutomationConfig(r.client, mdb)
+	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
