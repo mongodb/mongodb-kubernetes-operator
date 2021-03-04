@@ -24,12 +24,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// StatefulSetIsReady ensures that the underlying stateful set
-// reaches the running state
-func StatefulSetIsReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+// StatefulSetBecomesReady ensures that the underlying stateful set
+// reaches the running state.
+func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return statefulSetIsReady(mdb, time.Second*15, time.Minute*12)
 }
 
+// StatefulSetBecomesUnready ensures the underlying stateful set reaches
+// the unready state.
 func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return statefulSetIsNotReady(mdb, time.Second*15, time.Minute*12)
 }
@@ -59,8 +61,7 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, tim
 	}
 }
 
-// StatefulSetIsReady ensures that the underlying stateful set
-// reaches the running state
+// statefulSetIsNotReady ensures that the underlying stateful set reaches the unready state.
 func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, timeout time.Duration) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := e2eutil.WaitForStatefulSetToBeUnready(t, mdb, interval, timeout)
@@ -176,7 +177,7 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
-		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
 		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
