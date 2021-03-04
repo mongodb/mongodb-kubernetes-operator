@@ -64,6 +64,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "data-volume")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "healthstatus")
+	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "logs-volume")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-keyfile")
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[0]

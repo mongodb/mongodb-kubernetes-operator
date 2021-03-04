@@ -164,7 +164,7 @@ func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey string) automatio
 
 	return func(config *automationconfig.AutomationConfig) {
 		// Configure CA certificate for agent
-		config.TLS.CAFilePath = caCertificatePath
+		config.TLSConfig.CAFilePath = caCertificatePath
 
 		for i := range config.Processes {
 			args := config.Processes[i].Args26
