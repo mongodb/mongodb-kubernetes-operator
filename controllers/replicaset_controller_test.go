@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -120,8 +121,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
-	_ = os.Setenv(mongodbRepoUrl, "repo")
-	_ = os.Setenv(mongodbImageEnv, "mongo")
+	_ = os.Setenv(construct.MongodbRepoUrl, "repo")
+	_ = os.Setenv(construct.MongodbImageEnv, "mongo")
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
@@ -136,13 +137,13 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Equal(t, agentName, agentContainer.Name)
-	assert.Equal(t, os.Getenv(agentImageEnv), agentContainer.Image)
-	expectedProbe := probes.New(defaultReadiness())
+	assert.Equal(t, construct.AgentName, agentContainer.Name)
+	assert.Equal(t, os.Getenv(construct.AgentImageEnv), agentContainer.Image)
+	expectedProbe := probes.New(construct.DefaultReadiness())
 	assert.True(t, reflect.DeepEqual(&expectedProbe, agentContainer.ReadinessProbe))
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, mongodbName, mongodbContainer.Name)
+	assert.Equal(t, construct.MongodbName, mongodbContainer.Name)
 	assert.Equal(t, "repo/mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)

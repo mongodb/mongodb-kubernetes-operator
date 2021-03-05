@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 
@@ -23,20 +22,15 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
@@ -54,27 +48,7 @@ import (
 )
 
 const (
-	agentImageEnv                = "AGENT_IMAGE"
-	clusterDNSName               = "CLUSTER_DNS_NAME"
-	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
-	readinessProbeImageEnv       = "READINESS_PROBE_IMAGE"
-	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	mongodbImageEnv              = "MONGODB_IMAGE"
-	mongodbRepoUrl               = "MONGODB_REPO_URL"
-	headlessAgentEnv             = "HEADLESS_AGENT"
-	podNamespaceEnv              = "POD_NAMESPACE"
-	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
-
-	agentName                      = "mongodb-agent"
-	mongodbName                    = "mongod"
-	versionUpgradeHookName         = "mongod-posthook"
-	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	dataVolumeName                 = "data-volume"
-	logVolumeName                  = "logs-volume"
-	readinessProbePath             = "/opt/scripts/readinessprobe"
-	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
-	operatorServiceAccountName     = "mongodb-kubernetes-operator"
-	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
+	clusterDNSName = "CLUSTER_DNS_NAME"
 
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
@@ -607,165 +581,18 @@ func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
 	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(agentName),
-		container.WithImage(os.Getenv(agentImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithReadinessProbe(defaultReadiness()),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand([]string{
-			"agent/mongodb-agent",
-			"-cluster=" + clusterFilePath,
-			"-skipMongoStart",
-			"-noDaemonize",
-			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
-			"-serveStatusPort=5000",
-			"-useLocalMongoDbTools",
-		},
-		),
-		container.WithEnvs(
-			corev1.EnvVar{
-				Name:  headlessAgentEnv,
-				Value: "true",
-			},
-			corev1.EnvVar{
-				Name: podNamespaceEnv,
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						APIVersion: "v1",
-						FieldPath:  "metadata.namespace",
-					},
-				},
-			},
-			corev1.EnvVar{
-				Name:  automationConfigEnv,
-				Value: automationConfigSecretName,
-			},
-			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: agentHealthStatusFilePathValue,
-			},
-		),
-	)
-}
-
-func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(versionUpgradeHookName),
-		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
-		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithVolumeMounts(volumeMount),
-	)
-}
-
-// readinessProbeInit returns a modification function which will add the readiness probe container.
-// this container will copy the readiness probe binary into the /opt/scripts directory.
-func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(readinessProbeContainerName),
-		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
-		container.WithImage(os.Getenv(readinessProbeImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithVolumeMounts(volumeMount),
-	)
-}
-
-func getMongoDBImage(version string) string {
-	repoUrl := os.Getenv(mongodbRepoUrl)
-	if strings.HasSuffix(repoUrl, "/") {
-		repoUrl = strings.TrimRight(repoUrl, "/")
-	}
-	mongoImageName := os.Getenv(mongodbImageEnv)
-	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
-}
-
-func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
-	mongoDbCommand := []string{
-		"/bin/sh",
-		"-c",
-		`
-# run post-start hook to handle version changes
-/hooks/version-upgrade
-
-# wait for config to be created by the agent
-while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
-
-# start mongod with this configuration
-exec mongod -f /data/automation-mongod.conf ;
-`,
-	}
-
-	return container.Apply(
-		container.WithName(mongodbName),
-		container.WithImage(getMongoDBImage(version)),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithCommand(mongoDbCommand),
-		container.WithEnvs(
-			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: "/healthstatus/agent-health-status.json",
-			},
-		),
-		container.WithVolumeMounts(volumeMounts),
-	)
-}
-
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	labels := map[string]string{
-		"app": mdb.ServiceName(),
-	}
-
-	// the health status volume is required in both agent and mongod pods.
-	// the mongod requires it to determine if an upgrade is happening and needs to kill the pod
-	// to prevent agent deadlock
-	healthStatusVolume := statefulset.CreateVolumeFromEmptyDir("healthstatus")
-	agentHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/var/log/mongodb-mms-automation/healthstatus")
-	mongodHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/healthstatus")
-
-	// hooks volume is only required on the mongod pod.
-	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
-	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
-
-	// scripts volume is only required on the mongodb-agent pod.
-	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
-	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
-
-	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
-	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
-
-	dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
 	return statefulset.Apply(
-		statefulset.WithName(mdb.Name),
-		statefulset.WithNamespace(mdb.Namespace),
-		statefulset.WithServiceName(mdb.ServiceName()),
-		statefulset.WithLabels(labels),
-		statefulset.WithMatchLabels(labels),
+		commonModification,
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.StatefulSetReplicasThisReconciliation()),
 		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
-		statefulset.WithVolumeClaim(dataVolumeName, dataPvc()),
-		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
-				podtemplatespec.WithPodLabels(labels),
-				podtemplatespec.WithVolume(healthStatusVolume),
-				podtemplatespec.WithVolume(hooksVolume),
-				podtemplatespec.WithVolume(automationConfigVolume),
-				podtemplatespec.WithVolume(scriptsVolume),
-				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
-				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 				buildTLSPodSpecModification(mdb),
-				buildScramPodSpecModification(mdb),
 			),
 		),
+
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 	)
 }
@@ -783,28 +610,4 @@ func getDomain(service, namespace, clusterName string) string {
 		clusterName = "cluster.local"
 	}
 	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
-}
-
-func defaultReadiness() probes.Modification {
-	return probes.Apply(
-		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(60), // TODO: this value needs further consideration
-		probes.WithInitialDelaySeconds(5),
-	)
-}
-
-func dataPvc() persistentvolumeclaim.Modification {
-	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(dataVolumeName),
-		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
-		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
-	)
-}
-
-func logsPvc() persistentvolumeclaim.Modification {
-	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(logVolumeName),
-		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
-		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildStorageRequirements("2G")),
-	)
 }
