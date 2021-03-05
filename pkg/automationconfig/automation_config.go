@@ -1,9 +1,8 @@
 package automationconfig
 
 import (
+	"bytes"
 	"encoding/json"
-	"path"
-	"reflect"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
@@ -16,14 +15,32 @@ const (
 )
 
 type AutomationConfig struct {
-	Version     int                    `json:"version"`
-	Processes   []Process              `json:"processes"`
-	ReplicaSets []ReplicaSet           `json:"replicaSets"`
-	Auth        Auth                   `json:"auth"`
-	TLS         TLS                    `json:"tls"`
-	Versions    []MongoDbVersionConfig `json:"mongoDbVersions"`
-	Options     Options                `json:"options"`
-	Roles       []CustomRole           `json:"roles,omitempty"`
+	Version     int          `json:"version"`
+	Processes   []Process    `json:"processes"`
+	ReplicaSets []ReplicaSet `json:"replicaSets"`
+	Auth        Auth         `json:"auth"`
+
+	// TLSConfig and SSLConfig exist to allow configuration of older agents which accept the "ssl" field rather or "tls"
+	// only one of these should be set.
+	TLSConfig *TLS `json:"tls,omitempty"`
+	SSLConfig *TLS `json:"ssl,omitempty"`
+
+	Versions           []MongoDbVersionConfig `json:"mongoDbVersions"`
+	BackupVersions     []BackupVersion        `json:"backupVersions"`
+	MonitoringVersions []MonitoringVersion    `json:"monitoringVersions"`
+	Options            Options                `json:"options"`
+	Roles              []CustomRole           `json:"roles,omitempty"`
+}
+
+type BackupVersion struct {
+	BaseUrl string `json:"baseUrl"`
+}
+
+type MonitoringVersion struct {
+	Hostname         string            `json:"hostname"`
+	Name             string            `json:"name"`
+	BaseUrl          string            `json:"baseUrl"`
+	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
 type Process struct {
@@ -34,32 +51,6 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-}
-
-func newProcess(name, hostName, version, replSetName string, opts ...func(process *Process)) Process {
-	p := &Process{
-		Name:                        name,
-		HostName:                    hostName,
-		FeatureCompatibilityVersion: "4.0",
-		ProcessType:                 Mongod,
-		Version:                     version,
-		AuthSchemaVersion:           5,
-		Args26:                      objx.New(map[string]interface{}{}),
-	}
-
-	p.SetPort(27017)
-	p.SetStoragePath(DefaultMongoDBDataDir)
-	p.SetReplicaSetName(replSetName)
-	p.SetSystemLog(SystemLog{
-		Destination: "file",
-		Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-	})
-
-	for _, opt := range opts {
-		opt(p)
-	}
-
-	return *p
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -77,6 +68,13 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 	return p.SetArgs26Field("systemLog.path", systemLog.Path).
 		SetArgs26Field("systemLog.destination", systemLog.Destination)
+}
+
+func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
+	if cacheSizeGb == nil {
+		return p
+	}
+	return p.SetArgs26Field("storage.wiredTiger.engineConfig.cacheSizeGB", cacheSizeGb)
 }
 
 // SetArgs26Field should be used whenever any args26 field needs to be set. It ensures
@@ -134,13 +132,22 @@ type ReplicaSetMember struct {
 
 type ReplicaSetHorizons map[string]string
 
-func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons) ReplicaSetMember {
+func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, totalVotesSoFar int) ReplicaSetMember {
+	// ensure that the number of voting members in the replica set is not more than 7
+	// as this is the maximum number of voting members.
+	votes := 1
+	priority := 1
+	if totalVotesSoFar > maxVotingMembers {
+		votes = 0
+		priority = 0
+	}
+
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
-		Priority:    1,
+		Priority:    priority,
 		ArbiterOnly: false,
-		Votes:       1,
+		Votes:       votes,
 		Horizons:    horizons,
 	}
 }
@@ -271,9 +278,24 @@ type MongoDbVersionConfig struct {
 	Builds []BuildConfig `json:"builds"`
 }
 
-func AreEqual(ac0, ac1 AutomationConfig) bool {
+// AreEqual returns whether or not the given AutomationConfigs have the same contents.
+// the comparison does not take version into account.
+func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
+	// Here we compare the bytes of the two automationconfigs,
+	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
+	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
+	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
 	ac0.Version = ac1.Version
-	return reflect.DeepEqual(ac0, ac1)
+	ac0Bytes, err := json.Marshal(ac0)
+	if err != nil {
+		return false, err
+	}
+
+	ac1Bytes, err := json.Marshal(ac1)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(ac0Bytes, ac1Bytes), nil
 }
 
 func FromBytes(acBytes []byte) (AutomationConfig, error) {

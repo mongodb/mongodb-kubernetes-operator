@@ -59,7 +59,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
-		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb))
 		t.Run("Test Basic Connectivity after upgrade has completed", tester.ConnectivitySucceeds())
 	})
 
@@ -72,7 +72,7 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 			})
 			assert.NoError(t, err)
 		})
-		t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetIsReady(&mdb))
+		t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetBecomesReady(&mdb))
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	})
 	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.2", tester.HasFCV("4.2", 3))
