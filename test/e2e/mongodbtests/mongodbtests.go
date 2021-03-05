@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
@@ -25,10 +24,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// StatefulSetIsReady ensures that the underlying stateful set
-// reaches the running state
-func StatefulSetIsReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
-	return statefulSetIsReady(mdb, time.Second*15, time.Minute*5)
+// StatefulSetBecomesReady ensures that the underlying stateful set
+// reaches the running state.
+func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return statefulSetIsReady(mdb, time.Second*15, time.Minute*12)
+}
+
+// StatefulSetBecomesUnready ensures the underlying stateful set reaches
+// the unready state.
+func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return statefulSetIsNotReady(mdb, time.Second*15, time.Minute*12)
 }
 
 // StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
@@ -56,6 +61,17 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, tim
 	}
 }
 
+// statefulSetIsNotReady ensures that the underlying stateful set reaches the unready state.
+func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, timeout time.Duration) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.WaitForStatefulSetToBeUnready(t, mdb, interval, timeout)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is not ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
 func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
@@ -80,7 +96,7 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRefe
 // resource has the correct Update Strategy
 func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, time.Second*15, time.Minute*8)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,7 +107,7 @@ func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.S
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*5)
+		err := e2eutil.WaitForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*12)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +132,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
-		assert.Contains(t, s.Data, controllers.AutomationConfigKey)
+		assert.Contains(t, s.Data, automationconfig.ConfigKey)
 
 		t.Log("The Secret contained the automation config")
 	}
@@ -127,7 +143,7 @@ func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationco
 	currentAc := automationconfig.AutomationConfig{}
 	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 	assert.NoError(t, err)
-	err = json.Unmarshal(currentSecret.Data[controllers.AutomationConfigKey], &currentAc)
+	err = json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc)
 	assert.NoError(t, err)
 	return currentAc
 }
@@ -160,8 +176,8 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 
 func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
-		t.Run("Config Map Was Correctly Created", AutomationConfigSecretExists(mdb))
-		t.Run("Stateful Set Reaches Ready State", StatefulSetIsReady(mdb))
+		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
 		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
 			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{

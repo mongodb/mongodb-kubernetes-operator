@@ -95,6 +95,14 @@ func WaitForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 	})
 }
 
+// waitForStatefulSetCondition waits until all replicas of the StatefulSet with the given name
+// is not ready.
+func WaitForStatefulSetToBeUnready(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
+	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+		return !statefulset.IsReady(sts, mdb.Spec.Members)
+	})
+}
+
 // WaitForStatefulSetToBeReadyAfterScaleDown waits for just the ready replicas to be correct
 // and does not account for the updated replicas
 func WaitForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
@@ -115,8 +123,8 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 		if err != nil {
 			return false, err
 		}
-		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d, Current updated replicas: %d\n",
-			mdb.Name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas)
+		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d, Current updated replicas: %d, Current generation: %d, Observed Generation: %d\n",
+			mdb.Name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
 		ready := condition(sts)
 		return ready, nil
 	})

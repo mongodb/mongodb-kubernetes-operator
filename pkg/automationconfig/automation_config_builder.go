@@ -1,21 +1,20 @@
 package automationconfig
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"path"
+
+	"github.com/pkg/errors"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
 )
 
 type Topology string
 
 const (
 	ReplicaSetTopology Topology = "ReplicaSet"
+	maxVotingMembers   int      = 7
 )
-
-// AuthEnabler is an interface which can configure authentication settings
-type AuthEnabler interface {
-	EnableAuth(auth Auth) Auth
-}
 
 type Modification func(*AutomationConfig)
 
@@ -24,33 +23,45 @@ func NOOP() Modification {
 }
 
 type Builder struct {
-	enabler            AuthEnabler
 	processes          []Process
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
 	members            int
 	domain             string
 	name               string
-	fcv                string
+	fcv                *string
 	topology           Topology
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
-	versions      []MongoDbVersionConfig
-	modifications []Modification
+	versions             []MongoDbVersionConfig
+	backupVersions       []BackupVersion
+	monitoringVersions   []MonitoringVersion
+	options              Options
+	processModifications []func(int, *Process)
+	modifications        []Modification
+	auth                 *Auth
+	cafilePath           string
+	sslConfig            *TLS
+	tlsConfig            *TLS
 }
 
 func NewBuilder() *Builder {
 	return &Builder{
-		processes:     []Process{},
-		replicaSets:   []ReplicaSet{},
-		versions:      []MongoDbVersionConfig{},
-		modifications: []Modification{},
+		processes:            []Process{},
+		replicaSets:          []ReplicaSet{},
+		versions:             []MongoDbVersionConfig{},
+		modifications:        []Modification{},
+		backupVersions:       []BackupVersion{},
+		monitoringVersions:   []MonitoringVersion{},
+		processModifications: []func(int, *Process){},
+		tlsConfig:            nil,
+		sslConfig:            nil,
 	}
 }
 
-func (b *Builder) SetAuthEnabler(enabler AuthEnabler) *Builder {
-	b.enabler = enabler
+func (b *Builder) SetOptions(options Options) *Builder {
+	b.options = options
 	return b
 }
 
@@ -61,6 +72,16 @@ func (b *Builder) SetTopology(topology Topology) *Builder {
 
 func (b *Builder) SetReplicaSetHorizons(horizons []ReplicaSetHorizons) *Builder {
 	b.replicaSetHorizons = horizons
+	return b
+}
+
+func (b *Builder) SetTLSConfig(tlsConfig TLS) *Builder {
+	b.tlsConfig = &tlsConfig
+	return b
+}
+
+func (b *Builder) SetSSLConfig(sslConfig TLS) *Builder {
+	b.sslConfig = &sslConfig
 	return b
 }
 
@@ -79,8 +100,13 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
-func (b *Builder) SetFCV(fcv string) *Builder {
+func (b *Builder) SetFCV(fcv *string) *Builder {
 	b.fcv = fcv
+	return b
+}
+
+func (b *Builder) SetCAFilePath(caFilePath string) *Builder {
+	b.cafilePath = caFilePath
 	return b
 }
 
@@ -99,8 +125,28 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
+func (b *Builder) SetBackupVersions(versions []BackupVersion) *Builder {
+	b.backupVersions = versions
+	return b
+}
+
+func (b *Builder) SetMonitoringVersions(versions []MonitoringVersion) *Builder {
+	b.monitoringVersions = versions
+	return b
+}
+
 func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Builder {
 	b.previousAC = previousAC
+	return b
+}
+
+func (b *Builder) SetAuth(auth Auth) *Builder {
+	b.auth = &auth
+	return b
+}
+
+func (b *Builder) AddProcessModification(f func(int, *Process)) *Builder {
+	b.processModifications = append(b.processModifications, f)
 	return b
 }
 
@@ -118,23 +164,46 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
-		opts := []func(*Process){
-			withFCV(b.fcv),
+
+		process := &Process{
+			Name:                        toProcessName(b.name, i),
+			HostName:                    h,
+			FeatureCompatibilityVersion: versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion),
+			ProcessType:                 Mongod,
+			Version:                     b.mongodbVersion,
+			AuthSchemaVersion:           5,
+		}
+		process.SetSystemLog(SystemLog{
+			Destination: "file",
+			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+		})
+
+		if b.fcv != nil {
+			process.FeatureCompatibilityVersion = *b.fcv
 		}
 
-		process := newProcess(toHostName(b.name, i), h, b.mongodbVersion, b.name, opts...)
-		processes[i] = process
+		process.SetPort(27017)
+		process.SetStoragePath(DefaultMongoDBDataDir)
+		process.SetReplicaSetName(b.name)
 
+		for _, mod := range b.processModifications {
+			mod(i, process)
+		}
+
+		processes[i] = *process
+
+		totalVotes := 0
 		if b.replicaSetHorizons != nil {
-			members[i] = newReplicaSetMember(process, i, b.replicaSetHorizons[i])
+			members[i] = newReplicaSetMember(*process, i, b.replicaSetHorizons[i], totalVotes)
 		} else {
-			members[i] = newReplicaSetMember(process, i, nil)
+			members[i] = newReplicaSetMember(*process, i, nil, totalVotes)
 		}
+		totalVotes += members[i].Votes
 	}
 
-	auth := disabledAuth()
-	if b.enabler != nil {
-		auth = b.enabler.EnableAuth(auth)
+	if b.auth == nil {
+		disabled := disabledAuth()
+		b.auth = &disabled
 	}
 
 	if len(b.versions) == 0 {
@@ -151,12 +220,29 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 			},
 		},
-		Versions: b.versions,
-		Options:  Options{DownloadBase: "/var/lib/mongodb-mms-automation"},
-		Auth:     auth,
-		TLS: TLS{
+		MonitoringVersions: b.monitoringVersions,
+		BackupVersions:     b.backupVersions,
+		Versions:           b.versions,
+		Options:            b.options,
+		Auth:               *b.auth,
+		TLSConfig: &TLS{
 			ClientCertificateMode: ClientCertificateModeOptional,
+			CAFilePath:            b.cafilePath,
 		},
+	}
+
+	if b.tlsConfig != nil && b.sslConfig != nil {
+		return AutomationConfig{}, errors.Errorf("must specify only one of tlsConfig and sslConfig")
+	}
+
+	if b.tlsConfig != nil {
+		currentAc.SSLConfig = nil
+		currentAc.TLSConfig = b.tlsConfig
+	}
+
+	if b.sslConfig != nil {
+		currentAc.TLSConfig = nil
+		currentAc.SSLConfig = b.sslConfig
 	}
 
 	// Apply all modifications
@@ -164,36 +250,19 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		modification(&currentAc)
 	}
 
-	// Here we compare the bytes of the two automationconfigs,
-	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
-	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
-	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
-
-	newAcBytes, err := json.Marshal(b.previousAC)
+	areEqual, err := AreEqual(b.previousAC, currentAc)
 	if err != nil {
 		return AutomationConfig{}, err
 	}
 
-	currentAcBytes, err := json.Marshal(currentAc)
-	if err != nil {
-		return AutomationConfig{}, err
-	}
-
-	if !bytes.Equal(newAcBytes, currentAcBytes) {
+	if !areEqual {
 		currentAc.Version++
 	}
 	return currentAc, nil
 }
 
-func toHostName(name string, index int) string {
+func toProcessName(name string, index int) string {
 	return fmt.Sprintf("%s-%d", name, index)
-}
-
-// Process functional options
-func withFCV(fcv string) func(*Process) {
-	return func(process *Process) {
-		process.FeatureCompatibilityVersion = fcv
-	}
 }
 
 // buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which

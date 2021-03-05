@@ -7,7 +7,6 @@ import (
 
 	"go.uber.org/zap"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
@@ -28,77 +27,122 @@ const (
 	sha256StoredKeyKey = "sha-256-stored-key"
 )
 
-// EnsureScram will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
+// Configurable is an interface which any resource which can configure ScramSha authentication should implement.
+type Configurable interface {
+	// GetScramOptions returns a set of Options which can be used for fine grained configuration.
+	GetScramOptions() Options
+
+	// GetScramUsers returns a list of users which will be mapped to users in the AutomationConfig.
+	GetScramUsers() []User
+
+	// GetAgentPasswordSecretNamespacedName returns the NamespacedName of the secret which stores the generated password for the agent.
+	GetAgentPasswordSecretNamespacedName() types.NamespacedName
+
+	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
+
+	// NamespacedName returns the NamespacedName for the resource that is being configured.
+	NamespacedName() types.NamespacedName
+}
+
+// Role is a struct which will map to automationconfig.Role.
+type Role struct {
+	// Name is the name of the role.
+	Name string
+
+	// Database is the database this role applies to.
+	Database string
+}
+
+// User is a struct which holds all of the values required to create an AutomationConfig user
+// and references to the credentials for the specific user.
+type User struct {
+	// Username is the username of the user.
+	Username string
+
+	// Database is the database this user will be created in.
+	Database string
+
+	// Roles is a slice of roles that this user should have.
+	Roles []Role
+
+	// PasswordSecretKey is the key which maps to the value of the user's password.
+	PasswordSecretKey string
+
+	// PasswordSecretName is the name of the secret which stores this user's password.
+	PasswordSecretName string
+
+	// ScramCredentialsSecretName returns the name of the secret which stores the generated credentials
+	// for this user. These credentials will be generated if they do not exist, or used if they do.
+	// Note: there will be one secret with credentials per user created.
+	ScramCredentialsSecretName string
+}
+
+// Options contains a set of values that can be used for more fine grained configuration of authentication.
+type Options struct {
+	// AuthoritativeSet indicates whether or not the agents will remove users not defined in the AutomationConfig.
+	AuthoritativeSet bool
+
+	// KeyFile is the path on disk to the keyfile that will be used for the deployment.
+	KeyFile string
+
+	// AutoAuthMechanisms is a list of valid authentication mechanisms that the agents can use.
+	AutoAuthMechanisms []string
+
+	// AgentName is username that the Automation Agent will have.
+	AgentName string
+
+	// AutoAuthMechanism is the desired authentication mechanism that the agents will use.
+	AutoAuthMechanism string
+}
+
+// Enable will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func EnsureScram(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, secretNsName types.NamespacedName, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
+func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) error {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
-		return automationconfig.NOOP(), errors.Errorf("could not generate password: %s", err)
+		return errors.Errorf("could not generate password: %s", err)
 	}
 
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
-		return automationconfig.NOOP(), errors.Errorf("could not generate keyfile contents: %s", err)
+		return errors.Errorf("could not generate keyfile contents: %s", err)
 	}
 
 	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter, mdb)
 	if err != nil {
-		return automationconfig.NOOP(), err
+		return err
 	}
-	agentSecret, err := secretGetUpdateCreateDeleter.GetSecret(secretNsName)
+
+	// ensure that the agent password secret exists or read existing password.
+	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), AgentPasswordKey, generatedPassword)
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
-			s := secret.Builder().
-				SetNamespace(secretNsName.Namespace).
-				SetName(secretNsName.Name).
-				SetField(AgentPasswordKey, generatedPassword).
-				SetField(AgentKeyfileKey, generatedContents).
-				Build()
-			return automationConfigModification(generatedPassword, generatedContents, desiredUsers), secretGetUpdateCreateDeleter.CreateSecret(s)
-		}
-
-		return automationconfig.NOOP(), err
+		return err
 	}
 
-	// ensure that we have both a password and keyfile contents for the Automation Agent
-	if _, ok := agentSecret.Data[AgentPasswordKey]; !ok {
-		agentSecret.Data[AgentPasswordKey] = []byte(generatedPassword)
+	// ensure that the agent keyfile secret exists or read existing keyfile.
+	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), AgentKeyfileKey, generatedContents)
+	if err != nil {
+		return err
 	}
 
-	if _, ok := agentSecret.Data[AgentKeyfileKey]; !ok {
-		agentSecret.Data[AgentKeyfileKey] = []byte(generatedContents)
-	}
-
-	if err := secret.CreateOrUpdate(secretGetUpdateCreateDeleter, agentSecret); err != nil {
-		return automationconfig.NOOP(), err
-	}
-
-	return automationConfigModification(
-		string(agentSecret.Data[AgentPasswordKey]),
-		string(agentSecret.Data[AgentKeyfileKey]), desiredUsers,
-	), nil
-}
-
-// User defines the required methods for a MongoDB user to provide
-// in order to generate ScramCredentials
-type User interface {
-	GetPasswordSecretKey() string
-	GetPasswordSecretName() string
-	GetUserName() string
-	GetScramCredentialsSecretName() string
+	return configureScramInAutomationConfig(auth,
+		agentPassword,
+		agentKeyFile, desiredUsers, mdb.GetScramOptions(),
+	)
 }
 
 // ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials
 // secret corresponding to user of the given MongoDB deployment.
 func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User, mdbNamespacedName types.NamespacedName) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 
-	password, err := secret.ReadKey(getUpdateCreator, user.GetPasswordSecretKey(), types.NamespacedName{Name: user.GetPasswordSecretName(), Namespace: mdbNamespacedName.Namespace})
+	password, err := secret.ReadKey(getUpdateCreator, user.PasswordSecretKey, types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
 		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
 		if apiErrors.IsNotFound(err) {
-			zap.S().Debugf("password secret was not found, reading from credentials from secret/%s", user.GetScramCredentialsSecretName())
-			return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.GetScramCredentialsSecretName())
+			zap.S().Debugf("password secret was not found, reading from credentials from secret/%s", user.ScramCredentialsSecretName)
+			return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.ScramCredentialsSecretName)
 		}
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
@@ -106,26 +150,26 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User,
 	// we should only need to generate new credentials in two situations.
 	// 1. We are creating the credentials for the first time
 	// 2. We are changing the password
-	shouldGenerateNewCredentials, err := needToGenerateNewCredentials(getUpdateCreator, user.GetUserName(), user.GetScramCredentialsSecretName(), mdbNamespacedName, password)
+	shouldGenerateNewCredentials, err := needToGenerateNewCredentials(getUpdateCreator, user.Username, user.ScramCredentialsSecretName, mdbNamespacedName, password)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
 	// there are no changes required, we can re-use the same credentials.
 	if !shouldGenerateNewCredentials {
-		zap.S().Debugf("Credentials have not changed, using credentials stored in: secret/%s", user.GetScramCredentialsSecretName())
-		return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.GetScramCredentialsSecretName())
+		zap.S().Debugf("Credentials have not changed, using credentials stored in: secret/%s", user.ScramCredentialsSecretName)
+		return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.ScramCredentialsSecretName)
 	}
 
 	// the password has changed, or we are generating it for the first time
-	zap.S().Debugf("Generating new credentials and storing in secret/%s", user.GetScramCredentialsSecretName())
-	sha1Creds, sha256Creds, err := generateScramShaCredentials(user.GetUserName(), password)
+	zap.S().Debugf("Generating new credentials and storing in secret/%s", user.ScramCredentialsSecretName)
+	sha1Creds, sha256Creds, err := generateScramShaCredentials(user.Username, password)
 	if err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
 	// create or update our credentials secret for this user
-	if err := createScramCredentialsSecret(getUpdateCreator, mdbNamespacedName, user.GetScramCredentialsSecretName(), sha1Creds, sha256Creds); err != nil {
+	if err := createScramCredentialsSecret(getUpdateCreator, mdbNamespacedName, user.ScramCredentialsSecretName, sha1Creds, sha256Creds); err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, err
 	}
 
@@ -253,9 +297,9 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 }
 
 // convertMongoDBResourceUsersToAutomationConfigUsers returns a list of users that are able to be set in the AutomationConfig
-func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb mdbv1.MongoDBCommunity) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
-	for _, u := range mdb.Spec.Users {
+	for _, u := range mdb.GetScramUsers() {
 		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), u)
 		if err != nil {
 			return nil, err
@@ -267,15 +311,15 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDel
 
 // convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
 // that can be added directly to the AutomationConfig.
-func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, user mdbv1.MongoDBUser) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, user User) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
-		Username: user.Name,
-		Database: user.DB,
+		Username: user.Username,
+		Database: user.Database,
 	}
 	for _, role := range user.Roles {
 		acUser.Roles = append(acUser.Roles, automationconfig.Role{
 			Role:     role.Name,
-			Database: role.DB,
+			Database: role.Database,
 		})
 	}
 	sha1Creds, sha256Creds, err := ensureScramCredentials(secretGetUpdateCreateDeleter, user, mdbNsName)

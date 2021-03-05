@@ -122,7 +122,7 @@ functions:
 
 task_groups:
 - name: e2e_test_group
-  max_hosts: 4
+  max_hosts: 8
   setup_group:
     - func: clone
     - func: setup_virtualenv
@@ -138,7 +138,7 @@ task_groups:
     - e2e_test_feature_compatibility_version
     - e2e_test_feature_compatibility_version_upgrade
     - e2e_test_replica_set_multiple
-#    - e2e_test_replica_set_tls # TODO: flaky test, fix and uncomment in CLOUDP-76190
+    - e2e_test_replica_set_tls
     - e2e_test_replica_set_tls_upgrade
     - e2e_test_replica_set_tls_rotate
     - e2e_test_statefulset_arbitrary_config

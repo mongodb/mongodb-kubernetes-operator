@@ -35,7 +35,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert that all TLS volumes have been added.
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 6)
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
 		VolumeSource: corev1.VolumeSource{
@@ -68,7 +68,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		MountPath: tlsCAMountPath,
 	}
 
-	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 1)
+	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Contains(t, agentContainer.VolumeMounts, tlsSecretVolumeMount)
@@ -87,8 +87,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 		tlsModification, err := getTLSConfigModification(client, mdb)
 		assert.NoError(t, err)
-
-		ac, err := buildAutomationConfig(mdb, automationconfig.AutomationConfig{}, tlsModification)
+		ac, err := buildAutomationConfig(mdb, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
 		assert.NoError(t, err)
 
 		return ac
@@ -98,24 +97,10 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		mdb := newTestReplicaSet()
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            "",
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
-
-		for _, process := range ac.Processes {
-			assert.False(t, process.Args26.Has("net.tls"))
-		}
-	})
-
-	t.Run("With TLS enabled, during rollout", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLS()
-		ac := createAC(mdb)
-
-		assert.Equal(t, automationconfig.TLS{
-			CAFilePath:            "",
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			assert.False(t, process.Args26.Has("net.tls"))
@@ -124,13 +109,12 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tlsRolledOutAnnotationKey] = "true"
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
@@ -144,14 +128,13 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Annotations[tlsRolledOutAnnotationKey] = "true"
 		mdb.Spec.Security.TLS.Optional = true
 		ac := createAC(mdb)
 
-		assert.Equal(t, automationconfig.TLS{
+		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
-		}, ac.TLS)
+		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {
 			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
@@ -167,25 +150,27 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(client, mdb)
+		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecretAndConfigMap(c, mdb)
 		assert.NoError(t, err)
 
-		_, err = getTLSConfigModification(client, mdb)
+		r := NewReconciler(client.NewManagerWithClient(c))
+
+		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contain the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
 
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(client, mdb)
+		k8sclient := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecretAndConfigMap(k8sclient, mdb)
 		assert.NoError(t, err)
 
 		// Create operator-managed secret
@@ -194,16 +179,18 @@ func TestTLSOperatorSecret(t *testing.T) {
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
 			SetField(tlsOperatorSecretFileName(""), "").
 			Build()
-		err = client.CreateSecret(s)
+		err = k8sclient.CreateSecret(s)
 		assert.NoError(t, err)
 
-		_, err = getTLSConfigModification(client, mdb)
+		r := NewReconciler(client.NewManagerWithClient(k8sclient))
+
+		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been updated with the concatenated
 		// certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(client, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(k8sclient, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})

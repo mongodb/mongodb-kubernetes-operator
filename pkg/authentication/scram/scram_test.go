@@ -6,9 +6,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"go.uber.org/zap"
 
@@ -39,32 +40,6 @@ const (
 	testSha256StoredKey = "7M7dUSY0sHTOXdNnoPSVbXg9Flon1b3t8MINGI8Tst0="
 )
 
-type mockSecretGetUpdateCreateDeleter struct {
-	secrets map[client.ObjectKey]corev1.Secret
-}
-
-func (c mockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey) error {
-	delete(c.secrets, objectKey)
-	return nil
-}
-
-func (c mockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret) error {
-	c.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
-	return nil
-}
-
-func (c mockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) error {
-	return c.UpdateSecret(secret)
-}
-
-func (c mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
-	if s, ok := c.secrets[objectKey]; !ok {
-		return corev1.Secret{}, notFoundError()
-	} else {
-		return s, nil
-	}
-}
-
 func newMockedSecretGetUpdateCreateDeleter(secrets ...corev1.Secret) secret.GetUpdateCreateDeleter {
 	mockSecretGetUpdateCreateDeleter := mockSecretGetUpdateCreateDeleter{}
 	mockSecretGetUpdateCreateDeleter.secrets = make(map[client.ObjectKey]corev1.Secret)
@@ -81,21 +56,21 @@ func TestReadExistingCredentials(t *testing.T) {
 	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "default"}
 	user := buildMongoDBUser("mdbuser-0")
 	t.Run("credentials are successfully generated when all fields are present", func(t *testing.T) {
-		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
+		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.ScramCredentialsSecretName)
 
-		scram1Creds, scram256Creds, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.GetScramCredentialsSecretName())
+		scram1Creds, scram256Creds, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.ScramCredentialsSecretName)
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
 	})
 
 	t.Run("credentials are not generated if a field is missing", func(t *testing.T) {
-		scramCredsSecret := invalidSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
-		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.GetScramCredentialsSecretName())
+		scramCredsSecret := invalidSecret(mdbObjectKey, user.ScramCredentialsSecretName)
+		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, user.ScramCredentialsSecretName)
 		assert.Error(t, err)
 	})
 
 	t.Run("credentials are not generated if the secret does not exist", func(t *testing.T) {
-		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.GetScramCredentialsSecretName())
+		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.ScramCredentialsSecretName)
 		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, "different-username")
 		assert.Error(t, err)
 	})
@@ -121,13 +96,13 @@ func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *
 }
 
 func TestEnsureScramCredentials(t *testing.T) {
-	mdb, user := buildMongoDBAndUser("mdb-0")
+	mdb, user := buildConfigurableAndUser("mdb-0")
 	t.Run("Fails when there is no password secret, and no credentials secret", func(t *testing.T) {
 		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb.NamespacedName())
 		assert.Error(t, err)
 	})
 	t.Run("Existing credentials are used when password does not exist, but credentials secret has been created", func(t *testing.T) {
-		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.GetScramCredentialsSecretName())
+		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.ScramCredentialsSecretName)
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
@@ -137,12 +112,12 @@ func TestEnsureScramCredentials(t *testing.T) {
 		assert.NoError(t, err)
 
 		differentPasswordSecret := secret.Builder().
-			SetName(user.PasswordSecretRef.Name).
-			SetNamespace(mdb.Namespace).
-			SetField(user.PasswordSecretRef.Key, newPassword).
+			SetName(user.PasswordSecretName).
+			SetNamespace(mdb.NamespacedName().Namespace).
+			SetField(user.PasswordSecretKey, newPassword).
 			Build()
 
-		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.GetScramCredentialsSecretName())
+		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.ScramCredentialsSecretName)
 		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName())
 		assert.NoError(t, err)
 		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
@@ -165,26 +140,26 @@ func TestEnsureScramCredentials(t *testing.T) {
 }
 
 func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
-	mdb, user := buildMongoDBAndUser("mdb-0")
+	mdb, user := buildConfigurableAndUser("mdb-0")
 
 	t.Run("When password exists, the user is created in the automation config", func(t *testing.T) {
 		passwordSecret := secret.Builder().
-			SetName(user.PasswordSecretRef.Name).
-			SetNamespace(mdb.Namespace).
-			SetField(user.PasswordSecretRef.Key, "TDg_DESiScDrJV6").
+			SetName(user.PasswordSecretName).
+			SetNamespace(mdb.NamespacedName().Namespace).
+			SetField(user.PasswordSecretKey, "TDg_DESiScDrJV6").
 			Build()
 
 		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb.NamespacedName(), user)
 
 		assert.NoError(t, err)
-		assert.Equal(t, user.Name, acUser.Username)
-		assert.Equal(t, user.DB, "admin")
+		assert.Equal(t, user.Username, acUser.Username)
+		assert.Equal(t, user.Database, "admin")
 		assert.Equal(t, len(user.Roles), len(acUser.Roles))
 		assert.NotNil(t, acUser.ScramSha1Creds)
 		assert.NotNil(t, acUser.ScramSha256Creds)
 		for i, acRole := range acUser.Roles {
 			assert.Equal(t, user.Roles[i].Name, acRole.Role)
-			assert.Equal(t, user.Roles[i].DB, acRole.Database)
+			assert.Equal(t, user.Roles[i].Database, acRole.Database)
 		}
 	})
 
@@ -194,142 +169,158 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 	})
 }
 
-func TestEnsureEnabler(t *testing.T) {
+func TestConfigureScram(t *testing.T) {
 	t.Run("Should fail if there is no password present for the user", func(t *testing.T) {
-		mdb, _ := buildMongoDBAndUser("mdb-0")
+		mdb, _ := buildConfigurableAndUser("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
 		assert.Error(t, err)
 	})
 	t.Run("Agent Credentials Secret should be created if there are no users", func(t *testing.T) {
-		mdb := buildMongoDB("mdb-0")
+		mdb := buildConfigurable("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
+		passwordSecret, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
-		assert.NotEmpty(t, agentCredentialsSecret.Data[AgentPasswordKey])
-		assert.NotEmpty(t, agentCredentialsSecret.Data[AgentKeyfileKey])
+		assert.True(t, secret.HasAllKeys(passwordSecret, AgentPasswordKey))
+		assert.NotEmpty(t, passwordSecret.Data[AgentPasswordKey])
+
+		keyfileSecret, err := s.GetSecret(mdb.GetAgentKeyfileSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.True(t, secret.HasAllKeys(keyfileSecret, AgentKeyfileKey))
+		assert.NotEmpty(t, keyfileSecret.Data[AgentKeyfileKey])
 	})
 
-	t.Run("Agent Secret is used if it exists", func(t *testing.T) {
-		mdb := buildMongoDB("mdb-0")
+	t.Run("Agent Password Secret is used if it exists", func(t *testing.T) {
+		mdb := buildConfigurable("mdb-0")
 
 		agentPasswordSecret := secret.Builder().
-			SetName(mdb.ScramCredentialsNamespacedName().Name).
-			SetNamespace(mdb.ScramCredentialsNamespacedName().Namespace).
+			SetName(mdb.GetAgentPasswordSecretNamespacedName().Name).
+			SetNamespace(mdb.GetAgentPasswordSecretNamespacedName().Namespace).
 			SetField(AgentPasswordKey, "A21Zv5agv3EKXFfM").
-			SetField(AgentKeyfileKey, "RuPeMaIe2g0SNTTa").
 			Build()
 
 		s := newMockedSecretGetUpdateCreateDeleter(agentPasswordSecret)
-		_, err := EnsureScram(s, mdb.ScramCredentialsNamespacedName(), mdb)
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.ScramCredentialsNamespacedName())
+		ps, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
-		assert.Equal(t, "A21Zv5agv3EKXFfM", string(agentCredentialsSecret.Data[AgentPasswordKey]))
-		assert.Equal(t, "RuPeMaIe2g0SNTTa", string(agentCredentialsSecret.Data[AgentKeyfileKey]))
+		assert.True(t, secret.HasAllKeys(ps, AgentPasswordKey))
+		assert.NotEmpty(t, ps.Data[AgentPasswordKey])
+		assert.Equal(t, "A21Zv5agv3EKXFfM", string(ps.Data[AgentPasswordKey]))
+
+	})
+
+	t.Run("Agent Keyfile Secret is used if present", func(t *testing.T) {
+		mdb := buildConfigurable("mdb-0")
+
+		keyfileSecret := secret.Builder().
+			SetName(mdb.GetAgentKeyfileSecretNamespacedName().Name).
+			SetNamespace(mdb.GetAgentKeyfileSecretNamespacedName().Namespace).
+			SetField(AgentKeyfileKey, "RuPeMaIe2g0SNTTa").
+			Build()
+
+		s := newMockedSecretGetUpdateCreateDeleter(keyfileSecret)
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
+		assert.NoError(t, err)
+
+		ks, err := s.GetSecret(mdb.GetAgentKeyfileSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.True(t, secret.HasAllKeys(ks, AgentKeyfileKey))
+		assert.Equal(t, "RuPeMaIe2g0SNTTa", string(ks.Data[AgentKeyfileKey]))
 
 	})
 
 	t.Run("Agent Credentials Secret should be created", func(t *testing.T) {
-		mdb := buildMongoDB("mdb-0")
+		mdb := buildConfigurable("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
-		_, err := EnsureScram(s, mdb.NamespacedName(), mdb)
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
 		assert.NoError(t, err)
 	})
 }
 
-func buildMongoDB(name string) mdbv1.MongoDBCommunity {
-	return mdbv1.MongoDBCommunity{
-		ObjectMeta: metav1.ObjectMeta{
+func buildConfigurable(name string, users ...User) Configurable {
+	return mockConfigurable{
+		opts: Options{
+			AuthoritativeSet:   false,
+			KeyFile:            "/path/to/keyfile",
+			AutoAuthMechanisms: []string{Sha256},
+			AgentName:          AgentName,
+			AutoAuthMechanism:  Sha256,
+		},
+		users: users,
+		nsName: types.NamespacedName{
 			Name:      name,
 			Namespace: "default",
 		},
-		Spec: mdbv1.MongoDBCommunitySpec{
-			Members:                     3,
-			Type:                        "ReplicaSet",
-			Version:                     "4.0.6",
-			FeatureCompatibilityVersion: "4.0",
-			Security: mdbv1.Security{
-				Authentication: mdbv1.Authentication{
-					Modes: []mdbv1.AuthMode{"SCRAM"},
-				},
-			},
-			Users: []mdbv1.MongoDBUser{},
-		},
 	}
 }
 
-func buildMongoDBUser(name string) mdbv1.MongoDBUser {
-	return mdbv1.MongoDBUser{
-		Name: fmt.Sprintf("%s-user", name),
-		DB:   "admin",
-		PasswordSecretRef: mdbv1.SecretKeyReference{
-			Key:  fmt.Sprintf("%s-password", name),
-			Name: fmt.Sprintf("%s-password-secret", name),
-		},
-		Roles: []mdbv1.Role{
-			// roles on testing db for general connectivity
+func buildMongoDBUser(name string) User {
+	return User{
+		Username: fmt.Sprintf("%s-user", name),
+		Database: "admin",
+		Roles: []Role{
 			{
-				DB:   "testing",
-				Name: "readWrite",
+				Database: "testing",
+				Name:     "readWrite",
 			},
 			{
-				DB:   "testing",
-				Name: "clusterAdmin",
+				Database: "testing",
+				Name:     "clusterAdmin",
 			},
 			// admin roles for reading FCV
 			{
-				DB:   "admin",
-				Name: "readWrite",
+				Database: "admin",
+				Name:     "readWrite",
 			},
 			{
-				DB:   "admin",
-				Name: "clusterAdmin",
+				Database: "admin",
+				Name:     "clusterAdmin",
 			},
 		},
+		PasswordSecretKey:  fmt.Sprintf("%s-password", name),
+		PasswordSecretName: fmt.Sprintf("%s-password-secret", name),
 	}
+
 }
 
-func buildMongoDBAndUser(name string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
-	mdb := buildMongoDB(name)
-	mdb.Spec.Users = []mdbv1.MongoDBUser{
-		{
-			Name: fmt.Sprintf("%s-user", name),
-			DB:   "admin",
-			PasswordSecretRef: mdbv1.SecretKeyReference{
-				Key:  fmt.Sprintf("%s-password", name),
-				Name: fmt.Sprintf("%s-password-secret", name),
+func buildConfigurableAndUser(name string) (Configurable, User) {
+	mdb := buildConfigurable(name, User{
+		Username: fmt.Sprintf("%s-user", name),
+		Database: "admin",
+		Roles: []Role{
+			{
+				Name:     "testing",
+				Database: "readWrite",
 			},
-			Roles: []mdbv1.Role{
-				// roles on testing db for general connectivity
-				{
-					DB:   "testing",
-					Name: "readWrite",
-				},
-				{
-					DB:   "testing",
-					Name: "clusterAdmin",
-				},
-				// admin roles for reading FCV
-				{
-					DB:   "admin",
-					Name: "readWrite",
-				},
-				{
-					DB:   "admin",
-					Name: "clusterAdmin",
-				},
+			{
+				Database: "testing",
+				Name:     "clusterAdmin",
+			},
+			// admin roles for reading FCV
+			{
+				Database: "admin",
+				Name:     "readWrite",
+			},
+			{
+				Database: "admin",
+				Name:     "clusterAdmin",
 			},
 		},
-	}
-
-	return mdb, mdb.Spec.Users[0]
+		PasswordSecretKey:  fmt.Sprintf("%s-password", name),
+		PasswordSecretName: fmt.Sprintf("%s-password-secret", name),
+	})
+	return mdb, mdb.GetScramUsers()[0]
 }
 
 func assertScramCredsCredentialsValidity(t *testing.T, scram1Creds, scram256Creds scramcredentials.ScramCreds) {
