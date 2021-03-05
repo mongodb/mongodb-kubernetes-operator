@@ -9,6 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -199,7 +200,7 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Mod
 	return podtemplatespec.Apply(
 		podtemplatespec.WithVolume(caVolume),
 		podtemplatespec.WithVolume(tlsSecretVolume),
-		podtemplatespec.WithVolumeMounts(agentName, tlsSecretVolumeMount, caVolumeMount),
-		podtemplatespec.WithVolumeMounts(mongodbName, tlsSecretVolumeMount, caVolumeMount),
+		podtemplatespec.WithVolumeMounts(construct.AgentName, tlsSecretVolumeMount, caVolumeMount),
+		podtemplatespec.WithVolumeMounts(construct.MongodbName, tlsSecretVolumeMount, caVolumeMount),
 	)
 }
