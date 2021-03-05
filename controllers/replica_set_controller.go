@@ -724,7 +724,7 @@ type MongoDBStatefulSetOwner interface {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := BuildCommonStatefulSetModificationFunction(mdb, mdb)
+	commonModification := BuildCommonStatefulSetModificationFunction(&mdb, mdb)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
