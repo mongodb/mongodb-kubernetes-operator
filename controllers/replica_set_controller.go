@@ -713,11 +713,12 @@ exec mongod -f /data/automation-mongod.conf ;
 	)
 }
 
-type statefulSetSpec interface {
+// MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
+type MongoDBStatefulSetOwner interface {
 	ServiceName() string
 	GetName() string
 	GetNamespace() string
-	GetVersion() string
+	GetMongoDBVersion() string
 	AutomationConfigSecretName() string
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
@@ -738,7 +739,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 	)
 }
 
-func BuildCommonStatefulSetModificationFunction(mdb statefulSetSpec, scaler scale.ReplicaSetScaler) statefulset.Modification {
+func BuildCommonStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -782,7 +783,7 @@ func BuildCommonStatefulSetModificationFunction(mdb statefulSetSpec, scaler scal
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
 				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.GetVersion(), []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
+				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.GetMongoDBVersion(), []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 				buildScramPodSpecModification(mdb),
