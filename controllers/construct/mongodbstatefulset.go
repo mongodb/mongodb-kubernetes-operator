@@ -54,7 +54,7 @@ type MongoDBStatefulSetOwner interface {
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
 
-// BuildMongoDBReplicaSetStatefulSetModificationFunction build the parts of the replica set that are common between every resource that implements
+// BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
 // MongoDBStatefulSetOwner.
 // It doesn't configure TLS or additional containers/env vars that the statefulset might need.
 func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler) statefulset.Modification {
