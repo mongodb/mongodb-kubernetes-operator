@@ -1,8 +1,8 @@
+from __future__ import annotations
 from typing import Dict, Optional
 from enum import Enum
 import json
 import os
-from __future__ import annotations
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
