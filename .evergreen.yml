@@ -393,7 +393,8 @@ buildvariants:
       - name: build_operator_image
       - name: build_e2e_image
       - name: build_prehook_image
-      - name: build_agent_image
+      - name: build_agent_image_ubi
+      - name: build_agent_image_ubuntu
 
   - name: release_blocker
     display_name: release_blocker
@@ -411,7 +412,9 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
-      - name: build_agent_image
+      - name: build_agent_image_ubuntu
+        variant: init_test_run
+      - name: build_agent_image_ubi
         variant: init_test_run
     run_on:
       - ubuntu1604-test
