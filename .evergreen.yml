@@ -116,7 +116,7 @@ functions:
           - image_type
           - expire_after
         working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/build_and_push_agent_image.sh
+        binary: scripts/ci/build_and_push_image.sh
 
   release_docker_image:
     - command: subprocess.exec
@@ -192,10 +192,9 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_agent_image
         vars:
           image: quay.io/mongodb/mongodb-agent-dev:${version_id}
-          image_type: agent
           expire_after: 48h
 
   - name: build_prehook_image
