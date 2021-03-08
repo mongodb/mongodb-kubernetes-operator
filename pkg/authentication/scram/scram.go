@@ -271,7 +271,7 @@ func createScramCredentialsSecret(getUpdateCreator secret.GetUpdateCreator, mdbO
 func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.NamespacedName, scramCredentialsSecretName string) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 	credentialsSecret, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName, Namespace: mdbObjectKey.Namespace})
 	if err != nil {
-		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, errors.Errorf("could not get secret %s/%s: %s", scramCredentialsSecretName, mdbObjectKey.Namespace, err)
+		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, errors.Errorf("could not get secret %s/%s: %s", mdbObjectKey.Namespace, scramCredentialsSecretName, err)
 	}
 
 	// we should really never hit this situation. It would only be possible if the secret storing credentials is manually edited.
@@ -302,7 +302,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDel
 	for _, u := range mdb.GetScramUsers() {
 		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), u)
 		if err != nil {
-			return nil, errors.Errorf("failed to convert user %s: %s", u.Username, err)
+			return nil, errors.Errorf("failed to convert scram user %s to Automation Config user: %s", u.Username, err)
 		}
 		usersWanted = append(usersWanted, acUser)
 	}
