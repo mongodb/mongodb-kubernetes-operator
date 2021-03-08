@@ -19,10 +19,8 @@ RUN mkdir -p agent \
     && chmod -R +r /var/lib/automation/config \
     && rm agent/mongodb-agent.tar.gz \
     && rm -r mongodb-mms-automation-agent-*
-RUN mkdir -p /var/lib/mongodb-mms-automation/probes/ \
-    && curl --retry 3 https://readinessprobe.s3-us-west-1.amazonaws.com/readiness -o /var/lib/mongodb-mms-automation/probes/readinessprobe \
-    && chmod +x /var/lib/mongodb-mms-automation/probes/readinessprobe \
-    && mkdir -p /var/log/mongodb-mms-automation/ \
+
+RUN mkdir -p /var/log/mongodb-mms-automation/ \
     && chmod -R +wr /var/log/mongodb-mms-automation/ \
     # ensure that the agent user can write the logs in OpenShift
     && touch /var/log/mongodb-mms-automation/readiness.log \
