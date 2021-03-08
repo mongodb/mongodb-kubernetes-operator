@@ -52,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !hasRequiredVariables(log, "AGENT_IMAGE") {
+	if !hasRequiredVariables(log, "AGENT_IMAGE", "VERSION_UPGRADE_HOOK_IMAGE", "READINESS_PROBE_IMAGE") {
 		os.Exit(1)
 	}
 
