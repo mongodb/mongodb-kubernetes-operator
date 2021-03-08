@@ -2,7 +2,6 @@ package scram
 
 import (
 	"encoding/base64"
-	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -303,7 +302,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDel
 	for _, u := range mdb.GetScramUsers() {
 		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), u)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert user %s: %s", u.Username, err)
+			return nil, errors.Errorf("failed to convert user %s: %s", u.Username, err)
 		}
 		usersWanted = append(usersWanted, acUser)
 	}
