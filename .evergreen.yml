@@ -101,6 +101,7 @@ functions:
           - quay_user_name
           - quay_password
           - expire_after
+          - image
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_agent_image.sh
 
