@@ -89,6 +89,7 @@ functions:
           - version_id
           - test
           - clusterwide
+          - distro
         binary: scripts/ci/run_test.sh
 
   # TODO: can be removed once the agent is included in the Dockerfile generator.
@@ -335,8 +336,28 @@ tasks:
 
 
 buildvariants:
-  - name: e2e_tests
-    display_name: e2e_tests
+  - name: e2e_tests_ubuntu
+    display_name: e2e_tests_ubuntu
+    expansions:
+      distro: ubuntu
+    run_on:
+      - ubuntu1604-build
+    depends_on:
+      - name: build_operator_image
+        variant: init_test_run
+      - name: build_e2e_image
+        variant: init_test_run
+      - name: build_prehook_image
+        variant: init_test_run
+      - name: build_agent_image
+        variant: init_test_run
+    tasks:
+      - name: e2e_test_group
+
+  - name: e2e_tests_ubi
+    display_name: e2e_tests_ubi
+    expansions:
+      distro: ubi
     run_on:
       - ubuntu1604-build
     depends_on:
