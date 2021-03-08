@@ -7,5 +7,5 @@ echo "${quay_password:?}" | docker login "-u=${quay_user_name:?}" quay.io --pass
 
 
 # Providing the quay.expires-after configures quay to delete this image after the provided amount of time
-docker build . --label "quay.expires-after=${expire_after:-never}" -f agent/Dockerfile -t "${image:?}"
+docker build . --label "quay.expires-after=${expire_after:-never}" -f agent/Dockerfile -t "${image:?}" --build-arg tools_version="100.2.0" --build-arg agent_version="10.27.0.6772-1"
 docker push "${image:?}"
