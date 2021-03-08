@@ -188,7 +188,7 @@ tasks:
           image_type: e2e
           expire_after: 48h
 
-  - name: build_agent_image
+  - name: build_agent_image_ubuntu
     priority: 60
     exec_timeout_secs: 600
     commands:
@@ -198,6 +198,19 @@ tasks:
         vars:
           image: quay.io/mongodb/mongodb-agent-dev:${version_id}
           expire_after: 48h
+          dockerfile_path: agent/Dockerfile
+
+  - name: build_agent_image_ubi
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_agent_image
+        vars:
+          image: quay.io/mongodb/mongodb-agent-ubi-dev:${version_id}
+          expire_after: 48h
+          dockerfile_path: agent/Dockerfile.ubi
 
   - name: build_prehook_image
     priority: 60
@@ -349,7 +362,7 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
-      - name: build_agent_image
+      - name: build_agent_image_ubuntu
         variant: init_test_run
     tasks:
       - name: e2e_test_group
@@ -367,7 +380,7 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
-      - name: build_agent_image
+      - name: build_agent_image_ubi
         variant: init_test_run
     tasks:
       - name: e2e_test_group
