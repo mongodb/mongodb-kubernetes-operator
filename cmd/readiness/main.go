@@ -66,14 +66,14 @@ func isPodReady(conf config.Config) bool {
 	}
 
 	// If the agent has reached the goal state - returning true
-	ok, err := isInGoalState(health, conf)
-
+	inGoalState, err := isInGoalState(health, conf)
 	if err != nil {
 		logger.Errorf("There was problem checking the health status: %s", err)
 		panic(err)
 	}
 
-	if ok {
+	inReadyState := isInReadyState(health)
+	if inGoalState && inReadyState {
 		logger.Info("Agent has reached goal state")
 		return true
 	}
@@ -198,6 +198,7 @@ func kubernetesClientset() (kubernetes.Interface, error) {
 	}
 	return clientset, nil
 }
+
 func main() {
 	clientSet, err := kubernetesClientset()
 	if err != nil {
@@ -221,4 +222,68 @@ func main() {
 	if !isPodReady(config) {
 		os.Exit(1)
 	}
+}
+
+// isInReadyState checks the MongoDB Server state. It returns true if the state
+// is PRIMARY or SECONDARY.
+// This function will always return true if the agent don't publish this state.
+func isInReadyState(health health.Status) bool {
+	if len(health.Healthiness) == 0 {
+		return true
+	}
+	for _, processHealth := range health.Healthiness {
+		// We know this loop should run only once, in Kubernetes there's
+		// only 1 server managed per host.
+		if processHealth.ReplicaStatus == nil {
+			// We always return true if the Agent does not publish mongodb
+			// server state
+			return true
+		}
+
+		if mongoDbServerHasStarted(health) {
+			// There should be only one entry reported for this Pod.
+			return processHealth.IsReadyState()
+		}
+	}
+	return false
+}
+
+func mongoDbServerHasStarted(health health.Status) bool {
+	plan := findCurrentPlan(health.ProcessPlans)
+	if plan == nil {
+		return false
+	}
+
+	for _, move := range plan.Moves {
+		for _, step := range move.Steps {
+			if step.Step == "StartFresh" && step.Result == "success" {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func findCurrentPlan(processStatuses map[string]health.MmsDirectorStatus) *health.PlanStatus {
+	var currentPlan *health.PlanStatus
+	if len(processStatuses) == 0 {
+		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens
+		logger.Warnf("There is no information about Agent process plans")
+		return nil
+	}
+	if len(processStatuses) > 1 {
+		logger.Errorf("Only one process status is expected but got %d!", len(processStatuses))
+		return nil
+	}
+	// There is always only one process managed by the Agent - so there will be only one loop
+	for k, v := range processStatuses {
+		if len(v.Plans) == 0 {
+			logger.Errorf("The process %s doesn't contain any plans!", k)
+			return nil
+		}
+		currentPlan = v.Plans[len(v.Plans)-1]
+	}
+
+	return currentPlan
 }
