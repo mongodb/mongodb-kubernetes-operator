@@ -100,6 +100,8 @@ func TestHeadlessAgentHasntReachedGoal(t *testing.T) {
 	assert.False(t, isPodReady(c))
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
+
+	os.Unsetenv(headlessAgent)
 }
 
 // TestHeadlessAgentReachedGoal verifies that the probe reports "true" if the config version is equal to the
@@ -111,6 +113,8 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 	assert.True(t, isPodReady(c))
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
+
+	os.Unsetenv(headlessAgent)
 }
 
 func TestPodReadiness(t *testing.T) {
