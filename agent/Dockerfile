@@ -34,4 +34,5 @@ RUN curl --fail --retry 3 --silent https://downloads.mongodb.org/tools/db/mongod
     && tar xfz mongodb-tools.tgz --directory /var/lib/mongodb-mms-automation/ \
     && rm mongodb-tools.tgz
 
+USER 2000
 CMD ["agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
