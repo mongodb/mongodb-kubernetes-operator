@@ -485,6 +485,10 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
+func (m MongoDBCommunity) GetMongoDBVersion() string {
+	return m.Spec.Version
+}
+
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
