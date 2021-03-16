@@ -147,6 +147,10 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                             "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
                         },
                         {
+                            "name": "AGENT_IMAGE",
+                            "value": f"{dev_config.repo_url}/{dev_config.agent_image}:{args.tag}",
+                        },
+                        {
                             "name": "TEST_NAMESPACE",
                             "value": dev_config.namespace,
                         },
