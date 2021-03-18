@@ -489,6 +489,10 @@ func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
+func (m MongoDBCommunity) Persistent() bool {
+	return true
+}
+
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
