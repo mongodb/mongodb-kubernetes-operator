@@ -46,6 +46,8 @@ func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient cl
 		return err
 	}
 
+	// If the object has no annotations, we first need to create an empty entry in
+	// metadata.annotations, otherwise the server will reject our request
 	payload := []patchValue{}
 	if currentObject.GetAnnotations() == nil || len(currentObject.GetAnnotations()) == 0 {
 		payload = append(payload, patchValue{
@@ -57,7 +59,8 @@ func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient cl
 
 	for key, val := range annotations {
 		payload = append(payload, patchValue{
-			Op:    "replace",
+			Op: "replace",
+			// every "/" in the value needs to be replaced with ~1 when patching
 			Path:  "/metadata/annotations/" + strings.Replace(key, "/", "~1", 1),
 			Value: val,
 		})
