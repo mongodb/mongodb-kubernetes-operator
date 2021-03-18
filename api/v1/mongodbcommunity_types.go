@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -489,12 +490,36 @@ func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
+func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
+	return m.GetMongoDBVersion()
+}
+
 func (m MongoDBCommunity) Persistent() bool {
 	return true
 }
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
+}
+
+func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType {
+	if !m.IsChangingVersion() {
+		return appsv1.RollingUpdateStatefulSetStrategyType
+	}
+	return appsv1.OnDeleteStatefulSetStrategyType
+}
+
+func (m MongoDBCommunity) IsChangingVersion() bool {
+	prevVersion := m.getPreviousVersion()
+	return prevVersion != "" && prevVersion != m.Spec.Version
+}
+
+func (m MongoDBCommunity) getPreviousVersion() string {
+	return annotations.GetLastAppliedMongoDBVersion(&m)
+}
+
+func (m MongoDBCommunity) GetAnnotations() map[string]string {
+	return m.Annotations
 }
 
 type automationConfigReplicasScaler struct {

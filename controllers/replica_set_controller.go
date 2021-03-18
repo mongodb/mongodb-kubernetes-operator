@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -186,7 +187,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
-	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
+	if err := statefulset.ResetUpdateStrategy(&mdb, r.client); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
@@ -217,7 +218,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return res, err
 	}
 
-	if err := r.updateCurrentSpecAnnotation(mdb); err != nil {
+	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
 		r.log.Errorf("Could not save current state as an annotation: %s", err)
 	}
 
@@ -260,7 +261,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 		return false, errors.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
+	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
 
@@ -331,7 +332,7 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
-	if isChangingVersion(mdb) {
+	if mdb.IsChangingVersion() {
 		r.log.Debug("Version change in progress, the StatefulSet must be updated first")
 		return false
 	}
@@ -350,19 +351,6 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		func() (bool, error) {
 			return r.deployStatefulSet(mdb)
 		})
-}
-
-// resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
-// and does not keep using OnDelete
-func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBCommunity) error {
-	if !isChangingVersion(mdb) {
-		return nil
-	}
-	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
-		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-	})
-	return err
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
@@ -387,20 +375,6 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
-}
-
-// setAnnotations updates the mongodb resource annotations by applying the provided annotations
-// on top of the existing ones
-func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
-	mdb := mdbv1.MongoDBCommunity{}
-	return r.client.GetAndUpdate(nsName, &mdb, func() {
-		if mdb.Annotations == nil {
-			mdb.Annotations = map[string]string{}
-		}
-		for key, val := range annotations {
-			mdb.Annotations[key] = val
-		}
-	})
 }
 
 // ensureAutomationConfig makes sure the AutomationConfig secret has been successfully created. The automation config
@@ -519,33 +493,6 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	)
 }
 
-func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
-	currentSpec, err := json.Marshal(mdb.Spec)
-	if err != nil {
-		return err
-	}
-
-	annotations := map[string]string{
-		lastSuccessfulConfiguration: string(currentSpec),
-	}
-	return r.setAnnotations(mdb.NamespacedName(), annotations)
-}
-
-// getPreviousSpec returns the last spec of the resource that was successfully achieved.
-func getPreviousSpec(mdb mdbv1.MongoDBCommunity) mdbv1.MongoDBCommunitySpec {
-
-	previousSpec, ok := mdb.Annotations[lastSuccessfulConfiguration]
-	if !ok {
-		return mdbv1.MongoDBCommunitySpec{}
-	}
-
-	spec := mdbv1.MongoDBCommunitySpec{}
-	if err := json.Unmarshal([]byte(previousSpec), &spec); err != nil {
-		return mdbv1.MongoDBCommunitySpec{}
-	}
-	return spec
-}
-
 // getMongodConfigModification will merge the additional configuration in the CRD
 // into the configuration set up by the operator.
 func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
@@ -558,15 +505,6 @@ func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Mo
 	}
 }
 
-// getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
-// should be configured with
-func getUpdateStrategyType(mdb mdbv1.MongoDBCommunity) appsv1.StatefulSetUpdateStrategyType {
-	if !isChangingVersion(mdb) {
-		return appsv1.RollingUpdateStatefulSetStrategyType
-	}
-	return appsv1.OnDeleteStatefulSetStrategyType
-}
-
 // buildStatefulSet takes a MongoDB resource and converts it into
 // the corresponding stateful set
 func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
@@ -575,18 +513,11 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 	return sts, nil
 }
 
-// isChangingVersion returns true if an attempted version change is occurring.
-func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
-	prevSpec := getPreviousSpec(mdb)
-	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
-}
-
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
 	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				buildTLSPodSpecModification(mdb),
