@@ -67,10 +67,11 @@ To configure the Operator to watch resources in other namespaces:
    ```sh
    kubectl apply -f deploy/clusterwide
    ```
-3. For each namespace that you want the Operator to watch, run the following commands to deploy a role and role-binding in that namespace:
+3. For each namespace that you want the Operator to watch, run the following
+   commands to deploy a Role, RoleBinding and ServiceAccount in that namespace:
 
    ```sh
-   kubectl apply -f deploy/operator/role.yaml -n <namespace> && kubectl apply -f deploy/operator/role_binding.yaml -n <namespace>
+   kubectl apply -k config/rbac -n <namespace>
    ```
 
 4. [Install the operator](#procedure).
