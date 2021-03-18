@@ -53,7 +53,6 @@ const (
 
 	// lastVersionAnnotationKey should indicate which version of MongoDB was last
 	// configured
-	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 )
 

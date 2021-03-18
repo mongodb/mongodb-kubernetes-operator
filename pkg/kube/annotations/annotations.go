@@ -23,7 +23,7 @@ type patchValue struct {
 }
 
 const (
-	lastAppliedMongoDBVersion = "mongodb.com/v1.lastAppliedMongoDBVersion"
+	LastAppliedMongoDBVersion = "mongodb.com/v1.lastAppliedMongoDBVersion"
 )
 
 func getAnnotation(object Versioned, key string) string {
@@ -36,7 +36,7 @@ func getAnnotation(object Versioned, key string) string {
 }
 
 func GetLastAppliedMongoDBVersion(object Versioned) string {
-	return getAnnotation(object, lastAppliedMongoDBVersion)
+	return getAnnotation(object, LastAppliedMongoDBVersion)
 }
 
 func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient client.Client) error {
@@ -74,7 +74,7 @@ func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient cl
 
 func UpdateLastAppliedMongoDBVersion(mdb Versioned, kubeClient client.Client) error {
 	annotations := map[string]string{
-		lastAppliedMongoDBVersion: mdb.GetMongoDBVersionForAnnotation(),
+		LastAppliedMongoDBVersion: mdb.GetMongoDBVersionForAnnotation(),
 	}
 
 	return SetAnnotations(mdb, annotations, kubeClient)
