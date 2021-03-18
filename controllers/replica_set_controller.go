@@ -218,11 +218,9 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
 		r.log.Errorf("Could not save current version as an annotation: %s", err)
 	}
-	r.log.Debugf("Annotations: %+v", mdb.GetAnnotations())
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
 		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
-	r.log.Debugf("Annotations: %+v", mdb.GetAnnotations())
 
 	if res.RequeueAfter > 0 || res.Requeue {
 		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
