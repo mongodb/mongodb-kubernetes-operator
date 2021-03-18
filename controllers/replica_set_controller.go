@@ -215,6 +215,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return res, err
 	}
 
+	// the last version will be duplicated in two annotations.
+	// This is needed to reuse the update strategy logic in enterprise
 	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
 		r.log.Errorf("Could not save current version as an annotation: %s", err)
 	}
@@ -231,6 +233,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	return res, err
 }
 
+// updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
 func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
 	currentSpec, err := json.Marshal(mdb.Spec)
 	if err != nil {

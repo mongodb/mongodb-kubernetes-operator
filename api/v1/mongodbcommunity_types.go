@@ -490,6 +490,9 @@ func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
+// GetMongoDBVersionForAnnotation returns the MDB version used to annotate the object.
+// Here it's the same of GetMongoDBVersion, but a different name is used in order to make
+// the usage clearer in enterprise (where it's a method of OpsManager but is used for the AppDB)
 func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 	return m.GetMongoDBVersion()
 }
@@ -502,6 +505,8 @@ func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
 }
 
+// GetUpdateStrategyType returns the type of RollingUpgradeStrategy that the
+// MongoDB StatefulSet should be configured with.
 func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType {
 	if !m.IsChangingVersion() {
 		return appsv1.RollingUpdateStatefulSetStrategyType
@@ -509,11 +514,13 @@ func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrate
 	return appsv1.OnDeleteStatefulSetStrategyType
 }
 
+// IsChangingVersion returns true if an attempted version change is occurring.
 func (m MongoDBCommunity) IsChangingVersion() bool {
 	prevVersion := m.getPreviousVersion()
 	return prevVersion != "" && prevVersion != m.Spec.Version
 }
 
+// GetPreviousVersion returns the last MDB version the statefulset was configured with.
 func (m MongoDBCommunity) getPreviousVersion() string {
 	return annotations.GetLastAppliedMongoDBVersion(&m)
 }

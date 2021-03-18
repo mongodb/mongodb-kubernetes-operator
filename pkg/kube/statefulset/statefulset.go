@@ -299,6 +299,8 @@ func VolumeMountWithNameExists(mounts []corev1.VolumeMount, volumeName string) b
 	return false
 }
 
+// ResetUpdateStrategy resets the statefulset update strategy to RollingUpdate.
+// If a version change is in progress, it doesn't do anything.
 func ResetUpdateStrategy(mdb annotations.Versioned, kubeClient GetUpdater) error {
 	if !mdb.IsChangingVersion() {
 		return nil
