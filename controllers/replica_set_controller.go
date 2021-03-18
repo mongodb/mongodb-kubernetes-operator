@@ -51,8 +51,6 @@ import (
 const (
 	clusterDNSName = "CLUSTER_DNS_NAME"
 
-	// lastVersionAnnotationKey should indicate which version of MongoDB was last
-	// configured
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 )
 
@@ -218,8 +216,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
-		r.log.Errorf("Could not save current state as an annotation: %s", err)
+		r.log.Errorf("Could not save current version as an annotation: %s", err)
 	}
+	r.log.Debugf("Annotations: %+v", mdb.GetAnnotations())
+	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
+		r.log.Errorf("Could not save current spec as an annotation: %s", err)
+	}
+	r.log.Debugf("Annotations: %+v", mdb.GetAnnotations())
 
 	if res.RequeueAfter > 0 || res.Requeue {
 		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
@@ -228,6 +231,18 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 	return res, err
+}
+
+func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
+	currentSpec, err := json.Marshal(mdb.Spec)
+	if err != nil {
+		return err
+	}
+
+	specAnnotations := map[string]string{
+		lastSuccessfulConfiguration: string(currentSpec),
+	}
+	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
 }
 
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
