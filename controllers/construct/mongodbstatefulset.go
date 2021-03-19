@@ -105,12 +105,12 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 			mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 		} else {
 			mounts := []corev1.VolumeMount{
-				statefulset.CreateVolumeMount("data", "/data", statefulset.WithSubPath("data")),
-				statefulset.CreateVolumeMount("data", automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
+				statefulset.CreateVolumeMount(dataVolumeName, "/data", statefulset.WithSubPath("data")),
+				statefulset.CreateVolumeMount(dataVolumeName, automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 			}
 			mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
 			mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
-			singleModeVolumeClaim = statefulset.WithVolumeClaim("data", dataPvc())
+			singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
 		}
 	}
 	return statefulset.Apply(
