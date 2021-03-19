@@ -53,7 +53,8 @@ type MongoDBStatefulSetOwner interface {
 	GetMongoDBVersion() string
 	AutomationConfigSecretName() string
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
-	Persistent() bool
+	IsPersistent() bool
+	HasSeparateDataAndLogsVolumes() bool
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
 
@@ -83,24 +84,35 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-
 	mode := int32(0600)
 	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 	keyFileVolume := statefulset.CreateVolumeFromSecret(keyFileNsName.Name, keyFileNsName.Name, statefulset.WithSecretDefaultMode(&mode))
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
-	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, scriptsVolumeMount, logVolumeMount, keyFileVolumeVolumeMount}
-	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, logVolumeMount, keyFileVolumeVolumeMountMongod}
+	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount}
+	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod}
 	dataVolumeClaim := func(s *appsv1.StatefulSet) {}
-	if mdb.Persistent() {
-		dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-		dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
-		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount)
-		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount)
+	logVolumeClaim := func(s *appsv1.StatefulSet) {}
+	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
+	if mdb.IsPersistent() {
+		if mdb.HasSeparateDataAndLogsVolumes() {
+			logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
+			dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
+			dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+			logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
+			mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
+			mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
+		} else {
+			mounts := []corev1.VolumeMount{
+				statefulset.CreateVolumeMount("data", "/data", statefulset.WithSubPath("data")),
+				statefulset.CreateVolumeMount("data", automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
+			}
+			mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
+			mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
+			singleModeVolumeClaim = statefulset.WithVolumeClaim("data", dataPvc())
+		}
 	}
-
 	return statefulset.Apply(
 		statefulset.WithName(mdb.GetName()),
 		statefulset.WithNamespace(mdb.GetNamespace()),
@@ -110,7 +122,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		statefulset.WithReplicas(scale.ReplicasThisReconciliation(scaler)),
 		statefulset.WithUpdateStrategyType(mdb.GetUpdateStrategyType()),
 		dataVolumeClaim,
-		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
+		logVolumeClaim,
+		singleModeVolumeClaim,
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				podtemplatespec.WithPodLabels(labels),

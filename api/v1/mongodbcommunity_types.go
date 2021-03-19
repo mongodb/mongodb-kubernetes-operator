@@ -497,7 +497,7 @@ func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 	return m.GetMongoDBVersion()
 }
 
-func (m MongoDBCommunity) Persistent() bool {
+func (m MongoDBCommunity) IsPersistent() bool {
 	return true
 }
 
@@ -523,6 +523,10 @@ func (m MongoDBCommunity) IsChangingVersion() bool {
 // GetPreviousVersion returns the last MDB version the statefulset was configured with.
 func (m MongoDBCommunity) getPreviousVersion() string {
 	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
+}
+
+func (m MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
+	return true
 }
 
 func (m MongoDBCommunity) GetAnnotations() map[string]string {
