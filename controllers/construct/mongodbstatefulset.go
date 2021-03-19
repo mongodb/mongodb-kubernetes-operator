@@ -52,6 +52,7 @@ type MongoDBStatefulSetOwner interface {
 	GetNamespace() string
 	GetMongoDBVersion() string
 	AutomationConfigSecretName() string
+	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
 	Persistent() bool
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
@@ -107,6 +108,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithReplicas(scale.ReplicasThisReconciliation(scaler)),
+		statefulset.WithUpdateStrategyType(mdb.GetUpdateStrategyType()),
 		dataVolumeClaim,
 		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
