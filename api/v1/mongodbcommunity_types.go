@@ -491,7 +491,7 @@ func (m MongoDBCommunity) GetMongoDBVersion() string {
 }
 
 // GetMongoDBVersionForAnnotation returns the MDB version used to annotate the object.
-// Here it's the same of GetMongoDBVersion, but a different name is used in order to make
+// Here it's the same as GetMongoDBVersion, but a different name is used in order to make
 // the usage clearer in enterprise (where it's a method of OpsManager but is used for the AppDB)
 func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 	return m.GetMongoDBVersion()
@@ -522,7 +522,7 @@ func (m MongoDBCommunity) IsChangingVersion() bool {
 
 // GetPreviousVersion returns the last MDB version the statefulset was configured with.
 func (m MongoDBCommunity) getPreviousVersion() string {
-	return annotations.GetLastAppliedMongoDBVersion(&m)
+	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
 }
 
 func (m MongoDBCommunity) GetAnnotations() map[string]string {
