@@ -71,7 +71,7 @@ To configure the Operator to watch resources in other namespaces:
    commands to deploy a Role, RoleBinding and ServiceAccount in that namespace:
 
    ```sh
-   kubectl apply -k config/rbac -n <namespace>
+   kubectl apply -k config/rbac --namespace <my-namespace>
    ```
 
 4. [Install the operator](#procedure).
@@ -132,15 +132,15 @@ To install the MongoDB Community Kubernetes Operator:
 
     a. Invoke the following command:
     ```
-    kubectl apply -k config/rbac/
+    kubectl apply -k config/rbac/ --namespace <my-namespace>
     ```
     b. Verify that the resources have been created:
     ```
-    kubectl get role mongodb-kubernetes-operator
+    kubectl get role mongodb-kubernetes-operator --namespace <my-namespace>
 
-    kubectl get rolebinding mongodb-kubernetes-operator
+    kubectl get rolebinding mongodb-kubernetes-operator --namespace <my-namespace>
 
-    kubectl get serviceaccount mongodb-kubernetes-operator
+    kubectl get serviceaccount mongodb-kubernetes-operator --namespace <my-namespace>
     ```
 4. Install the Operator.
 
