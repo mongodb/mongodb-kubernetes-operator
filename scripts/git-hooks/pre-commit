@@ -20,11 +20,7 @@ function go_imports() {
 function generate_crd(){
   echo "Generating CRD"
   make manifests
-  for file in $(git diff --cached --name-only --diff-filter=ACM | grep '\.yaml$')
-  do
-      goimports -w "${file}"
-      git add "$file"
-  done
+  git add config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 }
 
 function mypy_check()
