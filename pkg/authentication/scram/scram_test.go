@@ -185,21 +185,24 @@ func TestConfigureScram(t *testing.T) {
 		err := Enable(&auth, s, mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.GetAgentScramCredentialsNamespacedName())
+		passwordSecret, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
-		assert.NotEmpty(t, agentCredentialsSecret.Data[AgentPasswordKey])
-		assert.NotEmpty(t, agentCredentialsSecret.Data[AgentKeyfileKey])
+		assert.True(t, secret.HasAllKeys(passwordSecret, AgentPasswordKey))
+		assert.NotEmpty(t, passwordSecret.Data[AgentPasswordKey])
+
+		keyfileSecret, err := s.GetSecret(mdb.GetAgentKeyfileSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.True(t, secret.HasAllKeys(keyfileSecret, AgentKeyfileKey))
+		assert.NotEmpty(t, keyfileSecret.Data[AgentKeyfileKey])
 	})
 
-	t.Run("Agent Secret is used if it exists", func(t *testing.T) {
+	t.Run("Agent Password Secret is used if it exists", func(t *testing.T) {
 		mdb := buildConfigurable("mdb-0")
 
 		agentPasswordSecret := secret.Builder().
-			SetName(mdb.GetAgentScramCredentialsNamespacedName().Name).
-			SetNamespace(mdb.GetAgentScramCredentialsNamespacedName().Namespace).
+			SetName(mdb.GetAgentPasswordSecretNamespacedName().Name).
+			SetNamespace(mdb.GetAgentPasswordSecretNamespacedName().Namespace).
 			SetField(AgentPasswordKey, "A21Zv5agv3EKXFfM").
-			SetField(AgentKeyfileKey, "RuPeMaIe2g0SNTTa").
 			Build()
 
 		s := newMockedSecretGetUpdateCreateDeleter(agentPasswordSecret)
@@ -207,11 +210,32 @@ func TestConfigureScram(t *testing.T) {
 		err := Enable(&auth, s, mdb)
 		assert.NoError(t, err)
 
-		agentCredentialsSecret, err := s.GetSecret(mdb.GetAgentScramCredentialsNamespacedName())
+		ps, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
 		assert.NoError(t, err)
-		assert.True(t, secret.HasAllKeys(agentCredentialsSecret, AgentKeyfileKey, AgentPasswordKey))
-		assert.Equal(t, "A21Zv5agv3EKXFfM", string(agentCredentialsSecret.Data[AgentPasswordKey]))
-		assert.Equal(t, "RuPeMaIe2g0SNTTa", string(agentCredentialsSecret.Data[AgentKeyfileKey]))
+		assert.True(t, secret.HasAllKeys(ps, AgentPasswordKey))
+		assert.NotEmpty(t, ps.Data[AgentPasswordKey])
+		assert.Equal(t, "A21Zv5agv3EKXFfM", string(ps.Data[AgentPasswordKey]))
+
+	})
+
+	t.Run("Agent Keyfile Secret is used if present", func(t *testing.T) {
+		mdb := buildConfigurable("mdb-0")
+
+		keyfileSecret := secret.Builder().
+			SetName(mdb.GetAgentKeyfileSecretNamespacedName().Name).
+			SetNamespace(mdb.GetAgentKeyfileSecretNamespacedName().Namespace).
+			SetField(AgentKeyfileKey, "RuPeMaIe2g0SNTTa").
+			Build()
+
+		s := newMockedSecretGetUpdateCreateDeleter(keyfileSecret)
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
+		assert.NoError(t, err)
+
+		ks, err := s.GetSecret(mdb.GetAgentKeyfileSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.True(t, secret.HasAllKeys(ks, AgentKeyfileKey))
+		assert.Equal(t, "RuPeMaIe2g0SNTTa", string(ks.Data[AgentKeyfileKey]))
 
 	})
 

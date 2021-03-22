@@ -25,12 +25,13 @@ func defaultMongoDbVersion(version string) MongoDbVersionConfig {
 }
 
 func TestBuildAutomationConfig(t *testing.T) {
+	fcv := "4.0"
 	ac, err := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
-		SetFCV("4.0").
+		SetFCV(&fcv).
 		Build()
 
 	assert.NoError(t, err)
@@ -42,12 +43,12 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
 		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
-		assert.Equal(t, toHostName("my-rs", i), p.Name)
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
 
-	assert.Empty(t, ac.TLS.CAFilePath, "the config shouldn't have a trusted CA")
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
 
 	assert.Len(t, ac.ReplicaSets, 1)
 	rs := ac.ReplicaSets[0]
@@ -134,6 +135,7 @@ func TestHasOptions(t *testing.T) {
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
+		SetOptions(Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		Build()
 
 	assert.NoError(t, err)
@@ -232,4 +234,53 @@ func TestMongoDBVersionsConfig(t *testing.T) {
 
 	})
 
+}
+
+func TestAreEqual(t *testing.T) {
+	t.Run("Automation Configs with same values are equal", func(t *testing.T) {
+
+		areEqual, err := AreEqual(
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+		)
+
+		assert.NoError(t, err)
+		assert.True(t, areEqual)
+	})
+
+	t.Run("Automation Configs with same values but different version are equal", func(t *testing.T) {
+
+		areEqual, err := AreEqual(
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 10),
+		)
+
+		assert.NoError(t, err)
+		assert.True(t, areEqual)
+	})
+
+	t.Run("Automation Configs with different values are not equal", func(t *testing.T) {
+
+		areEqual, err := AreEqual(
+			createAutomationConfig("name0", "differentVersion", "domain0", Options{DownloadBase: "downloadBase1"}, Auth{Disabled: false}, 2, 2),
+			createAutomationConfig("name0", "mdbVersion0", "domain0", Options{DownloadBase: "downloadBase0"}, Auth{Disabled: true}, 5, 2),
+		)
+
+		assert.NoError(t, err)
+		assert.False(t, areEqual)
+	})
+}
+
+func createAutomationConfig(name, mongodbVersion, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
+	ac, _ := NewBuilder().
+		SetName(name).
+		SetMongoDBVersion(mongodbVersion).
+		SetOptions(opts).
+		SetDomain(domain).
+		SetMembers(members).
+		SetAuth(auth).
+		Build()
+
+	ac.Version = acVersion
+	return ac
 }

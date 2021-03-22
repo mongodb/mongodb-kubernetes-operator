@@ -30,6 +30,10 @@ func NewManager(obj k8sClient.Object) *MockedManager {
 	return &MockedManager{Client: NewClient(c)}
 }
 
+func NewManagerWithClient(c k8sClient.Client) *MockedManager {
+	return &MockedManager{Client: NewClient(c)}
+}
+
 func (m *MockedManager) Add(_ manager.Runnable) error {
 	return nil
 }

@@ -1,6 +1,7 @@
 package statefulset
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -296,4 +297,18 @@ func VolumeMountWithNameExists(mounts []corev1.VolumeMount, volumeName string) b
 		}
 	}
 	return false
+}
+
+// ResetUpdateStrategy resets the statefulset update strategy to RollingUpdate.
+// If a version change is in progress, it doesn't do anything.
+func ResetUpdateStrategy(mdb annotations.Versioned, kubeClient GetUpdater) error {
+	if !mdb.IsChangingVersion() {
+		return nil
+	}
+
+	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
+	_, err := GetAndUpdate(kubeClient, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
+		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+	})
+	return err
 }

@@ -3,6 +3,8 @@ package automationconfig
 import (
 	"encoding/json"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,6 +12,16 @@ import (
 )
 
 const ConfigKey = "cluster-config.json"
+
+// ReadFromSecret returns the AutomationConfig present in the given Secret. If the Secret is not
+// found, it is not considered an error and an empty AutomationConfig is returned.
+func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
+	acSecret, err := secretGetter.GetSecret(secretNsName)
+	if err != nil {
+		return AutomationConfig{}, client.IgnoreNotFound(err)
+	}
+	return FromBytes(acSecret.Data[ConfigKey])
+}
 
 // EnsureSecret makes sure that the AutomationConfig secret exists with the desired config.
 // if the desired config is the same as the current contents, no change is made.
@@ -38,11 +50,16 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 			return AutomationConfig{}, err
 		}
 		// we are attempting to update with the same version, no change is required.
-		if AreEqual(desiredAutomationConfig, existingAutomationConfig) {
+		areEqual, err := AreEqual(desiredAutomationConfig, existingAutomationConfig)
+		if err != nil {
+			return AutomationConfig{}, err
+		}
+		if areEqual {
 			return existingAutomationConfig, nil
 		}
 		existingSecret.Data[ConfigKey] = acBytes
 	}
+
 	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 

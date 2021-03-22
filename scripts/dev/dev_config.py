@@ -39,8 +39,8 @@ class DevConfig:
         return self._config["version_upgrade_hook_image"]
 
     @property
-    def testrunner_image(self) -> str:
-        return self._config["testrunner_image"]
+    def agent_image(self) -> str:
+        return self._config["agent_image"]
 
 
 def load_config(config_file_path: str = None) -> DevConfig:

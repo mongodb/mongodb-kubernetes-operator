@@ -145,6 +145,7 @@ func deployOperator() error {
 		withOperatorImage(testConfig.operatorImage),
 		withVersionUpgradeHookImage(testConfig.versionUpgradeHookImage),
 		withEnvVar("WATCH_NAMESPACE", watchNamespace),
+		withEnvVar("AGENT_IMAGE", testConfig.agentImage),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
