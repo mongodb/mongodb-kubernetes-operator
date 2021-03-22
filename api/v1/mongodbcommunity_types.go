@@ -335,6 +335,7 @@ type Authentication struct {
 
 	// +optional
 	// +kubebuilder:default:=true
+	// +nullable
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
 }
 

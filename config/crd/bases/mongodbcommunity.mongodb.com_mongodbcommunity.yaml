@@ -78,6 +78,7 @@ spec:
                 authentication:
                   properties:
                     ignoreUnknownUsers:
+                      nullable: true
                       type: boolean
                     modes:
                       description: Modes is an array specifying which authentication
