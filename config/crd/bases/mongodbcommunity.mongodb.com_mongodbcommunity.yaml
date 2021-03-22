@@ -51,6 +51,7 @@ spec:
               description: 'AdditionalMongodConfig is additional configuration that
                 can be passed to each data-bearing mongod at runtime. Uses the same
                 structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
+              nullable: true
               type: object
             featureCompatibilityVersion:
               description: FeatureCompatibilityVersion configures the feature compatibility
@@ -77,9 +78,12 @@ spec:
               properties:
                 authentication:
                   properties:
+                    ignoreUnknownUsers:
+                      nullable: true
+                      type: boolean
                     modes:
                       description: Modes is an array specifying which authentication
-                        methods should be enabled
+                        methods should be enabled.
                       items:
                         enum:
                         - SCRAM

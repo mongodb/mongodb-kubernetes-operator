@@ -17,6 +17,12 @@ function go_imports() {
 
 }
 
+function generate_crd(){
+  echo "Generating CRD"
+  make manifests
+  git add config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+}
+
 function mypy_check()
 {
     local exit_status=0
@@ -67,8 +73,7 @@ function black_formatting()
     done
 }
 
-
-
+generate_crd
 go_imports
 black_formatting
 if ! mypy_check; then
