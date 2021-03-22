@@ -78,9 +78,12 @@ spec:
               properties:
                 authentication:
                   properties:
+                    ignoreUnknownUsers:
+                      nullable: true
+                      type: boolean
                     modes:
                       description: Modes is an array specifying which authentication
-                        methods should be enabled
+                        methods should be enabled.
                       items:
                         enum:
                         - SCRAM
