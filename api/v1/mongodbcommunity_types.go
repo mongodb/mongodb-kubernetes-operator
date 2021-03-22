@@ -331,7 +331,7 @@ type Authentication struct {
 	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
 	// will not be removed.
 	// +optional
-	IgnoreUnknownUsers bool `json:"ignoreUnknownUsers"`
+	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
@@ -375,8 +375,14 @@ func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.Namespaced
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
+
+	ignoreUnknownUsers := true
+	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
+		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
+	}
+
 	return scram.Options{
-		AuthoritativeSet:   !m.Spec.Security.Authentication.IgnoreUnknownUsers,
+		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
 		AutoAuthMechanisms: []string{scram.Sha256},
 		AgentName:          scram.AgentName,
