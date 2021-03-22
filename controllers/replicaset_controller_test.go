@@ -476,6 +476,48 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 }
 
+func TestIgnoreUnknownUsers(t *testing.T) {
+	t.Run("Ignore Unkown Users set to true", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := true
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers is not set", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = nil
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers set to false", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := false
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+		assertAuthoritativeSet(t, mdb, true)
+	})
+
+}
+
+// assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
+// results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
+func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+
+	bytes := s.Data[automationconfig.ConfigKey]
+	ac, err := automationconfig.FromBytes(bytes)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedValue, ac.Auth.AuthoritativeSet)
+}
+
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
