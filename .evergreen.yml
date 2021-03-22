@@ -91,6 +91,19 @@ functions:
           - clusterwide
         binary: scripts/ci/run_test.sh
 
+  # TODO: can be removed once the agent is included in the Dockerfile generator.
+  build_and_push_agent_image:
+    - command: subprocess.exec
+      type: setup
+      params:
+        include_expansions_in_env:
+          - version_id
+          - quay_user_name
+          - quay_password
+          - expire_after
+          - image
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/build_and_push_agent_image.sh
 
   build_and_push_image:
     - command: subprocess.exec
@@ -172,6 +185,17 @@ tasks:
         vars:
           image: quay.io/mongodb/community-operator-e2e:${version_id}
           image_type: e2e
+          expire_after: 48h
+
+  - name: build_agent_image
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_agent_image
+        vars:
+          image: quay.io/mongodb/mongodb-agent-dev:${version_id}
           expire_after: 48h
 
   - name: build_prehook_image
@@ -322,6 +346,8 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
+      - name: build_agent_image
+        variant: init_test_run
     tasks:
       - name: e2e_test_group
 
@@ -333,6 +359,7 @@ buildvariants:
       - name: build_operator_image
       - name: build_e2e_image
       - name: build_prehook_image
+      - name: build_agent_image
 
   - name: release_blocker
     display_name: release_blocker
@@ -349,6 +376,8 @@ buildvariants:
       - name: build_operator_image
         variant: init_test_run
       - name: build_prehook_image
+        variant: init_test_run
+      - name: build_agent_image
         variant: init_test_run
     run_on:
       - ubuntu1604-test

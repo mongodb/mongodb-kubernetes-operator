@@ -20,6 +20,7 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
@@ -208,7 +209,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, Same Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.0.0"
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = "4.0.0"
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -216,7 +217,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, First Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		delete(mdb.Annotations, lastVersionAnnotationKey)
+		delete(mdb.Annotations, annotations.LastAppliedMongoDBVersion)
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -233,7 +234,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		bytes, err := json.Marshal(prevSpec)
 		assert.NoError(t, err)
 
-		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
 
 		assert.NoError(t, err)
