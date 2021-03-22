@@ -9,7 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.10
 	github.com/klauspost/compress v1.9.8 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cast v1.3.0
+	github.com/spf13/cast v1.3.1
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/xdg/stringprep v1.0.0
