@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -51,6 +52,8 @@ type MongoDBStatefulSetOwner interface {
 	GetNamespace() string
 	GetMongoDBVersion() string
 	AutomationConfigSecretName() string
+	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
+	Persistent() bool
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
 
@@ -80,7 +83,6 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
 	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
 
 	mode := int32(0600)
@@ -89,6 +91,16 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
+	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, scriptsVolumeMount, logVolumeMount, keyFileVolumeVolumeMount}
+	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, logVolumeMount, keyFileVolumeVolumeMountMongod}
+	dataVolumeClaim := func(s *appsv1.StatefulSet) {}
+	if mdb.Persistent() {
+		dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
+		dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount)
+		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount)
+	}
+
 	return statefulset.Apply(
 		statefulset.WithName(mdb.GetName()),
 		statefulset.WithNamespace(mdb.GetNamespace()),
@@ -96,7 +108,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		statefulset.WithLabels(labels),
 		statefulset.WithMatchLabels(labels),
 		statefulset.WithReplicas(scale.ReplicasThisReconciliation(scaler)),
-		statefulset.WithVolumeClaim(dataVolumeName, dataPvc()),
+		statefulset.WithUpdateStrategyType(mdb.GetUpdateStrategyType()),
+		dataVolumeClaim,
 		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
@@ -107,8 +120,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount, keyFileVolumeVolumeMount})),
-				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount, keyFileVolumeVolumeMountMongod})),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
+				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts)),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 			),

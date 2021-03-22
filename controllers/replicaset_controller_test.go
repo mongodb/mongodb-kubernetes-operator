@@ -20,6 +20,7 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
@@ -208,7 +209,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, Same Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.0.0"
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = "4.0.0"
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -216,7 +217,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, First Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		delete(mdb.Annotations, lastVersionAnnotationKey)
+		delete(mdb.Annotations, annotations.LastAppliedMongoDBVersion)
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -233,7 +234,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		bytes, err := json.Marshal(prevSpec)
 		assert.NoError(t, err)
 
-		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
 
 		assert.NoError(t, err)
@@ -473,6 +474,48 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 
 	assert.Equal(t, false, res.Requeue)
 	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
+}
+
+func TestIgnoreUnknownUsers(t *testing.T) {
+	t.Run("Ignore Unkown Users set to true", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := true
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers is not set", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = nil
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers set to false", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := false
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+		assertAuthoritativeSet(t, mdb, true)
+	})
+
+}
+
+// assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
+// results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
+func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+
+	bytes := s.Data[automationconfig.ConfigKey]
+	ac, err := automationconfig.FromBytes(bytes)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedValue, ac.Auth.AuthoritativeSet)
 }
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
