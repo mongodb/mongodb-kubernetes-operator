@@ -330,7 +330,11 @@ type Authentication struct {
 
 	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
 	// will not be removed.
+
+	// TODO: defaults will work once we update to v1 CRD.
+
 	// +optional
+	// +kubebuilder:default:=true
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
 }
 
