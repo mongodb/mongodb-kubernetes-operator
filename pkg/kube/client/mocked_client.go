@@ -2,13 +2,17 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"reflect"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -96,7 +100,50 @@ func (m *mockedClient) Update(_ context.Context, obj k8sClient.Object, _ ...k8sC
 	return nil
 }
 
-func (m *mockedClient) Patch(_ context.Context, _ k8sClient.Object, _ k8sClient.Patch, _ ...k8sClient.PatchOption) error {
+type patchValue struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
+}
+
+func (m *mockedClient) Patch(_ context.Context, obj k8sClient.Object, patch k8sClient.Patch, _ ...k8sClient.PatchOption) error {
+	if patch.Type() != types.JSONPatchType {
+		return fmt.Errorf("patch types different from JSONPatchType are not yet implemented")
+	}
+	relevantMap := m.ensureMapFor(obj)
+	objKey := k8sClient.ObjectKeyFromObject(obj)
+	patches := []patchValue{}
+	data, err := patch.Data(obj)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(data, &patches)
+	if err != nil {
+		return err
+	}
+	objectAnnotations := obj.GetAnnotations()
+	for _, patch := range patches {
+		if patch.Op != "replace" {
+			return fmt.Errorf("patch operations different from \"replace\" are not yet implemented")
+		}
+		if !strings.HasPrefix(patch.Path, "/metadata/annotations") {
+			return fmt.Errorf("patch that modify something different from annotations are not yet implemented")
+		}
+		if patch.Path == "/metadata/annotations" {
+			objectAnnotations = map[string]string{}
+			continue
+		}
+		pathElements := strings.SplitAfterN(patch.Path, "/metadata/annotations/", 2)
+		finalPatchPath := strings.Replace(pathElements[1], "~1", "/", 1)
+		switch val := patch.Value.(type) {
+		case string:
+			objectAnnotations[finalPatchPath] = val
+		default:
+			return fmt.Errorf("patch operations with values that are not strings are not implemented yet: %+v", pathElements[1])
+		}
+	}
+	obj.SetAnnotations(objectAnnotations)
+	relevantMap[objKey] = obj
 	return nil
 }
 

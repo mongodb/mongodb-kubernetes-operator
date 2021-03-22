@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -78,6 +79,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
@@ -324,8 +326,18 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
-	// Modes is an array specifying which authentication methods should be enabled
+	// Modes is an array specifying which authentication methods should be enabled.
 	Modes []AuthMode `json:"modes"`
+
+	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
+	// will not be removed.
+
+	// TODO: defaults will work once we update to v1 CRD.
+
+	// +optional
+	// +kubebuilder:default:=true
+	// +nullable
+	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
@@ -369,8 +381,14 @@ func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.Namespaced
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
+
+	ignoreUnknownUsers := true
+	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
+		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
+	}
+
 	return scram.Options{
-		AuthoritativeSet:   true,
+		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
 		AutoAuthMechanisms: []string{scram.Sha256},
 		AgentName:          scram.AgentName,
@@ -489,8 +507,43 @@ func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
+// GetMongoDBVersionForAnnotation returns the MDB version used to annotate the object.
+// Here it's the same as GetMongoDBVersion, but a different name is used in order to make
+// the usage clearer in enterprise (where it's a method of OpsManager but is used for the AppDB)
+func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
+	return m.GetMongoDBVersion()
+}
+
+func (m MongoDBCommunity) Persistent() bool {
+	return true
+}
+
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(m)
+}
+
+// GetUpdateStrategyType returns the type of RollingUpgradeStrategy that the
+// MongoDB StatefulSet should be configured with.
+func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType {
+	if !m.IsChangingVersion() {
+		return appsv1.RollingUpdateStatefulSetStrategyType
+	}
+	return appsv1.OnDeleteStatefulSetStrategyType
+}
+
+// IsChangingVersion returns true if an attempted version change is occurring.
+func (m MongoDBCommunity) IsChangingVersion() bool {
+	prevVersion := m.getPreviousVersion()
+	return prevVersion != "" && prevVersion != m.Spec.Version
+}
+
+// GetPreviousVersion returns the last MDB version the statefulset was configured with.
+func (m MongoDBCommunity) getPreviousVersion() string {
+	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
+}
+
+func (m MongoDBCommunity) GetAnnotations() map[string]string {
+	return m.Annotations
 }
 
 type automationConfigReplicasScaler struct {
