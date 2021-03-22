@@ -79,6 +79,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
