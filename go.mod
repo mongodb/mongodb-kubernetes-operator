@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/go-logr/logr v0.3.0
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/imdario/mergo v0.3.10
+	github.com/imdario/mergo v0.3.12
 	github.com/klauspost/compress v1.9.8 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.3.1
