@@ -242,28 +242,29 @@ func getMongoDBImage(version string) string {
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
-	mongoDbCommand := []string{
-		"/bin/sh",
-		"-c",
-		`
-# run post-start hook to handle version changes
+	mongoDbCommand := fmt.Sprintf(`
+#run post-start hook to handle version changes
 /hooks/version-upgrade
 
 # wait for config and keyfile to be created by the agent
- while ! [ -f ` + automationconfFilePath +
-			` -a -f ` + keyfileFilePath +
-			` ]; do sleep 3 ; done ; sleep 2 ;
+ while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
 
 
 # start mongod with this configuration
-exec mongod -f ` + automationconfFilePath + ` ;`,
+exec mongod -f %s;
+`, automationconfFilePath, keyfileFilePath, automationconfFilePath)
+
+	containerCommand := []string{
+		"/bin/sh",
+		"-c",
+		mongoDbCommand,
 	}
 
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithCommand(mongoDbCommand),
+		container.WithCommand(containerCommand),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
