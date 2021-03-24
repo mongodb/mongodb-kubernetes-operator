@@ -144,6 +144,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
+		container.WithSecurityContext(container.DefaultSecurityContext()),
 		container.WithCommand([]string{"/bin/bash", "-c", `current_uid=$(id -u)
 echo $current_uid
 declare -r current_uid
