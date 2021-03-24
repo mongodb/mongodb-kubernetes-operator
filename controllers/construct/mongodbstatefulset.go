@@ -112,6 +112,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
+				podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext()),
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
@@ -244,8 +245,9 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 # run post-start hook to handle version changes
 /hooks/version-upgrade
 
-# wait for config to be created by the agent
-while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+# wait for config and keyfile to be created by the agent
+ while ! [ -f /data/automation-mongod.conf -a -f /var/lib/mongodb-mms-automation/authentication/keyfile ]; do sleep 3 ; done ; sleep 2 ;
+
 
 # start mongod with this configuration
 exec mongod -f /data/automation-mongod.conf ;
@@ -264,5 +266,7 @@ exec mongod -f /data/automation-mongod.conf ;
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
+
+		container.WithSecurityContext(container.DefaultSecurityContext()),
 	)
 }
