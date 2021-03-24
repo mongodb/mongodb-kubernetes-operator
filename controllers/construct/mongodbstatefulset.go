@@ -43,6 +43,9 @@ const (
 	headlessAgentEnv           = "HEADLESS_AGENT"
 	podNamespaceEnv            = "POD_NAMESPACE"
 	automationConfigEnv        = "AUTOMATION_CONFIG_MAP"
+
+	automationconfFilePath = "/data/automation-mongod.conf"
+	keyfileFilePath        = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 )
 
 // MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
@@ -53,7 +56,7 @@ type MongoDBStatefulSetOwner interface {
 	GetMongoDBVersion() string
 	AutomationConfigSecretName() string
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
-	IsPersistent() bool
+	Persistent() bool
 	HasSeparateDataAndLogsVolumes() bool
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
@@ -84,9 +87,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	mode := int32(0600)
 	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
-	keyFileVolume := statefulset.CreateVolumeFromSecret(keyFileNsName.Name, keyFileNsName.Name, statefulset.WithSecretDefaultMode(&mode))
+	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName.Name)
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
@@ -95,7 +97,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	dataVolumeClaim := func(s *appsv1.StatefulSet) {}
 	logVolumeClaim := func(s *appsv1.StatefulSet) {}
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
-	if mdb.IsPersistent() {
+	if mdb.Persistent() {
 		if mdb.HasSeparateDataAndLogsVolumes() {
 			logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
 			dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
@@ -126,6 +128,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		singleModeVolumeClaim,
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
+				podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext()),
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
@@ -142,6 +145,14 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
+	agentCommand := strings.Join([]string{
+		"agent/mongodb-agent",
+		"-cluster=" + clusterFilePath,
+		"-skipMongoStart",
+		"-noDaemonize",
+		"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
+		"-serveStatusPort=5000",
+		"-useLocalMongoDbTools"}, " ")
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -149,16 +160,19 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand([]string{
-			"agent/mongodb-agent",
-			"-cluster=" + clusterFilePath,
-			"-skipMongoStart",
-			"-noDaemonize",
-			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
-			"-serveStatusPort=5000",
-			"-useLocalMongoDbTools",
-		},
-		),
+		container.WithSecurityContext(container.DefaultSecurityContext()),
+		container.WithCommand([]string{"/bin/bash", "-c", `current_uid=$(id -u)
+echo $current_uid
+declare -r current_uid
+if ! grep -q "${current_uid}" /etc/passwd ; then
+sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
+echo "mongodb:x:$(id -u):$(id -g):,,,:/:/bin/bash" >> /tmp/passwd
+cat /tmp/passwd
+export NSS_WRAPPER_PASSWD=/tmp/passwd
+export LD_PRELOAD=libnss_wrapper.so
+export NSS_WRAPPER_GROUP=/etc/group
+fi
+` + agentCommand}),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  headlessAgentEnv,
@@ -241,26 +255,29 @@ func getMongoDBImage(version string) string {
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
-	mongoDbCommand := []string{
-		"/bin/sh",
-		"-c",
-		`
-# run post-start hook to handle version changes
+	mongoDbCommand := fmt.Sprintf(`
+#run post-start hook to handle version changes
 /hooks/version-upgrade
 
-# wait for config to be created by the agent
-while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
+# wait for config and keyfile to be created by the agent
+ while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
+
 
 # start mongod with this configuration
-exec mongod -f /data/automation-mongod.conf ;
-`,
+exec mongod -f %s;
+`, automationconfFilePath, keyfileFilePath, automationconfFilePath)
+
+	containerCommand := []string{
+		"/bin/sh",
+		"-c",
+		mongoDbCommand,
 	}
 
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithCommand(mongoDbCommand),
+		container.WithCommand(containerCommand),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
@@ -268,5 +285,7 @@ exec mongod -f /data/automation-mongod.conf ;
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
+
+		container.WithSecurityContext(container.DefaultSecurityContext()),
 	)
 }

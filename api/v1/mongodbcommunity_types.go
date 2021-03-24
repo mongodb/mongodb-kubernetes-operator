@@ -79,6 +79,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
 
@@ -325,8 +326,18 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
-	// Modes is an array specifying which authentication methods should be enabled
+	// Modes is an array specifying which authentication methods should be enabled.
 	Modes []AuthMode `json:"modes"`
+
+	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
+	// will not be removed.
+
+	// TODO: defaults will work once we update to v1 CRD.
+
+	// +optional
+	// +kubebuilder:default:=true
+	// +nullable
+	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
 }
 
 // +kubebuilder:validation:Enum=SCRAM
@@ -370,8 +381,14 @@ func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.Namespaced
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
+
+	ignoreUnknownUsers := true
+	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
+		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
+	}
+
 	return scram.Options{
-		AuthoritativeSet:   true,
+		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
 		AutoAuthMechanisms: []string{scram.Sha256},
 		AgentName:          scram.AgentName,
@@ -497,7 +514,7 @@ func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 	return m.GetMongoDBVersion()
 }
 
-func (m MongoDBCommunity) IsPersistent() bool {
+func (m MongoDBCommunity) Persistent() bool {
 	return true
 }
 

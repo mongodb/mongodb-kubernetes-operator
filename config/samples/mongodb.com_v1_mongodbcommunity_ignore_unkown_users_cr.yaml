@@ -2,13 +2,14 @@
 apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
-  name: mongodb-specify-pod-resources
+  name: ignore-unkown-users-example
 spec:
   members: 3
   type: ReplicaSet
   version: "4.4.0"
   security:
     authentication:
+      ignoreUnkownUsers: true # users can be added to the deployment through other sources. (not through the CRD) and will not be removed by the agent.
       modes: ["SCRAM"]
   users:
     - name: my-user
@@ -21,29 +22,9 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: my-scram
-  statefulSet:
-    spec:
-      template:
-        spec:
-          # resources can be specified by applying an override
-          # per container name.
-          containers:
-            - name: mongod
-              resources:
-                limits:
-                  cpu: "0.2"
-                  memory: 250M
-                requests:
-                  cpu: "0.2"
-                  memory: 200M
-            - name: mongodb-agent
-              resources:
-                limits:
-                  cpu: "0.2"
-                  memory: 250M
-                requests:
-                  cpu: "0.2"
-                  memory: 200M
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
 ---

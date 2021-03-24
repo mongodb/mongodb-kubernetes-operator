@@ -75,12 +75,22 @@ func WithReadinessProbe(probeFunc func(*corev1.Probe)) Modification {
 }
 
 // WithLivenessProbe modifies the container's Liveness Probe
-func WithLivenessProbe(readinessProbeFunc func(*corev1.Probe)) Modification {
+func WithLivenessProbe(livenessProbeFunc func(*corev1.Probe)) Modification {
 	return func(container *corev1.Container) {
 		if container.LivenessProbe == nil {
 			container.LivenessProbe = &corev1.Probe{}
 		}
-		readinessProbeFunc(container.LivenessProbe)
+		livenessProbeFunc(container.LivenessProbe)
+	}
+}
+
+// WithStartupProbe modifies the container's Startup Probe
+func WithStartupProbe(startupProbeFunc func(*corev1.Probe)) Modification {
+	return func(container *corev1.Container) {
+		if container.StartupProbe == nil {
+			container.StartupProbe = &corev1.Probe{}
+		}
+		startupProbeFunc(container.StartupProbe)
 	}
 }
 
@@ -172,4 +182,13 @@ func WithSecurityContext(context corev1.SecurityContext) Modification {
 	return func(container *corev1.Container) {
 		container.SecurityContext = &context
 	}
+}
+
+// DefaultSecurityContext returns the default security context for containers.
+// It sets RunAsUser = 2000 and RunAsNonRoot = true
+func DefaultSecurityContext() corev1.SecurityContext {
+	runAsNonRoot := true
+	runAsUser := int64(2000)
+
+	return corev1.SecurityContext{RunAsUser: &runAsUser, RunAsNonRoot: &runAsNonRoot}
 }
