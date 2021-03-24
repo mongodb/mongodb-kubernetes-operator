@@ -43,6 +43,9 @@ const (
 	headlessAgentEnv           = "HEADLESS_AGENT"
 	podNamespaceEnv            = "POD_NAMESPACE"
 	automationConfigEnv        = "AUTOMATION_CONFIG_MAP"
+
+	automationconfFilePath = "/data/automation-mongod.conf"
+	keyfileFilePath        = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 )
 
 // MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
@@ -247,12 +250,13 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 /hooks/version-upgrade
 
 # wait for config and keyfile to be created by the agent
- while ! [ -f /data/automation-mongod.conf -a -f /var/lib/mongodb-mms-automation/authentication/keyfile ]; do sleep 3 ; done ; sleep 2 ;
+ while ! [ -f ` + automationconfFilePath +
+			` -a -f ` + keyfileFilePath +
+			` ]; do sleep 3 ; done ; sleep 2 ;
 
 
 # start mongod with this configuration
-exec mongod -f /data/automation-mongod.conf ;
-`,
+exec mongod -f ` + automationconfFilePath + ` ;`,
 	}
 
 	return container.Apply(
