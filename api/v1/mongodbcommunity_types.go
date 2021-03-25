@@ -374,8 +374,8 @@ func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.Namespace
 	return types.NamespacedName{Name: m.Name + "-agent-password", Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: m.Name + "-keyfile", Namespace: m.Namespace}
+func (m MongoDBCommunity) GetAgentKeyfileName() string {
+	return m.Name + "-keyfile"
 }
 
 // GetScramOptions returns a set of Options that are used to configure scram

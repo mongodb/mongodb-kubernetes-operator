@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -50,15 +49,24 @@ const (
 
 // MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
 type MongoDBStatefulSetOwner interface {
+	// ServiceName returns the name of the K8S service the operator will create.
 	ServiceName() string
+	// GetName returns the name of the resource.
 	GetName() string
+	// GetNamespace returns the namespace the resource is defined in.
 	GetNamespace() string
+	// GetMongoDBVersion returns the version of MongoDB to be used for this resource
 	GetMongoDBVersion() string
+	// AutomationConfigSecretName returns the name of the secret which will contain the automation config.
 	AutomationConfigSecretName() string
+	// GetUpdateStrategyType returns the UpdateStrategyType of the statefulset.
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
+	// Persistent returns whether or not the statefulset should have persistent volumes added.
 	Persistent() bool
+	// HasSeparateDataAndLogsVolumes returns whether or not the volumes for data and logs would need to be different.
 	HasSeparateDataAndLogsVolumes() bool
-	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
+	// GetAgentKeyfileSecretNamespacedName returns the name of the volume that will hold the keyfile
+	GetAgentKeyfileName() string
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -87,15 +95,15 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
-	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName.Name)
+	keyFileNsName := mdb.GetAgentKeyfileName()
+	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName)
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
 	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount}
 	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod}
-	dataVolumeClaim := func(s *appsv1.StatefulSet) {}
-	logVolumeClaim := func(s *appsv1.StatefulSet) {}
+	dataVolumeClaim := statefulset.NOOP()
+	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.Persistent() {
 		if mdb.HasSeparateDataAndLogsVolumes() {
