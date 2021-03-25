@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -65,8 +66,8 @@ type MongoDBStatefulSetOwner interface {
 	Persistent() bool
 	// HasSeparateDataAndLogsVolumes returns whether or not the volumes for data and logs would need to be different.
 	HasSeparateDataAndLogsVolumes() bool
-	// GetAgentKeyfileSecretNamespacedName returns the name of the volume that will hold the keyfile
-	GetAgentKeyfileName() string
+	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -95,8 +96,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
 	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 
-	keyFileNsName := mdb.GetAgentKeyfileName()
-	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName)
+	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
+	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName.Name)
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
