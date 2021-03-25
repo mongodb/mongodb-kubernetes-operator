@@ -542,6 +542,10 @@ func (m MongoDBCommunity) getPreviousVersion() string {
 	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
 }
 
+func (m MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
+	return true
+}
+
 func (m MongoDBCommunity) GetAnnotations() map[string]string {
 	return m.Annotations
 }
