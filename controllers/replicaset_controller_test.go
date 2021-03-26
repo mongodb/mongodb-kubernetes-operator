@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -40,7 +41,7 @@ import (
 )
 
 func init() {
-	os.Setenv("AGENT_IMAGE", "agent-image")
+	os.Setenv(envvar.AgentImageEnv, "agent-image")
 }
 
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
@@ -559,12 +560,6 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, mdb.Status.CurrentMongoDBMembers)
-}
-
-func TestOpenshift_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "openshift_mdb.yaml")
-	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[1].Env[3].Name)
-	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[0].Env[1].Name)
 }
 
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {

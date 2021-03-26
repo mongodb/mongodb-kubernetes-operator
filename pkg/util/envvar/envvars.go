@@ -8,6 +8,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	AgentImageEnv              = "AGENT_IMAGE"
+	MongodbImageEnv            = "MONGODB_IMAGE"
+	WatchNamespaceEnv          = "WATCH_NAMESPACE"
+	VersionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
+	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
+	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
+)
+
 func MergeWithOverride(existing, desired []corev1.EnvVar) []corev1.EnvVar {
 	envMap := make(map[string]corev1.EnvVar)
 	for _, env := range existing {

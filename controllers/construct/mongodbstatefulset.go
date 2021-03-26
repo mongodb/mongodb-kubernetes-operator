@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -124,6 +125,13 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 			singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
 		}
 	}
+
+	podSecurityContext := podtemplatespec.NOOP()
+	managedSecurityContext := envvar.ReadBool(envvar.ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		podSecurityContext = podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext())
+	}
+
 	return statefulset.Apply(
 		statefulset.WithName(mdb.GetName()),
 		statefulset.WithNamespace(mdb.GetNamespace()),
@@ -137,7 +145,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		singleModeVolumeClaim,
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
-				podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext()),
+				podSecurityContext,
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
@@ -162,6 +170,12 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
 		"-serveStatusPort=5000",
 		"-useLocalMongoDbTools"}, " ")
+
+	securityContext := container.NOOP()
+	managedSecurityContext := envvar.ReadBool(envvar.ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -169,7 +183,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithSecurityContext(container.DefaultSecurityContext()),
+		securityContext,
 		container.WithCommand([]string{"/bin/bash", "-c", `current_uid=$(id -u)
 echo $current_uid
 declare -r current_uid
@@ -282,6 +296,12 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
+	securityContext := container.NOOP()
+	managedSecurityContext := envvar.ReadBool(envvar.ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
+
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
@@ -295,6 +315,6 @@ exec mongod -f %s;
 		),
 		container.WithVolumeMounts(volumeMounts),
 
-		container.WithSecurityContext(container.DefaultSecurityContext()),
+		securityContext,
 	)
 }
