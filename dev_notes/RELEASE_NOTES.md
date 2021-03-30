@@ -5,12 +5,14 @@
 ## Kubernetes Operator
 * Changes
   * Readiness probe has been moved into an init container from the Agent image.
+  * Security context is now added when the `MANAGED_SECURITY_CONTEXT` environment variable is not set. 
 * Bug fixes
   * Removed unnecessary environment variable configuration in the openshift samples.
   * Fixed an issue where the operator would perform unnecessary reconcilliations when Secrets were modified.
   * Fixed an issue where a race condition could cause the deployment to get into a bad state when TLS
     settings when being changed at the same time as a scaling operation was happening.
-   
+  * Fixed an issue where the agent pod would panic when running as a non-root user.
+
 ## MongoDBCommunity Resource
 * Changes
  * Added `spec.security.authentication.ignoreUnknownUsers` field. This value defaults to `true`. When enabled, 
