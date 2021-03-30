@@ -49,7 +49,7 @@ const (
 
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
 
-	mongodbUserCommand = `current_uid=$(id -u)
+	MongodbUserCommand = `current_uid=$(id -u)
 echo $current_uid
 declare -r current_uid
 if ! grep -q "${current_uid}" /etc/passwd ; then
@@ -181,7 +181,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
 		container.WithSecurityContext(container.DefaultSecurityContext()),
-		container.WithCommand([]string{"/bin/bash", "-c", mongodbUserCommand + BaseAgentCommand() + automationAgentOptions}),
+		container.WithCommand([]string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + automationAgentOptions}),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  headlessAgentEnv,
