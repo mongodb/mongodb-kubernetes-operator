@@ -46,6 +46,21 @@ const (
 
 	automationconfFilePath = "/data/automation-mongod.conf"
 	keyfileFilePath        = "/var/lib/mongodb-mms-automation/authentication/keyfile"
+
+	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
+
+	mongodbUserCommand = `current_uid=$(id -u)
+echo $current_uid
+declare -r current_uid
+if ! grep -q "${current_uid}" /etc/passwd ; then
+sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
+echo "mongodb:x:$(id -u):$(id -g):,,,:/:/bin/bash" >> /tmp/passwd
+cat /tmp/passwd
+export NSS_WRAPPER_PASSWD=/tmp/passwd
+export LD_PRELOAD=libnss_wrapper.so
+export NSS_WRAPPER_GROUP=/etc/group
+fi
+`
 )
 
 // MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
@@ -153,15 +168,11 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		))
 }
 
+func BaseAgentCommand() string {
+	return "agent/mongodb-agent -cluster=" + clusterFilePath + " -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
+}
+
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	agentCommand := strings.Join([]string{
-		"agent/mongodb-agent",
-		"-cluster=" + clusterFilePath,
-		"-skipMongoStart",
-		"-noDaemonize",
-		"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
-		"-serveStatusPort=5000",
-		"-useLocalMongoDbTools"}, " ")
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -170,18 +181,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
 		container.WithSecurityContext(container.DefaultSecurityContext()),
-		container.WithCommand([]string{"/bin/bash", "-c", `current_uid=$(id -u)
-echo $current_uid
-declare -r current_uid
-if ! grep -q "${current_uid}" /etc/passwd ; then
-sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
-echo "mongodb:x:$(id -u):$(id -g):,,,:/:/bin/bash" >> /tmp/passwd
-cat /tmp/passwd
-export NSS_WRAPPER_PASSWD=/tmp/passwd
-export LD_PRELOAD=libnss_wrapper.so
-export NSS_WRAPPER_GROUP=/etc/group
-fi
-` + agentCommand}),
+		container.WithCommand([]string{"/bin/bash", "-c", mongodbUserCommand + BaseAgentCommand() + automationAgentOptions}),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  headlessAgentEnv,
