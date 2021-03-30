@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -41,7 +40,7 @@ import (
 )
 
 func init() {
-	os.Setenv(envvar.AgentImageEnv, "agent-image")
+	os.Setenv(construct.AgentImageEnv, "agent-image")
 }
 
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
