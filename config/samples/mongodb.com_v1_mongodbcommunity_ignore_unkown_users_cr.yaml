@@ -9,7 +9,7 @@ spec:
   version: "4.4.0"
   security:
     authentication:
-      ignoreUnkownUsers: true # users can be added to the deployment through other sources. (not through the CRD) and will not be removed by the agent.
+      ignoreUnknownUsers: true # users can be added to the deployment through other sources. (not through the CRD) and will not be removed by the agent.
       modes: ["SCRAM"]
   users:
     - name: my-user
