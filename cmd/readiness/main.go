@@ -226,7 +226,7 @@ func main() {
 
 // isInReadyState checks the MongoDB Server state. It returns true if the state
 // is PRIMARY or SECONDARY.
-// This function will always return true if the agent don't publish this state.
+// This function will always return true if the agent doesn't publish this state.
 func isInReadyState(health health.Status) bool {
 	if len(health.Healthiness) == 0 {
 		return true
@@ -248,6 +248,11 @@ func isInReadyState(health health.Status) bool {
 	return false
 }
 
+// mongoDbServerHasStarted checks if the current plan includes a Move and a Step
+// of type "StartFresh" with a Result of "success".
+//
+// This function will return true if the agent has been able to successfully
+// start the MongoDB server.
 func mongoDbServerHasStarted(health health.Status) bool {
 	plan := findCurrentPlan(health.ProcessPlans)
 	if plan == nil {
@@ -265,10 +270,15 @@ func mongoDbServerHasStarted(health health.Status) bool {
 	return false
 }
 
+// findCurrentPlan returns the current plan as informed by the Agent.
+//
+// The current plan is the last plan from the `processStatuses` parameter, this
+// is, the plan that's currently being processed by the agent.
 func findCurrentPlan(processStatuses map[string]health.MmsDirectorStatus) *health.PlanStatus {
 	var currentPlan *health.PlanStatus
 	if len(processStatuses) == 0 {
-		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens
+		// Seems shouldn't happen but let's check anyway - may be needs to be
+		// changed to Info if this happens.
 		logger.Warnf("There is no information about Agent process plans")
 		return nil
 	}
@@ -276,7 +286,8 @@ func findCurrentPlan(processStatuses map[string]health.MmsDirectorStatus) *healt
 		logger.Errorf("Only one process status is expected but got %d!", len(processStatuses))
 		return nil
 	}
-	// There is always only one process managed by the Agent - so there will be only one loop
+	// There is only one process managed by the Agent - so will only check one
+	// iteration.
 	for k, v := range processStatuses {
 		if len(v.Plans) == 0 {
 			logger.Errorf("The process %s doesn't contain any plans!", k)
