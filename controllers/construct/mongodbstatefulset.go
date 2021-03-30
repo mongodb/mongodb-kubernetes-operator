@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +24,6 @@ const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
 
-	AgentImageEnv                  = "AGENT_IMAGE"
 	versionUpgradeHookName         = "mongod-posthook"
 	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
 	dataVolumeName                 = "data-volume"
@@ -34,18 +34,20 @@ const (
 	operatorServiceAccountName     = "mongodb-kubernetes-operator"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	readinessProbeImageEnv = "READINESS_PROBE_IMAGE"
+	MongodbRepoUrl = "MONGODB_REPO_URL"
 
-	MongodbImageEnv = "MONGODB_IMAGE"
-	MongodbRepoUrl  = "MONGODB_REPO_URL"
-
-	versionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
-	headlessAgentEnv           = "HEADLESS_AGENT"
-	podNamespaceEnv            = "POD_NAMESPACE"
-	automationConfigEnv        = "AUTOMATION_CONFIG_MAP"
+	headlessAgentEnv    = "HEADLESS_AGENT"
+	podNamespaceEnv     = "POD_NAMESPACE"
+	automationConfigEnv = "AUTOMATION_CONFIG_MAP"
 
 	automationconfFilePath = "/data/automation-mongod.conf"
 	keyfileFilePath        = "/var/lib/mongodb-mms-automation/authentication/keyfile"
+
+	AgentImageEnv              = "AGENT_IMAGE"
+	MongodbImageEnv            = "MONGODB_IMAGE"
+	VersionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
+	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
+	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
 )
 
 // MongoDBStatefulSetOwner is an interface which any resource which generates a MongoDB StatefulSet should implement.
@@ -124,6 +126,13 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 			singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
 		}
 	}
+
+	podSecurityContext := podtemplatespec.NOOP()
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		podSecurityContext = podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext())
+	}
+
 	return statefulset.Apply(
 		statefulset.WithName(mdb.GetName()),
 		statefulset.WithNamespace(mdb.GetNamespace()),
@@ -137,7 +146,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		singleModeVolumeClaim,
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
-				podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext()),
+				podSecurityContext,
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
@@ -162,6 +171,12 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
 		"-serveStatusPort=5000",
 		"-useLocalMongoDbTools"}, " ")
+
+	securityContext := container.NOOP()
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -169,7 +184,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithSecurityContext(container.DefaultSecurityContext()),
+		securityContext,
 		container.WithCommand([]string{"/bin/bash", "-c", `current_uid=$(id -u)
 echo $current_uid
 declare -r current_uid
@@ -212,7 +227,7 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
-		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
+		container.WithImage(os.Getenv(VersionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 	)
@@ -248,7 +263,7 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 	return container.Apply(
 		container.WithName(readinessProbeContainerName),
 		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
-		container.WithImage(os.Getenv(readinessProbeImageEnv)),
+		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 	)
@@ -282,6 +297,12 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
+	securityContext := container.NOOP()
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
+
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
@@ -295,6 +316,6 @@ exec mongod -f %s;
 		),
 		container.WithVolumeMounts(volumeMounts),
 
-		container.WithSecurityContext(container.DefaultSecurityContext()),
+		securityContext,
 	)
 }

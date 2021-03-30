@@ -6,6 +6,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -19,6 +20,10 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+)
+
+const (
+	WatchNamespaceEnv = "WATCH_NAMESPACE"
 )
 
 func init() {
@@ -52,12 +57,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !hasRequiredVariables(log, "AGENT_IMAGE", "VERSION_UPGRADE_HOOK_IMAGE", "READINESS_PROBE_IMAGE") {
+	if !hasRequiredVariables(log, construct.AgentImageEnv, construct.VersionUpgradeHookImageEnv, construct.ReadinessProbeImageEnv) {
 		os.Exit(1)
 	}
 
 	// Get watch namespace from environment variable.
-	namespace, nsSpecified := os.LookupEnv("WATCH_NAMESPACE")
+	namespace, nsSpecified := os.LookupEnv(WatchNamespaceEnv)
 	if !nsSpecified {
 		os.Exit(1)
 	}
