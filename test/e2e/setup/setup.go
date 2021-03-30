@@ -9,7 +9,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -145,8 +145,8 @@ func deployOperator() error {
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withVersionUpgradeHookImage(testConfig.versionUpgradeHookImage),
-		withEnvVar(envvar.WatchNamespaceEnv, watchNamespace),
-		withEnvVar(envvar.AgentImageEnv, testConfig.agentImage),
+		withEnvVar("WATCH_NAMESPACE", watchNamespace),
+		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
@@ -241,7 +241,7 @@ func withVersionUpgradeHookImage(image string) func(runtime.Object) {
 	return func(obj runtime.Object) {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			versionUpgradeHookEnv := corev1.EnvVar{
-				Name:  envvar.VersionUpgradeHookImageEnv,
+				Name:  construct.VersionUpgradeHookImageEnv,
 				Value: image,
 			}
 			found := false
