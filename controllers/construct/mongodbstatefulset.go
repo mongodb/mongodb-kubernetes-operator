@@ -181,6 +181,11 @@ func BaseAgentCommand() string {
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
+	securityContext := container.NOOP()
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -188,7 +193,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithSecurityContext(container.DefaultSecurityContext()),
+		securityContext,
 		container.WithCommand([]string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + automationAgentOptions}),
 		container.WithEnvs(
 			corev1.EnvVar{
