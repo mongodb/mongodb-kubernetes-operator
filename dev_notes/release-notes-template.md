@@ -25,6 +25,10 @@
 * Issue 1
 * Issue 2
 
+## Miscellaneous
+* Item 1
+* Item 2
+
 ## Updated Image Tags
 * mongodb-kubernetes-operator:0.3.0
 * mongodb-agent:10.19.0.6562-1
