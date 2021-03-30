@@ -128,7 +128,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
 
 ## Deploy Replica Sets on OpenShift
 
-To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for both the `mongodb` and `mongodb-agent` containers, as well as the operator deployment.
+To deploy the operator on OpenShift you will have to provide the environment variable `MANAGED_SECURITY_CONTEXT` set to `true` for the operator deployment.
 
 See [here](/config/samples/mongodb.com_v1_mongodbcommunity_openshift_cr.yaml) for
 an example of how to provide the required configuration for a MongoDB

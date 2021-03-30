@@ -25,17 +25,6 @@ spec:
     spec:
       serviceName: example-openshift-mongodb-svc
       selector: {}
-      template:
-        spec:
-          containers:
-            - name: "mongodb-agent"
-              env:
-                - name: MANAGED_SECURITY_CONTEXT
-                  value: "true"
-            - name: "mongod"
-              env:
-                - name: MANAGED_SECURITY_CONTEXT
-                  value: "true"
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
