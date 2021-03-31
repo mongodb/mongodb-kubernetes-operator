@@ -1,0 +1,82 @@
+{
+    "mmsStatus": {
+        "bar": {
+            "errorString": "",
+            "errorCode": 0,
+            "plans": [
+                {
+                    "moves": [
+                        {
+                            "steps": [
+                                {
+                                    "result": "success",
+                                    "completed": "2019-09-11T14:20:55.645615846Z",
+                                    "started": "2019-09-11T14:20:40.631404367Z",
+                                    "isWaitStep": false,
+                                    "stepDoc": "Download mongodb binaries (may take a while)",
+                                    "step": "Download"
+                                }
+                            ],
+                            "moveDoc": "Download mongodb binaries",
+                            "move": "Download"
+                        },
+                        {
+                            "steps": [
+                                {
+                                    "result": "success",
+                                    "completed": "2019-09-11T14:20:59.325129842Z",
+                                    "started": "2019-09-11T14:20:55.645743003Z",
+                                    "isWaitStep": false,
+                                    "stepDoc": "Start a mongo instance (start fresh)",
+                                    "step": "StartFresh"
+                                }
+                            ],
+                            "moveDoc": "Start the process",
+                            "move": "Start"
+                        },
+                        {
+                            "steps": [
+                                {
+                                    "result": "wait",
+                                    "completed": null,
+                                    "started": "2019-09-11T14:20:59.325272608Z",
+                                    "isWaitStep": true,
+                                    "stepDoc": "Wait for the replica set to be initialized by another member",
+                                    "step": "WaitRsInit"
+                                }
+                            ],
+                            "moveDoc": "Wait for the replica set to be initialized by another member",
+                            "move": "WaitRsInit"
+                        },
+                        {
+                            "steps": [
+                                {
+                                    "result": "",
+                                    "completed": null,
+                                    "started": null,
+                                    "isWaitStep": true,
+                                    "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                                    "step": "WaitFeatureCompatibilityVersionCorrect"
+                                }
+                            ],
+                            "moveDoc": "Wait for featureCompatibilityVersion to be right",
+                            "move": "WaitFeatureCompatibilityVersionCorrect"
+                        }
+                    ],
+                    "completed": "2019-09-11T14:21:42.034934358Z",
+                    "started": "2019-09-11T14:20:40.631348806Z"
+                }
+            ],
+            "lastGoalVersionAchieved": 5,
+            "name": "bar"
+        }
+    },
+    "statuses": {
+        "bar": {
+            "ReplicationStatus": 3,
+            "ExpectedToBeUp": true,
+            "LastMongoUpTime": 1568222195,
+            "IsInGoalState": true
+        }
+    }
+}
