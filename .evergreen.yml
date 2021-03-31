@@ -89,6 +89,7 @@ functions:
           - version_id
           - test
           - clusterwide
+          - distro
         binary: scripts/ci/run_test.sh
 
   # TODO: can be removed once the agent is included in the Dockerfile generator.
@@ -102,6 +103,7 @@ functions:
           - quay_password
           - expire_after
           - image
+          - dockerfile_path
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_agent_image.sh
 
@@ -187,7 +189,7 @@ tasks:
           image_type: e2e
           expire_after: 48h
 
-  - name: build_agent_image
+  - name: build_agent_image_ubuntu
     priority: 60
     exec_timeout_secs: 600
     commands:
@@ -197,6 +199,19 @@ tasks:
         vars:
           image: quay.io/mongodb/mongodb-agent-dev:${version_id}
           expire_after: 48h
+          dockerfile_path: agent/Dockerfile
+
+  - name: build_agent_image_ubi
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_agent_image
+        vars:
+          image: quay.io/mongodb/mongodb-agent-ubi-dev:${version_id}
+          expire_after: 48h
+          dockerfile_path: agent/Dockerfile.ubi
 
   - name: build_prehook_image
     priority: 60
@@ -335,8 +350,10 @@ tasks:
 
 
 buildvariants:
-  - name: e2e_tests
-    display_name: e2e_tests
+  - name: e2e_tests_ubuntu
+    display_name: e2e_tests_ubuntu
+    expansions:
+      distro: ubuntu
     run_on:
       - ubuntu1604-build
     depends_on:
@@ -346,7 +363,25 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
-      - name: build_agent_image
+      - name: build_agent_image_ubuntu
+        variant: init_test_run
+    tasks:
+      - name: e2e_test_group
+
+  - name: e2e_tests_ubi
+    display_name: e2e_tests_ubi
+    expansions:
+      distro: ubi
+    run_on:
+      - ubuntu1604-build
+    depends_on:
+      - name: build_operator_image
+        variant: init_test_run
+      - name: build_e2e_image
+        variant: init_test_run
+      - name: build_prehook_image
+        variant: init_test_run
+      - name: build_agent_image_ubi
         variant: init_test_run
     tasks:
       - name: e2e_test_group
@@ -359,7 +394,8 @@ buildvariants:
       - name: build_operator_image
       - name: build_e2e_image
       - name: build_prehook_image
-      - name: build_agent_image
+      - name: build_agent_image_ubi
+      - name: build_agent_image_ubuntu
 
   - name: release_blocker
     display_name: release_blocker
@@ -377,7 +413,9 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
-      - name: build_agent_image
+      - name: build_agent_image_ubuntu
+        variant: init_test_run
+      - name: build_agent_image_ubi
         variant: init_test_run
     run_on:
       - ubuntu1604-test
