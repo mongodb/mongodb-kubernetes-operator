@@ -3,7 +3,7 @@
   "version-upgrade-hook": "1.0.2",
   "readiness-probe": "1.0.1",
   "agent": {
-    "version": "10.27.0.6772-1",
+      "version": "10.29.0.6830-1",
     "tools_version": "100.2.0"
   }
 }
