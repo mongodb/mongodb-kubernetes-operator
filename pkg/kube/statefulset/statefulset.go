@@ -135,6 +135,11 @@ func CreateVolumeMount(name, path string, options ...func(*corev1.VolumeMount)) 
 	return *volumeMount
 }
 
+// NOOP is a valid Modification which applies no changes
+func NOOP() Modification {
+	return func(sts *appsv1.StatefulSet) {}
+}
+
 func WithSecretDefaultMode(mode *int32) func(*corev1.Volume) {
 	return func(v *corev1.Volume) {
 		if v.VolumeSource.Secret == nil {

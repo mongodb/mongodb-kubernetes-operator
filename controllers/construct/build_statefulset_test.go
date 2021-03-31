@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	os.Setenv(versionUpgradeHookImageEnv, "version-upgrade-hook-image")
+	os.Setenv(VersionUpgradeHookImageEnv, "version-upgrade-hook-image")
 }
 
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
