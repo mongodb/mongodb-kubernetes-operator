@@ -4,6 +4,6 @@
   "readiness-probe": "1.0.1",
   "agent": {
       "version": "10.29.0.6830-1",
-    "tools_version": "100.2.0"
+      "tools_version": "100.2.0"
   }
 }
