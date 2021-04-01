@@ -156,12 +156,7 @@ func (b *Builder) AddModifications(mod ...Modification) *Builder {
 	return b
 }
 
-func (b *Builder) Build() (AutomationConfig, error) {
-	hostnames := make([]string, b.members)
-	for i := 0; i < b.members; i++ {
-		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
-	}
-
+func (b *Builder) setFeatureCompatibilityVersionIfUpgradeIsHappening() error {
 	// If we are upgrading, we can't increase featureCompatibilityVersion
 	// as that will make the agent never reach goal state
 	if len(b.previousAC.Processes) > 0 && b.fcv == "" {
@@ -170,12 +165,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		previousFCV := b.previousAC.Processes[0].FeatureCompatibilityVersion
 		previousFCVsemver, err := semver.Make(fmt.Sprintf("%s.0", previousFCV))
 		if err != nil {
-			return AutomationConfig{}, errors.Errorf("can't compute semver version from previous FeatureCompatibilityVersion %s", previousFCV)
+			return errors.Errorf("can't compute semver version from previous FeatureCompatibilityVersion %s", previousFCV)
 		}
 
 		currentVersionSemver, err := semver.Make(b.mongodbVersion)
 		if err != nil {
-			return AutomationConfig{}, errors.Errorf("current MongoDB version is not a valid semver version: %s", b.mongodbVersion)
+			return errors.Errorf("current MongoDB version is not a valid semver version: %s", b.mongodbVersion)
 		}
 
 		// We would increase FCV here.
@@ -185,9 +180,21 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			b.fcv = previousFCV
 		}
 	}
+	return nil
+}
+
+func (b *Builder) Build() (AutomationConfig, error) {
+	hostnames := make([]string, b.members)
+	for i := 0; i < b.members; i++ {
+		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
+	}
 
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
+
+	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
+		return AutomationConfig{}, errors.Errorf("can't build the automation config: %s", err)
+	}
 	for i, h := range hostnames {
 
 		process := &Process{
