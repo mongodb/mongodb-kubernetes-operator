@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
@@ -29,7 +30,7 @@ type Builder struct {
 	members            int
 	domain             string
 	name               string
-	fcv                *string
+	fcv                string
 	topology           Topology
 	mongodbVersion     string
 	previousAC         AutomationConfig
@@ -100,7 +101,7 @@ func (b *Builder) SetName(name string) *Builder {
 	return b
 }
 
-func (b *Builder) SetFCV(fcv *string) *Builder {
+func (b *Builder) SetFCV(fcv string) *Builder {
 	b.fcv = fcv
 	return b
 }
@@ -161,6 +162,30 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
 	}
 
+	// If we are upgrading, we can't increase featureCompatibilityVersion
+	// as that will make the agent never reach goal state
+	if len(b.previousAC.Processes) > 0 && b.fcv == "" {
+
+		// Create a x.y.0 version from FCV x.y
+		previousFCV := b.previousAC.Processes[0].FeatureCompatibilityVersion
+		previousFCVsemver, err := semver.Make(fmt.Sprintf("%s.0", previousFCV))
+		if err != nil {
+			return AutomationConfig{}, errors.Errorf("can't compute semver version from previous FeatureCompatibilityVersion %s", previousFCV)
+		}
+
+		currentVersionSemver, err := semver.Make(b.mongodbVersion)
+		if err != nil {
+			return AutomationConfig{}, errors.Errorf("current MongoDB version is not a valid semver version: %s", b.mongodbVersion)
+		}
+
+		// We would increase FCV here.
+		// Note: in theory this will also catch upgrade like 4.2.0 -> 4.2.1 but we don't care about those
+		// as they would not change the FCV
+		if currentVersionSemver.GT(previousFCVsemver) {
+			b.fcv = previousFCV
+		}
+	}
+
 	members := make([]ReplicaSetMember, b.members)
 	processes := make([]Process, b.members)
 	for i, h := range hostnames {
@@ -178,8 +203,8 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
 		})
 
-		if b.fcv != nil {
-			process.FeatureCompatibilityVersion = *b.fcv
+		if b.fcv != "" {
+			process.FeatureCompatibilityVersion = b.fcv
 		}
 
 		process.SetPort(27017)
