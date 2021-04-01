@@ -3,7 +3,7 @@
 # MongoDB Kubernetes Operator 0.5.3
 ## Kubernetes Operator
 * Bug fixes
-  * Fixes ans issue that prevented the agents from reaching goal state when upgrading minor version of MongoDB
+  * Fixes an issue that prevented the agents from reaching goal state when upgrading minor version of MongoDB.
 
 <!-- Past Releases -->
 # MongoDB Kubernetes Operator 0.5.2
