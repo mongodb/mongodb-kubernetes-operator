@@ -8,8 +8,17 @@ import (
 type replicationStatus int
 
 const (
-	replicationStatusPrimary   replicationStatus = 1
-	replicationStatusSecondary replicationStatus = 2
+	replicationStatusStartup    replicationStatus = 0
+	replicationStatusPrimary    replicationStatus = 1
+	replicationStatusSecondary  replicationStatus = 2
+	replicationStatusRecovering replicationStatus = 3
+	replicationStatusStartup2   replicationStatus = 5
+	replicationStatusUnknown    replicationStatus = 6
+	replicationStatusArbiter    replicationStatus = 7
+	replicationStatusDown       replicationStatus = 8
+	replicationStatusRollback   replicationStatus = 9
+	replicationStatusRemoved    replicationStatus = 10
+	replicationStatusUndefined  replicationStatus = -1
 )
 
 type Status struct {
@@ -55,7 +64,12 @@ type StepStatus struct {
 // isReadyState will return true, meaning a *ready state* in the sense that this Process can
 // accept read operations. There are no other states in which the MongoDB server could that
 // would mean a Ready State.
+// It returns true if the managed process is mongos or standalone (replicationStatusUndefined).
 func (h processHealth) IsReadyState() bool {
-	return *h.ReplicaStatus == replicationStatusPrimary ||
-		*h.ReplicaStatus == replicationStatusSecondary
+	status := *h.ReplicaStatus
+	if status == replicationStatusUndefined {
+		return true
+	}
+
+	return status == replicationStatusPrimary || status == replicationStatusSecondary
 }
