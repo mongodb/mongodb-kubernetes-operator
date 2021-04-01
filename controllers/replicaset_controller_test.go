@@ -306,6 +306,32 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	assert.Equal(t, currentAc.Version, 1)
 }
 
+func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
+	mdb := newTestReplicaSet()
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	assert.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
+
+	// Upgrading minor version does not change the FCV on the automationConfig
+	mdbRef := &mdb
+	mdbRef.Spec.Version = "4.4.0"
+	_ = mgr.Client.Update(context.TODO(), mdbRef)
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	assert.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
+
+}
+
 func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb := newTestReplicaSet()
 
