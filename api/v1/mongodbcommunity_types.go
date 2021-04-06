@@ -483,18 +483,6 @@ func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.Namespa
 	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
-// GetFCV returns the feature compatibility version. If no FeatureCompatibilityVersion is specified.
-// It uses the major and minor version for whichever version of MongoDB is configured.
-func (m MongoDBCommunity) GetFCV() string {
-	versionToSplit := m.Spec.FeatureCompatibilityVersion
-	if versionToSplit == "" {
-		versionToSplit = m.Spec.Version
-	}
-	minorIndex := 1
-	parts := strings.Split(versionToSplit, ".")
-	return strings.Join(parts[:minorIndex+1], ".")
-}
-
 func (m MongoDBCommunity) DesiredReplicas() int {
 	return m.Spec.Members
 }

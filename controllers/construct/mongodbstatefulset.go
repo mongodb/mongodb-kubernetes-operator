@@ -178,6 +178,10 @@ func BaseAgentCommand() string {
 	return "agent/mongodb-agent -cluster=" + clusterFilePath + " -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
 }
 
+func AutomationAgentCommand() []string {
+	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + automationAgentOptions}
+}
+
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
 	securityContext := container.NOOP()
 	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
@@ -192,7 +196,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
 		securityContext,
-		container.WithCommand([]string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + automationAgentOptions}),
+		container.WithCommand(AutomationAgentCommand()),
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  headlessAgentEnv,

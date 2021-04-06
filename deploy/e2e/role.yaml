@@ -74,6 +74,7 @@ rules:
   - mongodbcommunity
   - mongodbcommunity/status
   - mongodbcommunity/spec
+  - mongodbcommunity/finalizers
   verbs:
   - create
   - delete
