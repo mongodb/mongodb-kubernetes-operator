@@ -92,20 +92,6 @@ functions:
           - distro
         binary: scripts/ci/run_test.sh
 
-  # TODO: can be removed once the agent is included in the Dockerfile generator.
-  build_and_push_agent_image:
-    - command: subprocess.exec
-      type: setup
-      params:
-        include_expansions_in_env:
-          - version_id
-          - quay_user_name
-          - quay_password
-          - expire_after
-          - image
-          - dockerfile_path
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/build_and_push_agent_image.sh
 
   build_and_push_image:
     - command: subprocess.exec
@@ -195,11 +181,11 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_agent_image
+      - func: build_and_push_image
         vars:
+          image_type: agent_ubuntu
           image: quay.io/mongodb/mongodb-agent-dev:${version_id}
           expire_after: 48h
-          dockerfile_path: agent/Dockerfile
 
   - name: build_agent_image_ubi
     priority: 60
@@ -207,11 +193,11 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_agent_image
+      - func: build_and_push_image
         vars:
+          image_type: agent_ubi
           image: quay.io/mongodb/mongodb-agent-ubi-dev:${version_id}
           expire_after: 48h
-          dockerfile_path: agent/Dockerfile.ubi
 
   - name: build_prehook_image
     priority: 60
