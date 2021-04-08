@@ -26,7 +26,6 @@ def agent_ubuntu_params() -> DockerParameters:
     params = _shared_agent_params()
     params.update(
         {
-            "template_path": "scripts/dev/templates/agent",
             "base_image": "ubuntu:16.04",
             "tools_distro": "ubuntu1604-x86_64",
             "agent_distro": "linux_x86_64",
@@ -39,7 +38,6 @@ def agent_ubi_params() -> DockerParameters:
     params = _shared_agent_params()
     params.update(
         {
-            "template_path": "scripts/dev/templates/agent",
             "base_image": "registry.access.redhat.com/ubi7/ubi",
             "tools_distro": "rhel70-x86_64",
             "agent_distro": "rhel7_x86_64",
