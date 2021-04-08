@@ -9,6 +9,22 @@ DockerParameters = Dict[str, Union[bool, str, List[str]]]
 GOLANG_TAG = "1.14"
 
 
+def agent_ubuntu_params() -> DockerParameters:
+    return {
+        "template_path": "scripts/dev/templates/agent",
+        "base_image": "ubuntu:16.04",
+        "tools_distro": "ubuntu1604-x86_64",
+    }
+
+
+def agent_ubi_params() -> DockerParameters:
+    return {
+        "template_path": "scripts/dev/templates/agent",
+        "base_image": "registry.access.redhat.com/ubi7/ubi",
+        "tools_distro": "rhel70-x86_64",
+    }
+
+
 def operator_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "builder": True,
@@ -20,7 +36,8 @@ def operator_params(files_to_add: List[str]) -> DockerParameters:
 
 def e2e_params(files_to_add: List[str]) -> DockerParameters:
     return {
-        "base_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
+        "base_image": f"golang:{GOLANG_TAG}",
+        # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
@@ -29,12 +46,16 @@ def render(image_name: str, files_to_add: List[str]) -> str:
     param_dict = {
         "e2e": e2e_params(files_to_add),
         "operator": operator_params(files_to_add),
+        "agent_ubi": agent_ubi_params(),
+        "agent_ubuntu": agent_ubuntu_params(),
     }
 
     render_values = param_dict.get(image_name, dict())
 
+    search_path = str(render_values.get("template_path", "scripts/dev/templates"))
+
     env = jinja2.Environment()
-    env.loader = jinja2.FileSystemLoader(searchpath="scripts/dev/templates")
+    env.loader = jinja2.FileSystemLoader(searchpath=search_path)
     return env.get_template(f"Dockerfile.{image_name}").render(render_values)
 
 
