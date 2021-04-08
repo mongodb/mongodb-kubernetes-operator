@@ -1,3 +1,5 @@
+import json
+
 import jinja2
 import argparse
 import os
@@ -9,20 +11,41 @@ DockerParameters = Dict[str, Union[bool, str, List[str]]]
 GOLANG_TAG = "1.14"
 
 
-def agent_ubuntu_params() -> DockerParameters:
+def _shared_agent_params() -> DockerParameters:
+    with open("release.json", "r") as f:
+        release = json.loads(f.read())
+
     return {
         "template_path": "scripts/dev/templates/agent",
-        "base_image": "ubuntu:16.04",
-        "tools_distro": "ubuntu1604-x86_64",
+        "agent_version": release["agent"]["version"],
+        "tools_version": release["agent"]["tools_version"],
     }
+
+
+def agent_ubuntu_params() -> DockerParameters:
+    params = _shared_agent_params()
+    params.update(
+        {
+            "template_path": "scripts/dev/templates/agent",
+            "base_image": "ubuntu:16.04",
+            "tools_distro": "ubuntu1604-x86_64",
+            "agent_distro": "linux_x86_64",
+        }
+    )
+    return params
 
 
 def agent_ubi_params() -> DockerParameters:
-    return {
-        "template_path": "scripts/dev/templates/agent",
-        "base_image": "registry.access.redhat.com/ubi7/ubi",
-        "tools_distro": "rhel70-x86_64",
-    }
+    params = _shared_agent_params()
+    params.update(
+        {
+            "template_path": "scripts/dev/templates/agent",
+            "base_image": "registry.access.redhat.com/ubi7/ubi",
+            "tools_distro": "rhel70-x86_64",
+            "agent_distro": "rhel7_x86_64",
+        }
+    )
+    return params
 
 
 def operator_params(files_to_add: List[str]) -> DockerParameters:
