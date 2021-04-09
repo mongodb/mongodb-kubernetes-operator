@@ -1,0 +1,62 @@
+vars:
+  registry: <registry>
+
+images:
+  - name: agent-ubuntu
+    vars:
+      context: .
+      template_context: scripts/dev/templates/agent
+
+    stages:
+      - name: agent-template-ubuntu
+        task_type: dockerfile_template
+        distro: ubuntu
+
+        inputs:
+          - agent_version
+          - tools_version
+          - tools_distro
+          - agent_distro
+
+        output:
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+
+      - name: agent-ubuntu-build
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+
+        output:
+          - registry: $(inputs.params.registry)/mongodb-agent
+            tag: $(inputs.params.version_id)
+
+
+  - name: agent-ubi
+    vars:
+      context: .
+      template_context: scripts/dev/templates/agent
+
+    stages:
+      - name: agent-template-ubi
+        task_type: dockerfile_template
+        distro: ubi
+
+        inputs:
+          - agent_version
+          - tools_version
+          - tools_distro
+          - agent_distro
+
+        output:
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+
+
+      - name: agent-ubi-build
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+
+        inputs:
+          - expire_after
+
+        output:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+            tag: $(inputs.params.version_id)
