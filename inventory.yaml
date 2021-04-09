@@ -26,7 +26,7 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent
+          - registry: $(inputs.params.registry)/mongodb-agent-dev
             tag: $(inputs.params.version_id)
 
 
@@ -58,5 +58,5 @@ images:
           - expire_after
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
