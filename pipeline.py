@@ -1,7 +1,7 @@
 import argparse
 import json
 import sys
-from typing import Dict
+from typing import Dict, Optional
 
 from sonar.sonar import process_image
 
@@ -13,7 +13,7 @@ DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
 
-def build_agent_image_ubi(config: DevConfig, labels: Dict[str, str]):
+def build_agent_image_ubi(config: DevConfig) -> None:
     image_name = "agent-ubi"
     with open("release.json") as f:
         release = json.loads(f.read())
@@ -27,11 +27,10 @@ def build_agent_image_ubi(config: DevConfig, labels: Dict[str, str]):
     sonar_build_image(
         image_name,
         args=args,
-        labels=labels,
     )
 
 
-def build_agent_image_ubuntu(config: DevConfig, labels: Dict[str, str]):
+def build_agent_image_ubuntu(config: DevConfig) -> None:
     image_name = "agent-ubuntu"
     with open("release.json") as f:
         release = json.loads(f.read())
@@ -45,16 +44,14 @@ def build_agent_image_ubuntu(config: DevConfig, labels: Dict[str, str]):
     sonar_build_image(
         image_name,
         args=args,
-        labels=labels,
     )
 
 
 def sonar_build_image(
     image_name: str,
-    args: Dict[str, str] = None,
-    inventory="inventory.yaml",
-    labels: Dict[str, str] = None,
-):
+    args: Optional[Dict[str, str]] = None,
+    inventory: str = "inventory.yaml",
+) -> None:
     """Calls sonar to build `image_name` with arguments defined in `args`."""
     process_image(
         image_name,
@@ -62,14 +59,12 @@ def sonar_build_image(
         inventory=inventory,
         include_tags=[],
         skip_tags=[],
-        labels=labels,
     )
 
 
-def _parse_args():
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
-    parser.add_argument("--labels", type=str)
     return parser.parse_args()
 
 
@@ -88,16 +83,7 @@ def main() -> int:
         "agent-ubuntu": build_agent_image_ubuntu,
     }[image_name]
 
-    labels = []
-    if args.labels:
-        labels = args.labels.split(",")
-
-    labels_dict = {}
-    for label in labels:
-        key, val = label.split("=")
-        labels_dict[key] = val
-
-    agent_build_function(load_config(), labels=labels)
+    agent_build_function(load_config())
     return 0
 
 
