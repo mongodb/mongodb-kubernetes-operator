@@ -120,11 +120,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return result.Failed()
 	}
 
+	// Determine current state
+
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
 	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	r.log.Debug("Validating MongoDB.Spec")
-	if err := r.validateUpdate(mdb); err != nil {
+	if err := validateUpdate(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -133,7 +135,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Ensuring the service exists")
-	if err := r.ensureService(mdb); err != nil {
+	if err := ensureService(r.client, mdb, r.log); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
@@ -368,16 +370,6 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		})
 }
 
-func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	svc := buildService(mdb)
-	err := r.client.Create(context.TODO(), &svc)
-	if err != nil && apiErrors.IsAlreadyExists(err) {
-		r.log.Infof("The service already exists... moving forward: %s", err)
-		return nil
-	}
-	return err
-}
-
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
 	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
@@ -450,7 +442,7 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 // validateUpdate validates that the new Spec, corresponding to the existing one
 // is still valid. If there is no a previous Spec, then the function assumes this is
 // the first version of the MongoDB resource and skips.
-func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDBCommunity) error {
+func validateUpdate(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec, no need to validate
