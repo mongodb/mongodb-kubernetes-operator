@@ -54,6 +54,9 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
 
+
+
+
 	// TODO: add transition for serviceState -> after TLS states
 
 	return sm
