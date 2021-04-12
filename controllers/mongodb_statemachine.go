@@ -40,7 +40,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		client: client,
 	}, log)
 
-	startFresh := NewStartFreshState(client, mdb, log)
+	startFresh := NewStartFreshState(mdb, log)
 	validateSpec := NewValidateSpecState(client, mdb, log)
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
@@ -78,14 +78,13 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	return sm
 }
 
-func NewStartFreshState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: startFreshStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status, "MongoDB.Annotations", mdb.ObjectMeta.Annotations)
 			return result.Retry(0)
 		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, startFreshStateName),
 	}
 }
 
@@ -103,7 +102,6 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 			}
 			return result.Retry(0)
 		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, validateSpecStateName),
 	}
 }
 
@@ -125,7 +123,6 @@ func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 			_, err := client.GetService(types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
 			return err == nil, err
 		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, createServiceStateName),
 	}
 }
 
@@ -142,11 +139,6 @@ func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoD
 			}
 			return result.Retry(0)
 		},
-		IsComplete: func() (bool, error) {
-			// TODO: implement
-			return true, nil
-		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, tlsResourcesStateName),
 	}
 }
 func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
@@ -172,7 +164,7 @@ func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.Mo
 		},
 		IsComplete: func() (bool, error) {
 			sts, err := client.GetStatefulSet(mdb.NamespacedName())
-			if err != nil && !apiErrors.IsNotFound(err){
+			if err != nil && !apiErrors.IsNotFound(err) {
 				return false, fmt.Errorf("failed to get StatefulSet: %s", err)
 			}
 			ac, err := ensureAutomationConfig(client, mdb)
@@ -214,7 +206,6 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 			isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
 			return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, deployStatefulSetStateName),
 	}
 }
 
@@ -241,7 +232,6 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 			log.Debug("Successfully validated TLS configuration.")
 			return result.OK()
 		},
-		//OnCompletion: updateCompletionAnnotation(client, mdb, tlsValidationStateName),
 	}
 }
 
@@ -267,38 +257,3 @@ func newAllStates() state.AllStates {
 		CurrentState: startFreshStateName,
 	}
 }
-//
-//func updateCompletionAnnotation(client kubernetesClient.Client, m mdbv1.MongoDBCommunity, stateName string) func() error {
-//	return func() error {
-//
-//		time.Sleep(3 * time.Second)
-//
-//		mdb := mdbv1.MongoDBCommunity{}
-//		if err := client.Get(context.TODO(), m.NamespacedName(), &mdb); err != nil {
-//			return err
-//		}
-//
-//		allStates, err := getAllStates(mdb)
-//		if err != nil {
-//			return err
-//		}
-//		allStates.CurrentState = stateName
-//
-//		if allStates.StateCompletionStatus == nil {
-//			allStates.StateCompletionStatus = map[string]string{}
-//		}
-//
-//		allStates.StateCompletionStatus[stateName] = completeAnnotation
-//
-//		bytes, err := json.Marshal(allStates)
-//		if err != nil {
-//			return err
-//		}
-//		if mdb.Annotations == nil {
-//			mdb.Annotations = map[string]string{}
-//		}
-//		mdb.Annotations[stateMachineAnnotation] = string(bytes)
-//
-//		return client.Update(context.TODO(), &mdb)
-//	}
-//}

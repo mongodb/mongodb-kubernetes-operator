@@ -15,7 +15,6 @@ type State struct {
 	Name       string
 	Reconcile  func() (reconcile.Result, error)
 	IsComplete func() (bool, error)
-	//OnCompletion func() error
 }
 
 type transition struct {
@@ -149,6 +148,16 @@ func (m *Machine) getTransition() (*transition, error) {
 
 		// we should never transition from a state if it is not yet complete
 		if !isComplete {
+			continue
+		}
+
+		isComplete, err = m.completer.IsComplete(t.to.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		//we should never transition to a state if it is already completed.
+		if isComplete {
 			continue
 		}
 
