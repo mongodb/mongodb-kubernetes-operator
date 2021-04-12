@@ -20,16 +20,17 @@ import (
 )
 
 var (
-	stateMachineAnnotation          = "mongodb.com/v1.stateMachine"
-	completeAnnotation              = "complete"
-	startFreshStateName             = "StartFresh"
-	validateSpecStateName           = "ValidateSpec"
-	createServiceStateName          = "CreateService"
-	tlsValidationStateName          = "TLSValidation"
-	tlsResourcesStateName           = "CreateTLSResources"
-	deployAutomationConfigStateName = "DeployAutomationConfig"
-	deployStatefulSetStateName      = "DeployStatefulSet"
+	stateMachineAnnotation                  = "mongodb.com/v1.stateMachine"
 
+	completeAnnotation                      = "complete"
+	startFreshStateName                     = "StartFresh"
+	validateSpecStateName                   = "ValidateSpec"
+	createServiceStateName                  = "CreateService"
+	tlsValidationStateName                  = "TLSValidation"
+	tlsResourcesStateName                   = "CreateTLSResources"
+	deployAutomationConfigStateName         = "DeployAutomationConfig"
+	deployStatefulSetStateName              = "DeployStatefulSet"
+	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	noCondition = func() (bool, error) { return true, nil }
 )
 
@@ -47,6 +48,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
+	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
 	sm.AddTransition(validateSpec, serviceState, noCondition)
@@ -75,6 +77,16 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, noCondition)
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
 
+	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
+		// we only need to reset the update strategy if a version change is in progress.
+		return mdb.IsChangingVersion(), nil
+	})
+
+	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, func() (bool, error) {
+		// we only need to reset the update strategy if a version change is in progress.
+		return mdb.IsChangingVersion(), nil
+	})
+
 	return sm
 }
 
@@ -101,6 +113,29 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				)
 			}
 			return result.Retry(0)
+		},
+	}
+}
+
+func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: resetStatefulSetUpdateStrategyStateName,
+		Reconcile: func() (reconcile.Result, error) {
+			if err := statefulset.ResetUpdateStrategy(&mdb, client); err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.Retry(0)
+		},
+		IsComplete: func() (bool, error) {
+			sts, err := client.GetStatefulSet(mdb.NamespacedName())
+			if err != nil {
+				return false, err
+			}
+			return sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType, nil
 		},
 	}
 }

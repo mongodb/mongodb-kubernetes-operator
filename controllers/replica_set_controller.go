@@ -9,8 +9,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
@@ -148,79 +146,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	sm.SetState(startingState, true)
 	return sm.Reconcile()
-	//
-	//r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	//r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
-	//
-	//r.log.Debug("Validating MongoDB.Spec")
-	//if err := validateUpdate(mdb); err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
-	//r.log.Debug("Ensuring the service exists")
-	//if err := ensureService(r.client, mdb, r.log); err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
-	//isTLSValid, err := r.validateTLSConfig(mdb)
-	//if err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
-	//if !isTLSValid {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
-	//			withPendingPhase(10),
-	//	)
-	//}
-	//
-	//if err := r.ensureTLSResources(mdb); err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
-	//ready, err := r.deployMongoDBReplicaSet(mdb)
-	//if err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error deploying MongoDB ReplicaSet: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
-	//if !ready {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Info, "ReplicaSet is not yet ready, retrying in 10 seconds").
-	//			withPendingPhase(10),
-	//	)
-	//}
-	//
-	//r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
-	//if err := statefulset.ResetUpdateStrategy(&mdb, r.client); err != nil {
-	//	return status.Update(r.client.Status(), &mdb,
-	//		statusOptions().
-	//			withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-	//			withFailedPhase(),
-	//	)
-	//}
-	//
+
+
 	//if scale.IsStillScaling(mdb) {
 	//	return status.Update(r.client.Status(), &mdb, statusOptions().
 	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
@@ -384,18 +311,6 @@ func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCo
 	return true
 }
 
-// deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
-// have been successfully created. A boolean is returned indicating if the process is complete
-// and an error if there was one.
-func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) (bool, error) {
-	return functions.RunSequentially(needToPublishStateFirst(client, mdb, log),
-		func() (bool, error) {
-			return deployAutomationConfig(client, mdb, log)
-		},
-		func() (bool, error) {
-			return deployStatefulSet(client, mdb, log)
-		})
-}
 
 func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
