@@ -89,7 +89,7 @@ func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 						withFailedPhase(),
 				)
 			}
-			return result.OK()
+			return result.Retry(0)
 		},
 		OnCompletion: updateCompletionAnnotation(client, mdb, createServiceStateAnnotation),
 	}
@@ -217,6 +217,12 @@ func updateCompletionAnnotation(client kubernetesClient.Client, m mdbv1.MongoDBC
 		if allStates.StateCompletionStatus == nil {
 			allStates.StateCompletionStatus = map[string]string{}
 		}
+
+		//existingAnnotation := allStates.StateCompletionStatus[stateName]
+		//if existingAnnotation == completeAnnotation {
+		//	return nil
+		//}
+
 		allStates.StateCompletionStatus[stateName] = completeAnnotation
 
 		bytes, err := json.Marshal(allStates)

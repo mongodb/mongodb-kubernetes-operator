@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
@@ -76,7 +78,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 // SetupWithManager sets up the controller with the Manager and configures the necessary watches.
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mdbv1.MongoDBCommunity{}).
+		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
 		Complete(r)
 }
 
@@ -135,7 +137,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		log.Errorf("Attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
 		return reconcile.Result{}, nil
 	}
-
 
 	sm.SetState(startingState)
 	return sm.Reconcile()
