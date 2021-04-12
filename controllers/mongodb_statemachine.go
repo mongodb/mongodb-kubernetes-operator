@@ -7,6 +7,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/pkg/errors"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -26,6 +27,7 @@ var (
 	validateSpecStateAnnotation  = "ValidateSpec"
 	createServiceStateAnnotation = "CreateService"
 	tlsValidationState           = "TLSValidation"
+	tlsResourcesState            = "CreateTLSResources"
 
 	noCondition = func() (bool, error) { return true, nil }
 )
@@ -40,10 +42,19 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	validateSpec := NewValidateSpecState(client, mdb, log)
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
+	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
 	sm.AddTransition(validateSpec, serviceState, noCondition)
-	sm.AddTransition(serviceState, tlsValidationState, noCondition)
+
+	sm.AddTransition(serviceState, tlsValidationState, func() (bool, error) {
+		// we only need to validate TLS if it is enabled in the resource
+		return mdb.Spec.Security.TLS.Enabled, nil
+	})
+
+	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
+
+	// TODO: add transition for serviceState -> after TLS states
 
 	return sm
 }
@@ -61,7 +72,7 @@ func NewStartFreshState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommuni
 
 func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: "ValidateSpec",
+		Name: validateSpecStateAnnotation,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Debug("Validating MongoDB.Spec")
 			if err := validateUpdate(mdb); err != nil {
@@ -95,6 +106,35 @@ func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 	}
 }
 
+func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: tlsResourcesState,
+		Reconcile: func() (reconcile.Result, error) {
+			if err := ensureTLSResources(client, mdb, log); err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.Retry(0)
+		},
+		OnCompletion: updateCompletionAnnotation(client, mdb, tlsResourcesState),
+	}
+}
+
+// ensureTLSResources creates any required TLS resources that the MongoDBCommunity
+// requires for TLS configuration.
+func ensureTLSResources(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
+	// require the contents.
+	log.Infof("TLS is enabled, creating/updating TLS secret")
+	if err := ensureTLSSecret(client, mdb); err != nil {
+		return errors.Errorf("could not ensure TLS secret: %s", err)
+	}
+	return nil
+}
+
 func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: tlsValidationState,
@@ -124,10 +164,6 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
 func validateTLSConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (bool, error) {
-	if !mdb.Spec.Security.TLS.Enabled {
-		return true, nil
-	}
-
 	log.Info("Ensuring TLS is correctly configured")
 
 	// Ensure CA ConfigMap exists
@@ -217,11 +253,6 @@ func updateCompletionAnnotation(client kubernetesClient.Client, m mdbv1.MongoDBC
 		if allStates.StateCompletionStatus == nil {
 			allStates.StateCompletionStatus = map[string]string{}
 		}
-
-		//existingAnnotation := allStates.StateCompletionStatus[stateName]
-		//if existingAnnotation == completeAnnotation {
-		//	return nil
-		//}
 
 		allStates.StateCompletionStatus[stateName] = completeAnnotation
 
