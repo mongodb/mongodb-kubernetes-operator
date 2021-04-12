@@ -14,8 +14,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
-
 	"github.com/pkg/errors"
 
 	"github.com/imdario/mergo"
@@ -120,119 +118,136 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return result.Failed()
 	}
 
+	log := zap.S().With("ReplicaSet", mdb.Namespace)
+
 	// Determine current state
+	sm := BuildStateMachine(r.client, mdb, log)
 
-	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
-
-	r.log.Debug("Validating MongoDB.Spec")
-	if err := validateUpdate(mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	r.log.Debug("Ensuring the service exists")
-	if err := ensureService(r.client, mdb, r.log); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	isTLSValid, err := r.validateTLSConfig(mdb)
+	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
-				withFailedPhase(),
-		)
+		log.Errorf("Error fetching last state name from MongoDBCommunity annotations: %s", err)
+		return reconcile.Result{}, err
+	}
+	startingState, ok := sm.States[startingStateName]
+	if !ok {
+		log.Errorf("Attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
+		return reconcile.Result{}, nil
 	}
 
-	if !isTLSValid {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
-				withPendingPhase(10),
-		)
-	}
-
-	if err := r.ensureTLSResources(mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	ready, err := r.deployMongoDBReplicaSet(mdb)
-	if err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error deploying MongoDB ReplicaSet: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	if !ready {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Info, "ReplicaSet is not yet ready, retrying in 10 seconds").
-				withPendingPhase(10),
-		)
-	}
-
-	r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
-	if err := statefulset.ResetUpdateStrategy(&mdb, r.client); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	if scale.IsStillScaling(mdb) {
-		return status.Update(r.client.Status(), &mdb, statusOptions().
-			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
-				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-			withPendingPhase(10),
-		)
-	}
-
-	res, err := status.Update(r.client.Status(), &mdb,
-		statusOptions().
-			withMongoURI(mdb.MongoURI()).
-			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-			withMessage(None, "").
-			withRunningPhase(),
-	)
-	if err != nil {
-		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
-		return res, err
-	}
-
-	// the last version will be duplicated in two annotations.
-	// This is needed to reuse the update strategy logic in enterprise
-	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
-		r.log.Errorf("Could not save current version as an annotation: %s", err)
-	}
-	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
-		r.log.Errorf("Could not save current spec as an annotation: %s", err)
-	}
-
-	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
-		return res, nil
-	}
-
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
-	return res, err
+	sm.SetState(startingState)
+	return sm.Reconcile()
+	//
+	//r.log = zap.S().With("ReplicaSet", request.NamespacedName)
+	//r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	//
+	//r.log.Debug("Validating MongoDB.Spec")
+	//if err := validateUpdate(mdb); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//r.log.Debug("Ensuring the service exists")
+	//if err := ensureService(r.client, mdb, r.log); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//isTLSValid, err := r.validateTLSConfig(mdb)
+	//if err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//if !isTLSValid {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
+	//			withPendingPhase(10),
+	//	)
+	//}
+	//
+	//if err := r.ensureTLSResources(mdb); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//ready, err := r.deployMongoDBReplicaSet(mdb)
+	//if err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error deploying MongoDB ReplicaSet: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//if !ready {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Info, "ReplicaSet is not yet ready, retrying in 10 seconds").
+	//			withPendingPhase(10),
+	//	)
+	//}
+	//
+	//r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
+	//if err := statefulset.ResetUpdateStrategy(&mdb, r.client); err != nil {
+	//	return status.Update(r.client.Status(), &mdb,
+	//		statusOptions().
+	//			withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
+	//			withFailedPhase(),
+	//	)
+	//}
+	//
+	//if scale.IsStillScaling(mdb) {
+	//	return status.Update(r.client.Status(), &mdb, statusOptions().
+	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
+	//		withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
+	//			mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+	//		withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+	//		withPendingPhase(10),
+	//	)
+	//}
+	//
+	//res, err := status.Update(r.client.Status(), &mdb,
+	//	statusOptions().
+	//		withMongoURI(mdb.MongoURI()).
+	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
+	//		withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+	//		withMessage(None, "").
+	//		withRunningPhase(),
+	//)
+	//if err != nil {
+	//	r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
+	//	return res, err
+	//}
+	//
+	//// the last version will be duplicated in two annotations.
+	//// This is needed to reuse the update strategy logic in enterprise
+	//if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
+	//	r.log.Errorf("Could not save current version as an annotation: %s", err)
+	//}
+	//if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
+	//	r.log.Errorf("Could not save current spec as an annotation: %s", err)
+	//}
+	//
+	//if res.RequeueAfter > 0 || res.Requeue {
+	//	r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+	//	return res, nil
+	//}
+	//
+	//r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+	//return res, err
 }
 
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration

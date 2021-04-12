@@ -5,6 +5,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+type AllStates struct {
+	CurrentState          string            `json:"currentState"`
+	StateCompletionStatus map[string]string `json:"stateCompletion"`
+}
+
 type State struct {
 	Name         string
 	Reconcile    func() (reconcile.Result, error)
@@ -12,8 +17,13 @@ type State struct {
 }
 
 type transition struct {
-	to        State
+	from, to  State
 	predicate func() (bool, error)
+}
+
+type Completer interface {
+	IsComplete(stateName string) (bool, error)
+	Complete(stateName string) error
 }
 
 type Machine struct {
@@ -21,17 +31,18 @@ type Machine struct {
 	currentTransitions []transition
 	currentState       *State
 	logger             *zap.SugaredLogger
+	completer          Completer
 	States             map[string]State
 }
 
-func NewStateMachine(logger *zap.SugaredLogger) *Machine {
-	m := &Machine{
+func NewStateMachine(completer Completer, logger *zap.SugaredLogger) *Machine {
+	return &Machine{
 		allTransitions:     map[string][]transition{},
 		currentTransitions: []transition{},
 		logger:             logger,
+		completer:          completer,
 		States:             map[string]State{},
 	}
-	return m
 }
 
 func (m *Machine) Reconcile() (reconcile.Result, error) {
@@ -50,6 +61,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		panic("no current state!")
 	}
 
+	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
 	res, err := m.currentState.Reconcile()
 
 	if m.currentState.OnCompletion != nil {
@@ -62,14 +74,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 }
 
 func (m *Machine) SetState(state State) error {
-	if m.currentState != nil && m.currentState.Name == state.Name {
-		return nil
-	}
-	if m.currentState != nil {
-		m.logger.Debugf("Transitioning from %s to %s.", m.currentState.Name, state.Name)
-	} else {
-		m.logger.Debugf("Setting starting state %s.", state.Name)
-	}
+	m.logger.Debugf("Setting state: %s", state.Name)
 	m.currentState = &state
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
 	return nil
@@ -81,6 +86,7 @@ func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) 
 		m.allTransitions[from.Name] = []transition{}
 	}
 	m.allTransitions[from.Name] = append(m.allTransitions[from.Name], transition{
+		from:      from,
 		to:        to,
 		predicate: predicate,
 	})
@@ -92,6 +98,17 @@ func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) 
 
 func (m *Machine) getTransition() (*transition, error) {
 	for _, t := range m.currentTransitions {
+
+		isComplete, err := m.completer.IsComplete(t.from.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		// we should never transition from a state if it is not yet complete
+		if !isComplete {
+			continue
+		}
+
 		ok, err := t.predicate()
 		if err != nil {
 			return nil, err

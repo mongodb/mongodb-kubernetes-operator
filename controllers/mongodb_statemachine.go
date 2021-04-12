@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -14,32 +15,39 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+var (
+	stateMachineAnnotation       = "mongodb.com/v1.states/stateMachine"
+	completeAnnotation           = "complete"
+	lastStateAnnotation          = "mongodb.com/v1.states/lastState"
+	startFreshStateAnnotation    = "mongodb.com/v1.states/StartFresh"
+	validateSpecStateAnnotation  = "mongodb.com/v1.states/ValidateSpec"
+	createServiceStateAnnotation = "mongodb.com/v1.states/CreateService"
+	noCondition                  = func() (bool, error) { return true, nil }
+)
+
 //nolint
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) *state.Machine {
-	sm := state.NewStateMachine()
-	startFresh := NewStartFreshState(mdb, log)
+	sm := state.NewStateMachine(&MongoDBCommunityCompleter{
+		nsName: mdb.NamespacedName(),
+		client: client,
+	}, log)
+	startFresh := NewStartFreshState(client, mdb, log)
 	validateSpec := NewValidateSpecState(client, mdb, log)
 	serviceState := NewCreateServiceState(client, mdb, log)
 
-	sm.AddTransition(startFresh, validateSpec, func() (bool, error) {
-		return true, nil
-	})
-
-	sm.AddTransition(validateSpec, serviceState, func() (bool, error) {
-		return true, nil
-	})
-
+	sm.AddTransition(startFresh, validateSpec, noCondition)
+	sm.AddTransition(validateSpec, serviceState, noCondition)
 	return sm
 }
 
-func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewStartFreshState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: "StartFresh",
 		Reconcile: func() (reconcile.Result, error) {
-			log = zap.S().With("ReplicaSet", mdb.Namespace)
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 			return result.Retry(0)
 		},
+		OnCompletion: updateCompletionAnnotation(client, mdb, startFreshStateAnnotation),
 	}
 }
 
@@ -57,6 +65,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 			}
 			return result.Retry(0)
 		},
+		OnCompletion: updateCompletionAnnotation(client, mdb, validateSpecStateAnnotation),
 	}
 }
 
@@ -72,8 +81,10 @@ func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 						withFailedPhase(),
 				)
 			}
-			return result.Retry(0)
+			return result.OK()
+			//return result.Retry(0)
 		},
+		OnCompletion: updateCompletionAnnotation(client, mdb, createServiceStateAnnotation),
 	}
 }
 
@@ -85,4 +96,26 @@ func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, l
 		return nil
 	}
 	return err
+}
+
+func newAllStates() state.AllStates {
+	return state.AllStates{
+		CurrentState: "StartFresh",
+	}
+}
+
+func updateCompletionAnnotation(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, stateName string) func() error {
+	return func() error {
+		allStates, err := getAllStates(mdb)
+		if err != nil {
+			return err
+		}
+		allStates.CurrentState = stateName
+		allStates.StateCompletionStatus[stateName] = completeAnnotation
+
+		bytes, err := json.Marshal(allStates)
+		mdb.Annotations[stateMachineAnnotation] = string(bytes)
+
+		return client.Update(context.TODO(), &mdb)
+	}
 }
