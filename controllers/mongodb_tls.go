@@ -3,6 +3,9 @@ package controllers
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
+	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	"go.uber.org/zap"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -119,6 +122,67 @@ func combineCertificateAndKey(cert, key string) string {
 	trimmedCert := strings.TrimRight(cert, "\n")
 	trimmedKey := strings.TrimRight(key, "\n")
 	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
+}
+
+// validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
+func validateTLSConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (bool, error) {
+	log.Info("Ensuring TLS is correctly configured")
+
+	// Ensure CA ConfigMap exists
+	caData, err := configmap.ReadData(client, mdb.TLSConfigMapNamespacedName())
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	// Ensure ConfigMap has a "ca.crt" field
+	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
+		log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
+		return false, nil
+	}
+
+	// Ensure Secret exists
+	secretData, err := secret.ReadStringData(client, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	// Ensure Secret has "tls.crt" and "tls.key" fields
+	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
+		log.Warnf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
+		return false, nil
+	}
+	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
+		log.Warnf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
+		return false, nil
+	}
+
+	// Watch certificate-key secret to handle rotations
+	secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
+
+	log.Infof("Successfully validated TLS config")
+	return true, nil
+}
+
+// ensureTLSResources creates any required TLS resources that the MongoDBCommunity
+// requires for TLS configuration.
+func ensureTLSResources(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
+	// require the contents.
+	log.Infof("TLS is enabled, creating/updating TLS secret")
+	if err := ensureTLSSecret(client, mdb); err != nil {
+		return errors.Errorf("could not ensure TLS secret: %s", err)
+	}
+	return nil
 }
 
 // ensureTLSSecret will create or update the operator-managed Secret containing

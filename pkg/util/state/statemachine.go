@@ -62,7 +62,8 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
 	res, err := m.currentState.Reconcile()
 
-	if m.currentState.OnCompletion != nil {
+	// we only complete the state if if we are requeuing immediately.
+	if res.Requeue && res.RequeueAfter == 0 && m.currentState.OnCompletion != nil {
 		if err := m.currentState.OnCompletion(); err != nil {
 			m.logger.Errorf("error running OnCompletion for state %s: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err

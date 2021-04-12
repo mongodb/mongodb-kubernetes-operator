@@ -315,7 +315,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
 // The returned boolean indicates whether or not that Agents have all reached goal state.
-func  deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) (bool, error) {
+func deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) (bool, error) {
 	log.Infof("Creating/Updating AutomationConfig")
 
 	sts, err := client.GetStatefulSet(mdb.NamespacedName())
@@ -345,9 +345,9 @@ func  deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCo
 	return ready, nil
 }
 
-// shouldRunInOrder returns true if the order of execution of the AutomationConfig & StatefulSet
+// needToPublishStateFirst returns true if the order of execution of the AutomationConfig & StatefulSet
 // functions should be sequential or not. A value of false indicates they will run in reversed order.
-func shouldRunInOrder(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) bool {
+func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) bool {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
 	_, err := client.GetStatefulSet(mdb.NamespacedName())
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
@@ -380,7 +380,7 @@ func shouldRunInOrder(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
 func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) (bool, error) {
-	return functions.RunSequentially(shouldRunInOrder(client, mdb, log),
+	return functions.RunSequentially(needToPublishStateFirst(client, mdb, log),
 		func() (bool, error) {
 			return deployAutomationConfig(client, mdb, log)
 		},
