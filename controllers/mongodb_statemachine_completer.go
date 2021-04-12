@@ -36,6 +36,13 @@ func (m *MongoDBCommunityCompleter) IsComplete(stateName string) (bool, error) {
 }
 
 func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
+
+	// TODO: fix this!
+	if stateName == reconciliationEndState {
+		// we don't want to update the annotations again after the end state has already done that!
+		return nil
+	}
+
 	mdb := mdbv1.MongoDBCommunity{}
 	err := m.client.Get(context.TODO(), m.nsName, &mdb)
 	if err != nil {

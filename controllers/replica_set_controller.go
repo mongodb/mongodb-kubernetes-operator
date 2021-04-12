@@ -147,7 +147,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	sm.SetState(startingState, true)
 	return sm.Reconcile()
 
-
 	//if scale.IsStillScaling(mdb) {
 	//	return status.Update(r.client.Status(), &mdb, statusOptions().
 	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
@@ -310,7 +309,6 @@ func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCo
 
 	return true
 }
-
 
 func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}

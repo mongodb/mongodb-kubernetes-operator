@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	stateMachineAnnotation                  = "mongodb.com/v1.stateMachine"
+	stateMachineAnnotation = "mongodb.com/v1.stateMachine"
 
 	completeAnnotation                      = "complete"
 	startFreshStateName                     = "StartFresh"
@@ -31,7 +32,8 @@ var (
 	deployAutomationConfigStateName         = "DeployAutomationConfig"
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
-	noCondition = func() (bool, error) { return true, nil }
+	reconciliationEndState                  = "ReconciliationEnd"
+	noCondition                             = func() (bool, error) { return true, nil }
 )
 
 //nolint
@@ -49,13 +51,29 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb, log)
+	endState := NewReconciliationEndState(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
 	sm.AddTransition(validateSpec, serviceState, noCondition)
+	sm.AddTransition(validateSpec, tlsValidationState, func() (bool, error) {
+		return mdb.Spec.Security.TLS.Enabled, nil
+	})
+	sm.AddTransition(validateSpec, deployAutomationConfigState, func() (bool, error) {
+		return needToPublishStateFirst(client, mdb, log), nil
+	})
+	sm.AddTransition(validateSpec, deployStatefulSetState, func() (bool, error) {
+		return !needToPublishStateFirst(client, mdb, log), nil
+	})
 
 	sm.AddTransition(serviceState, tlsValidationState, func() (bool, error) {
 		// we only need to validate TLS if it is enabled in the resource
 		return mdb.Spec.Security.TLS.Enabled, nil
+	})
+	sm.AddTransition(serviceState, deployAutomationConfigState, func() (bool, error) {
+		return needToPublishStateFirst(client, mdb, log), nil
+	})
+	sm.AddTransition(serviceState, deployStatefulSetState, func() (bool, error) {
+		return !needToPublishStateFirst(client, mdb, log), nil
 	})
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
@@ -67,25 +85,21 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log), nil
 	})
 
-	sm.AddTransition(serviceState, deployAutomationConfigState, func() (bool, error) {
-		return needToPublishStateFirst(client, mdb, log), nil
-	})
-	sm.AddTransition(serviceState, deployStatefulSetState, func() (bool, error) {
-		return !needToPublishStateFirst(client, mdb, log), nil
-	})
-
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, noCondition)
-	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
-
-	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
-		// we only need to reset the update strategy if a version change is in progress.
-		return mdb.IsChangingVersion(), nil
-	})
-
 	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, func() (bool, error) {
 		// we only need to reset the update strategy if a version change is in progress.
 		return mdb.IsChangingVersion(), nil
 	})
+	sm.AddTransition(deployStatefulSetState, endState, noCondition)
+
+	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
+	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
+		// we only need to reset the update strategy if a version change is in progress.
+		return mdb.IsChangingVersion(), nil
+	})
+	sm.AddTransition(deployAutomationConfigState, endState, noCondition)
+
+	sm.AddTransition(resetUpdateStrategyState, endState, noCondition)
 
 	return sm
 }
@@ -94,7 +108,7 @@ func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) stat
 	return state.State{
 		Name: startFreshStateName,
 		Reconcile: func() (reconcile.Result, error) {
-			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status, "MongoDB.Annotations", mdb.ObjectMeta.Annotations)
+			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 			return result.Retry(0)
 		},
 	}
@@ -244,6 +258,34 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 	}
 }
 
+func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name:            reconciliationEndState,
+		IsTerminalState: true,
+		Reconcile: func() (reconcile.Result, error) {
+			allStates := newAllStates()
+
+			bytes, err := json.Marshal(allStates)
+			if err != nil {
+				log.Errorf("error marshalling states: %s", err)
+				return reconcile.Result{}, err
+			}
+			if mdb.Annotations == nil {
+				mdb.Annotations = map[string]string{}
+			}
+			mdb.Annotations[stateMachineAnnotation] = string(bytes)
+
+			if err := client.Update(context.TODO(), &mdb); err != nil {
+				log.Errorf("error updating annotations: %s", err)
+				return reconcile.Result{}, err
+			}
+
+			log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+			return result.OK()
+		},
+	}
+}
+
 func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: tlsValidationStateName,
@@ -265,7 +307,7 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 				)
 			}
 			log.Debug("Successfully validated TLS configuration.")
-			return result.OK()
+			return result.Retry(0)
 		},
 	}
 }
