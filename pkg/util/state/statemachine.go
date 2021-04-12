@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -52,11 +53,23 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	if transition != nil {
-		m.SetState(transition.to)
+		m.SetState(transition.to, false)
 	}
 
 	if m.currentState == nil {
 		panic("no current state!")
+	}
+
+	complete, err := m.completer.IsComplete(m.currentState.Name)
+
+	if err != nil {
+		m.logger.Errorf("error checking if state %s is complete: %s", m.currentState.Name, err)
+		return reconcile.Result{}, err
+	}
+
+	if complete {
+		m.logger.Debugf("State %s is already complete. Finishing reconciliation.", m.currentState.Name)
+		return result.OK()
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
@@ -74,8 +87,12 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	return res, err
 }
 
-func (m *Machine) SetState(state State) {
-	m.logger.Debugf("Transition to state: %s", state.Name)
+func (m *Machine) SetState(state State, prev bool) {
+	if prev {
+		m.logger.Debugf("Beginning at previous state: %s", state.Name)
+	} else {
+		m.logger.Debugf("Transition to state: %s", state.Name)
+	}
 	m.currentState = &state
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
 }

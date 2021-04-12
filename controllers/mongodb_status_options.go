@@ -127,7 +127,7 @@ func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionB
 }
 
 func (o *optionBuilder) withFailedPhase() *optionBuilder {
-	return o.withPhase(mdbv1.Failed, 0)
+	return o.withPhase(mdbv1.Failed, 1)
 }
 
 func (o *optionBuilder) withPendingPhase(retryAfter int) *optionBuilder {
@@ -155,7 +155,8 @@ func (p phaseOption) GetResult() (reconcile.Result, error) {
 		return result.Retry(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
-		return result.Failed()
+		//return result.Failed()
+		return reconcile.Result{RequeueAfter: 1}, nil
 	}
 	return result.OK()
 }

@@ -26,6 +26,7 @@ var (
 	tlsValidationStateName          = "TLSValidation"
 	tlsResourcesStateName           = "CreateTLSResources"
 	deployAutomationConfigStateName = "DeployAutomationConfig"
+	deployStatefulSetStateName      = "DeployStatefulSet"
 
 	noCondition = func() (bool, error) { return true, nil }
 )
@@ -43,6 +44,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
+	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
 	sm.AddTransition(validateSpec, serviceState, noCondition)
@@ -57,17 +59,26 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() (bool, error) {
 		return needToPublishStateFirst(client, mdb, log), nil
 	})
+	sm.AddTransition(tlsResourcesState, deployStatefulSetState, func() (bool, error) {
+		return !needToPublishStateFirst(client, mdb, log), nil
+	})
 
 	sm.AddTransition(serviceState, deployAutomationConfigState, func() (bool, error) {
 		return needToPublishStateFirst(client, mdb, log), nil
 	})
+	sm.AddTransition(serviceState, deployStatefulSetState, func() (bool, error) {
+		return !needToPublishStateFirst(client, mdb, log), nil
+	})
+
+	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, noCondition)
+	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
 
 	return sm
 }
 
 func NewStartFreshState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: "StartFresh",
+		Name: startFreshStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status, "MongoDB.Annotations", mdb.ObjectMeta.Annotations)
 			return result.Retry(0)
@@ -96,7 +107,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 
 func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: "CreateService",
+		Name: createServiceStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Debug("Ensuring the service exists")
 			if err := ensureService(client, mdb, log); err != nil {
@@ -150,6 +161,32 @@ func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.Mo
 			return result.Retry(0)
 		},
 		OnCompletion: updateCompletionAnnotation(client, mdb, deployAutomationConfigStateName),
+	}
+}
+
+func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: deployStatefulSetStateName,
+		Reconcile: func() (reconcile.Result, error) {
+			ready, err := deployStatefulSet(client, mdb, log)
+			if err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error deploying MongoDB StatefulSet: %s", err)).
+						withFailedPhase(),
+				)
+			}
+
+			if !ready {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Info, "StatefulSet is not yet ready, retrying in 10 seconds").
+						withPendingPhase(10),
+				)
+			}
+			return result.Retry(0)
+		},
+		OnCompletion: updateCompletionAnnotation(client, mdb, deployStatefulSetStateName),
 	}
 }
 

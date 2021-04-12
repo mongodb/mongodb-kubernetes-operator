@@ -138,7 +138,15 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, nil
 	}
 
-	sm.SetState(startingState)
+	a, err := getAllStates(mdb)
+	if err != nil {
+		log.Errorf("Error getting all States: %s", err)
+		return reconcile.Result{}, nil
+	}
+
+	log.Infof("Current state completion %s: %s", a.CurrentState, a.StateCompletionStatus[a.CurrentState])
+
+	sm.SetState(startingState, true)
 	return sm.Reconcile()
 	//
 	//r.log = zap.S().With("ReplicaSet", request.NamespacedName)
@@ -286,23 +294,23 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 
 // deployStatefulSet deploys the backing StatefulSet of the MongoDBCommunity resource.
 // The returned boolean indicates that the StatefulSet is ready.
-func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	r.log.Info("Creating/Updating StatefulSet")
-	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+func deployStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) (bool, error) {
+	log.Info("Creating/Updating StatefulSet")
+	if err := createOrUpdateStatefulSet(client, mdb); err != nil {
 		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
-	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	currentSts, err := client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
 		return false, errors.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
+	log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
 
 	if isReady {
-		r.log.Infow("StatefulSet is ready",
+		log.Infow("StatefulSet is ready",
 			"replicas", currentSts.Spec.Replicas,
 			"generation", currentSts.Generation,
 			"observedGeneration", currentSts.Status.ObservedGeneration,
@@ -385,19 +393,19 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(client kubernetesClient.C
 			return deployAutomationConfig(client, mdb, log)
 		},
 		func() (bool, error) {
-			return r.deployStatefulSet(mdb)
+			return deployStatefulSet(client, mdb, log)
 		})
 }
 
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
+func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
-	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
+	err := client.Get(context.TODO(), mdb.NamespacedName(), &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
-	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
+	if _, err = statefulset.CreateOrUpdate(client, set); err != nil {
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
