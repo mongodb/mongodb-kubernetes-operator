@@ -52,9 +52,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	if transition != nil {
-		if err := m.SetState(transition.to); err != nil {
-			return reconcile.Result{}, err
-		}
+		m.SetState(transition.to)
 	}
 
 	if m.currentState == nil {
@@ -70,14 +68,15 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			return reconcile.Result{}, err
 		}
 	}
+
+	m.logger.Debugw("Reconcile Result", "res", res, "err", err)
 	return res, err
 }
 
-func (m *Machine) SetState(state State) error {
-	m.logger.Debugf("Setting state: %s", state.Name)
+func (m *Machine) SetState(state State) {
+	m.logger.Debugf("Transition to state: %s", state.Name)
 	m.currentState = &state
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
-	return nil
 }
 
 func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) {

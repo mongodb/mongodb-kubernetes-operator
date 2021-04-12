@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 
@@ -102,6 +103,7 @@ type ReplicaSetReconciler struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
+	time.Sleep(5 * time.Second)
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
 	mdb := mdbv1.MongoDBCommunity{}
@@ -121,7 +123,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	log := zap.S().With("ReplicaSet", mdb.Namespace)
 
 	// Determine current state
-	sm := BuildStateMachine(r.client, mdb, log)
+	sm := BuildStateMachine(r.client, mdb, r.secretWatcher, log)
 
 	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
@@ -133,6 +135,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		log.Errorf("Attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
 		return reconcile.Result{}, nil
 	}
+
 
 	sm.SetState(startingState)
 	return sm.Reconcile()
@@ -451,6 +454,7 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetClusterIP("None").
 		SetPort(27017).
 		SetPublishNotReadyAddresses(true).
+		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
 		Build()
 }
 
