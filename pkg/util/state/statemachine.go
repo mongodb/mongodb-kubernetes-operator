@@ -1,7 +1,6 @@
 package state
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -15,7 +14,6 @@ type State struct {
 	Name            string
 	Reconcile       func() (reconcile.Result, error)
 	IsComplete      func() (bool, error)
-	IsTerminalState bool
 }
 
 type transition struct {
@@ -61,18 +59,6 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		panic("no current state!")
 	}
 
-	complete, err := m.completer.IsComplete(m.currentState.Name)
-
-	if err != nil {
-		m.logger.Errorf("error checking if state %s is complete: %s", m.currentState.Name, err)
-		return reconcile.Result{}, err
-	}
-
-	if complete {
-		m.logger.Debugf("State %s is already complete. Finishing reconciliation.", m.currentState.Name)
-		return result.OK()
-	}
-
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
 	res, err := m.currentState.Reconcile()
 
@@ -96,12 +82,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
-
-		if m.currentState.IsTerminalState {
-			m.logger.Debugf("[%s] is a terminal state, reconciliation ending", m.currentState.Name)
-			return result.OK()
-		}
-		return result.Retry(0)
+		return res, err
 	}
 
 	m.logger.Debugf("State [%s] is not yet complete", m.currentState.Name)
@@ -155,7 +136,7 @@ func (m *Machine) getTransition() (*transition, error) {
 
 		//we should never transition to a state if it is already completed.
 		if isComplete {
-			m.logger.Debugf("Not transitioning from [%s] to [%s] because [%s] is already complete.", t.from.Name, t.to.Name)
+			m.logger.Debugf("Not transitioning from [%s] to [%s] because [%s] is already complete.", t.from.Name, t.to.Name, t.to.Name)
 			continue
 		}
 

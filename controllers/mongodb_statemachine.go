@@ -10,6 +10,7 @@ import (
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 	"github.com/pkg/errors"
@@ -33,6 +34,7 @@ var (
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndState                  = "ReconciliationEnd"
+	updateStatusState                       = "UpdateStatus"
 	noCondition                             = func() (bool, error) { return true, nil }
 )
 
@@ -51,6 +53,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb, log)
+	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endState := NewReconciliationEndState(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
@@ -90,16 +93,18 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		// we only need to reset the update strategy if a version change is in progress.
 		return mdb.IsChangingVersion(), nil
 	})
-	sm.AddTransition(deployStatefulSetState, endState, noCondition)
+	sm.AddTransition(deployStatefulSetState, updateStatusState, noCondition)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
 	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
 		// we only need to reset the update strategy if a version change is in progress.
 		return mdb.IsChangingVersion(), nil
 	})
-	sm.AddTransition(deployAutomationConfigState, endState, noCondition)
+	sm.AddTransition(deployAutomationConfigState, updateStatusState, noCondition)
 
-	sm.AddTransition(resetUpdateStrategyState, endState, noCondition)
+	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
+
+	sm.AddTransition(updateStatusState, endState, noCondition)
 
 	return sm
 }
@@ -150,6 +155,37 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 				return false, err
 			}
 			return sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType, nil
+		},
+	}
+}
+
+func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: updateStatusState,
+		Reconcile: func() (reconcile.Result, error) {
+			if scale.IsStillScaling(mdb) {
+				return status.Update(client.Status(), &mdb, statusOptions().
+					withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
+					withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
+						mdb.CurrentReplicas(), mdb.DesiredReplicas())).
+					withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+					withPendingPhase(10),
+				)
+			}
+
+			res, err := status.Update(client.Status(), &mdb,
+				statusOptions().
+					withMongoURI(mdb.MongoURI()).
+					withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
+					withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+					withMessage(None, "").
+					withRunningPhase(),
+			)
+			if err != nil {
+				log.Errorf("Error updating the status of the MongoDB resource: %s", err)
+				return res, err
+			}
+			return result.Retry(0)
 		},
 	}
 }
@@ -260,8 +296,7 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 
 func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name:            reconciliationEndState,
-		IsTerminalState: true,
+		Name: reconciliationEndState,
 		Reconcile: func() (reconcile.Result, error) {
 			allStates := newAllStates()
 

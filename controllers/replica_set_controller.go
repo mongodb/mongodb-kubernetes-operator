@@ -147,29 +147,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	sm.SetState(startingState, true)
 	return sm.Reconcile()
 
-	//if scale.IsStillScaling(mdb) {
-	//	return status.Update(r.client.Status(), &mdb, statusOptions().
-	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-	//		withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
-	//			mdb.CurrentReplicas(), mdb.DesiredReplicas())).
-	//		withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-	//		withPendingPhase(10),
-	//	)
-	//}
-	//
-	//res, err := status.Update(r.client.Status(), &mdb,
-	//	statusOptions().
-	//		withMongoURI(mdb.MongoURI()).
-	//		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
-	//		withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
-	//		withMessage(None, "").
-	//		withRunningPhase(),
-	//)
-	//if err != nil {
-	//	r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
-	//	return res, err
-	//}
-	//
 	//// the last version will be duplicated in two annotations.
 	//// This is needed to reuse the update strategy logic in enterprise
 	//if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
