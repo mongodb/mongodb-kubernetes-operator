@@ -51,7 +51,12 @@ func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
 		mdb.Annotations = map[string]string{}
 	}
 
+	if allStates.StateCompletionStatus == nil {
+		allStates.StateCompletionStatus = map[string]string{}
+	}
+
 	allStates.StateCompletionStatus[stateName] = completeAnnotation
+	allStates.CurrentState = stateName
 
 	bytes, err := json.Marshal(allStates)
 	if err != nil {

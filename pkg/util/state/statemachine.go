@@ -12,9 +12,10 @@ type AllStates struct {
 }
 
 type State struct {
-	Name         string
-	Reconcile    func() (reconcile.Result, error)
-	OnCompletion func() error
+	Name       string
+	Reconcile  func() (reconcile.Result, error)
+	IsComplete func() (bool, error)
+	//OnCompletion func() error
 }
 
 type transition struct {
@@ -75,13 +76,38 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
 	res, err := m.currentState.Reconcile()
 
-	// we only complete the state if if we are requeuing immediately.
-	if res.Requeue && res.RequeueAfter == 0 && m.currentState.OnCompletion != nil {
-		if err := m.currentState.OnCompletion(); err != nil {
-			m.logger.Errorf("error running OnCompletion for state %s: %s", m.currentState.Name, err)
+	if err != nil {
+		m.logger.Debugf("Error reconciling state [%s]: %s", m.currentState.Name, err)
+		return res, err
+	}
+
+	isComplete := true
+	if m.currentState.IsComplete != nil {
+		isComplete, err = m.currentState.IsComplete()
+		if err != nil {
+			m.logger.Debugf("Error determining if state %s is complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
 	}
+
+	if isComplete {
+		m.logger.Debugf("Completed state: %s", m.currentState.Name)
+		if err := m.completer.Complete(m.currentState.Name); err != nil {
+			m.logger.Debugf("Error marking state: %s as complete: %s", m.currentState.Name, err)
+			return reconcile.Result{}, err
+		}
+		return result.Retry(0)
+	}
+
+	m.logger.Debugf("State %s is not yet complete", m.currentState.Name)
+
+	// we only complete the state if if we are requeuing immediately.
+	//if res.Requeue && res.RequeueAfter == 0 && m.currentState.OnCompletion != nil {
+	//	if err := m.currentState.OnCompletion(); err != nil {
+	//		m.logger.Errorf("error running OnCompletion for state %s: %s", m.currentState.Name, err)
+	//		return reconcile.Result{}, err
+	//	}
+	//}
 
 	m.logger.Debugw("Reconcile Result", "res", res, "err", err)
 	return res, err
