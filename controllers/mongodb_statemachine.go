@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
@@ -55,7 +56,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
-	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb, log)
+	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb)
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endState := NewReconciliationEndState(client, mdb, log)
 
@@ -174,7 +175,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 	}
 }
 
-func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) state.State {
 	return state.State{
 		Name: resetStatefulSetUpdateStrategyStateName,
 		Reconcile: func() (reconcile.Result, error) {
@@ -199,7 +200,7 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 
 func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name:         updateStatusState,
+		Name: updateStatusState,
 		Reconcile: func() (reconcile.Result, error) {
 			if scale.IsStillScaling(mdb) {
 				return status.Update(client.Status(), &mdb, statusOptions().
