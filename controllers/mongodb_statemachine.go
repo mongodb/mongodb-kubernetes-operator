@@ -82,6 +82,13 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log), nil
 	})
 
+	// when performing scaling operations, the operator relies on the status of the resource
+	// to be up to date in terms of the desired and actual number of replicas. So when scaling
+	// is happening we need to transition to the updateStatusState.
+	sm.AddTransition(deployStatefulSetState, updateStatusState, func() (bool, error) {
+		return scale.IsStillScaling(&mdb), nil
+	})
+
 	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
 
 	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() (bool, error) {
@@ -91,14 +98,20 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log), nil
 	})
 
-	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, noCondition)
+	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, func() (bool, error) {
+		return !needToPublishStateFirst(client, mdb, log), nil
+	})
 	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, func() (bool, error) {
 		// we only need to reset the update strategy if a version change is in progress.
 		return mdb.IsChangingVersion(), nil
 	})
+
 	sm.AddTransition(deployStatefulSetState, updateStatusState, noCondition)
 
-	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, noCondition)
+	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, func() (bool, error) {
+		return needToPublishStateFirst(client, mdb, log), nil
+	})
+
 	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
 		// we only need to reset the update strategy if a version change is in progress.
 		return mdb.IsChangingVersion(), nil
@@ -107,12 +120,21 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
 
+	sm.AddTransition(updateStatusState, deployStatefulSetState, func() (bool, error) {
+		return scale.IsStillScaling(&mdb), nil
+	})
+
 	sm.AddTransition(updateStatusState, endState, noCondition)
 
 	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
 		return nil, errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
 	}
+
+	if startingStateName == "" {
+		startingStateName = startFreshStateName
+	}
+
 	startingState, ok := sm.States[startingStateName]
 	if !ok {
 		return nil, errors.Errorf("attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
@@ -175,7 +197,8 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 
 func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: updateStatusState,
+		Name:         updateStatusState,
+		IsRepeatable: true,
 		Reconcile: func() (reconcile.Result, error) {
 			if scale.IsStillScaling(mdb) {
 				return status.Update(client.Status(), &mdb, statusOptions().
@@ -313,9 +336,7 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 				return false, errors.Errorf("error getting StatefulSet: %s", err)
 			}
 
-			// We wait for mdb.Spec.Members as we are fully done deploying the sts
-			// once we have reached the desired member count. Not 1 at a time.
-			isReady := statefulset.IsReady(currentSts, mdb.Spec.Members)
+			isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
 			return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 		},
 	}

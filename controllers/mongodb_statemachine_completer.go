@@ -37,9 +37,7 @@ func (m *MongoDBCommunityCompleter) IsComplete(stateName string) (bool, error) {
 
 func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
 
-	// TODO: fix this!
-	if stateName == reconciliationEndState {
-		// we don't want to update the annotations again after the end state has already done that!
+	if stateName == "" {
 		return nil
 	}
 
@@ -58,11 +56,11 @@ func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
 		mdb.Annotations = map[string]string{}
 	}
 
-	if allStates.StateCompletionStatus == nil {
-		allStates.StateCompletionStatus = map[string]string{}
-	}
+	//if allStates.StateCompletionStatus == nil {
+	//	allStates.StateCompletionStatus = map[string]string{}
+	//}
 
-	allStates.StateCompletionStatus[stateName] = completeAnnotation
+	//allStates.StateCompletionStatus[stateName] = completeAnnotation
 	allStates.CurrentState = stateName
 
 	bytes, err := json.Marshal(allStates)

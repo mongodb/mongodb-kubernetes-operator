@@ -11,9 +11,10 @@ type AllStates struct {
 }
 
 type State struct {
-	Name            string
-	Reconcile       func() (reconcile.Result, error)
-	IsComplete      func() (bool, error)
+	Name         string
+	Reconcile    func() (reconcile.Result, error)
+	IsComplete   func() (bool, error)
+	IsRepeatable bool
 }
 
 type transition struct {
@@ -46,15 +47,6 @@ func NewStateMachine(completer Completer, logger *zap.SugaredLogger) *Machine {
 }
 
 func (m *Machine) Reconcile() (reconcile.Result, error) {
-	transition, err := m.getTransition()
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if transition != nil {
-		m.SetState(transition.to)
-	}
-
 	if m.currentState == nil {
 		panic("no current state!")
 	}
@@ -78,7 +70,18 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 
 	if isComplete {
 		m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
-		if err := m.completer.Complete(m.currentState.Name); err != nil {
+
+		transition, err := m.getTransition()
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		nextState := ""
+		if transition != nil {
+			nextState = transition.to.Name
+		}
+
+		m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
+		if err := m.completer.Complete(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
@@ -86,6 +89,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	m.logger.Debugf("State [%s] is not yet complete", m.currentState.Name)
+
 	return res, err
 }
 
@@ -113,27 +117,31 @@ func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) 
 func (m *Machine) getTransition() (*transition, error) {
 	for _, t := range m.currentTransitions {
 
-		isComplete, err := m.completer.IsComplete(t.from.Name)
-		if err != nil {
-			return nil, err
-		}
+		//isComplete, err := m.completer.IsComplete(t.from.Name)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//
+		//canTransition := isComplete || t.from.IsRepeatable
+		//
+		//// we should never transition from a state if it is not yet complete
+		//if !canTransition {
+		//	m.logger.Debugf("Not transitioning from [%s] because it is not complete.", t.from.Name)
+		//	continue
+		//}
+		//
+		//isComplete, err = m.completer.IsComplete(t.to.Name)
+		//if err != nil {
+		//	return nil, err
+		//}
 
-		// we should never transition from a state if it is not yet complete
-		if !isComplete {
-			m.logger.Debugf("Not transitioning from [%s] because it is not complete.", t.from.Name)
-			continue
-		}
-
-		isComplete, err = m.completer.IsComplete(t.to.Name)
-		if err != nil {
-			return nil, err
-		}
+		//canTransition = isComplete || t.to.IsRepeatable
 
 		//we should never transition to a state if it is already completed.
-		if isComplete {
-			m.logger.Debugf("Not transitioning from [%s] to [%s] because [%s] is already complete.", t.from.Name, t.to.Name, t.to.Name)
-			continue
-		}
+		//if isComplete && !t.to.IsRepeatable {
+		//	m.logger.Debugf("Not transitioning from [%s] to [%s] because [%s] is already complete.", t.from.Name, t.to.Name, t.to.Name)
+		//	continue
+		//}
 
 		ok, err := t.predicate()
 		if err != nil {
