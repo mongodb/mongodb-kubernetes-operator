@@ -42,7 +42,7 @@ var (
 )
 
 //nolint
-func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) *state.Machine {
+func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (*state.Machine, error) {
 	sm := state.NewStateMachine(&MongoDBCommunityCompleter{
 		nsName: mdb.NamespacedName(),
 		client: client,
@@ -109,7 +109,18 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(updateStatusState, endState, noCondition)
 
-	return sm
+	startingStateName, err := getLastStateName(mdb)
+	if err != nil {
+		return nil, errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
+	}
+	startingState, ok := sm.States[startingStateName]
+	if !ok {
+		return nil, errors.Errorf("attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
+	}
+
+	sm.SetState(startingState)
+
+	return sm, nil
 }
 
 func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
@@ -301,7 +312,10 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 			if err != nil {
 				return false, errors.Errorf("error getting StatefulSet: %s", err)
 			}
-			isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
+
+			// We wait for mdb.Spec.Members as we are fully done deploying the sts
+			// once we have reached the desired member count. Not 1 at a time.
+			isReady := statefulset.IsReady(currentSts, mdb.Spec.Members)
 			return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 		},
 	}

@@ -52,7 +52,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	if transition != nil {
-		m.SetState(transition.to, false)
+		m.SetState(transition.to)
 	}
 
 	if m.currentState == nil {
@@ -89,12 +89,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	return res, err
 }
 
-func (m *Machine) SetState(state State, prev bool) {
-	if prev {
-		m.logger.Debugf("Beginning at previous state: %s", state.Name)
-	} else {
-		m.logger.Debugf("Transition to state: %s", state.Name)
-	}
+func (m *Machine) SetState(state State) {
 	m.currentState = &state
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
 }

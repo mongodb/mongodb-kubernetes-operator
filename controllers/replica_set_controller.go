@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"time"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 
@@ -103,7 +101,6 @@ type ReplicaSetReconciler struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 
-	time.Sleep(5 * time.Second)
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
 	mdb := mdbv1.MongoDBCommunity{}
@@ -122,29 +119,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	log := zap.S().With("ReplicaSet", mdb.Namespace)
 
-	// Determine current state
-	sm := BuildStateMachine(r.client, mdb, r.secretWatcher, log)
+	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, log)
 
-	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
-		log.Errorf("Error fetching last state name from MongoDBCommunity annotations: %s", err)
-		return reconcile.Result{}, err
-	}
-	startingState, ok := sm.States[startingStateName]
-	if !ok {
-		log.Errorf("Attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
-		return reconcile.Result{}, nil
+		log.Errorf("Error building State Machine: %s", err)
+		return result.Failed()
 	}
 
-	a, err := getAllStates(mdb)
-	if err != nil {
-		log.Errorf("Error getting all States: %s", err)
-		return reconcile.Result{}, nil
-	}
-
-	log.Infof("Current state completion %s: %s", a.CurrentState, a.StateCompletionStatus[a.CurrentState])
-
-	sm.SetState(startingState, true)
 	return sm.Reconcile()
 }
 
