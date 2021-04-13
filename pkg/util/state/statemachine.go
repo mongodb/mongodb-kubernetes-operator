@@ -78,7 +78,10 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			nextState = transition.to.Name
 		}
 
-		m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
+		if nextState != "" {
+			m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
+		}
+
 		if err := m.saver.SaveNextState(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
@@ -96,7 +99,9 @@ func (m *Machine) SetState(state State) {
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
 }
 
-func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) {
+type TransitionPredicate func() (bool, error)
+
+func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 	_, ok := m.allTransitions[from.Name]
 	if !ok {
 		m.allTransitions[from.Name] = []transition{}

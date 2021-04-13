@@ -83,13 +83,6 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log), nil
 	})
 
-	// when performing scaling operations, the operator relies on the status of the resource
-	// to be up to date in terms of the desired and actual number of replicas. So when scaling
-	// is happening we need to transition to the updateStatusState.
-	sm.AddTransition(deployStatefulSetState, updateStatusState, func() (bool, error) {
-		return scale.IsStillScaling(&mdb), nil
-	})
-
 	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
 
 	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() (bool, error) {
@@ -121,9 +114,8 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
 
-	// As part of the scaling process, the operator needs to update the status of the resource.
-	// if we are doing this we need to go back to deploying the stateful set to finish the scaling.
-	sm.AddTransition(updateStatusState, deployStatefulSetState, func() (bool, error) {
+	// if we're still scaling, we need to retry until we are at the desired replica count.
+	sm.AddTransition(updateStatusState, startFresh, func() (bool, error) {
 		return scale.IsStillScaling(&mdb), nil
 	})
 
