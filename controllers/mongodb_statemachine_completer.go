@@ -56,12 +56,7 @@ func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
 		mdb.Annotations = map[string]string{}
 	}
 
-	//if allStates.StateCompletionStatus == nil {
-	//	allStates.StateCompletionStatus = map[string]string{}
-	//}
-
-	//allStates.StateCompletionStatus[stateName] = completeAnnotation
-	allStates.CurrentState = stateName
+	allStates.NextState = stateName
 
 	bytes, err := json.Marshal(allStates)
 	if err != nil {
@@ -94,5 +89,5 @@ func getLastStateName(mdb mdbv1.MongoDBCommunity) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return allStates.CurrentState, nil
+	return allStates.NextState, nil
 }

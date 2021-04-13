@@ -120,6 +120,8 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
 
+	// As part of the scaling process, the operator needs to update the status of the resource.
+	// if we are doing this we need to go back to deploying the stateful set to finish the scaling.
 	sm.AddTransition(updateStatusState, deployStatefulSetState, func() (bool, error) {
 		return scale.IsStillScaling(&mdb), nil
 	})
@@ -198,7 +200,6 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name:         updateStatusState,
-		IsRepeatable: true,
 		Reconcile: func() (reconcile.Result, error) {
 			if scale.IsStillScaling(mdb) {
 				return status.Update(client.Status(), &mdb, statusOptions().
@@ -414,6 +415,6 @@ func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, l
 
 func newAllStates() state.AllStates {
 	return state.AllStates{
-		CurrentState: startFreshStateName,
+		NextState: startFreshStateName,
 	}
 }

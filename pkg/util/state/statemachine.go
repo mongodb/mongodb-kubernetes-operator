@@ -6,15 +6,14 @@ import (
 )
 
 type AllStates struct {
-	CurrentState          string            `json:"currentState"`
+	NextState             string            `json:"nextState"`
 	StateCompletionStatus map[string]string `json:"stateCompletion"`
 }
 
 type State struct {
-	Name         string
-	Reconcile    func() (reconcile.Result, error)
-	IsComplete   func() (bool, error)
-	IsRepeatable bool
+	Name       string
+	Reconcile  func() (reconcile.Result, error)
+	IsComplete func() (bool, error)
 }
 
 type transition struct {
@@ -114,35 +113,10 @@ func (m *Machine) AddTransition(from, to State, predicate func() (bool, error)) 
 
 }
 
+// getTransition returns the first transition it finds that is available
+// from the current state.
 func (m *Machine) getTransition() (*transition, error) {
 	for _, t := range m.currentTransitions {
-
-		//isComplete, err := m.completer.IsComplete(t.from.Name)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		//canTransition := isComplete || t.from.IsRepeatable
-		//
-		//// we should never transition from a state if it is not yet complete
-		//if !canTransition {
-		//	m.logger.Debugf("Not transitioning from [%s] because it is not complete.", t.from.Name)
-		//	continue
-		//}
-		//
-		//isComplete, err = m.completer.IsComplete(t.to.Name)
-		//if err != nil {
-		//	return nil, err
-		//}
-
-		//canTransition = isComplete || t.to.IsRepeatable
-
-		//we should never transition to a state if it is already completed.
-		//if isComplete && !t.to.IsRepeatable {
-		//	m.logger.Debugf("Not transitioning from [%s] to [%s] because [%s] is already complete.", t.from.Name, t.to.Name, t.to.Name)
-		//	continue
-		//}
-
 		ok, err := t.predicate()
 		if err != nil {
 			return nil, err
