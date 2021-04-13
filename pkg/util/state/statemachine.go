@@ -3,6 +3,7 @@ package state
 import (
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 )
 
 type AllStates struct {
@@ -35,7 +36,6 @@ var DirectTransition = FromBool(true)
 
 type Machine struct {
 	allTransitions     map[string][]transition
-	currentTransitions []transition
 	currentState       *State
 	logger             *zap.SugaredLogger
 	saver              Saver
@@ -45,7 +45,6 @@ type Machine struct {
 func NewStateMachine(saver Saver, logger *zap.SugaredLogger) *Machine {
 	return &Machine{
 		allTransitions:     map[string][]transition{},
-		currentTransitions: []transition{},
 		logger:             logger,
 		saver:              saver,
 		States:             map[string]State{},
@@ -58,6 +57,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
+	time.Sleep(2 * time.Second)
 	res, err := m.currentState.Reconcile()
 
 	if err != nil {
@@ -77,7 +77,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	if isComplete {
 		m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
 
-		transition := m.getTransition()
+		transition := m.getTransitionForState(*m.currentState)
 		nextState := ""
 		if transition != nil {
 			nextState = transition.to.Name
@@ -87,6 +87,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
 		}
 
+		time.Sleep(3 * time.Second)
 		if err := m.saver.SaveNextState(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
@@ -101,7 +102,6 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 
 func (m *Machine) SetState(state State) {
 	m.currentState = &state
-	m.currentTransitions = m.allTransitions[m.currentState.Name]
 }
 
 type TransitionPredicate func() bool
@@ -122,10 +122,11 @@ func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 
 }
 
-// getTransition returns the first transition it finds that is available
+// getTransitionForState returns the first transition it finds that is available
 // from the current state.
-func (m *Machine) getTransition() *transition {
-	for _, t := range m.currentTransitions {
+func (m *Machine) getTransitionForState(s State) *transition {
+	transitions := m.allTransitions[s.Name]
+	for _, t := range transitions {
 		if t.predicate() {
 			return &t
 		}

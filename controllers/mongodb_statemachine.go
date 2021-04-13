@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
@@ -152,6 +151,9 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				)
 			}
 			return result.Retry(0)
+		},
+		IsComplete: func() (bool, error) {
+			return validateUpdate(mdb) == nil, nil
 		},
 	}
 }
