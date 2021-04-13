@@ -39,7 +39,7 @@ var (
 	reconciliationEndState                  = "ReconciliationEnd"
 	updateStatusState                       = "UpdateStatus"
 
-	noCondition = func() (bool, error) { return true, nil }
+	noCondition = func() bool { return true }
 )
 
 //nolint
@@ -62,61 +62,57 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(startFresh, validateSpec, noCondition)
 	sm.AddTransition(validateSpec, serviceState, noCondition)
-	sm.AddTransition(validateSpec, tlsValidationState, func() (bool, error) {
-		return mdb.Spec.Security.TLS.Enabled, nil
+	sm.AddTransition(validateSpec, tlsValidationState, func() bool {
+		return mdb.Spec.Security.TLS.Enabled
 	})
-	sm.AddTransition(validateSpec, deployAutomationConfigState, func() (bool, error) {
-		return needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(validateSpec, deployAutomationConfigState, func() bool {
+		return needToPublishStateFirst(client, mdb, log)
 	})
-	sm.AddTransition(validateSpec, deployStatefulSetState, func() (bool, error) {
-		return !needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(validateSpec, deployStatefulSetState, func() bool {
+		return !needToPublishStateFirst(client, mdb, log)
 	})
 
-	sm.AddTransition(serviceState, tlsValidationState, func() (bool, error) {
+	sm.AddTransition(serviceState, tlsValidationState, func() bool {
 		// we only need to validate TLS if it is enabled in the resource
-		return mdb.Spec.Security.TLS.Enabled, nil
+		return mdb.Spec.Security.TLS.Enabled
 	})
-	sm.AddTransition(serviceState, deployAutomationConfigState, func() (bool, error) {
-		return needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(serviceState, deployAutomationConfigState, func() bool {
+		return needToPublishStateFirst(client, mdb, log)
 	})
-	sm.AddTransition(serviceState, deployStatefulSetState, func() (bool, error) {
-		return !needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(serviceState, deployStatefulSetState, func() bool {
+		return !needToPublishStateFirst(client, mdb, log)
 	})
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
 
-	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() (bool, error) {
-		return needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() bool {
+		return needToPublishStateFirst(client, mdb, log)
 	})
-	sm.AddTransition(tlsResourcesState, deployStatefulSetState, func() (bool, error) {
-		return !needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(tlsResourcesState, deployStatefulSetState, func() bool {
+		return !needToPublishStateFirst(client, mdb, log)
 	})
 
-	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, func() (bool, error) {
-		return !needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, func() bool {
+		return !needToPublishStateFirst(client, mdb, log)
 	})
-	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, func() (bool, error) {
-		// we only need to reset the update strategy if a version change is in progress.
-		return mdb.IsChangingVersion(), nil
-	})
+	// we only need to reset the update strategy if a version change is in progress.
+	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, mdb.IsChangingVersion)
 
 	sm.AddTransition(deployStatefulSetState, updateStatusState, noCondition)
 
-	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, func() (bool, error) {
-		return needToPublishStateFirst(client, mdb, log), nil
+	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, func() bool {
+		return needToPublishStateFirst(client, mdb, log)
 	})
 
-	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, func() (bool, error) {
-		// we only need to reset the update strategy if a version change is in progress.
-		return mdb.IsChangingVersion(), nil
-	})
+	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, mdb.IsChangingVersion)
+
 	sm.AddTransition(deployAutomationConfigState, updateStatusState, noCondition)
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
 
 	// if we're still scaling, we need to retry until we are at the desired replica count.
-	sm.AddTransition(updateStatusState, startFresh, func() (bool, error) {
-		return scale.IsStillScaling(&mdb), nil
+	sm.AddTransition(updateStatusState, startFresh, func() bool {
+		return scale.IsStillScaling(&mdb)
 	})
 
 	sm.AddTransition(updateStatusState, endState, noCondition)

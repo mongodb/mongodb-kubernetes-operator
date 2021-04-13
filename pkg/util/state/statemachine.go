@@ -18,7 +18,7 @@ type State struct {
 
 type transition struct {
 	from, to  State
-	predicate func() (bool, error)
+	predicate TransitionPredicate
 }
 
 type Saver interface {
@@ -69,10 +69,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	if isComplete {
 		m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
 
-		transition, err := m.getTransition()
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+		transition := m.getTransition()
 		nextState := ""
 		if transition != nil {
 			nextState = transition.to.Name
@@ -99,7 +96,7 @@ func (m *Machine) SetState(state State) {
 	m.currentTransitions = m.allTransitions[m.currentState.Name]
 }
 
-type TransitionPredicate func() (bool, error)
+type TransitionPredicate func() bool
 
 func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 	_, ok := m.allTransitions[from.Name]
@@ -119,15 +116,11 @@ func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 
 // getTransition returns the first transition it finds that is available
 // from the current state.
-func (m *Machine) getTransition() (*transition, error) {
+func (m *Machine) getTransition() *transition {
 	for _, t := range m.currentTransitions {
-		ok, err := t.predicate()
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			return &t, nil
+		if t.predicate() {
+			return &t
 		}
 	}
-	return nil, nil
+	return nil
 }
