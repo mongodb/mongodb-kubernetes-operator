@@ -10,32 +10,12 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type MongoDBCommunityCompleter struct {
+type MongoDBCommunityStateSaver struct {
 	nsName types.NamespacedName
 	client k8sClient.Client
 }
 
-func (m *MongoDBCommunityCompleter) IsComplete(stateName string) (bool, error) {
-	mdb := mdbv1.MongoDBCommunity{}
-	err := m.client.Get(context.TODO(), m.nsName, &mdb)
-	if err != nil {
-		return false, err
-	}
-
-	if mdb.Annotations == nil {
-		return false, nil
-	}
-
-	allStates, err := getAllStates(mdb)
-	if err != nil {
-		return false, err
-	}
-
-	completionStatus := allStates.StateCompletionStatus[stateName]
-	return completionStatus == completeAnnotation, nil
-}
-
-func (m *MongoDBCommunityCompleter) Complete(stateName string) error {
+func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
 
 	if stateName == "" {
 		return nil

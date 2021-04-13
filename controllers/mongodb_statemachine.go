@@ -43,7 +43,7 @@ var (
 
 //nolint
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (*state.Machine, error) {
-	sm := state.NewStateMachine(&MongoDBCommunityCompleter{
+	sm := state.NewStateMachine(&MongoDBCommunityStateSaver{
 		nsName: mdb.NamespacedName(),
 		client: client,
 	}, log)

@@ -21,9 +21,8 @@ type transition struct {
 	predicate func() (bool, error)
 }
 
-type Completer interface {
-	IsComplete(stateName string) (bool, error)
-	Complete(stateName string) error
+type Saver interface {
+	SaveNextState(stateName string) error
 }
 
 type Machine struct {
@@ -31,16 +30,16 @@ type Machine struct {
 	currentTransitions []transition
 	currentState       *State
 	logger             *zap.SugaredLogger
-	completer          Completer
+	saver              Saver
 	States             map[string]State
 }
 
-func NewStateMachine(completer Completer, logger *zap.SugaredLogger) *Machine {
+func NewStateMachine(saver Saver, logger *zap.SugaredLogger) *Machine {
 	return &Machine{
 		allTransitions:     map[string][]transition{},
 		currentTransitions: []transition{},
 		logger:             logger,
-		completer:          completer,
+		saver:              saver,
 		States:             map[string]State{},
 	}
 }
@@ -80,7 +79,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		}
 
 		m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
-		if err := m.completer.Complete(nextState); err != nil {
+		if err := m.saver.SaveNextState(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
