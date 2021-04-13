@@ -7,6 +7,7 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
@@ -24,7 +25,8 @@ import (
 var (
 	stateMachineAnnotation = "mongodb.com/v1.stateMachine"
 
-	completeAnnotation                      = "complete"
+	completeAnnotation = "complete"
+
 	startFreshStateName                     = "StartFresh"
 	validateSpecStateName                   = "ValidateSpec"
 	createServiceStateName                  = "CreateService"
@@ -35,7 +37,8 @@ var (
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndState                  = "ReconciliationEnd"
 	updateStatusState                       = "UpdateStatus"
-	noCondition                             = func() (bool, error) { return true, nil }
+
+	noCondition = func() (bool, error) { return true, nil }
 )
 
 //nolint
@@ -185,6 +188,16 @@ func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 				return res, err
 			}
+
+			// the last version will be duplicated in two annotations.
+			// This is needed to reuse the update strategy logic in enterprise
+			if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, client); err != nil {
+				log.Errorf("Could not save current version as an annotation: %s", err)
+			}
+			if err := updateLastSuccessfulConfiguration(client, mdb); err != nil {
+				log.Errorf("Could not save current spec as an annotation: %s", err)
+			}
+
 			return result.Retry(0)
 		},
 	}

@@ -146,27 +146,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	sm.SetState(startingState, true)
 	return sm.Reconcile()
-
-	//// the last version will be duplicated in two annotations.
-	//// This is needed to reuse the update strategy logic in enterprise
-	//if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
-	//	r.log.Errorf("Could not save current version as an annotation: %s", err)
-	//}
-	//if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
-	//	r.log.Errorf("Could not save current spec as an annotation: %s", err)
-	//}
-	//
-	//if res.RequeueAfter > 0 || res.Requeue {
-	//	r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
-	//	return res, nil
-	//}
-	//
-	//r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
-	//return res, err
 }
 
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
-func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
+func updateLastSuccessfulConfiguration(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	currentSpec, err := json.Marshal(mdb.Spec)
 	if err != nil {
 		return err
@@ -175,7 +158,7 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
 	}
-	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
+	return annotations.SetAnnotations(&mdb, specAnnotations, client)
 }
 
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
