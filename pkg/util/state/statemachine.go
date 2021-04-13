@@ -25,6 +25,14 @@ type Saver interface {
 	SaveNextState(stateName string) error
 }
 
+var FromBool = func(b bool) TransitionPredicate {
+	return func() bool {
+		return b
+	}
+}
+
+var DirectTransition = FromBool(true)
+
 type Machine struct {
 	allTransitions     map[string][]transition
 	currentTransitions []transition

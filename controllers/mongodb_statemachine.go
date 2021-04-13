@@ -38,8 +38,6 @@ var (
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndState                  = "ReconciliationEnd"
 	updateStatusState                       = "UpdateStatus"
-
-	noCondition = func() bool { return true }
 )
 
 //nolint
@@ -60,11 +58,9 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endState := NewReconciliationEndState(client, mdb, log)
 
-	sm.AddTransition(startFresh, validateSpec, noCondition)
-	sm.AddTransition(validateSpec, serviceState, noCondition)
-	sm.AddTransition(validateSpec, tlsValidationState, func() bool {
-		return mdb.Spec.Security.TLS.Enabled
-	})
+	sm.AddTransition(startFresh, validateSpec, state.DirectTransition)
+	sm.AddTransition(validateSpec, serviceState, state.DirectTransition)
+	sm.AddTransition(validateSpec, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
 	sm.AddTransition(validateSpec, deployAutomationConfigState, func() bool {
 		return needToPublishStateFirst(client, mdb, log)
 	})
@@ -72,10 +68,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log)
 	})
 
-	sm.AddTransition(serviceState, tlsValidationState, func() bool {
-		// we only need to validate TLS if it is enabled in the resource
-		return mdb.Spec.Security.TLS.Enabled
-	})
+	sm.AddTransition(serviceState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
 	sm.AddTransition(serviceState, deployAutomationConfigState, func() bool {
 		return needToPublishStateFirst(client, mdb, log)
 	})
@@ -83,7 +76,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 		return !needToPublishStateFirst(client, mdb, log)
 	})
 
-	sm.AddTransition(tlsValidationState, tlsResourcesState, noCondition)
+	sm.AddTransition(tlsValidationState, tlsResourcesState, state.DirectTransition)
 
 	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() bool {
 		return needToPublishStateFirst(client, mdb, log)
@@ -98,7 +91,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	// we only need to reset the update strategy if a version change is in progress.
 	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, mdb.IsChangingVersion)
 
-	sm.AddTransition(deployStatefulSetState, updateStatusState, noCondition)
+	sm.AddTransition(deployStatefulSetState, updateStatusState, state.DirectTransition)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, func() bool {
 		return needToPublishStateFirst(client, mdb, log)
@@ -106,16 +99,16 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, mdb.IsChangingVersion)
 
-	sm.AddTransition(deployAutomationConfigState, updateStatusState, noCondition)
+	sm.AddTransition(deployAutomationConfigState, updateStatusState, state.DirectTransition)
 
-	sm.AddTransition(resetUpdateStrategyState, updateStatusState, noCondition)
+	sm.AddTransition(resetUpdateStrategyState, updateStatusState, state.DirectTransition)
 
 	// if we're still scaling, we need to retry until we are at the desired replica count.
 	sm.AddTransition(updateStatusState, startFresh, func() bool {
 		return scale.IsStillScaling(&mdb)
 	})
 
-	sm.AddTransition(updateStatusState, endState, noCondition)
+	sm.AddTransition(updateStatusState, endState, state.DirectTransition)
 
 	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
