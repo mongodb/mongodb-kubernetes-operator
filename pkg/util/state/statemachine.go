@@ -1,6 +1,8 @@
 package state
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
@@ -26,6 +28,17 @@ type Saver interface {
 	SaveNextState(stateName string) error
 }
 
+type Loader interface {
+	LoadStartingState() (string, error)
+}
+
+type SaveLoader interface {
+	Saver
+	Loader
+}
+
+type TransitionPredicate func() bool
+
 var FromBool = func(b bool) TransitionPredicate {
 	return func() bool {
 		return b
@@ -35,25 +48,28 @@ var FromBool = func(b bool) TransitionPredicate {
 var DirectTransition = FromBool(true)
 
 type Machine struct {
-	allTransitions     map[string][]transition
-	currentState       *State
-	logger             *zap.SugaredLogger
-	saver              Saver
-	States             map[string]State
+	allTransitions map[string][]transition
+	currentState   *State
+	logger         *zap.SugaredLogger
+	saveLoader     SaveLoader
+	states         map[string]State
 }
 
-func NewStateMachine(saver Saver, logger *zap.SugaredLogger) *Machine {
+func NewStateMachine(saver SaveLoader, logger *zap.SugaredLogger) *Machine {
 	return &Machine{
-		allTransitions:     map[string][]transition{},
-		logger:             logger,
-		saver:              saver,
-		States:             map[string]State{},
+		allTransitions: map[string][]transition{},
+		logger:         logger,
+		saveLoader:     saver,
+		states:         map[string]State{},
 	}
 }
 
 func (m *Machine) Reconcile() (reconcile.Result, error) {
 	if m.currentState == nil {
-		panic("no current state!")
+		if err := m.initStartingState(); err != nil {
+			m.logger.Errorf("error initializing starting state: %s", err)
+			return result.Failed()
+		}
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
@@ -88,7 +104,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		}
 
 		time.Sleep(3 * time.Second)
-		if err := m.saver.SaveNextState(nextState); err != nil {
+		if err := m.saveLoader.SaveNextState(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
@@ -100,11 +116,15 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	return res, err
 }
 
-func (m *Machine) SetState(state State) {
-	m.currentState = &state
+func (m *Machine) initStartingState() error {
+	currentStateName, err := m.saveLoader.LoadStartingState()
+	if err != nil {
+		return errors.Errorf("could not load starting state: %s", err)
+	}
+	nextState := m.states[currentStateName]
+	m.currentState = &nextState
+	return nil
 }
-
-type TransitionPredicate func() bool
 
 func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 	_, ok := m.allTransitions[from.Name]
@@ -117,8 +137,8 @@ func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 		predicate: predicate,
 	})
 
-	m.States[from.Name] = from
-	m.States[to.Name] = to
+	m.states[from.Name] = from
+	m.states[to.Name] = to
 
 }
 

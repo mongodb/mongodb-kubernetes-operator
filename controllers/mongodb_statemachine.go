@@ -42,7 +42,7 @@ var (
 //nolint
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (*state.Machine, error) {
 	sm := state.NewStateMachine(&MongoDBCommunityStateSaver{
-		nsName: mdb.NamespacedName(),
+		mdb:    mdb,
 		client: client,
 	}, log)
 
@@ -108,23 +108,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	})
 
 	sm.AddTransition(updateStatusState, endState, state.DirectTransition)
-
-	startingStateName, err := getLastStateName(mdb)
-	if err != nil {
-		return nil, errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
-	}
-
-	if startingStateName == "" {
-		startingStateName = startFreshStateName
-	}
-
-	startingState, ok := sm.States[startingStateName]
-	if !ok {
-		return nil, errors.Errorf("attempted to set starting state to %s, but it was not registered with the State Machine!", startingStateName)
-	}
-
-	sm.SetState(startingState)
-
+	
 	return sm, nil
 }
 

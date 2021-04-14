@@ -3,16 +3,28 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
-	"k8s.io/apimachinery/pkg/types"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MongoDBCommunityStateSaver struct {
-	nsName types.NamespacedName
+	mdb    mdbv1.MongoDBCommunity
 	client k8sClient.Client
+}
+
+func (m *MongoDBCommunityStateSaver) LoadStartingState() (string, error) {
+	startingStateName, err := getLastStateName(m.mdb)
+	if err != nil {
+		return "", errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
+	}
+
+	if startingStateName == "" {
+		startingStateName = startFreshStateName
+	}
+	return startingStateName, nil
 }
 
 func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
@@ -22,7 +34,7 @@ func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
 	}
 
 	mdb := mdbv1.MongoDBCommunity{}
-	err := m.client.Get(context.TODO(), m.nsName, &mdb)
+	err := m.client.Get(context.TODO(), m.mdb.NamespacedName(), &mdb)
 	if err != nil {
 		return err
 	}
