@@ -39,6 +39,7 @@ var (
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndStateName              = "ReconciliationEnd"
 	updateStatusStateName                   = "UpdateStatus"
+	secondsBetweenStates                    = 5
 )
 
 type MongoDBStates struct {
@@ -103,7 +104,7 @@ func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) stat
 		Name: startFreshStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }
@@ -112,8 +113,8 @@ func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.S
 	return state.State{
 		Name: deployMongoDBReplicaSetStartName,
 		Reconcile: func() (reconcile.Result, error) {
-			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Namespace)
-			return result.Retry(0)
+			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }
@@ -122,8 +123,8 @@ func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.Sug
 	return state.State{
 		Name: deployMongoDBReplicaSetEndName,
 		Reconcile: func() (reconcile.Result, error) {
-			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Namespace)
-			return result.Retry(0)
+			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }
@@ -140,7 +141,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 						withFailedPhase(),
 				)
 			}
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 		IsComplete: func() (bool, error) {
 			return validateUpdate(mdb) == nil, nil
@@ -159,7 +160,7 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 						withFailedPhase(),
 				)
 			}
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 		IsComplete: func() (bool, error) {
 			sts, err := client.GetStatefulSet(mdb.NamespacedName())
@@ -207,7 +208,7 @@ func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				log.Errorf("Could not save current spec as an annotation: %s", err)
 			}
 
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }
@@ -244,7 +245,7 @@ func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoD
 						withFailedPhase(),
 				)
 			}
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }
@@ -267,7 +268,7 @@ func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.Mo
 						withPendingPhase(10),
 				)
 			}
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 		IsComplete: func() (bool, error) {
 			sts, err := client.GetStatefulSet(mdb.NamespacedName())
@@ -365,7 +366,7 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 				)
 			}
 			log.Debug("Successfully validated TLS configuration.")
-			return result.Retry(0)
+			return result.Retry(secondsBetweenStates)
 		},
 	}
 }

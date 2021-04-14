@@ -141,7 +141,11 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return result.Failed()
 	}
 
-	return sm.Reconcile()
+	res, err := sm.Reconcile()
+
+	log.Debugw("Reconciliation Results", "res", res, "err", err)
+
+	return res, err
 }
 
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
