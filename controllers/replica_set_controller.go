@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -59,15 +60,27 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
-func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
+type SaveLoadProvider func(mdb mdbv1.MongoDBCommunity, client kubernetesClient.Client) state.SaveLoader
+
+func NewReconciler(mgr manager.Manager, provider SaveLoadProvider) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
+
+	if provider == nil {
+		provider = func(mdb mdbv1.MongoDBCommunity, client kubernetesClient.Client) state.SaveLoader {
+			return &MongoDBCommunityStateSaver{
+				mdb:    mdb,
+				client: client,
+			}
+		}
+	}
 
 	return &ReplicaSetReconciler{
 		client:        kubernetesClient.NewClient(mgrClient),
 		scheme:        mgr.GetScheme(),
 		log:           zap.S(),
 		secretWatcher: &secretWatcher,
+		provider:      provider,
 	}
 }
 
@@ -86,6 +99,8 @@ type ReplicaSetReconciler struct {
 	scheme        *runtime.Scheme
 	log           *zap.SugaredLogger
 	secretWatcher *watch.ResourceWatcher
+	stateMachine  *state.Machine
+	provider      SaveLoadProvider
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
@@ -119,7 +134,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	log := zap.S().With("ReplicaSet", mdb.Namespace)
 
-	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, log)
+	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, r.provider(mdb, r.client), log)
 
 	if err != nil {
 		log.Errorf("Error building State Machine: %s", err)

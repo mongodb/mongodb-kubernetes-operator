@@ -107,7 +107,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -127,7 +127,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -169,7 +169,7 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
 	mgrClient := mgr.GetClient()
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -246,7 +246,7 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -266,7 +266,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -290,7 +290,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -309,7 +309,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -342,7 +342,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -389,7 +389,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -417,7 +417,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	mdb.Spec.Members = 5
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -461,7 +461,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -530,7 +530,7 @@ func TestIgnoreUnknownUsers(t *testing.T) {
 // results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
 func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -546,7 +546,7 @@ func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedVa
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -577,7 +577,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -649,7 +649,7 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv
 	assert.NoError(t, err)
 	mgr := client.NewManager(&mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 

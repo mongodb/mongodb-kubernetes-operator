@@ -15,7 +15,7 @@ type MongoDBCommunityStateSaver struct {
 	client k8sClient.Client
 }
 
-func (m *MongoDBCommunityStateSaver) LoadStartingState() (string, error) {
+func (m *MongoDBCommunityStateSaver) LoadNextState() (string, error) {
 	startingStateName, err := getLastStateName(m.mdb)
 	if err != nil {
 		return "", errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)

@@ -26,7 +26,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, nil)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -154,7 +154,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		err := createTLSSecretAndConfigMap(c, mdb)
 		assert.NoError(t, err)
 
-		r := NewReconciler(client.NewManagerWithClient(c))
+		r := NewReconciler(client.NewManagerWithClient(c), nil)
 
 		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
@@ -182,7 +182,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		err = k8sclient.CreateSecret(s)
 		assert.NoError(t, err)
 
-		r := NewReconciler(client.NewManagerWithClient(k8sclient))
+		r := NewReconciler(client.NewManagerWithClient(k8sclient), nil)
 
 		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)

@@ -35,16 +35,13 @@ var (
 	deployAutomationConfigStateName         = "DeployAutomationConfig"
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
-	reconciliationEndState                  = "ReconciliationEnd"
-	updateStatusState                       = "UpdateStatus"
+	reconciliationEndStateName              = "ReconciliationEnd"
+	updateStatusStateName                   = "UpdateStatus"
 )
 
 //nolint
-func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (*state.Machine, error) {
-	sm := state.NewStateMachine(&MongoDBCommunityStateSaver{
-		mdb:    mdb,
-		client: client,
-	}, log)
+func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, savLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
+	sm := state.NewStateMachine(savLoader, log)
 
 	startFresh := NewStartFreshState(mdb, log)
 	validateSpec := NewValidateSpecState(client, mdb, log)
@@ -108,7 +105,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	})
 
 	sm.AddTransition(updateStatusState, endState, state.DirectTransition)
-	
+
 	return sm, nil
 }
 
@@ -167,7 +164,7 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 
 func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: updateStatusState,
+		Name: updateStatusStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			if scale.IsStillScaling(mdb) {
 				return status.Update(client.Status(), &mdb, statusOptions().
@@ -313,7 +310,7 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 
 func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: reconciliationEndState,
+		Name: reconciliationEndStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			allStates := newAllStates()
 
