@@ -39,6 +39,11 @@ var (
 	updateStatusStateName                   = "UpdateStatus"
 )
 
+type MongoDBStates struct {
+	NextState      string   `json:"nextState"`
+	PreviousStates []string `json:"previousStates"`
+}
+
 //nolint
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, savLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
 	sm := state.NewStateMachine(savLoader, log)
@@ -394,8 +399,8 @@ func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, l
 	return err
 }
 
-func newAllStates() state.AllStates {
-	return state.AllStates{
+func newAllStates() MongoDBStates {
+	return MongoDBStates{
 		NextState: startFreshStateName,
 	}
 }

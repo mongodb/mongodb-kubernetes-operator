@@ -94,12 +94,14 @@ func TestPartialOrderOfStates_TLSEnabled(t *testing.T) {
 
 }
 
+// reconcileThroughAllStates performs reconciliations until the final state has been reached. It asserts
+// that no errors have occurred in any reconciliation.
 func reconcileThroughAllStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity) {
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-
+	assert.NoError(t, err)
 	for res.Requeue || res.RequeueAfter > 0 {
-		assert.NoError(t, err)
 		res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+		assert.NoError(t, err)
 	}
 }
 

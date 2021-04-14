@@ -7,11 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type AllStates struct {
-	NextState             string            `json:"NextState"`
-	StateCompletionStatus map[string]string `json:"stateCompletion"`
-}
-
 type State struct {
 	Name       string
 	Reconcile  func() (reconcile.Result, error)

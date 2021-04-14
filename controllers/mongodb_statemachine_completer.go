@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -59,7 +58,7 @@ func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
 	return m.client.Update(context.TODO(), &mdb)
 }
 
-func getAllStates(mdb mdbv1.MongoDBCommunity) (state.AllStates, error) {
+func getAllStates(mdb mdbv1.MongoDBCommunity) (MongoDBStates, error) {
 	if mdb.Annotations == nil {
 		return newAllStates(), nil
 	}
@@ -69,9 +68,9 @@ func getAllStates(mdb mdbv1.MongoDBCommunity) (state.AllStates, error) {
 		return newAllStates(), nil
 	}
 
-	allStates := state.AllStates{}
+	allStates := MongoDBStates{}
 	if err := json.Unmarshal([]byte(stateAnnotation), &allStates); err != nil {
-		return state.AllStates{}, err
+		return MongoDBStates{}, err
 	}
 	return allStates, nil
 }
