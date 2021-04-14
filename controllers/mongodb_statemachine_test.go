@@ -117,6 +117,7 @@ func assertPartialOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1
 	for i, historyState := range loader.StateHistory {
 		if historyState == subsetOfStates[0] {
 			startingIndex = i
+			break
 		}
 	}
 

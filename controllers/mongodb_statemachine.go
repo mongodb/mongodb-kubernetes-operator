@@ -54,7 +54,6 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endState := NewReconciliationEndState(client, mdb, log)
 
-
 	needsToPublishStateFirst := needToPublishStateFirst(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, state.DirectTransition)
@@ -63,7 +62,6 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(validateSpec, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
 	sm.AddTransition(validateSpec, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
-
 
 	//sm.AddTransition(validateSpec, deployAutomationConfigState, func() bool {
 	//	return needToPublishStateFirst(client, mdb, log)

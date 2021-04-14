@@ -16,7 +16,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
@@ -27,8 +26,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assert.NoError(t, err)
 
 	r := NewReconciler(mgr, nil)
-	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	assertReconciliationSuccessful(t, res, err)
+	reconcileThroughAllStates(t, r, mdb)
 
 	sts := appsv1.StatefulSet{}
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
