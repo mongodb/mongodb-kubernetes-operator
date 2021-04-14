@@ -62,71 +62,33 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	needsToPublishStateFirst := needToPublishStateFirst(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, state.DirectTransition)
+
 	sm.AddTransition(validateSpec, serviceState, state.DirectTransition)
 	sm.AddTransition(validateSpec, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-
 	sm.AddTransition(validateSpec, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
 	sm.AddTransition(validateSpec, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
 
-	//sm.AddTransition(validateSpec, deployAutomationConfigState, func() bool {
-	//	return needToPublishStateFirst(client, mdb, log)
-	//})
-	//sm.AddTransition(validateSpec, deployStatefulSetState, func() bool {
-	//	return !needToPublishStateFirst(client, mdb, log)
-	//})
-
 	sm.AddTransition(serviceState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-
 	sm.AddTransition(serviceState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-	//sm.AddTransition(serviceState, deployAutomationConfigState, func() bool {
-	//	return needToPublishStateFirst(client, mdb, log)
-	//})
 	sm.AddTransition(serviceState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
-	//sm.AddTransition(serviceState, deployStatefulSetState, func() bool {
-	//	return !needToPublishStateFirst(client, mdb, log)
-	//})
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, state.DirectTransition)
 
-	//sm.AddTransition(tlsResourcesState, deployAutomationConfigState, func() bool {
-	//	return needToPublishStateFirst(client, mdb, log)
-	//})
 	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-
 	sm.AddTransition(tlsResourcesState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
 
-	//sm.AddTransition(tlsResourcesState, deployStatefulSetState, func() bool {
-	//	return !needToPublishStateFirst(client, mdb, log)
-	//})
-
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, state.FromBool(!needsToPublishStateFirst))
-	//sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, func() bool {
-	//	return !needToPublishStateFirst(client, mdb, log)
-	//})
-	// we only need to reset the update strategy if a version change is in progress.
 	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, mdb.IsChangingVersion)
-
 	sm.AddTransition(deployStatefulSetState, updateStatusState, state.DirectTransition)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, state.FromBool(needsToPublishStateFirst))
-
-	//sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, func() bool {
-	//	return needToPublishStateFirst(client, mdb, log)
-	//})
-
 	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, mdb.IsChangingVersion)
-
 	sm.AddTransition(deployAutomationConfigState, updateStatusState, state.DirectTransition)
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, state.DirectTransition)
 
-	// if we're still scaling, we need to retry until we are at the desired replica count.
-	sm.AddTransition(updateStatusState, startFresh, func() bool {
-		return scale.IsStillScaling(&mdb)
-	})
-
+	sm.AddTransition(updateStatusState, startFresh, state.FromBool(scale.IsStillScaling(&mdb)))
 	sm.AddTransition(updateStatusState, endState, state.DirectTransition)
-
 	return sm, nil
 }
 

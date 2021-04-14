@@ -299,7 +299,6 @@ func ensureAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
-	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
