@@ -67,7 +67,6 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
-	//time.Sleep(2 * time.Second)
 	res, err := m.currentState.Reconcile()
 
 	if err != nil {
@@ -97,7 +96,6 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
 		}
 
-		//time.Sleep(3 * time.Second)
 		if err := m.saveLoader.SaveNextState(nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err

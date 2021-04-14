@@ -32,6 +32,8 @@ var (
 	createServiceStateName                  = "CreateService"
 	tlsValidationStateName                  = "TLSValidation"
 	tlsResourcesStateName                   = "CreateTLSResources"
+	deployMongoDBReplicaSetStartName        = "DeployMongoDBReplicaSetStart"
+	deployMongoDBReplicaSetEndName          = "DeployMongoDBReplicaSetEnd"
 	deployAutomationConfigStateName         = "DeployAutomationConfig"
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
@@ -53,6 +55,9 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
+
+	deployMongoDBReplicaSetStart := NewDeployMongoDBReplicaSetStartState(mdb, log)
+	deployMongoDBReplicaSetEnd := NewDeployMongoDBReplicaSetEndState(mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb)
@@ -65,25 +70,26 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddTransition(validateSpec, serviceState, state.DirectTransition)
 	sm.AddTransition(validateSpec, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddTransition(validateSpec, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(validateSpec, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
+	sm.AddTransition(validateSpec, deployMongoDBReplicaSetStart, state.DirectTransition)
 
 	sm.AddTransition(serviceState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddTransition(serviceState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(serviceState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
+	sm.AddTransition(serviceState, deployMongoDBReplicaSetStart, state.DirectTransition)
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, state.DirectTransition)
 
-	sm.AddTransition(tlsResourcesState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(tlsResourcesState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
+	sm.AddTransition(tlsResourcesState, deployMongoDBReplicaSetStart, state.DirectTransition)
+
+	sm.AddTransition(deployMongoDBReplicaSetStart, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
+	sm.AddTransition(deployMongoDBReplicaSetStart, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
 
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, state.FromBool(!needsToPublishStateFirst))
-	sm.AddTransition(deployStatefulSetState, resetUpdateStrategyState, mdb.IsChangingVersion)
-	sm.AddTransition(deployStatefulSetState, updateStatusState, state.DirectTransition)
+	sm.AddTransition(deployStatefulSetState, deployMongoDBReplicaSetEnd, state.DirectTransition)
+
+	sm.AddTransition(deployMongoDBReplicaSetEnd, resetUpdateStrategyState, mdb.IsChangingVersion)
+	sm.AddTransition(deployMongoDBReplicaSetEnd, updateStatusState, state.DirectTransition)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(deployAutomationConfigState, resetUpdateStrategyState, mdb.IsChangingVersion)
-	sm.AddTransition(deployAutomationConfigState, updateStatusState, state.DirectTransition)
+	sm.AddTransition(deployAutomationConfigState, deployMongoDBReplicaSetEnd, state.DirectTransition)
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, state.DirectTransition)
 
@@ -97,6 +103,26 @@ func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) stat
 		Name: startFreshStateName,
 		Reconcile: func() (reconcile.Result, error) {
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+			return result.Retry(0)
+		},
+	}
+}
+
+func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: deployMongoDBReplicaSetStartName,
+		Reconcile: func() (reconcile.Result, error) {
+			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Namespace)
+			return result.Retry(0)
+		},
+	}
+}
+
+func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: deployMongoDBReplicaSetEndName,
+		Reconcile: func() (reconcile.Result, error) {
+			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Namespace)
 			return result.Retry(0)
 		},
 	}
