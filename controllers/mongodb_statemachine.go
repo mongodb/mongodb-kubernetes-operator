@@ -376,7 +376,7 @@ func setNextState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, st
 }
 
 // resetStateMachineHistory resets the history of states that have occurred. This should happen
-// at the beginning of the first reconiliation.
+// at the beginning of the first reconciliation.
 func resetStateMachineHistory(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
 	if err != nil {
