@@ -260,6 +260,23 @@ func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCo
 	return true, ""
 }
 
+func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	svc := buildService(mdb)
+	err := client.Create(context.TODO(), &svc)
+
+	if err == nil {
+		log.Infof("Created service %s/%s", svc.Namespace, svc.Name)
+		return nil
+	}
+
+	if err != nil && apiErrors.IsAlreadyExists(err) {
+		log.Infof("The service already exists... moving forward: %s", err)
+		return nil
+	}
+
+	return err
+}
+
 func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
 	err := client.Get(context.TODO(), mdb.NamespacedName(), &set)

@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
 	"go.uber.org/zap"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -39,8 +38,7 @@ var (
 )
 
 type MongoDBStates struct {
-	NextState      string   `json:"nextState"`
-	PreviousStates []string `json:"previousStates"`
+	NextState string `json:"nextState"`
 }
 
 // BuildStateMachine
@@ -353,23 +351,6 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 			return result.StateComplete(secondsBetweenStates)
 		},
 	}
-}
-
-func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
-	svc := buildService(mdb)
-	err := client.Create(context.TODO(), &svc)
-
-	if err == nil {
-		log.Infof("Created service %s/%s", svc.Namespace, svc.Name)
-		return nil
-	}
-
-	if err != nil && apiErrors.IsAlreadyExists(err) {
-		log.Infof("The service already exists... moving forward: %s", err)
-		return nil
-	}
-
-	return err
 }
 
 func newAllStates() MongoDBStates {
