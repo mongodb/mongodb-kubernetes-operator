@@ -39,7 +39,7 @@ var (
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndStateName              = "ReconciliationEnd"
 	updateStatusStateName                   = "UpdateStatus"
-	secondsBetweenStates                    = 5
+	secondsBetweenStates                    = 1
 )
 
 type MongoDBStates struct {
@@ -56,7 +56,6 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
-
 	deployMongoDBReplicaSetStart := NewDeployMongoDBReplicaSetStartState(mdb, log)
 	deployMongoDBReplicaSetEnd := NewDeployMongoDBReplicaSetEndState(mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
