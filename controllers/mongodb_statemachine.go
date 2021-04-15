@@ -43,7 +43,7 @@ type MongoDBStates struct {
 
 // BuildStateMachine
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, savLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
-	sm := state.NewStateMachine(savLoader, log)
+	sm := state.NewStateMachine(savLoader, mdb.NamespacedName(), log)
 
 	needsToPublishStateFirst, reason := needToPublishStateFirst(client, mdb)
 

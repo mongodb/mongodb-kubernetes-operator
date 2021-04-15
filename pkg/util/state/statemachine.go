@@ -3,6 +3,7 @@ package state
 import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -19,11 +20,11 @@ type transition struct {
 }
 
 type Saver interface {
-	SaveNextState(stateName string) error
+	SaveNextState(name types.NamespacedName, stateName string) error
 }
 
 type Loader interface {
-	LoadNextState() (string, error)
+	LoadNextState(types.NamespacedName) (string, error)
 }
 
 type SaveLoader interface {
@@ -47,14 +48,16 @@ type Machine struct {
 	logger         *zap.SugaredLogger
 	saveLoader     SaveLoader
 	states         map[string]State
+	nsName         types.NamespacedName
 }
 
-func NewStateMachine(saver SaveLoader, logger *zap.SugaredLogger) *Machine {
+func NewStateMachine(saver SaveLoader, nsName types.NamespacedName, logger *zap.SugaredLogger) *Machine {
 	return &Machine{
 		allTransitions: map[string][]transition{},
 		logger:         logger,
 		saveLoader:     saver,
 		states:         map[string]State{},
+		nsName:         nsName,
 	}
 }
 
@@ -100,7 +103,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 			m.logger.Debugf("preparing transition [%s] -> [%s]", m.currentState.Name, nextState)
 		}
 
-		if err := m.saveLoader.SaveNextState(nextState); err != nil {
+		if err := m.saveLoader.SaveNextState(m.nsName, nextState); err != nil {
 			m.logger.Debugf("Error marking state: [%s] as complete: %s", m.currentState.Name, err)
 			return reconcile.Result{}, err
 		}
@@ -115,7 +118,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 }
 
 func (m *Machine) initStartingState() error {
-	currentStateName, err := m.saveLoader.LoadNextState()
+	currentStateName, err := m.saveLoader.LoadNextState(m.nsName)
 	if err != nil {
 		return errors.Errorf("could not load starting state: %s", err)
 	}

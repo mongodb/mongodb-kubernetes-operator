@@ -6,19 +6,28 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/apierrors"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type MongoDBCommunityStateSaver struct {
-	mdb    mdbv1.MongoDBCommunity
-	client k8sClient.Client
+func (r *ReplicaSetReconciler) getMongoDBCommunity(nsName types.NamespacedName) (mdbv1.MongoDBCommunity, error) {
+	mdb := mdbv1.MongoDBCommunity{}
+	err := r.client.Get(context.TODO(), nsName, &mdb)
+	if err != nil {
+		return mdbv1.MongoDBCommunity{}, err
+	}
+	return mdb, nil
 }
 
-func (m *MongoDBCommunityStateSaver) LoadNextState() (string, error) {
-	startingStateName, err := getLastStateName(m.mdb)
+func (r *ReplicaSetReconciler) LoadNextState(nsName types.NamespacedName) (string, error) {
+	mdb, err := r.getMongoDBCommunity(nsName)
+	if err != nil {
+		return "", err
+	}
+
+	startingStateName, err := getLastStateName(mdb)
 	if err != nil {
 		return "", errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
 	}
@@ -29,7 +38,7 @@ func (m *MongoDBCommunityStateSaver) LoadNextState() (string, error) {
 	return startingStateName, nil
 }
 
-func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
+func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateName string) error {
 	if stateName == "" {
 		return nil
 	}
@@ -37,8 +46,8 @@ func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
 	var err error
 	attempts := 3
 	for i := 0; i < attempts; i++ {
-		mdb := mdbv1.MongoDBCommunity{}
-		if err := m.client.Get(context.TODO(), m.mdb.NamespacedName(), &mdb); err != nil {
+		mdb, err := r.getMongoDBCommunity(nsName)
+		if err != nil {
 			return err
 		}
 
@@ -59,7 +68,7 @@ func (m *MongoDBCommunityStateSaver) SaveNextState(stateName string) error {
 		}
 
 		mdb.Annotations[stateMachineAnnotation] = string(bytes)
-		err = m.client.Update(context.TODO(), &mdb)
+		err = r.client.Update(context.TODO(), &mdb)
 		if err == nil {
 			break
 		}

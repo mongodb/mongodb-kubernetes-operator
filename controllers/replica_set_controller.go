@@ -64,21 +64,21 @@ func NewReconciler(mgr manager.Manager, provider SaveLoadProvider) *ReplicaSetRe
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
 
-	if provider == nil {
-		provider = func(mdb mdbv1.MongoDBCommunity, client kubernetesClient.Client) state.SaveLoader {
-			return &MongoDBCommunityStateSaver{
-				mdb:    mdb,
-				client: client,
-			}
-		}
-	}
+	//if provider == nil {
+	//	provider = func(mdb mdbv1.MongoDBCommunity, client kubernetesClient.Client) state.SaveLoader {
+	//		return &MongoDBCommunityStateSaver{
+	//			mdb:    mdb,
+	//			client: client,
+	//		}
+	//	}
+	//}
 
 	return &ReplicaSetReconciler{
 		client:        kubernetesClient.NewClient(mgrClient),
 		scheme:        mgr.GetScheme(),
 		log:           zap.S(),
 		secretWatcher: &secretWatcher,
-		provider:      provider,
+		//provider:      provider,
 	}
 }
 
@@ -98,7 +98,7 @@ type ReplicaSetReconciler struct {
 	log           *zap.SugaredLogger
 	secretWatcher *watch.ResourceWatcher
 	stateMachine  *state.Machine
-	provider      SaveLoadProvider
+	saveLoader    state.SaveLoader
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
@@ -132,7 +132,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	log := zap.S().With("ReplicaSet", mdb.Namespace)
 
-	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, r.provider(mdb, r.client), log)
+	// TODO cleaner way of doing this
+	var saveLoader state.SaveLoader = &r
+	if r.saveLoader != nil {
+		saveLoader = r.saveLoader
+	}
+
+	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, saveLoader, log)
 
 	if err != nil {
 		log.Errorf("Error building State Machine: %s", err)

@@ -14,12 +14,12 @@ import (
 func TestOrderOfStates_NoTLS(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
-
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, func(_ mdbv1.MongoDBCommunity, _ client.Client) state.SaveLoader {
-		return inMemorySaveLoader
-	})
+	r := NewReconciler(mgr, nil)
+
+	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
+
+	r.saveLoader = inMemorySaveLoader
 
 	assertFullOrderOfStates(t, r, mdb,
 		inMemorySaveLoader,
@@ -38,16 +38,16 @@ func TestOrderOfStates_NoTLS(t *testing.T) {
 func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
-
 	mgr := client.NewManager(&mdb)
 
 	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr, func(_ mdbv1.MongoDBCommunity, _ client.Client) state.SaveLoader {
-		return inMemorySaveLoader
-	})
+	r := NewReconciler(mgr, nil)
+
+	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
+
+	r.saveLoader = inMemorySaveLoader
 
 	// if the StatefulSet does not exist, the automation config should be updated first.
 	assertFullOrderOfStates(t, r, mdb,
@@ -70,16 +70,16 @@ func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 func TestPartialOrderOfStates_TLSEnabled(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
-
 	mgr := client.NewManager(&mdb)
 
 	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr, func(_ mdbv1.MongoDBCommunity, _ client.Client) state.SaveLoader {
-		return inMemorySaveLoader
-	})
+	r := NewReconciler(mgr, nil)
+
+	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
+
+	r.saveLoader = inMemorySaveLoader
 
 	// if the StatefulSet does not exist, the automation config should be updated first.
 	assertPartialOrderOfStates(t, r, mdb,
