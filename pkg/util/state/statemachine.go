@@ -8,9 +8,8 @@ import (
 )
 
 type State struct {
-	Name       string
-	Reconcile  func() (reconcile.Result, error)
-	IsComplete func() (bool, error)
+	Name      string
+	Reconcile func() (reconcile.Result, error, bool)
 }
 
 type transition struct {
@@ -67,20 +66,11 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
-	res, err := m.currentState.Reconcile()
+	res, err, isComplete := m.currentState.Reconcile()
 
 	if err != nil {
 		m.logger.Debugf("Error reconciling state [%s]: %s", m.currentState.Name, err)
 		return res, err
-	}
-
-	isComplete := true
-	if m.currentState.IsComplete != nil {
-		isComplete, err = m.currentState.IsComplete()
-		if err != nil {
-			m.logger.Debugf("Error determining if state [%s] is complete: %s", m.currentState.Name, err)
-			return reconcile.Result{}, err
-		}
 	}
 
 	if isComplete {
