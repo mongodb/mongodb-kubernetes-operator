@@ -14,7 +14,7 @@ import (
 func TestOrderOfStates_NoTLS(t *testing.T) {
 	mdb := newTestReplicaSet()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(startFreshStateName)
+	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
 
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr, func(_ mdbv1.MongoDBCommunity, _ client.Client) state.SaveLoader {
@@ -23,7 +23,7 @@ func TestOrderOfStates_NoTLS(t *testing.T) {
 
 	assertFullOrderOfStates(t, r, mdb,
 		inMemorySaveLoader,
-		startFreshStateName,
+		reconciliationStartStateName,
 		validateSpecStateName,
 		createServiceStateName,
 		deployAutomationConfigStateName,
@@ -36,7 +36,7 @@ func TestOrderOfStates_NoTLS(t *testing.T) {
 func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(startFreshStateName)
+	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
 
 	mgr := client.NewManager(&mdb)
 
@@ -50,7 +50,7 @@ func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 	// if the StatefulSet does not exist, the automation config should be updated first.
 	assertFullOrderOfStates(t, r, mdb,
 		inMemorySaveLoader,
-		startFreshStateName,
+		reconciliationStartStateName,
 		validateSpecStateName,
 		createServiceStateName,
 		tlsValidationStateName,
@@ -66,7 +66,7 @@ func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 func TestPartialOrderOfStates_TLSEnabled(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(startFreshStateName)
+	inMemorySaveLoader := state.NewInMemorySaveLoader(reconciliationStartStateName)
 
 	mgr := client.NewManager(&mdb)
 

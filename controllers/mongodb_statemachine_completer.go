@@ -24,7 +24,7 @@ func (m *MongoDBCommunityStateSaver) LoadNextState() (string, error) {
 	}
 
 	if startingStateName == "" {
-		startingStateName = startFreshStateName
+		startingStateName = reconciliationStartStateName
 	}
 	return startingStateName, nil
 }

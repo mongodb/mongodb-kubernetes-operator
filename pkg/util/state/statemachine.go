@@ -9,6 +9,7 @@ import (
 type State struct {
 	Name      string
 	Reconcile func() (reconcile.Result, error, bool)
+	OnEnter   func() error
 }
 
 type transition struct {
@@ -57,6 +58,7 @@ func NewStateMachine(saver SaveLoader, logger *zap.SugaredLogger) *Machine {
 }
 
 func (m *Machine) Reconcile() (reconcile.Result, error) {
+
 	if m.currentState == nil {
 		if err := m.initStartingState(); err != nil {
 			m.logger.Errorf("error initializing starting state: %s", err)
@@ -65,6 +67,14 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
+
+	if m.currentState.OnEnter != nil {
+		if err := m.currentState.OnEnter(); err != nil {
+			m.logger.Debugf("Error reconciling state [%s]: %s", m.currentState.Name, err)
+			return reconcile.Result{}, err
+		}
+	}
+
 	res, err, isComplete := m.currentState.Reconcile()
 
 	if err != nil {

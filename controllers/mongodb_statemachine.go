@@ -23,7 +23,7 @@ var (
 
 	completeAnnotation = "complete"
 
-	startFreshStateName                     = "StartFresh"
+	reconciliationStartStateName            = "ReconciliationStart"
 	validateSpecStateName                   = "ValidateSpec"
 	createServiceStateName                  = "CreateService"
 	tlsValidationStateName                  = "TLSValidation"
@@ -47,20 +47,20 @@ type MongoDBStates struct {
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, savLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
 	sm := state.NewStateMachine(savLoader, log)
 
-	startFresh := NewStartFreshState(mdb, log)
+	needsToPublishStateFirst, reason := needToPublishStateFirst(client, mdb)
+
+	startFresh := NewReconciliationStartState(mdb, log)
 	validateSpec := NewValidateSpecState(client, mdb, log)
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
 	deployMongoDBReplicaSetStart := NewDeployMongoDBReplicaSetStartState(mdb, log)
 	deployMongoDBReplicaSetEnd := NewDeployMongoDBReplicaSetEndState(mdb, log)
-	deployAutomationConfigState := NewDeployAutomationConfigState(client, mdb, log)
-	deployStatefulSetState := NewDeployStatefulSetState(client, mdb, log)
+	deployAutomationConfigState := NewDeployAutomationConfigState(client, reason, mdb, log)
+	deployStatefulSetState := NewDeployStatefulSetState(client, reason, mdb, log)
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb)
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endState := NewReconciliationEndState(client, mdb, log)
-
-	needsToPublishStateFirst := needToPublishStateFirst(client, mdb, log)
 
 	sm.AddTransition(startFresh, validateSpec, state.DirectTransition)
 
@@ -95,9 +95,9 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	return sm, nil
 }
 
-func NewStartFreshState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewReconciliationStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: startFreshStateName,
+		Name: reconciliationStartStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 			return result.StateComplete(secondsBetweenStates)
@@ -129,7 +129,6 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 	return state.State{
 		Name: validateSpecStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			log.Debug("Validating MongoDB.Spec")
 			if err := validateUpdate(mdb); err != nil {
 				return status.Update(client.Status(), &mdb,
 					statusOptions().
@@ -137,6 +136,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 						withFailedPhase(),
 				)
 			}
+			log.Debug("MongoDB.Spec was successfully validated.")
 			return result.StateComplete(secondsBetweenStates)
 		},
 	}
@@ -239,9 +239,15 @@ func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoD
 		},
 	}
 }
-func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewDeployAutomationConfigState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: deployAutomationConfigStateName,
+		OnEnter: func() error {
+			if reason != "" {
+				log.Debug(reason)
+			}
+			return nil
+		},
 		Reconcile: func() (reconcile.Result, error, bool) {
 			ready, err := deployAutomationConfig(client, mdb, log)
 			if err != nil {
@@ -263,9 +269,15 @@ func NewDeployAutomationConfigState(client kubernetesClient.Client, mdb mdbv1.Mo
 	}
 }
 
-func NewDeployStatefulSetState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: deployStatefulSetStateName,
+		OnEnter: func() error {
+			if reason != "" {
+				log.Debug(reason)
+			}
+			return nil
+		},
 		Reconcile: func() (reconcile.Result, error, bool) {
 			ready, err := deployStatefulSet(client, mdb, log)
 			if err != nil {
@@ -360,6 +372,6 @@ func ensureService(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, l
 
 func newAllStates() MongoDBStates {
 	return MongoDBStates{
-		NextState: startFreshStateName,
+		NextState: reconciliationStartStateName,
 	}
 }

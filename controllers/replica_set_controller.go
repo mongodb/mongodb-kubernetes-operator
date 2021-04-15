@@ -139,11 +139,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	res, err := sm.Reconcile()
-
-	log.Debugw("Reconciliation Results", "res", res, "err", err)
-
-	return res, err
+	return sm.Reconcile()
 }
 
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
@@ -239,33 +235,29 @@ func deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 
 // needToPublishStateFirst returns true if the order of execution of the AutomationConfig & StatefulSet
 // functions should be sequential or not. A value of false indicates they will run in reversed order.
-func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) bool {
+func needToPublishStateFirst(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) (bool, string) {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
 	_, err := client.GetStatefulSet(mdb.NamespacedName())
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
-		log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
-		return false
+		return false, "Enabling TLS on an existing deployment, the StatefulSet must be updated first"
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
 	if scale.IsScalingUp(mdb) {
-		log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
-		return false
+		return false, "Scaling up the ReplicaSet, the StatefulSet must be updated first"
 	}
 
 	if scale.IsScalingDown(mdb) {
-		log.Debug("Scaling down the ReplicaSet, the Automation Config must be updated first")
-		return true
+		return true, "Scaling down the ReplicaSet, the Automation Config must be updated first"
 	}
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
 	if mdb.IsChangingVersion() {
-		log.Debug("Version change in progress, the StatefulSet must be updated first")
-		return false
+		return false, "Version change in progress, the StatefulSet must be updated first"
 	}
 
-	return true
+	return true, ""
 }
 
 func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
