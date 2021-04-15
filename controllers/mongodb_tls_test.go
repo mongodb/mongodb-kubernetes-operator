@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"go.uber.org/zap"
+
 	corev1 "k8s.io/api/core/v1"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -154,7 +156,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(c), nil)
 
-		err = r.ensureTLSResources(mdb)
+		err = ensureTLSResources(r.client, mdb, zap.S())
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contain the
@@ -182,7 +184,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(k8sclient), nil)
 
-		err = r.ensureTLSResources(mdb)
+		err = ensureTLSResources(r.client, mdb, zap.S())
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been updated with the concatenated

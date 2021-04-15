@@ -3,10 +3,11 @@ package controllers
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"go.uber.org/zap"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -34,95 +35,6 @@ const (
 	tlsSecretCertName          = "tls.crt"              //nolint
 	tlsSecretKeyName           = "tls.key"
 )
-
-// validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
-	if !mdb.Spec.Security.TLS.Enabled {
-		return true, nil
-	}
-
-	r.log.Info("Ensuring TLS is correctly configured")
-
-	// Ensure CA ConfigMap exists
-	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
-	if err != nil {
-		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	// Ensure ConfigMap has a "ca.crt" field
-	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		r.log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
-		return false, nil
-	}
-
-	// Ensure Secret exists
-	secretData, err := secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
-	if err != nil {
-		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	// Ensure Secret has "tls.crt" and "tls.key" fields
-	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
-		r.log.Warnf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return false, nil
-	}
-	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
-		r.log.Warnf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return false, nil
-	}
-
-	// Watch certificate-key secret to handle rotations
-	r.secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
-
-	r.log.Infof("Successfully validated TLS config")
-	return true, nil
-}
-
-// getTLSConfigModification creates a modification function which enables TLS in the automation config.
-// It will also ensure that the combined cert-key secret is created.
-func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
-	if !mdb.Spec.Security.TLS.Enabled {
-		return automationconfig.NOOP(), nil
-	}
-
-	certKey, err := getCertAndKey(getUpdateCreator, mdb)
-	if err != nil {
-		return automationconfig.NOOP(), err
-	}
-
-	return tlsConfigModification(mdb, certKey), nil
-}
-
-// getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
-	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
-	if err != nil {
-		return "", err
-	}
-
-	key, err := secret.ReadKey(getter, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
-	if err != nil {
-		return "", err
-	}
-
-	return combineCertificateAndKey(cert, key), nil
-}
-
-func combineCertificateAndKey(cert, key string) string {
-	trimmedCert := strings.TrimRight(cert, "\n")
-	trimmedKey := strings.TrimRight(key, "\n")
-	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
-}
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
 func validateTLSConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) (bool, error) {
@@ -173,16 +85,40 @@ func validateTLSConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	return true, nil
 }
 
-// ensureTLSResources creates any required TLS resources that the MongoDBCommunity
-// requires for TLS configuration.
-func ensureTLSResources(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
-	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
-	// require the contents.
-	log.Infof("TLS is enabled, creating/updating TLS secret")
-	if err := ensureTLSSecret(client, mdb); err != nil {
-		return errors.Errorf("could not ensure TLS secret: %s", err)
+// getTLSConfigModification creates a modification function which enables TLS in the automation config.
+// It will also ensure that the combined cert-key secret is created.
+func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
+	if !mdb.Spec.Security.TLS.Enabled {
+		return automationconfig.NOOP(), nil
 	}
-	return nil
+
+	certKey, err := getCertAndKey(getUpdateCreator, mdb)
+	if err != nil {
+		return automationconfig.NOOP(), err
+	}
+
+	return tlsConfigModification(mdb, certKey), nil
+}
+
+// getCertAndKey will fetch the certificate and key from the user-provided Secret.
+func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
+	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return "", err
+	}
+
+	key, err := secret.ReadKey(getter, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return "", err
+	}
+
+	return combineCertificateAndKey(cert, key), nil
+}
+
+func combineCertificateAndKey(cert, key string) string {
+	trimmedCert := strings.TrimRight(cert, "\n")
+	trimmedKey := strings.TrimRight(key, "\n")
+	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
 }
 
 // ensureTLSSecret will create or update the operator-managed Secret containing

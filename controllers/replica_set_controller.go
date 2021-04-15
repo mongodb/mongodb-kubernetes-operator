@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
@@ -87,8 +88,6 @@ type ReplicaSetReconciler struct {
 	scheme        *runtime.Scheme
 	log           *zap.SugaredLogger
 	secretWatcher *watch.ResourceWatcher
-	stateMachine  *state.Machine
-	saveLoader    state.SaveLoader
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
@@ -147,17 +146,12 @@ func updateLastSuccessfulConfiguration(client kubernetesClient.Client, mdb mdbv1
 
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
 // requires for TLS configuration.
-func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) error {
-	if !mdb.Spec.Security.TLS.Enabled {
-		return nil
-	}
+func ensureTLSResources(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
 	// require the contents.
-	if mdb.Spec.Security.TLS.Enabled {
-		r.log.Infof("TLS is enabled, creating/updating TLS secret")
-		if err := ensureTLSSecret(r.client, mdb); err != nil {
-			return errors.Errorf("could not ensure TLS secret: %s", err)
-		}
+	log.Infof("TLS is enabled, creating/updating TLS secret")
+	if err := ensureTLSSecret(client, mdb); err != nil {
+		return errors.Errorf("could not ensure TLS secret: %s", err)
 	}
 	return nil
 }

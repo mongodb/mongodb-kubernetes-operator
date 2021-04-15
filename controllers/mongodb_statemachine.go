@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
@@ -19,8 +20,6 @@ import (
 
 var (
 	stateMachineAnnotation = "mongodb.com/v1.stateMachine"
-
-	completeAnnotation = "complete"
 
 	reconciliationStartStateName            = "ReconciliationStart"
 	validateSpecStateName                   = "ValidateSpec"

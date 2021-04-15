@@ -8,7 +8,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
@@ -36,7 +35,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func init() {
@@ -662,12 +660,6 @@ func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) e
 	}
 
 	return nil
-}
-
-func assertReconciliationSuccessful(t *testing.T, result reconcile.Result, err error) {
-	assert.NoError(t, err)
-	assert.Equal(t, false, result.Requeue)
-	assert.Equal(t, time.Duration(0), result.RequeueAfter)
 }
 
 // makeStatefulSetReady updates the StatefulSet corresponding to the
