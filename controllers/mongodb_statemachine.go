@@ -59,34 +59,34 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endReconciliationState := NewReconciliationEndState(client, mdb, log)
 
-	sm.AddTransition(reconciliationStart, validateSpecState, state.DirectTransition)
+	sm.AddDirectTransition(reconciliationStart, validateSpecState)
 
-	sm.AddTransition(validateSpecState, serviceCreationState, state.DirectTransition)
+	sm.AddDirectTransition(validateSpecState, serviceCreationState)
 
 	sm.AddTransition(serviceCreationState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddTransition(serviceCreationState, deployMongoDBReplicaSetStartState, state.DirectTransition)
+	sm.AddDirectTransition(serviceCreationState, deployMongoDBReplicaSetStartState)
 
-	sm.AddTransition(tlsValidationState, tlsResourcesState, state.DirectTransition)
+	sm.AddDirectTransition(tlsValidationState, tlsResourcesState)
 
-	sm.AddTransition(tlsResourcesState, deployMongoDBReplicaSetStartState, state.DirectTransition)
+	sm.AddDirectTransition(tlsResourcesState, deployMongoDBReplicaSetStartState)
 
 	sm.AddTransition(deployMongoDBReplicaSetStartState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
 	sm.AddTransition(deployMongoDBReplicaSetStartState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
 
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, state.FromBool(!needsToPublishStateFirst))
-	sm.AddTransition(deployStatefulSetState, deployMongoDBReplicaSetEndState, state.DirectTransition)
+	sm.AddDirectTransition(deployStatefulSetState, deployMongoDBReplicaSetEndState)
 
 	sm.AddTransition(deployMongoDBReplicaSetEndState, resetUpdateStrategyState, mdb.IsChangingVersion)
-	sm.AddTransition(deployMongoDBReplicaSetEndState, updateStatusState, state.DirectTransition)
+	sm.AddDirectTransition(deployMongoDBReplicaSetEndState, updateStatusState)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(deployAutomationConfigState, deployMongoDBReplicaSetEndState, state.DirectTransition)
+	sm.AddDirectTransition(deployAutomationConfigState, deployMongoDBReplicaSetEndState)
 
-	sm.AddTransition(resetUpdateStrategyState, updateStatusState, state.DirectTransition)
+	sm.AddDirectTransition(resetUpdateStrategyState, updateStatusState)
 
 	// if we're scaling, we should go back and update the StatefulSet/AutomationConfig again.
 	sm.AddTransition(updateStatusState, deployMongoDBReplicaSetStartState, state.FromBool(scale.IsStillScaling(&mdb)))
-	sm.AddTransition(updateStatusState, endReconciliationState, state.DirectTransition)
+	sm.AddDirectTransition(updateStatusState, endReconciliationState)
 	return sm, nil
 }
 

@@ -89,7 +89,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	if isComplete {
-		if m.currentState.IsStateGrouping {
+		if !m.currentState.IsStateGrouping {
 			m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
 		}
 
@@ -127,6 +127,14 @@ func (m *Machine) initStartingState() error {
 	return nil
 }
 
+// AddDirectTransition creates a transition between the two
+// provided states which will always be valid.
+func (m *Machine) AddDirectTransition(from, to State) {
+	m.AddTransition(from, to, DirectTransition)
+}
+
+// AddTransition creates a transition between the two states if the given
+// predicate returns true.
 func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 	_, ok := m.allTransitions[from.Name]
 	if !ok {
@@ -140,7 +148,6 @@ func (m *Machine) AddTransition(from, to State, predicate TransitionPredicate) {
 
 	m.states[from.Name] = from
 	m.states[to.Name] = to
-
 }
 
 // getTransitionForState returns the first transition it finds that is available
