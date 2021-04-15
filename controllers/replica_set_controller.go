@@ -8,7 +8,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
@@ -59,9 +58,7 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
-type SaveLoadProvider func(mdb mdbv1.MongoDBCommunity, client kubernetesClient.Client) state.SaveLoader
-
-func NewReconciler(mgr manager.Manager, provider SaveLoadProvider) *ReplicaSetReconciler {
+func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
 

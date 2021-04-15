@@ -105,7 +105,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 
 	reconcileThroughAllStates(t, r, mdb)
 
@@ -124,7 +124,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 
 	reconcileThroughAllStates(t, r, mdb)
 
@@ -166,7 +166,7 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
 	mgrClient := mgr.GetClient()
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 
 	reconcileThroughAllStates(t, r, mdb)
 
@@ -240,7 +240,7 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	svc := corev1.Service{}
@@ -258,7 +258,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -280,7 +280,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -297,7 +297,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -328,7 +328,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -374,7 +374,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -402,7 +402,7 @@ func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
 //	mdb.Spec.Members = 5
 //
 //	mgr := client.NewManager(&mdb)
-//	r := NewReconciler(mgr, nil)
+//	r := NewReconciler(mgr)
 //	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 //	assertReconciliationSuccessful(t, res, err)
 //
@@ -447,7 +447,7 @@ func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
 //	mdb := newTestReplicaSet()
 //
 //	mgr := client.NewManager(&mdb)
-//	r := NewReconciler(mgr, nil)
+//	r := NewReconciler(mgr)
 //	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 //	assertReconciliationSuccessful(t, res, err)
 //
@@ -516,7 +516,7 @@ func TestIgnoreUnknownUsers(t *testing.T) {
 // results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
 func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -531,7 +531,7 @@ func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedVa
 
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
@@ -561,7 +561,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	err := mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
@@ -632,7 +632,7 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv
 	assert.NoError(t, err)
 	mgr := client.NewManager(&mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
-	r := NewReconciler(mgr, nil)
+	r := NewReconciler(mgr)
 	reconcileThroughAllStates(t, r, mdb)
 
 	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
