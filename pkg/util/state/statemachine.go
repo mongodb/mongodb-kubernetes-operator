@@ -7,9 +7,10 @@ import (
 )
 
 type State struct {
-	Name      string
-	Reconcile func() (reconcile.Result, error, bool)
-	OnEnter   func() error
+	Name            string
+	Reconcile       func() (reconcile.Result, error, bool)
+	OnEnter         func() error
+	IsStateGrouping bool
 }
 
 type transition struct {
@@ -66,7 +67,9 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
+	if !m.currentState.IsStateGrouping {
+		m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
+	}
 
 	if m.currentState.OnEnter != nil {
 		if err := m.currentState.OnEnter(); err != nil {
@@ -83,7 +86,9 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	}
 
 	if isComplete {
-		m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
+		if m.currentState.IsStateGrouping {
+			m.logger.Debugf("Completed state: [%s]", m.currentState.Name)
+		}
 
 		transition := m.getTransitionForState(*m.currentState)
 		nextState := ""
@@ -102,7 +107,9 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 		return res, err
 	}
 
-	m.logger.Debugf("State [%s] is not yet complete", m.currentState.Name)
+	if !m.currentState.IsStateGrouping {
+		m.logger.Debugf("State [%s] is not yet complete", m.currentState.Name)
+	}
 
 	return res, err
 }

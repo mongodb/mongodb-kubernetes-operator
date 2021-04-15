@@ -107,7 +107,8 @@ func NewReconciliationStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLog
 
 func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: deployMongoDBReplicaSetStartName,
+		Name:            deployMongoDBReplicaSetStartName,
+		IsStateGrouping: true,
 		Reconcile: func() (reconcile.Result, error, bool) {
 			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
 			return result.StateComplete(secondsBetweenStates)
@@ -117,7 +118,8 @@ func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.S
 
 func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name: deployMongoDBReplicaSetEndName,
+		Name:            deployMongoDBReplicaSetEndName,
+		IsStateGrouping: true,
 		Reconcile: func() (reconcile.Result, error, bool) {
 			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
 			return result.StateComplete(secondsBetweenStates)
