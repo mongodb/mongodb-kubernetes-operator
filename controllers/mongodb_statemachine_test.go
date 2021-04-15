@@ -26,8 +26,10 @@ func TestOrderOfStates_NoTLS(t *testing.T) {
 		reconciliationStartStateName,
 		validateSpecStateName,
 		createServiceStateName,
+		deployMongoDBReplicaSetStartName,
 		deployAutomationConfigStateName,
 		deployStatefulSetStateName,
+		deployMongoDBReplicaSetEndName,
 		updateStatusStateName,
 		reconciliationEndStateName,
 	)
@@ -55,8 +57,10 @@ func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 		createServiceStateName,
 		tlsValidationStateName,
 		tlsResourcesStateName,
+		deployMongoDBReplicaSetStartName,
 		deployAutomationConfigStateName,
 		deployStatefulSetStateName,
+		deployMongoDBReplicaSetEndName,
 		updateStatusStateName,
 		reconciliationEndStateName,
 	)
