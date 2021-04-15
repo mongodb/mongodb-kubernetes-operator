@@ -396,7 +396,6 @@ func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
 	assertReplicaSetIsConfiguredWithScram(t, newTestReplicaSet())
 }
 
-// TODO: refactor
 //func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
 //	mdb := newTestReplicaSet()
 //	mdb.Spec.Members = 5

@@ -25,9 +25,9 @@ var (
 	validateSpecStateName                   = "ValidateSpec"
 	createServiceStateName                  = "CreateService"
 	tlsValidationStateName                  = "TLSValidation"
-	tlsResourcesStateName                   = "CreateTLSResources"
-	deployMongoDBReplicaSetStartName        = "DeployMongoDBReplicaSetStart"
-	deployMongoDBReplicaSetEndName          = "DeployMongoDBReplicaSetEnd"
+	tlsResourcesStateName                   = "EnsureTLSResources"
+	deployMongoDBReplicaSetStartName        = "BeginDeployingMongoDBReplicaSet"
+	deployMongoDBReplicaSetEndName          = "EndDeployingMongoDBReplicaSet"
 	deployAutomationConfigStateName         = "DeployAutomationConfig"
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
@@ -191,8 +191,7 @@ func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoD
 // and StatefulSet.
 func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name:            deployMongoDBReplicaSetStartName,
-		IsStateGrouping: true,
+		Name: deployMongoDBReplicaSetStartName,
 		Reconcile: func() (reconcile.Result, error, bool) {
 			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
 			return result.StateComplete()
@@ -267,8 +266,7 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, md
 // and StatefulSet.
 func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
-		Name:            deployMongoDBReplicaSetEndName,
-		IsStateGrouping: true,
+		Name: deployMongoDBReplicaSetEndName,
 		Reconcile: func() (reconcile.Result, error, bool) {
 			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
 			return result.StateComplete()
