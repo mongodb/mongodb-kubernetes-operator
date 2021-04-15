@@ -33,7 +33,6 @@ var (
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndStateName              = "ReconciliationEnd"
 	updateStatusStateName                   = "UpdateStatus"
-	secondsBetweenStates                    = 1
 )
 
 type MongoDBStates struct {
@@ -42,54 +41,52 @@ type MongoDBStates struct {
 }
 
 // BuildStateMachine
-func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, savLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
-	sm := state.NewStateMachine(savLoader, mdb.NamespacedName(), log)
+func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, saveLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
+	sm := state.NewStateMachine(saveLoader, mdb.NamespacedName(), log)
 
 	needsToPublishStateFirst, reason := needToPublishStateFirst(client, mdb)
 
-	startFresh := NewReconciliationStartState(client, mdb, log)
-	validateSpec := NewValidateSpecState(client, mdb, log)
-	serviceState := NewCreateServiceState(client, mdb, log)
+	reconciliationStart := NewReconciliationStartState(client, mdb, log)
+	validateSpecState := NewValidateSpecState(client, mdb, log)
+	serviceCreationState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
-	deployMongoDBReplicaSetStart := NewDeployMongoDBReplicaSetStartState(mdb, log)
-	deployMongoDBReplicaSetEnd := NewDeployMongoDBReplicaSetEndState(mdb, log)
+	deployMongoDBReplicaSetStartState := NewDeployMongoDBReplicaSetStartState(mdb, log)
+	deployMongoDBReplicaSetEndState := NewDeployMongoDBReplicaSetEndState(mdb, log)
 	deployAutomationConfigState := NewDeployAutomationConfigState(client, reason, mdb, log)
 	deployStatefulSetState := NewDeployStatefulSetState(client, reason, mdb, log)
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb)
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
-	endState := NewReconciliationEndState(client, mdb, log)
+	endReconciliationState := NewReconciliationEndState(client, mdb, log)
 
-	sm.AddTransition(startFresh, validateSpec, state.DirectTransition)
+	sm.AddTransition(reconciliationStart, validateSpecState, state.DirectTransition)
 
-	sm.AddTransition(validateSpec, serviceState, state.DirectTransition)
-	sm.AddTransition(validateSpec, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddTransition(validateSpec, deployMongoDBReplicaSetStart, state.DirectTransition)
+	sm.AddTransition(validateSpecState, serviceCreationState, state.DirectTransition)
 
-	sm.AddTransition(serviceState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddTransition(serviceState, deployMongoDBReplicaSetStart, state.DirectTransition)
+	sm.AddTransition(serviceCreationState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
+	sm.AddTransition(serviceCreationState, deployMongoDBReplicaSetStartState, state.DirectTransition)
 
 	sm.AddTransition(tlsValidationState, tlsResourcesState, state.DirectTransition)
 
-	sm.AddTransition(tlsResourcesState, deployMongoDBReplicaSetStart, state.DirectTransition)
+	sm.AddTransition(tlsResourcesState, deployMongoDBReplicaSetStartState, state.DirectTransition)
 
-	sm.AddTransition(deployMongoDBReplicaSetStart, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(deployMongoDBReplicaSetStart, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
+	sm.AddTransition(deployMongoDBReplicaSetStartState, deployAutomationConfigState, state.FromBool(needsToPublishStateFirst))
+	sm.AddTransition(deployMongoDBReplicaSetStartState, deployStatefulSetState, state.FromBool(!needsToPublishStateFirst))
 
 	sm.AddTransition(deployStatefulSetState, deployAutomationConfigState, state.FromBool(!needsToPublishStateFirst))
-	sm.AddTransition(deployStatefulSetState, deployMongoDBReplicaSetEnd, state.DirectTransition)
+	sm.AddTransition(deployStatefulSetState, deployMongoDBReplicaSetEndState, state.DirectTransition)
 
-	sm.AddTransition(deployMongoDBReplicaSetEnd, resetUpdateStrategyState, mdb.IsChangingVersion)
-	sm.AddTransition(deployMongoDBReplicaSetEnd, updateStatusState, state.DirectTransition)
+	sm.AddTransition(deployMongoDBReplicaSetEndState, resetUpdateStrategyState, mdb.IsChangingVersion)
+	sm.AddTransition(deployMongoDBReplicaSetEndState, updateStatusState, state.DirectTransition)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, state.FromBool(needsToPublishStateFirst))
-	sm.AddTransition(deployAutomationConfigState, deployMongoDBReplicaSetEnd, state.DirectTransition)
+	sm.AddTransition(deployAutomationConfigState, deployMongoDBReplicaSetEndState, state.DirectTransition)
 
 	sm.AddTransition(resetUpdateStrategyState, updateStatusState, state.DirectTransition)
 
 	// if we're scaling, we should go back and update the StatefulSet/AutomationConfig again.
-	sm.AddTransition(updateStatusState, deployMongoDBReplicaSetStart, state.FromBool(scale.IsStillScaling(&mdb)))
-	sm.AddTransition(updateStatusState, endState, state.DirectTransition)
+	sm.AddTransition(updateStatusState, deployMongoDBReplicaSetStartState, state.FromBool(scale.IsStillScaling(&mdb)))
+	sm.AddTransition(updateStatusState, endReconciliationState, state.DirectTransition)
 	return sm, nil
 }
 
@@ -99,33 +96,11 @@ func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.Mongo
 		Reconcile: func() (reconcile.Result, error, bool) {
 			if err := resetStateMachineHistory(client, mdb); err != nil {
 				log.Errorf("Failed resetting StateMachine annotation: %s", err)
-				return result.RetryState(secondsBetweenStates)
+				return result.RetryState(5)
 			}
 
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-
-func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name:            deployMongoDBReplicaSetStartName,
-		IsStateGrouping: true,
-		Reconcile: func() (reconcile.Result, error, bool) {
-			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-
-func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name:            deployMongoDBReplicaSetEndName,
-		IsStateGrouping: true,
-		Reconcile: func() (reconcile.Result, error, bool) {
-			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
-			return result.StateComplete(secondsBetweenStates)
+			return result.StateComplete()
 		},
 	}
 }
@@ -142,7 +117,149 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				)
 			}
 			log.Debug("MongoDB.Spec was successfully validated.")
-			return result.StateComplete(secondsBetweenStates)
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: createServiceStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			log.Debug("Ensuring the service exists")
+			if err := ensureService(client, mdb, log); err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: tlsValidationStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			isTLSValid, err := validateTLSConfig(client, mdb, secretWatcher, log)
+			if err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
+						withFailedPhase(),
+				)
+			}
+
+			if !isTLSValid {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
+						withPendingPhase(10),
+				)
+			}
+			log.Debug("Successfully validated TLS configuration.")
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: tlsResourcesStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			if err := ensureTLSResources(client, mdb, log); err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name:            deployMongoDBReplicaSetStartName,
+		IsStateGrouping: true,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			log.Infof("Deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewDeployAutomationConfigState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: deployAutomationConfigStateName,
+		OnEnter: func() error {
+			if reason != "" {
+				log.Debug(reason)
+			}
+			return nil
+		},
+		Reconcile: func() (reconcile.Result, error, bool) {
+			ready, err := deployAutomationConfig(client, mdb, log)
+			if err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error deploying Automation Config: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			if !ready {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Info, "MongoDB agents are not yet ready, retrying in 10 seconds").
+						withPendingPhase(10),
+				)
+			}
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: deployStatefulSetStateName,
+		OnEnter: func() error {
+			if reason != "" {
+				log.Debug(reason)
+			}
+			return nil
+		},
+		Reconcile: func() (reconcile.Result, error, bool) {
+			ready, err := deployStatefulSet(client, mdb, log)
+			if err != nil {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error deploying MongoDB StatefulSet: %s", err)).
+						withFailedPhase(),
+				)
+			}
+
+			if !ready {
+				return status.Update(client.Status(), &mdb,
+					statusOptions().
+						withMessage(Info, "StatefulSet is not yet ready, retrying in 10 seconds").
+						withPendingPhase(10),
+				)
+			}
+			return result.StateComplete()
+		},
+	}
+}
+
+func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name:            deployMongoDBReplicaSetEndName,
+		IsStateGrouping: true,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			log.Infof("Finished deploying MongoDB ReplicaSet %s/%s", mdb.Namespace, mdb.Name)
+			return result.StateComplete()
 		},
 	}
 }
@@ -158,7 +275,7 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 						withFailedPhase(),
 				)
 			}
-			return result.StateComplete(secondsBetweenStates)
+			return result.StateComplete()
 		},
 	}
 }
@@ -207,100 +324,7 @@ func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 				log.Errorf("Could not save current spec as an annotation: %s", err)
 			}
 
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-
-func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name: createServiceStateName,
-		Reconcile: func() (reconcile.Result, error, bool) {
-			log.Debug("Ensuring the service exists")
-			if err := ensureService(client, mdb, log); err != nil {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
-						withFailedPhase(),
-				)
-			}
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-
-func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name: tlsResourcesStateName,
-		Reconcile: func() (reconcile.Result, error, bool) {
-			if err := ensureTLSResources(client, mdb, log); err != nil {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
-						withFailedPhase(),
-				)
-			}
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-func NewDeployAutomationConfigState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name: deployAutomationConfigStateName,
-		OnEnter: func() error {
-			if reason != "" {
-				log.Debug(reason)
-			}
-			return nil
-		},
-		Reconcile: func() (reconcile.Result, error, bool) {
-			ready, err := deployAutomationConfig(client, mdb, log)
-			if err != nil {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Error, fmt.Sprintf("Error deploying Automation Config: %s", err)).
-						withFailedPhase(),
-				)
-			}
-			if !ready {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Info, "MongoDB agents are not yet ready, retrying in 10 seconds").
-						withPendingPhase(10),
-				)
-			}
-			return result.StateComplete(secondsBetweenStates)
-		},
-	}
-}
-
-func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name: deployStatefulSetStateName,
-		OnEnter: func() error {
-			if reason != "" {
-				log.Debug(reason)
-			}
-			return nil
-		},
-		Reconcile: func() (reconcile.Result, error, bool) {
-			ready, err := deployStatefulSet(client, mdb, log)
-			if err != nil {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Error, fmt.Sprintf("Error deploying MongoDB StatefulSet: %s", err)).
-						withFailedPhase(),
-				)
-			}
-
-			if !ready {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Info, "StatefulSet is not yet ready, retrying in 10 seconds").
-						withPendingPhase(10),
-				)
-			}
-			return result.StateComplete(secondsBetweenStates)
+			return result.StateComplete()
 		},
 	}
 }
@@ -315,32 +339,6 @@ func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 			}
 			log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 			return result.OK()
-		},
-	}
-}
-
-func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) state.State {
-	return state.State{
-		Name: tlsValidationStateName,
-		Reconcile: func() (reconcile.Result, error, bool) {
-			isTLSValid, err := validateTLSConfig(client, mdb, secretWatcher, log)
-			if err != nil {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
-						withFailedPhase(),
-				)
-			}
-
-			if !isTLSValid {
-				return status.Update(client.Status(), &mdb,
-					statusOptions().
-						withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
-						withPendingPhase(10),
-				)
-			}
-			log.Debug("Successfully validated TLS configuration.")
-			return result.StateComplete(secondsBetweenStates)
 		},
 	}
 }

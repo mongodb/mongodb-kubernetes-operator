@@ -10,8 +10,8 @@ func OK() (reconcile.Result, error, bool) {
 	return reconcile.Result{}, nil, true
 }
 
-func StateComplete(after int) (reconcile.Result, error, bool) {
-	return retry(after, true)
+func StateComplete() (reconcile.Result, error, bool) {
+	return retry(0, true)
 }
 
 func RetryState(after int) (reconcile.Result, error, bool) {

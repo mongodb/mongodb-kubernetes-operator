@@ -127,7 +127,7 @@ func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionB
 }
 
 func (o *optionBuilder) withFailedPhase() *optionBuilder {
-	return o.withPhase(mdbv1.Failed, 0)
+	return o.withPhase(mdbv1.Failed, 5)
 }
 
 func (o *optionBuilder) withPendingPhase(retryAfter int) *optionBuilder {
