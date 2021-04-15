@@ -1,7 +1,6 @@
 package state
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -61,7 +60,7 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	if m.currentState == nil {
 		if err := m.initStartingState(); err != nil {
 			m.logger.Errorf("error initializing starting state: %s", err)
-			return result.Failed()
+			return reconcile.Result{}, err
 		}
 	}
 

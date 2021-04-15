@@ -10,8 +10,6 @@ import (
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"github.com/pkg/errors"
@@ -125,11 +123,11 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return result.OK()
+			return reconcile.Result{}, nil
 		}
 		r.log.Errorf("Error reconciling MongoDB resource: %s", err)
 		// Error reading the object - requeue the request.
-		return result.Failed()
+		return reconcile.Result{}, err
 	}
 
 	log := zap.S().With("ReplicaSet", mdb.Namespace)
@@ -138,7 +136,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	if err != nil {
 		log.Errorf("Error building State Machine: %s", err)
-		return result.Failed()
+		return reconcile.Result{}, err
 	}
 
 	res, err := sm.Reconcile()
