@@ -38,7 +38,8 @@ var (
 )
 
 type MongoDBStates struct {
-	NextState string `json:"nextState"`
+	NextState    string   `json:"nextState"`
+	StateHistory []string `json:"stateHistory"`
 }
 
 // BuildStateMachine
@@ -47,7 +48,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	needsToPublishStateFirst, reason := needToPublishStateFirst(client, mdb)
 
-	startFresh := NewReconciliationStartState(mdb, log)
+	startFresh := NewReconciliationStartState(client, mdb, log)
 	validateSpec := NewValidateSpecState(client, mdb, log)
 	serviceState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
@@ -93,10 +94,27 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	return sm, nil
 }
 
-func NewReconciliationStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: reconciliationStartStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
+			allStates := newAllStates()
+
+			bytes, err := json.Marshal(allStates)
+			if err != nil {
+				log.Errorf("error marshalling states: %s", err)
+				return result.RetryState(secondsBetweenStates)
+			}
+			if mdb.Annotations == nil {
+				mdb.Annotations = map[string]string{}
+			}
+			mdb.Annotations[stateMachineAnnotation] = string(bytes)
+
+			if err := client.Update(context.TODO(), &mdb); err != nil {
+				log.Errorf("error updating annotations: %s", err)
+				return result.RetryState(secondsBetweenStates)
+			}
+
 			log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 			return result.StateComplete(secondsBetweenStates)
 		},
@@ -304,7 +322,12 @@ func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 	return state.State{
 		Name: reconciliationEndStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			allStates := newAllStates()
+
+			allStates, err := getAllStates(mdb)
+			if err != nil {
+				return result.Failed()
+			}
+			allStates.NextState = reconciliationStartStateName
 
 			bytes, err := json.Marshal(allStates)
 			if err != nil {

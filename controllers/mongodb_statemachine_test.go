@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/state"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,12 +17,7 @@ func TestOrderOfStates_NoTLS(t *testing.T) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr, nil)
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
-
-	r.saveLoader = inMemorySaveLoader
-
 	assertFullOrderOfStates(t, r, mdb,
-		inMemorySaveLoader,
 		reconciliationStartStateName,
 		validateSpecStateName,
 		createServiceStateName,
@@ -45,13 +40,8 @@ func TestFullOrderOfStates_TLSEnabled(t *testing.T) {
 
 	r := NewReconciler(mgr, nil)
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
-
-	r.saveLoader = inMemorySaveLoader
-
 	// if the StatefulSet does not exist, the automation config should be updated first.
 	assertFullOrderOfStates(t, r, mdb,
-		inMemorySaveLoader,
 		reconciliationStartStateName,
 		validateSpecStateName,
 		createServiceStateName,
@@ -77,21 +67,14 @@ func TestPartialOrderOfStates_TLSEnabled(t *testing.T) {
 
 	r := NewReconciler(mgr, nil)
 
-	inMemorySaveLoader := state.NewInMemorySaveLoader(mdb.NamespacedName(), reconciliationStartStateName)
-
-	r.saveLoader = inMemorySaveLoader
-
 	// if the StatefulSet does not exist, the automation config should be updated first.
 	assertPartialOrderOfStates(t, r, mdb,
-		inMemorySaveLoader,
 		deployAutomationConfigStateName,
 		deployStatefulSetStateName,
 	)
 
-	inMemorySaveLoader.Reset()
 	// Once the StatefulSet exists, the stateful set should be updated first
 	assertPartialOrderOfStates(t, r, mdb,
-		inMemorySaveLoader,
 		deployStatefulSetStateName,
 		deployAutomationConfigStateName,
 	)
@@ -110,17 +93,37 @@ func reconcileThroughAllStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.
 }
 
 // assertFullOrderOfStates asserts that the order of states traversed is exactly as specfied.
-func assertFullOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, loader *state.InMemorySaveLoader, states ...string) {
+func assertFullOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, states ...string) {
 	reconcileThroughAllStates(t, r, mdb)
-	assert.Equal(t, len(states), len(loader.StateHistory))
-	assert.Equal(t, states, loader.StateHistory)
+
+	stateHistory, err := getStateHistory(mdb)
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(states), len(stateHistory))
+	assert.Equal(t, states, stateHistory)
+}
+
+func getStateHistory(mdb mdbv1.MongoDBCommunity) ([]string, error) {
+	allStates := MongoDBStates{}
+	bytes := []byte(mdb.Annotations[stateMachineAnnotation])
+
+	if err := json.Unmarshal(bytes, &allStates); err != nil {
+		return nil, err
+	}
+
+	// FIXME: currently the very first state is not saved
+	return append([]string{reconciliationStartStateName}, allStates.StateHistory...), nil
 }
 
 // assertPartialOrderOfStates assert whether or not the subset of states exists in that order in the full history of states traversed.
-func assertPartialOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, loader *state.InMemorySaveLoader, subsetOfStates ...string) {
+func assertPartialOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, subsetOfStates ...string) {
 	reconcileThroughAllStates(t, r, mdb)
+
+	stateHistory, err := getStateHistory(mdb)
+	assert.NoError(t, err)
+
 	startingIndex := -1
-	for i, historyState := range loader.StateHistory {
+	for i, historyState := range stateHistory {
 		if historyState == subsetOfStates[0] {
 			startingIndex = i
 			break
@@ -128,16 +131,16 @@ func assertPartialOrderOfStates(t *testing.T, r *ReplicaSetReconciler, mdb mdbv1
 	}
 
 	if startingIndex == -1 {
-		t.Fatalf("Subset %v did not exist within %v", subsetOfStates, loader.StateHistory)
+		t.Fatalf("Subset %v did not exist within %v", subsetOfStates, stateHistory)
 	}
 
 	var match []string
 	for i := startingIndex; i < startingIndex+len(subsetOfStates); i++ {
 		// prevent OOB
-		if i >= len(loader.StateHistory) {
+		if i >= len(stateHistory) {
 			break
 		}
-		match = append(match, loader.StateHistory[i])
+		match = append(match, stateHistory[i])
 	}
 
 	assert.Equal(t, subsetOfStates, match)

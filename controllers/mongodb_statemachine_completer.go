@@ -61,6 +61,7 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 		}
 
 		allStates.NextState = stateName
+		allStates.StateHistory = append(allStates.StateHistory, stateName)
 
 		bytes, err := json.Marshal(allStates)
 		if err != nil {
