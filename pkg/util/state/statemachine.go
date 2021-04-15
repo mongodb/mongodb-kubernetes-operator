@@ -7,30 +7,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// State should provide a unique name, and a Reconcile function.
+// This function gets called by the Machine. The first two returned values
+// are returned to the caller, while the 3rd value is used to indicate if the
+// State completed successfully. A value of true will move onto the next State,
+// a value of false will repeat this State until true is returned.
 type State struct {
 	Name      string
 	Reconcile func() (reconcile.Result, error, bool)
 	OnEnter   func() error
 }
 
+// transition represents a transition between two states.
 type transition struct {
 	from, to  State
 	predicate TransitionPredicate
 }
 
+// Saver saves the next state name that should be reconciled.
+// If a transition is A -> B, after A finishes reconciling `SaveNextState("B")` will be called.
 type Saver interface {
-	SaveNextState(name types.NamespacedName, stateName string) error
+	SaveNextState(nsName types.NamespacedName, stateName string) error
 }
 
+// Loader should return the value saved by Saver.
 type Loader interface {
-	LoadNextState(types.NamespacedName) (string, error)
+	LoadNextState(nsName types.NamespacedName) (string, error)
 }
 
+// SaveLoader can both load and save the name of a state.
 type SaveLoader interface {
 	Saver
 	Loader
 }
 
+// TransitionPredicate is used to indicate if two States should be connected.
 type TransitionPredicate func() bool
 
 var FromBool = func(b bool) TransitionPredicate {
@@ -39,8 +50,12 @@ var FromBool = func(b bool) TransitionPredicate {
 	}
 }
 
-var DirectTransition = FromBool(true)
+// directTransition can be used to ensure two states are directly linked.
+var directTransition = FromBool(true)
 
+// Machine allows for several States to be registered via "AddTransition"
+// When calling Reconcile, the corresponding State will be used based on the values
+// stored/loaded from the SaveLoader. A Machine corresponds to a single Kubernetes resource.
 type Machine struct {
 	allTransitions map[string][]transition
 	currentState   *State
@@ -50,6 +65,8 @@ type Machine struct {
 	nsName         types.NamespacedName
 }
 
+// NewStateMachine returns a Machine, it must be set up with calls to "AddTransition(s1, s2, predicate)"
+// before Reconcile is called.
 func NewStateMachine(saver SaveLoader, nsName types.NamespacedName, logger *zap.SugaredLogger) *Machine {
 	return &Machine{
 		allTransitions: map[string][]transition{},
@@ -60,6 +77,8 @@ func NewStateMachine(saver SaveLoader, nsName types.NamespacedName, logger *zap.
 	}
 }
 
+// Reconcile will reconcile the currently active State. This method should be called
+// from the controllers.
 func (m *Machine) Reconcile() (reconcile.Result, error) {
 
 	if m.currentState == nil {
@@ -110,6 +129,8 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	return res, err
 }
 
+// initStartingState ensures that "currentState" has a valid value.
+// the state that is loaded comes from the Loader.
 func (m *Machine) initStartingState() error {
 	currentStateName, err := m.saveLoader.LoadNextState(m.nsName)
 	if err != nil {
@@ -123,7 +144,7 @@ func (m *Machine) initStartingState() error {
 // AddDirectTransition creates a transition between the two
 // provided states which will always be valid.
 func (m *Machine) AddDirectTransition(from, to State) {
-	m.AddTransition(from, to, DirectTransition)
+	m.AddTransition(from, to, directTransition)
 }
 
 // AddTransition creates a transition between the two states if the given
