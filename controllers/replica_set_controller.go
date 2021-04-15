@@ -275,7 +275,7 @@ func createOrUpdateStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDB
 // ensureAutomationConfig makes sure the AutomationConfig secret has been successfully created. The automation config
 // that was updated/created is returned.
 func ensureAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
-	ac, err := buildAutomationConfigController(client, mdb)
+	ac, err := buildAutomationConfig(client, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not build automation config: %s", err)
 	}
@@ -287,25 +287,6 @@ func ensureAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 		ac,
 	)
 
-}
-
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
-
-	return automationconfig.NewBuilder().
-		SetTopology(automationconfig.ReplicaSetTopology).
-		SetName(mdb.Name).
-		SetDomain(domain).
-		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
-		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
-		SetPreviousAutomationConfig(currentAc).
-		SetMongoDBVersion(mdb.Spec.Version).
-		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
-		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
-		SetAuth(auth).
-		AddModifications(getMongodConfigModification(mdb)).
-		AddModifications(modifications...).
-		Build()
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -357,7 +338,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 	}, nil
 }
 
-func buildAutomationConfigController(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
 	tlsModification, err := getTLSConfigModification(client, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
@@ -378,13 +359,22 @@ func buildAutomationConfigController(client kubernetesClient.Client, mdb mdbv1.M
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 
-	return buildAutomationConfig(
-		mdb,
-		auth,
-		currentAC,
-		tlsModification,
-		customRolesModification,
-	)
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
+
+	return automationconfig.NewBuilder().
+		SetTopology(automationconfig.ReplicaSetTopology).
+		SetName(mdb.Name).
+		SetDomain(domain).
+		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
+		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
+		SetPreviousAutomationConfig(currentAC).
+		SetMongoDBVersion(mdb.Spec.Version).
+		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
+		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
+		SetAuth(auth).
+		AddModifications(getMongodConfigModification(mdb)).
+		AddModifications(tlsModification, customRolesModification).
+		Build()
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD

@@ -85,9 +85,8 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		err := createTLSSecretAndConfigMap(client, mdb)
 		assert.NoError(t, err)
 
-		tlsModification, err := getTLSConfigModification(client, mdb)
 		assert.NoError(t, err)
-		ac, err := buildAutomationConfig(mdb, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
+		ac, err := buildAutomationConfig(client, mdb)
 		assert.NoError(t, err)
 
 		return ac
