@@ -97,20 +97,8 @@ func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.Mongo
 	return state.State{
 		Name: reconciliationStartStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			allStates := newAllStates()
-
-			bytes, err := json.Marshal(allStates)
-			if err != nil {
-				log.Errorf("error marshalling states: %s", err)
-				return result.RetryState(secondsBetweenStates)
-			}
-			if mdb.Annotations == nil {
-				mdb.Annotations = map[string]string{}
-			}
-			mdb.Annotations[stateMachineAnnotation] = string(bytes)
-
-			if err := client.Update(context.TODO(), &mdb); err != nil {
-				log.Errorf("error updating annotations: %s", err)
+			if err := resetStateMachineHistory(client, mdb); err != nil {
+				log.Errorf("Failed resetting StateMachine annotation: %s", err)
 				return result.RetryState(secondsBetweenStates)
 			}
 
@@ -321,28 +309,10 @@ func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 	return state.State{
 		Name: reconciliationEndStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-
-			allStates, err := getAllStates(mdb)
-			if err != nil {
-				return result.Failed()
+			if err := setNextState(client, mdb, reconciliationStartStateName); err != nil {
+				log.Errorf("Failed resetting State Machine annotation: %s", err)
+				return result.RetryState(1)
 			}
-			allStates.NextState = reconciliationStartStateName
-
-			bytes, err := json.Marshal(allStates)
-			if err != nil {
-				log.Errorf("error marshalling states: %s", err)
-				return result.RetryState(secondsBetweenStates)
-			}
-			if mdb.Annotations == nil {
-				mdb.Annotations = map[string]string{}
-			}
-			mdb.Annotations[stateMachineAnnotation] = string(bytes)
-
-			if err := client.Update(context.TODO(), &mdb); err != nil {
-				log.Errorf("error updating annotations: %s", err)
-				return result.RetryState(secondsBetweenStates)
-			}
-
 			log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 			return result.OK()
 		},
@@ -375,8 +345,54 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 	}
 }
 
-func newAllStates() MongoDBStates {
+// newStartingStates returns a MongoDBStates instance which will cause the State Machine
+// to transition to the first state.
+func newStartingStates() MongoDBStates {
 	return MongoDBStates{
 		NextState: reconciliationStartStateName,
 	}
+}
+
+// setNextState updates the StateMachine annotation to indicate that it should transition to the
+// given state next.
+func setNextState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, stateName string) error {
+	allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
+	if err != nil {
+		return err
+	}
+	allStates.NextState = stateName
+
+	bytes, err := json.Marshal(allStates)
+	if err != nil {
+		return err
+	}
+
+	annotations.SetAnnotation(&mdb, stateMachineAnnotation, string(bytes))
+
+	if err := client.Update(context.TODO(), &mdb); err != nil {
+		return err
+	}
+	return nil
+}
+
+// resetStateMachineHistory resets the history of states that have occurred. This should happen
+// at the beginning of the first reconiliation.
+func resetStateMachineHistory(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) error {
+	allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
+	if err != nil {
+		return err
+	}
+	allStates.StateHistory = []string{}
+
+	bytes, err := json.Marshal(allStates)
+	if err != nil {
+		return err
+	}
+
+	annotations.SetAnnotation(&mdb, stateMachineAnnotation, string(bytes))
+
+	if err := client.Update(context.TODO(), &mdb); err != nil {
+		return err
+	}
+	return nil
 }

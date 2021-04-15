@@ -3,11 +3,12 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/apierrors"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
@@ -51,7 +52,7 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 			return err
 		}
 
-		allStates, err := getAllStates(mdb)
+		allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
 		if err != nil {
 			return err
 		}
@@ -85,14 +86,14 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 
 }
 
-func getAllStates(mdb mdbv1.MongoDBCommunity) (MongoDBStates, error) {
+func getExistingStateMachineStatesFromAnnotation(mdb mdbv1.MongoDBCommunity) (MongoDBStates, error) {
 	if mdb.Annotations == nil {
-		return newAllStates(), nil
+		return newStartingStates(), nil
 	}
 
 	stateAnnotation, ok := mdb.Annotations[stateMachineAnnotation]
 	if !ok {
-		return newAllStates(), nil
+		return newStartingStates(), nil
 	}
 
 	allStates := MongoDBStates{}
@@ -103,7 +104,7 @@ func getAllStates(mdb mdbv1.MongoDBCommunity) (MongoDBStates, error) {
 }
 
 func getLastStateName(mdb mdbv1.MongoDBCommunity) (string, error) {
-	allStates, err := getAllStates(mdb)
+	allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
 	if err != nil {
 		return "", err
 	}
