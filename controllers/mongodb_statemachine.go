@@ -90,6 +90,8 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	return sm, nil
 }
 
+// NewReconciliationStartState returns a State which resets the State Machine history and logs the current
+// spec/status of the resource being reconciled.
 func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: reconciliationStartStateName,
@@ -105,6 +107,7 @@ func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.Mongo
 	}
 }
 
+// NewValidateSpecState performs validation on the Spec of the MongoDBCommunity resource.
 func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: validateSpecStateName,
@@ -122,6 +125,7 @@ func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 	}
 }
 
+// NewCreateServiceState ensures that the Service is created.
 func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: createServiceStateName,
@@ -139,6 +143,7 @@ func NewCreateServiceState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 	}
 }
 
+// NewTLSValidationState validates the TLS components of the Spec of the resource.
 func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: tlsValidationStateName,
@@ -165,6 +170,7 @@ func NewTLSValidationState(client kubernetesClient.Client, mdb mdbv1.MongoDBComm
 	}
 }
 
+// NewEnsureTLSResourcesState ensures that all the required Kubernetes resources are valid for a TLS configuration.
 func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: tlsResourcesStateName,
@@ -181,6 +187,8 @@ func NewEnsureTLSResourcesState(client kubernetesClient.Client, mdb mdbv1.MongoD
 	}
 }
 
+// NewDeployMongoDBReplicaSetStartState is the entry point to the deployment of the Automation Config
+// and StatefulSet.
 func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name:            deployMongoDBReplicaSetStartName,
@@ -192,6 +200,7 @@ func NewDeployMongoDBReplicaSetStartState(mdb mdbv1.MongoDBCommunity, log *zap.S
 	}
 }
 
+// NewDeployAutomationConfigState deploys the AutomationConfig.
 func NewDeployAutomationConfigState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: deployAutomationConfigStateName,
@@ -222,6 +231,7 @@ func NewDeployAutomationConfigState(client kubernetesClient.Client, reason strin
 	}
 }
 
+// NewDeployStatefulSetState deploys the StatefulSet.
 func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: deployStatefulSetStateName,
@@ -253,6 +263,8 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, md
 	}
 }
 
+// NewDeployMongoDBReplicaSetEndState is the exit point to the deployment of the Automation Config
+// and StatefulSet.
 func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name:            deployMongoDBReplicaSetEndName,
@@ -264,6 +276,7 @@ func NewDeployMongoDBReplicaSetEndState(mdb mdbv1.MongoDBCommunity, log *zap.Sug
 	}
 }
 
+// NewResetStatefulSetUpdateStrategyState resets the UpdateStrategyType and is required for version upgrades.
 func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity) state.State {
 	return state.State{
 		Name: resetStatefulSetUpdateStrategyStateName,
@@ -280,6 +293,7 @@ func NewResetStatefulSetUpdateStrategyState(client kubernetesClient.Client, mdb 
 	}
 }
 
+// NewUpdateStatusState updates the Status of the resource.
 func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: updateStatusStateName,
@@ -329,6 +343,7 @@ func NewUpdateStatusState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommu
 	}
 }
 
+// NewReconciliationEndState prepares the resource annotation for the next reconciliation.
 func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: reconciliationEndStateName,
