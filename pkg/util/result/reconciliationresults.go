@@ -11,7 +11,7 @@ func OK() (reconcile.Result, error, bool) {
 }
 
 func StateComplete() (reconcile.Result, error, bool) {
-	return retry(0, true)
+	return retry(1, true)
 }
 
 func FailedState() (reconcile.Result, error, bool) {

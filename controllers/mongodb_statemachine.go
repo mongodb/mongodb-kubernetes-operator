@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
@@ -242,6 +244,12 @@ func NewDeployStatefulSetState(client kubernetesClient.Client, reason string, md
 		},
 		Reconcile: func() (reconcile.Result, error, bool) {
 			ready, err := deployStatefulSet(client, mdb, log)
+
+			// We just created the StatefulSet, if it is a not found error, just retry this state.
+			if apiErrors.IsNotFound(err) {
+				return result.RetryState(1)
+			}
+
 			if err != nil {
 				return status.Update(client.Status(), &mdb,
 					statusOptions().

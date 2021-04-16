@@ -163,7 +163,7 @@ func deployStatefulSet(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	currentSts, err := client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
-		return false, errors.Errorf("error getting StatefulSet: %s", err)
+		return false, err
 	}
 
 	log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
