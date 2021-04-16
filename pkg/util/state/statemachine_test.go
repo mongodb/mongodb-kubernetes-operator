@@ -259,3 +259,58 @@ func TestCycleInStateMachine(t *testing.T) {
 
 	assert.Equal(t, []string{"State0", "State1", "State2", "State3", "State1", "State2", "State3", "State4"}, in.stateHistory)
 }
+
+func TestBranchingPath(t *testing.T) {
+	root := newAlwaysCompletingState("Root")
+	left0 := newAlwaysCompletingState("Left0")
+	left1 := newAlwaysCompletingState("Left1")
+	left2 := newAlwaysCompletingState("Left2")
+
+	right0 := newAlwaysCompletingState("Right0")
+	right1 := newAlwaysCompletingState("Right1")
+	right2 := newAlwaysCompletingState("Right2")
+
+	in := newInMemorySaveLoader("Root")
+	s := NewStateMachine(in, types.NamespacedName{}, zap.S())
+
+	goLeft := true
+
+	s.AddTransition(root, left0, func() bool {
+		return goLeft
+	})
+	s.AddDirectTransition(left0, left1)
+	s.AddDirectTransition(left1, left2)
+
+	s.AddTransition(root, right0, func() bool {
+		return !goLeft
+	})
+
+	s.AddDirectTransition(right0, right1)
+	s.AddDirectTransition(right1, right2)
+
+	t.Run("Left Path", func(t *testing.T) {
+
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+
+		assert.Equal(t, []string{"Root", "Left0", "Left1", "Left2"}, in.stateHistory)
+	})
+
+	t.Run("Right Path", func(t *testing.T) {
+		goLeft = false
+		// reset save loader state
+		in.stateHistory = nil
+		//nolint
+		in.SaveNextState(types.NamespacedName{}, "Root")
+
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+		_, _ = s.Reconcile()
+
+		assert.Equal(t, []string{"Root", "Right0", "Right1", "Right2"}, in.stateHistory)
+	})
+
+}
