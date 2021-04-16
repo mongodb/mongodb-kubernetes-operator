@@ -21,6 +21,8 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
+// inMemorySaveLoader stores and loads states to member fields
+// and maintains a history of all the fields saved.
 type inMemorySaveLoader struct {
 	stateHistory  []string
 	nextState     string
@@ -45,20 +47,6 @@ func newInMemorySaveLoader(startingState string) *inMemorySaveLoader {
 	s.startingState = startingState
 	_ = s.SaveNextState(types.NamespacedName{}, startingState)
 	return s
-}
-
-func newAlwaysCompletingState(name string) State {
-	return State{
-		Name:      name,
-		Reconcile: result.StateComplete,
-	}
-}
-
-func newAlwaysFailsState(name string) State {
-	return State{
-		Name:      name,
-		Reconcile: result.Failed,
-	}
 }
 
 func TestOrderOfStatesIsCorrect(t *testing.T) {
@@ -270,7 +258,7 @@ func TestBranchingPath(t *testing.T) {
 	right1 := newAlwaysCompletingState("Right1")
 	right2 := newAlwaysCompletingState("Right2")
 
-	in := newInMemorySaveLoader("Root")
+	in := newInMemorySaveLoader(root.Name)
 	s := NewStateMachine(in, types.NamespacedName{}, zap.S())
 
 	goLeft := true
@@ -302,8 +290,7 @@ func TestBranchingPath(t *testing.T) {
 		goLeft = false
 		// reset save loader state
 		in.stateHistory = nil
-		//nolint
-		in.SaveNextState(types.NamespacedName{}, "Root")
+		_ = in.SaveNextState(types.NamespacedName{}, root.Name)
 
 		_, _ = s.Reconcile()
 		_, _ = s.Reconcile()
@@ -312,5 +299,20 @@ func TestBranchingPath(t *testing.T) {
 
 		assert.Equal(t, []string{"Root", "Right0", "Right1", "Right2"}, in.stateHistory)
 	})
+}
 
+// newAlwaysCompletingState returns a State that will always succeed.
+func newAlwaysCompletingState(name string) State {
+	return State{
+		Name:      name,
+		Reconcile: result.StateComplete,
+	}
+}
+
+// newAlwaysFailsState returns a State that will always fail.
+func newAlwaysFailsState(name string) State {
+	return State{
+		Name:      name,
+		Reconcile: result.Failed,
+	}
 }
