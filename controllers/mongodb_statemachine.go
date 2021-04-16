@@ -42,7 +42,8 @@ type MongoDBStates struct {
 	StateHistory []string `json:"stateHistory"`
 }
 
-// BuildStateMachine
+// BuildStateMachine creates a State Machine that is configured with all of the different transitions that are possible
+// by the operator. A single state's Reconcile method is called when calling the Reconcile method of the State Machine.
 func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, saveLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
 	sm := state.NewStateMachine(saveLoader, mdb.NamespacedName(), log)
 
