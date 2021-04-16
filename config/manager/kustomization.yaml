@@ -7,7 +7,5 @@ generatorOptions:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: controller
-  newName: 268558157000.dkr.ecr.us-east-1.amazonaws.com/mongodb-kubernetes-operator
 - name: mongodb-kubernetes-operator
   newName: quay.io/mongodb/mongodb-kubernetes-operator:0.5.0
