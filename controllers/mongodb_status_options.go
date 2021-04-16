@@ -155,7 +155,7 @@ func (p phaseOption) GetResult() (reconcile.Result, error, bool) {
 		return result.RetryState(p.retryAfter)
 	}
 	if p.phase == mdbv1.Failed {
-		return result.Failed()
+		return result.FailedState()
 	}
 	return result.OK()
 }

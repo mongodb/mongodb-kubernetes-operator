@@ -134,7 +134,10 @@ func (m *Machine) determineState() error {
 	if err != nil {
 		return errors.Errorf("could not load starting state: %s", err)
 	}
-	nextState := m.states[currentStateName]
+	nextState, ok := m.states[currentStateName]
+	if !ok {
+		return errors.Errorf("could not determine state %s as it was not added to the State Machine", currentStateName)
+	}
 	m.currentState = &nextState
 	return nil
 }

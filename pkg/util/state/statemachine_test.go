@@ -301,6 +301,37 @@ func TestBranchingPath(t *testing.T) {
 	})
 }
 
+func TestDetermineStartingState_ReadsFromLoader(t *testing.T) {
+	t.Run("State Can be determined once added", func(t *testing.T) {
+		s0 := newAlwaysCompletingState("State0")
+		s1 := newAlwaysCompletingState("State1")
+
+		in := newInMemorySaveLoader(s0.Name)
+		s := NewStateMachine(in, types.NamespacedName{}, zap.S())
+
+		// State must be added before it can be returned in determine state
+		s.AddDirectTransition(s0, s1)
+
+		assert.Nil(t, s.currentState)
+		err := s.determineState()
+		assert.NoError(t, err)
+		assert.Equal(t, "State0", s.currentState.Name)
+	})
+
+	t.Run("State cannot be determined if not added", func(t *testing.T) {
+		s0 := newAlwaysCompletingState("State0")
+
+		in := newInMemorySaveLoader(s0.Name)
+		s := NewStateMachine(in, types.NamespacedName{}, zap.S())
+
+		assert.Nil(t, s.currentState)
+		err := s.determineState()
+		assert.Error(t, err)
+		assert.Nil(t, s.currentState)
+	})
+
+}
+
 // newAlwaysCompletingState returns a State that will always succeed.
 func newAlwaysCompletingState(name string) State {
 	return State{
@@ -313,6 +344,6 @@ func newAlwaysCompletingState(name string) State {
 func newAlwaysFailsState(name string) State {
 	return State{
 		Name:      name,
-		Reconcile: result.Failed,
+		Reconcile: result.FailedState,
 	}
 }
