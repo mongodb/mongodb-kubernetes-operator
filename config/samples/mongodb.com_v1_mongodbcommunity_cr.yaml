@@ -23,27 +23,6 @@ spec:
       scramCredentialsSecretName: my-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
-  statefulSet:
-    spec:
-      template:
-        spec:
-          containers:
-            - name: mongod
-              resources:
-                limits:
-                  cpu: "0.2"
-                  memory: 250M
-                requests:
-                  cpu: "0.2"
-                  memory: 200M
-            - name: mongodb-agent
-              resources:
-                limits:
-                  cpu: "0.2"
-                  memory: 250M
-                requests:
-                  cpu: "0.2"
-                  memory: 200M
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
@@ -54,4 +33,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: sfgsdfgdfs
+  password: <your-password-here>
