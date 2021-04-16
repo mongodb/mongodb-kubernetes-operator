@@ -81,11 +81,9 @@ func NewStateMachine(saver SaveLoader, nsName types.NamespacedName, logger *zap.
 // from the controllers.
 func (m *Machine) Reconcile() (reconcile.Result, error) {
 
-	if m.currentState == nil {
-		if err := m.initStartingState(); err != nil {
-			m.logger.Errorf("error initializing starting state: %s", err)
-			return reconcile.Result{}, err
-		}
+	if err := m.determineState(); err != nil {
+		m.logger.Errorf("error initializing starting state: %s", err)
+		return reconcile.Result{}, err
 	}
 
 	m.logger.Infof("Reconciling state: [%s]", m.currentState.Name)
@@ -129,9 +127,9 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 	return res, err
 }
 
-// initStartingState ensures that "currentState" has a valid value.
+// determineState ensures that "currentState" has a valid value.
 // the state that is loaded comes from the Loader.
-func (m *Machine) initStartingState() error {
+func (m *Machine) determineState() error {
 	currentStateName, err := m.saveLoader.LoadNextState(m.nsName)
 	if err != nil {
 		return errors.Errorf("could not load starting state: %s", err)
