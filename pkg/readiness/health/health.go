@@ -3,6 +3,8 @@ package health
 import (
 	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type replicationStatus int
@@ -30,7 +32,7 @@ type processHealth struct {
 	IsInGoalState   bool               `json:"IsInGoalState"`
 	LastMongoUpTime int64              `json:"LastMongoUpTime"`
 	ExpectedToBeUp  bool               `json:"ExpectedToBeUp"`
-	ReplicaStatus   *replicationStatus `json:"ReplicationStatus,omitempty"`
+	ReplicaStatus   *replicationStatus `json:"ReplicationStatus"`
 }
 
 func (h processHealth) String() string {
@@ -66,6 +68,13 @@ type StepStatus struct {
 // would mean a Ready State.
 // It returns true if the managed process is mongos or standalone (replicationStatusUndefined).
 func (h processHealth) IsReadyState() bool {
+	cfg := zap.NewDevelopmentConfig()
+	log, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
+	logger := log.Sugar()
+	logger.Infof("replication status: %+v\n", *h.ReplicaStatus)
 	status := *h.ReplicaStatus
 	if status == replicationStatusUndefined {
 		return true

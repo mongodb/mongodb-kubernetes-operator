@@ -240,61 +240,11 @@ func isInReadyState(health health.Status) bool {
 			return true
 		}
 
-		if mongoDbServerHasStarted(health) {
-			// There should be only one entry reported for this Pod.
-			return processHealth.IsReadyState()
-		}
+		// Every time the process health is created by the agent,
+		// it checks if the MongoDB process is up and populates this field
+		// (https://github.com/10gen/mms-automation/blob/bb72f74a22d98cfa635c1317e623386b089dc69f/go_planner/src/com.tengen/cm/healthcheck/status.go#L43)
+		// So it's enough to check that this value is not the zero-value for int64
+		return processHealth.LastMongoUpTime != 0 && processHealth.IsReadyState()
 	}
 	return false
-}
-
-// mongoDbServerHasStarted checks if the current plan includes a Move and a Step
-// of type "StartFresh" with a Result of "success".
-//
-// This function will return true if the agent has been able to successfully
-// start the MongoDB server.
-func mongoDbServerHasStarted(health health.Status) bool {
-	plan := findCurrentPlan(health.ProcessPlans)
-	if plan == nil {
-		return false
-	}
-
-	for _, move := range plan.Moves {
-		for _, step := range move.Steps {
-			if step.Step == "StartFresh" && step.Result == "success" {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// findCurrentPlan returns the current plan as informed by the Agent.
-//
-// The current plan is the last plan from the `processStatuses` parameter, this
-// is, the plan that's currently being processed by the agent.
-func findCurrentPlan(processStatuses map[string]health.MmsDirectorStatus) *health.PlanStatus {
-	var currentPlan *health.PlanStatus
-	if len(processStatuses) == 0 {
-		// Seems shouldn't happen but let's check anyway - may be needs to be
-		// changed to Info if this happens.
-		logger.Warnf("There is no information about Agent process plans")
-		return nil
-	}
-	if len(processStatuses) > 1 {
-		logger.Errorf("Only one process status is expected but got %d!", len(processStatuses))
-		return nil
-	}
-	// There is only one process managed by the Agent - so will only check one
-	// iteration.
-	for k, v := range processStatuses {
-		if len(v.Plans) == 0 {
-			logger.Errorf("The process %s doesn't contain any plans!", k)
-			return nil
-		}
-		currentPlan = v.Plans[len(v.Plans)-1]
-	}
-
-	return currentPlan
 }

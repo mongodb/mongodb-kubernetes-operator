@@ -131,18 +131,6 @@ func TestPodReadiness(t *testing.T) {
 	})
 }
 
-func TestServerHasAlreadyStarted(t *testing.T) {
-	t.Run("Agent should report server has started", func(t *testing.T) {
-		healthDoc := readHealthinessFile("testdata/health-status-readable-state.json")
-		assert.True(t, mongoDbServerHasStarted(healthDoc))
-	})
-
-	t.Run("Agent should report server has not started", func(t *testing.T) {
-		healthDoc := readHealthinessFile("testdata/health-status-not-started-yet.json")
-		assert.False(t, mongoDbServerHasStarted(healthDoc))
-	})
-}
-
 func readHealthinessFile(path string) health.Status {
 	fd, _ := os.Open(path)
 	health, _ := readAgentHealthStatus(fd)
