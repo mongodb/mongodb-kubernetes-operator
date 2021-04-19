@@ -42,9 +42,15 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends python3-venv python3-setuptools
 
       - name: Install dependencies with pip + requirements.txt
+        env:
+          SONAR_GITHUB_TOKEN: ${{ secrets.SONAR_GITHUB_TOKEN }}
         run: |
           python3 -m venv .venv
           .venv/bin/pip install -r requirements.txt
+#          .venv/bin/pip git+ssh://git@github.com/<token>/10gen/sonar.git@0.0.7
+          .venv/bin/pip git+ssh://${SONAR_GITHUB_TOKEN}@github.com/chatton/sonar.git@0.0.8
+#          .venv/bin/pip git+ssh://${SONAR_GITHUB_TOKEN}@github.com/chatton/10gen/sonar.git@0.0.7
+
 
       - name: Move the dependencies
         run: mv .venv /home/runner/work/_temp/_github_workflow

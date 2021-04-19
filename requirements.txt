@@ -5,4 +5,3 @@ PyYAML==5.4.1
 black==20.8b1
 mypy==0.782
 tqdm==v4.49.0
-git+ssh://git@github.com/10gen/sonar.git@0.0.7
