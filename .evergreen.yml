@@ -114,7 +114,7 @@ functions:
       type: setup
       params:
         env:
-          MONGODB_COMMUNITY_CONFIG: ${workdir}/scripts/ci/config.json
+          MONGODB_COMMUNITY_CONFIG: ${workdir}/mongodb-kubernetes-operator/scripts/ci/config.json
         include_expansions_in_env:
           - version_id
           - quay_user_name
