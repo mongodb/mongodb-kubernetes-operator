@@ -1,0 +1,8 @@
+{% extends "Dockerfile.template" %}
+
+{% block packages -%}
+RUN yum install -y  --disableplugin=subscription-manager -q curl \
+    hostname nss_wrapper --exclude perl-IO-Socket-SSL procps \
+    && yum upgrade -y -q \
+    && rm -rf /var/lib/apt/lists/*
+{% endblock -%}
