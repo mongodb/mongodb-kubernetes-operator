@@ -113,6 +113,8 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
+        env:
+          MONGODB_COMMUNITY_CONFIG: ${workdir}/scripts/ci/config.json
         include_expansions_in_env:
           - version_id
           - quay_user_name
