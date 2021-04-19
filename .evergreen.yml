@@ -9,7 +9,7 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/setup_virtualenv.sh
         include_expansions_in_env:
-          - SONAR_GITHUB_TOKEN
+          - sonar_github_token
 
   clone:
     - command: subprocess.exec
