@@ -119,9 +119,6 @@ functions:
           - version_id
           - quay_user_name
           - quay_password
-          - image
-          - image_type
-          - expire_after
           - image_name
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image_sonar.sh
@@ -203,8 +200,6 @@ tasks:
       - func: build_and_push_image_sonar
         vars:
           image_name: agent-ubuntu
-          image: quay.io/mongodb/mongodb-agent-dev:${version_id}
-          expire_after: 48h
 
   - name: build_agent_image_ubi
     priority: 60
@@ -215,8 +210,6 @@ tasks:
       - func: build_and_push_image_sonar
         vars:
           image_name: agent-ubi
-          image: quay.io/mongodb/mongodb-agent-ubi-dev:${version_id}
-          expire_after: 48h
 
   - name: build_prehook_image
     priority: 60
