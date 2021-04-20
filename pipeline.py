@@ -13,6 +13,7 @@ VALID_IMAGE_NAMES = frozenset(
         "agent-ubuntu",
         "readiness-probe-init",
         "version-post-start-hook-init",
+        "readiness-probe-init-release",
     ]
 )
 
@@ -55,19 +56,27 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
 
 
 def build_readiness_probe_image(config: DevConfig) -> None:
+    with open("release.json") as f:
+        release = json.loads(f.read())
+
     sonar_build_image(
         "readiness-probe-init",
         args={
             "registry": config.repo_url,
+            "release_version": release["readiness-probe"],
         },
     )
 
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
+    with open("release.json") as f:
+        release = json.loads(f.read())
+
     sonar_build_image(
         "version-post-start-hook-init",
         args={
             "registry": config.repo_url,
+            "release_version": release["version-upgrade-hook"],
         },
     )
 

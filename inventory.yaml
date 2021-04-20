@@ -73,6 +73,7 @@ images:
     - name: readiness-probe-init-build
       task_type: docker_build
       dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
+      tags: ["ubuntu"]
 
       labels:
         quay.expires-after: 48h
@@ -80,6 +81,22 @@ images:
       output:
         - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
           tag: $(inputs.params.version_id)
+
+    - name: readiness-probe-init-release
+      task_type: tag_image
+      tags: ["release"]
+
+      inputs:
+        - release_version
+
+      source:
+        registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+        tag: $(inputs.params.version_id)
+
+      destination:
+        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
+          tag: $(inputs.params.release_version)
+
 
   - name: version-post-start-hook-init
     vars:
@@ -89,6 +106,7 @@ images:
       - name: version-post-start-hook-init-build
         task_type: docker_build
         dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
+        tags: ["ubuntu"]
 
         labels:
           quay.expires-after: 48h
@@ -96,3 +114,18 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
             tag: $(inputs.params.version_id)
+
+      - name: version-post-start-hook-init-build-release
+        task_type: tag_image
+        tags: ["release"]
+
+        inputs:
+          - release_version
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+            tag: $(inputs.params.release_version)
