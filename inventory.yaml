@@ -74,10 +74,12 @@ images:
       task_type: docker_build
       dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
 
-      output:
-        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
-          tag: $(inputs.params.version_id)
+      labels:
+        quay.expires-after: 48h
 
+      output:
+        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          tag: $(inputs.params.version_id)
 
   - name: version-post-start-hook-init
     vars:
@@ -88,6 +90,9 @@ images:
         task_type: docker_build
         dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
 
+        labels:
+          quay.expires-after: 48h
+
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
             tag: $(inputs.params.version_id)
