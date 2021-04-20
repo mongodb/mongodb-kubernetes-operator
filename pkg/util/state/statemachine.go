@@ -13,9 +13,16 @@ import (
 // State completed successfully. A value of true will move onto the next State,
 // a value of false will repeat this State until true is returned.
 type State struct {
-	Name      string
+	// Name should be a unique identifier of the State
+	Name string
+
+	// Reconcile should perform the actual reconciliation of the State.
+	// The reconcile.Result and error should be returned from the controller.
+	// the boolean value indicates that the State has been successfully completed.
 	Reconcile func() (reconcile.Result, error, bool)
-	OnEnter   func() error
+
+	// OnEnter executes before the Reconcile function is called.
+	OnEnter func() error
 }
 
 // transition represents a transition between two states.
