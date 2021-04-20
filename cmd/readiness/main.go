@@ -225,7 +225,7 @@ func main() {
 }
 
 // isInReadyState checks the MongoDB Server state. It returns true if the state
-// is PRIMARY or SECONDARY..
+// is PRIMARY or SECONDARY.
 func isInReadyState(health health.Status) bool {
 	if len(health.Healthiness) == 0 {
 		return true
