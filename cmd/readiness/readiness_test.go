@@ -118,6 +118,10 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 }
 
 func TestPodReadiness(t *testing.T) {
+	t.Run("Pod readiness is correctly checked when no ReplicationStatus is present on the file ", func(t *testing.T) {
+		assert.True(t, isPodReady(testConfig("testdata/health-status-no-replication.json")))
+	})
+
 	t.Run("MongoDB replication state is reported by agents", func(t *testing.T) {
 		assert.True(t, isPodReady(testConfig("testdata/health-status-ok-no-replica-status.json")))
 	})
@@ -128,18 +132,6 @@ func TestPodReadiness(t *testing.T) {
 
 	t.Run("If replication state is readable", func(t *testing.T) {
 		assert.True(t, isPodReady(testConfig("testdata/health-status-readable-state.json")))
-	})
-}
-
-func TestServerHasAlreadyStarted(t *testing.T) {
-	t.Run("Agent should report server has started", func(t *testing.T) {
-		healthDoc := readHealthinessFile("testdata/health-status-readable-state.json")
-		assert.True(t, mongoDbServerHasStarted(healthDoc))
-	})
-
-	t.Run("Agent should report server has not started", func(t *testing.T) {
-		healthDoc := readHealthinessFile("testdata/health-status-not-started-yet.json")
-		assert.False(t, mongoDbServerHasStarted(healthDoc))
 	})
 }
 
