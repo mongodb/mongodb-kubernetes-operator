@@ -8,6 +8,8 @@ functions:
       params:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/setup_virtualenv.sh
+        include_expansions_in_env:
+          - sonar_github_token
 
   clone:
     - command: subprocess.exec
@@ -107,6 +109,20 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image.sh
 
+  build_and_push_image_sonar:
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          MONGODB_COMMUNITY_CONFIG: ${workdir}/mongodb-kubernetes-operator/scripts/ci/config.json
+        include_expansions_in_env:
+          - version_id
+          - quay_user_name
+          - quay_password
+          - image_name
+        working_dir: mongodb-kubernetes-operator
+        binary: scripts/ci/build_and_push_image_sonar.sh
+
   release_docker_image:
     - command: subprocess.exec
       type: system
@@ -181,11 +197,9 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_image_sonar
         vars:
-          image_type: agent_ubuntu
-          image: quay.io/mongodb/mongodb-agent-dev:${version_id}
-          expire_after: 48h
+          image_name: agent-ubuntu
 
   - name: build_agent_image_ubi
     priority: 60
@@ -193,11 +207,9 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_image_sonar
         vars:
-          image_type: agent_ubi
-          image: quay.io/mongodb/mongodb-agent-ubi-dev:${version_id}
-          expire_after: 48h
+          image_name: agent-ubi
 
   - name: build_prehook_image
     priority: 60
