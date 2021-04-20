@@ -23,7 +23,7 @@
                         {
                             "steps": [
                                 {
-                                    "result": "wait",
+                                    "result": "success",
                                     "completed": "2019-09-11T14:20:59.325129842Z",
                                     "started": "2019-09-11T14:20:55.645743003Z",
                                     "isWaitStep": false,
@@ -73,7 +73,6 @@
     },
     "statuses": {
         "bar": {
-            "ReplicationStatus": 1,
             "ExpectedToBeUp": true,
             "LastMongoUpTime": 1568222195,
             "IsInGoalState": true

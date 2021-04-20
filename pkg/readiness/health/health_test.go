@@ -11,8 +11,8 @@ import (
 func TestIsReadyStateNotPrimaryNorSecondary(t *testing.T) {
 	status := []replicationStatus{replicationStatusUndefined, replicationStatusPrimary, replicationStatusSecondary}
 
-	for _, st := range status {
-		h := processHealth{ReplicaStatus: &st}
+	for i := range status {
+		h := processHealth{ReplicaStatus: &status[i]}
 		assert.True(t, h.IsReadyState())
 	}
 }
@@ -25,8 +25,8 @@ func TestIsNotReady(t *testing.T) {
 		replicationStatusRollback, replicationStatusRemoved,
 	}
 
-	for _, st := range status {
-		h := processHealth{ReplicaStatus: &st}
+	for i := range status {
+		h := processHealth{ReplicaStatus: &status[i]}
 		assert.False(t, h.IsReadyState())
 	}
 }
