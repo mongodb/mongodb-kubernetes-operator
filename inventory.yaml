@@ -127,5 +127,5 @@ images:
           tag: $(inputs.params.version_id)
 
         destination:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
             tag: $(inputs.params.release_version)
