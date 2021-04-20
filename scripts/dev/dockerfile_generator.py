@@ -11,41 +11,6 @@ DockerParameters = Dict[str, Union[bool, str, List[str]]]
 GOLANG_TAG = "1.14"
 
 
-def _shared_agent_params() -> DockerParameters:
-    with open("release.json", "r") as f:
-        release = json.loads(f.read())
-
-    return {
-        "template_path": "scripts/dev/templates/agent",
-        "agent_version": release["agent"]["version"],
-        "tools_version": release["agent"]["tools_version"],
-    }
-
-
-def agent_ubuntu_params() -> DockerParameters:
-    params = _shared_agent_params()
-    params.update(
-        {
-            "base_image": "ubuntu:16.04",
-            "tools_distro": "ubuntu1604-x86_64",
-            "agent_distro": "linux_x86_64",
-        }
-    )
-    return params
-
-
-def agent_ubi_params() -> DockerParameters:
-    params = _shared_agent_params()
-    params.update(
-        {
-            "base_image": "registry.access.redhat.com/ubi7/ubi",
-            "tools_distro": "rhel70-x86_64",
-            "agent_distro": "rhel7_x86_64",
-        }
-    )
-    return params
-
-
 def operator_params(files_to_add: List[str]) -> DockerParameters:
     return {
         "builder": True,
@@ -67,8 +32,6 @@ def render(image_name: str, files_to_add: List[str]) -> str:
     param_dict = {
         "e2e": e2e_params(files_to_add),
         "operator": operator_params(files_to_add),
-        "agent_ubi": agent_ubi_params(),
-        "agent_ubuntu": agent_ubuntu_params(),
     }
 
     render_values = param_dict.get(image_name, dict())
