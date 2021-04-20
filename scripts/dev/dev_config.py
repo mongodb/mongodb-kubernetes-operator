@@ -43,6 +43,10 @@ class DevConfig:
         return self._config["repo_url"]
 
     @property
+    def expire_after(self) -> str:
+        return self._config.get("expire_after", "never")
+
+    @property
     def operator_image(self) -> str:
         return self._config["operator_image"]
 
