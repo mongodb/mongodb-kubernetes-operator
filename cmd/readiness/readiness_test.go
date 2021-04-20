@@ -118,6 +118,10 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 }
 
 func TestPodReadiness(t *testing.T) {
+	t.Run("Pod readiness is correctly checked when no ReplicationStatus is present on the file ", func(t *testing.T) {
+		assert.True(t, isPodReady(testConfig("testdata/health-status-no-replication.json")))
+	})
+
 	t.Run("MongoDB replication state is reported by agents", func(t *testing.T) {
 		assert.True(t, isPodReady(testConfig("testdata/health-status-ok-no-replica-status.json")))
 	})
