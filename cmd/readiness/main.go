@@ -225,8 +225,7 @@ func main() {
 }
 
 // isInReadyState checks the MongoDB Server state. It returns true if the state
-// is PRIMARY or SECONDARY.
-// This function will always return true if the agent doesn't publish this state.
+// is PRIMARY or SECONDARY..
 func isInReadyState(health health.Status) bool {
 	if len(health.Healthiness) == 0 {
 		return true
@@ -234,16 +233,13 @@ func isInReadyState(health health.Status) bool {
 	for _, processHealth := range health.Healthiness {
 		// We know this loop should run only once, in Kubernetes there's
 		// only 1 server managed per host.
-		if processHealth.ReplicaStatus == nil {
-			// We always return true if the Agent does not publish mongodb
-			// server state
-			return true
-		}
 
 		// Every time the process health is created by the agent,
 		// it checks if the MongoDB process is up and populates this field
 		// (https://github.com/10gen/mms-automation/blob/bb72f74a22d98cfa635c1317e623386b089dc69f/go_planner/src/com.tengen/cm/healthcheck/status.go#L43)
 		// So it's enough to check that this value is not the zero-value for int64
+
+		// The case in which the agent is too old to publish replication status is handled inside "IsReadyState"
 		return processHealth.LastMongoUpTime != 0 && processHealth.IsReadyState()
 	}
 	return false

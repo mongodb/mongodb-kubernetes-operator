@@ -66,6 +66,9 @@ type StepStatus struct {
 // would mean a Ready State.
 // It returns true if the managed process is mongos or standalone (replicationStatusUndefined).
 func (h processHealth) IsReadyState() bool {
+	if h.ReplicaStatus == nil {
+		return true
+	}
 	status := *h.ReplicaStatus
 	if status == replicationStatusUndefined {
 		return true
