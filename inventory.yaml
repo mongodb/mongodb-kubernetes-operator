@@ -29,7 +29,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-dev
+          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
             tag: $(inputs.params.version_id)
 
 

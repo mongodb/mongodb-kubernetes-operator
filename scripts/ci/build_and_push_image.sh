@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+set +x
 
 # shellcheck disable=SC1091
 . venv/bin/activate
