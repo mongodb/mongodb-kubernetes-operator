@@ -30,7 +30,7 @@ type processHealth struct {
 	IsInGoalState   bool               `json:"IsInGoalState"`
 	LastMongoUpTime int64              `json:"LastMongoUpTime"`
 	ExpectedToBeUp  bool               `json:"ExpectedToBeUp"`
-	ReplicaStatus   *replicationStatus `json:"ReplicationStatus,omitempty"`
+	ReplicaStatus   *replicationStatus `json:"ReplicationStatus"`
 }
 
 func (h processHealth) String() string {
@@ -64,8 +64,12 @@ type StepStatus struct {
 // isReadyState will return true, meaning a *ready state* in the sense that this Process can
 // accept read operations. There are no other states in which the MongoDB server could that
 // would mean a Ready State.
-// It returns true if the managed process is mongos or standalone (replicationStatusUndefined).
+// It returns true if the managed process is mongos or standalone (replicationStatusUndefined)
+// or if the agent doesn't publish the replica status (older agents)
 func (h processHealth) IsReadyState() bool {
+	if h.ReplicaStatus == nil {
+		return true
+	}
 	status := *h.ReplicaStatus
 	if status == replicationStatusUndefined {
 		return true
