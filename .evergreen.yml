@@ -407,6 +407,7 @@ buildvariants:
       - name: build_prehook_image
       - name: build_agent_image_ubi
       - name: build_agent_image_ubuntu
+      - name: build_readiness_probe_image
 
   - name: release_blocker
     display_name: release_blocker
