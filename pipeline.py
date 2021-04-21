@@ -66,6 +66,8 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
 
+    config.ensure_tag("readiness-probe")
+
     sonar_build_image(
         "readiness-probe-init",
         config,
@@ -79,6 +81,8 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 def build_version_post_start_hook_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
+
+    config.ensure_tag("post-start-hook")
 
     sonar_build_image(
         "version-post-start-hook-init",
