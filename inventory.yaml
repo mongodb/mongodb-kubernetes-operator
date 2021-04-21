@@ -71,6 +71,19 @@ images:
         output:
           - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.release_version)
 
+      - name: agent-context-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubuntu-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-context
+            tag: $(inputs.params.release_version)-context
+
   - name: agent-ubi
     vars:
       context: .
@@ -138,6 +151,19 @@ images:
 
         output:
           - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubi-$(inputs.params.release_version)
+
+      - name: agent-context-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubi-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-context
+            tag: $(inputs.params.release_version)-context
 
   - name: readiness-probe-init
     vars:
