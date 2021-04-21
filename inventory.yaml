@@ -63,3 +63,36 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
+
+
+  - name: readiness-probe-init
+    vars:
+      context: .
+
+    stages:
+    - name: readiness-probe-init-build
+      task_type: docker_build
+      dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
+
+      labels:
+        quay.expires-after: 48h
+
+      output:
+        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          tag: $(inputs.params.version_id)
+
+  - name: version-post-start-hook-init
+    vars:
+      context: .
+
+    stages:
+      - name: version-post-start-hook-init-build
+        task_type: docker_build
+        dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+            tag: $(inputs.params.version_id)
