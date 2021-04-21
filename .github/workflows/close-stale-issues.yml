@@ -14,7 +14,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-issue-message: 'This issue is being marked stale because it has been open for 80 days with no activity. Please comment if this issue is still affecting you. If there is no change, this issue will be closed in 20 days.'
-          stale-pr-message: 'This PR is being marked stale because it has been open for 80 days with no activity. Please comment or it will be closed in 20 days.'
+          stale-pr-message: 'This PR is being marked stale because it has been open for 80 days with no activity. Please upadte the PR or ask for a fresh review'
           close-issue-message: 'This issue was closed because it became stale. If the issue is still affecting you, please re-open it, or file a fresh Issue with updated information.'
 
           days-before-stale: 80
