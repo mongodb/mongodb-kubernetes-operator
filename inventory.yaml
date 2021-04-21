@@ -119,7 +119,7 @@ images:
     - name: readiness-probe-init-build
       task_type: docker_build
       dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
-      tags: ["ubuntu"]
+      tags: ["readiness-probe"]
 
       labels:
         quay.expires-after: 48h
@@ -130,7 +130,7 @@ images:
 
     - name: readiness-probe-init-release
       task_type: tag_image
-      tags: ["release"]
+      tags: ["release", "readiness-probe"]
 
       inputs:
         - release_version
@@ -152,7 +152,7 @@ images:
       - name: version-post-start-hook-init-build
         task_type: docker_build
         dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
-        tags: ["ubuntu"]
+        tags: ["post-start-hook"]
 
         labels:
           quay.expires-after: 48h
@@ -163,7 +163,7 @@ images:
 
       - name: version-post-start-hook-init-build-release
         task_type: tag_image
-        tags: ["release"]
+        tags: ["release", "post-start-hook"]
 
         inputs:
           - release_version
