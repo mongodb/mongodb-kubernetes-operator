@@ -73,11 +73,9 @@ class DevConfig:
             return self._config["agent_image_ubi"]
         return self._config["agent_image_ubuntu"]
 
-    def ensure_skip_tag(self, tag: str) -> bool:
+    def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:
             self.skip_tags.append(tag)
-            return True
-        return False
 
 
 def load_config(
