@@ -21,4 +21,4 @@ jobs:
           days-before-close: 100
           days-before-pr-close: -1 # never close PRs
 
-          exempt-issue-labels: 'feature-request,awaiting-approval,work-in-progress'
+          exempt-issue-labels: 'bug,feature-request'
