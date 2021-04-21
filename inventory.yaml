@@ -88,7 +88,7 @@ images:
 
     - name: readiness-probe-init-release
       task_type: tag_image
-      tags: ["release"]
+      tags: ["release", "readiness-probe"]
 
       inputs:
         - release_version
@@ -121,7 +121,7 @@ images:
 
       - name: version-post-start-hook-init-build-release
         task_type: tag_image
-        tags: ["release"]
+        tags: ["release", "post-start-hook"]
 
         inputs:
           - release_version

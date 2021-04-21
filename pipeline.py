@@ -32,7 +32,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
         "registry": config.repo_url,
     }
 
-    config.ensure_tag("ubi")
+    config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
         image_name,
@@ -53,7 +53,7 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
         "registry": config.repo_url,
     }
 
-    config.ensure_tag("ubuntu")
+    config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
         image_name,
@@ -66,7 +66,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
 
-    config.ensure_tag("readiness-probe")
+    config.ensure_tag_is_run("readiness-probe")
 
     sonar_build_image(
         "readiness-probe-init",
@@ -82,7 +82,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
 
-    config.ensure_tag("post-start-hook")
+    config.ensure_tag_is_run("post-start-hook")
 
     sonar_build_image(
         "version-post-start-hook-init",
@@ -129,9 +129,13 @@ def main() -> int:
 
     config = load_config()
 
+    # by default we do not want to run any release tasks. We must explicitly
+    # use the --release flag to run them.
+    config.ensure_skip_tag("release")
+
     # specify --release to release the image
     if args.release:
-        config.ensure_tag("release")
+        config.ensure_tag_is_run("release")
 
     image_build_function = {
         "agent-ubi": build_agent_image_ubi,

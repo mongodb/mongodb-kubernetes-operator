@@ -37,12 +37,11 @@ class DevConfig:
         self.include_tags: List[str] = []
         self.skip_tags: List[str] = []
 
-    def ensure_tag(self, distro: str) -> None:
-        if distro in self.skip_tags:
-            self.skip_tags.remove(distro)
-
-        if distro not in self.include_tags:
-            self.include_tags.append(distro)
+    def ensure_tag_is_run(self, tag: str) -> None:
+        if tag not in self.include_tags:
+            self.include_tags.append(tag)
+        if tag in self.skip_tags:
+            self.skip_tags.remove(tag)
 
     @property
     def namespace(self) -> str:
@@ -73,6 +72,12 @@ class DevConfig:
         if self._distro == Distro.UBI:
             return self._config["agent_image_ubi"]
         return self._config["agent_image_ubuntu"]
+
+    def ensure_skip_tag(self, tag: str) -> bool:
+        if tag not in self.skip_tags:
+            self.skip_tags.append(tag)
+            return True
+        return False
 
 
 def load_config(
