@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from enum import Enum
 import json
 import os
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
+SKIPPABLE_TAGS = frozenset(["ubi", "ubuntu"])
 
 
 class Distro(Enum):
@@ -33,6 +34,17 @@ class DevConfig:
     def __init__(self, config: Dict, distro: Distro):
         self._config = config
         self._distro = distro
+        self.include_tags = [self._config.get("image_type", "ubuntu")]
+        self.skip_tags = self._determine_skip_tags()
+
+    def _determine_skip_tags(self) -> List[str]:
+        image_type = self._config.get("image_type", "ubuntu")
+        skip_tags_from_env = os.getenv("skip_tags")
+        skip_tags = list(SKIPPABLE_TAGS - {image_type})
+        if skip_tags_from_env:
+            tags = skip_tags_from_env.split(",")
+            skip_tags.extend(tags)
+        return skip_tags
 
     @property
     def namespace(self) -> str:

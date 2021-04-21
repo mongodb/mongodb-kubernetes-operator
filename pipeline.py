@@ -13,7 +13,6 @@ VALID_IMAGE_NAMES = frozenset(
         "agent-ubuntu",
         "readiness-probe-init",
         "version-post-start-hook-init",
-        "readiness-probe-init-release",
     ]
 )
 
@@ -34,6 +33,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
     }
     sonar_build_image(
         image_name,
+        config,
         args=args,
     )
 
@@ -51,6 +51,7 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
     }
     sonar_build_image(
         image_name,
+        config,
         args=args,
     )
 
@@ -61,6 +62,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 
     sonar_build_image(
         "readiness-probe-init",
+        config,
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
@@ -74,6 +76,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
     sonar_build_image(
         "version-post-start-hook-init",
+        config,
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
@@ -83,6 +86,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
 def sonar_build_image(
     image_name: str,
+    config: DevConfig,
     args: Optional[Dict[str, str]] = None,
     inventory: str = "inventory.yaml",
 ) -> None:
@@ -91,14 +95,15 @@ def sonar_build_image(
         image_name,
         build_args=args,
         inventory=inventory,
-        include_tags=[],
-        skip_tags=[],
+        include_tags=config.include_tags,
+        skip_tags=config.skip_tags,
     )
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
+    parser.add_argument("--release", action="store_true")
     return parser.parse_args()
 
 
@@ -112,6 +117,15 @@ def main() -> int:
         )
         return 1
 
+    config = load_config()
+
+    # specify --release to release the image
+    if args.release:
+        if "release" not in config.include_tags:
+            config.include_tags.append("release")
+        if "release" in config.skip_tags:
+            config.skip_tags.remove("release")
+
     image_build_function = {
         "agent-ubi": build_agent_image_ubi,
         "agent-ubuntu": build_agent_image_ubuntu,
@@ -119,7 +133,7 @@ def main() -> int:
         "version-post-start-hook-init": build_version_post_start_hook_image,
     }[image_name]
 
-    image_build_function(load_config())
+    image_build_function(config)
     return 0
 
 
