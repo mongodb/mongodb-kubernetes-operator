@@ -27,10 +27,14 @@ def build_agent_image_ubi(config: DevConfig) -> None:
     args = {
         "agent_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "ubuntu1604-x86_64",
-        "agent_distro": "linux_x86_64",
+        "tools_distro": "rhel70-x86_64",
+        "agent_distro": "rhel7_x86_64",
         "registry": config.repo_url,
     }
+
+    config.skip_tags.remove("ubi")
+    config.include_tags.append("ubi")
+
     sonar_build_image(
         image_name,
         config,
@@ -45,10 +49,14 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
     args = {
         "agent_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "rhel70-x86_64",
-        "agent_distro": "rhel7_x86_64",
+        "tools_distro": "ubuntu1604-x86_64",
+        "agent_distro": "linux_x86_64",
         "registry": config.repo_url,
     }
+
+    config.skip_tags.remove("ubuntu")
+    config.include_tags.append("ubuntu")
+
     sonar_build_image(
         image_name,
         config,
