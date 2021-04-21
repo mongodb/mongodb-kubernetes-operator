@@ -69,6 +69,10 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
 
+    expire_after = "48h"
+    if config.is_release:
+        expire_after = "Never"
+
     config.ensure_tag_is_run("readiness-probe")
 
     sonar_build_image(
@@ -77,6 +81,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
+            "expire_after": expire_after,
         },
     )
 
@@ -87,12 +92,17 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
     config.ensure_tag_is_run("post-start-hook")
 
+    expire_after = "48h"
+    if config.is_release:
+        expire_after = "Never"
+
     sonar_build_image(
         "version-post-start-hook-init",
         config,
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
+            "expire_after": expire_after,
         },
     )
 
