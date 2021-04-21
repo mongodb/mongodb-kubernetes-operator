@@ -6,7 +6,6 @@ import os
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
-SKIPPABLE_TAGS = frozenset(["ubi", "ubuntu"])
 
 
 class Distro(Enum):
