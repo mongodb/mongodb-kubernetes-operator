@@ -46,6 +46,13 @@ class DevConfig:
             skip_tags.extend(tags)
         return skip_tags
 
+    def ensure_tag(self, distro: str) -> None:
+        if distro in self.skip_tags:
+            self.skip_tags.remove(distro)
+
+        if distro not in self.include_tags:
+            self.include_tags.append(distro)
+
     @property
     def namespace(self) -> str:
         return self._config["namespace"]

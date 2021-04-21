@@ -32,8 +32,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
         "registry": config.repo_url,
     }
 
-    config.skip_tags.remove("ubi")
-    config.include_tags.append("ubi")
+    config.ensure_tag("ubi")
 
     sonar_build_image(
         image_name,
@@ -54,8 +53,7 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
         "registry": config.repo_url,
     }
 
-    config.skip_tags.remove("ubuntu")
-    config.include_tags.append("ubuntu")
+    config.ensure_tag("ubuntu")
 
     sonar_build_image(
         image_name,
@@ -129,10 +127,7 @@ def main() -> int:
 
     # specify --release to release the image
     if args.release:
-        if "release" not in config.include_tags:
-            config.include_tags.append("release")
-        if "release" in config.skip_tags:
-            config.skip_tags.remove("release")
+        config.ensure_tag("release")
 
     image_build_function = {
         "agent-ubi": build_agent_image_ubi,
