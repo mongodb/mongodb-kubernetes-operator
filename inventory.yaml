@@ -1,5 +1,7 @@
 vars:
   registry: <registry>
+  s3_bucket_http: https://enterprise-operator-dockerfiles.s3.amazonaws.com/dockerfiles/mongodb-agent
+  s3_bucket: s3://enterprise-operator-dockerfiles/dockerfiles/mongodb-agent
 
 images:
   - name: agent-ubuntu
@@ -38,6 +40,7 @@ images:
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.version_id)
 
       - name: agent-ubuntu-build
         task_type: docker_build
