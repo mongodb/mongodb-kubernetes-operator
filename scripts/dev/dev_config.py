@@ -44,6 +44,10 @@ class DevConfig:
             self.skip_tags.remove(tag)
 
     @property
+    def is_release(self) -> bool:
+        return "release" in self.include_tags and "release" not in self.skip_tags
+
+    @property
     def namespace(self) -> str:
         return self._config["namespace"]
 

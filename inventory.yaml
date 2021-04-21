@@ -40,11 +40,13 @@ images:
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
-          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.version_id)
 
       - name: agent-ubuntu-build
         task_type: docker_build
         tags: ["ubuntu"]
+
+        inputs:
+          - expire_after
 
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
@@ -52,12 +54,22 @@ images:
           imagebase: $(inputs.params.registry)/agent-ubuntu-context-dev:$(inputs.params.version_id)
 
         labels:
-          quay.expires-after: 48h
+          quay.expires-after: $(inputs.params.expire_after)
 
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
             tag: $(inputs.params.version_id)
 
+      - name: agent-template-ubuntu-s3
+        task_type: dockerfile_template
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.release_version)
 
   - name: agent-ubi
     vars:
@@ -106,13 +118,26 @@ images:
         buildargs:
           imagebase: $(inputs.params.registry)/agent-ubi-context-dev:$(inputs.params.version_id)
 
+        inputs:
+          - expire_after
+
         labels:
-          quay.expires-after: 48h
+          quay.expires-after: $(inputs.params.expire_after)
 
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
 
+      - name: agent-template-ubi-s3
+        task_type: dockerfile_template
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubi-$(inputs.params.release_version)
 
   - name: readiness-probe-init
     vars:
@@ -124,8 +149,11 @@ images:
       dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
       tags: ["readiness-probe"]
 
+      inputs:
+        - expire_after
+
       labels:
-        quay.expires-after: 48h
+        quay.expires-after: $(inputs.params.expire_after)
 
       output:
         - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
@@ -157,8 +185,11 @@ images:
         dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
         tags: ["post-start-hook"]
 
+        inputs:
+          - expire_after
+
         labels:
-          quay.expires-after: 48h
+          quay.expires-after: $(inputs.params.expire_after)
 
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
