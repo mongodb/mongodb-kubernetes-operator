@@ -7,7 +7,14 @@ from sonar.sonar import process_image
 
 from scripts.dev.dev_config import load_config, DevConfig
 
-VALID_IMAGE_NAMES = frozenset(["agent-ubi", "agent-ubuntu"])
+VALID_IMAGE_NAMES = frozenset(
+    [
+        "agent-ubi",
+        "agent-ubuntu",
+        "readiness-probe-init",
+        "version-post-start-hook-init",
+    ]
+)
 
 DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
@@ -47,6 +54,24 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
     )
 
 
+def build_readiness_probe_image(config: DevConfig) -> None:
+    sonar_build_image(
+        "readiness-probe-init",
+        args={
+            "registry": config.repo_url,
+        },
+    )
+
+
+def build_version_post_start_hook_image(config: DevConfig) -> None:
+    sonar_build_image(
+        "version-post-start-hook-init",
+        args={
+            "registry": config.repo_url,
+        },
+    )
+
+
 def sonar_build_image(
     image_name: str,
     args: Optional[Dict[str, str]] = None,
@@ -78,12 +103,14 @@ def main() -> int:
         )
         return 1
 
-    agent_build_function = {
+    image_build_function = {
         "agent-ubi": build_agent_image_ubi,
         "agent-ubuntu": build_agent_image_ubuntu,
+        "readiness-probe-init": build_readiness_probe_image,
+        "version-post-start-hook-init": build_version_post_start_hook_image,
     }[image_name]
 
-    agent_build_function(load_config())
+    image_build_function(load_config())
     return 0
 
 
