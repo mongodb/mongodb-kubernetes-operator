@@ -34,17 +34,8 @@ class DevConfig:
     def __init__(self, config: Dict, distro: Distro):
         self._config = config
         self._distro = distro
-        self.include_tags = [self._config.get("image_type", "ubuntu")]
-        self.skip_tags = self._determine_skip_tags()
-
-    def _determine_skip_tags(self) -> List[str]:
-        image_type = self._config.get("image_type", "ubuntu")
-        skip_tags_from_env = os.getenv("skip_tags")
-        skip_tags = list(SKIPPABLE_TAGS - {image_type})
-        if skip_tags_from_env:
-            tags = skip_tags_from_env.split(",")
-            skip_tags.extend(tags)
-        return skip_tags
+        self.include_tags: List[str] = []
+        self.skip_tags: List[str] = []
 
     def ensure_tag(self, distro: str) -> None:
         if distro in self.skip_tags:
