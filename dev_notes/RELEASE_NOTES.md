@@ -9,7 +9,7 @@
   * The user of the mongod and mongodb-agent containers has changed. This means that there will be permissions
     issues when upgrading from an earlier version of the operator. In order to update the permissions in the volume, you can use an init container.
 
-* Upgrade instructions:
+* Upgrade instructions
 
   Remove the current operator
   -  `kubectl delete <operator-deployment>`
