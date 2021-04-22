@@ -7,4 +7,4 @@ set +x
 echo "${quay_password:?}" | docker login "-u=${quay_user_name:?}" quay.io --password-stdin
 
 # shellcheck disable=SC2154
-python3 pipeline.py --image-name "${image_name}"
+python3 pipeline.py --image-name "${image_name}"  --release "${release:-false}"
