@@ -1,6 +1,6 @@
 *(Please use the [release template](release-notes-template.md) as the template for this document)*
 <!-- Next release -->
-# MongoDB Kubernetes Operator 0.5.3
+# MongoDB Kubernetes Operator 0.6.0
 ## Kubernetes Operator
 
 * Breaking Changes
@@ -11,10 +11,10 @@
 
 * Upgrade instructions
 
-  Remove the current operator
-  -  `kubectl delete <operator-deployment>`
-  Delete the existing StatefulSet
-  -   `kubectl delete statefulset <sts-name>`
+  Remove the current operator deployment
+  -  `kubectl delete deployment <operator-deployment>`
+  Delete the existing StatefulSet for the MongoDBCommunity resource
+  -   `kubectl delete statefulset <mdb-resource-name>`
   Install the new operator
   - follow the regular [installation instruction](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md)
   Patch the StatefulSet once it has been created. This will add an init container that will update the permissions of the existing volume.
@@ -22,6 +22,11 @@
    
 * Bug fixes
   * Fixes an issue that prevented the agents from reaching goal state when upgrading minor version of MongoDB.
+
+ ## Updated Image Tags
+ * mongodb-kubernetes-operator:0.6.0
+ * mongodb-agent:0.29.0.6830-1
+
 
 <!-- Past Releases -->
 # MongoDB Kubernetes Operator 0.5.2
