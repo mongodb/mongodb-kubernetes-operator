@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from enum import Enum
 import json
 import os
@@ -33,6 +33,14 @@ class DevConfig:
     def __init__(self, config: Dict, distro: Distro):
         self._config = config
         self._distro = distro
+        self.include_tags: List[str] = []
+        self.skip_tags: List[str] = []
+
+    def ensure_tag_is_run(self, tag: str) -> None:
+        if tag not in self.include_tags:
+            self.include_tags.append(tag)
+        if tag in self.skip_tags:
+            self.skip_tags.remove(tag)
 
     @property
     def namespace(self) -> str:
@@ -63,6 +71,10 @@ class DevConfig:
         if self._distro == Distro.UBI:
             return self._config["agent_image_ubi"]
         return self._config["agent_image_ubuntu"]
+
+    def ensure_skip_tag(self, tag: str) -> None:
+        if tag not in self.skip_tags:
+            self.skip_tags.append(tag)
 
 
 def load_config(

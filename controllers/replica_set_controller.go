@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -200,6 +202,12 @@ func deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 	// the StatefulSet has not yet been created, so the next stage of reconciliation will be
 	// creating the StatefulSet and ensuring it reaches the Running phase.
 	if apiErrors.IsNotFound(err) {
+		return true, nil
+	}
+
+	log.Debugf("Waiting for agents to reach version %d", ac.Version)
+	if isPreReadinessInitContainerStatefulSet(sts) {
+		log.Debugf("The existing StatefulSet did not have the readiness probe init container, skipping pod annotation check.")
 		return true, nil
 	}
 
@@ -425,4 +433,10 @@ func getDomain(service, namespace, clusterName string) string {
 		clusterName = "cluster.local"
 	}
 	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
+}
+
+// isPreReadinessInitContainerStatefulSet determines if the existing StatefulSet has been configured with the readiness probe init container.
+// if this is not the case, then we should ensure to skip past the annotation check otherwise the pods will remain in pending state forever.
+func isPreReadinessInitContainerStatefulSet(sts appsv1.StatefulSet) bool {
+	return container.GetByName(construct.ReadinessProbeContainerName, sts.Spec.Template.Spec.InitContainers) == nil
 }

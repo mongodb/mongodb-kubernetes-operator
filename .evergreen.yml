@@ -120,6 +120,7 @@ functions:
           - quay_user_name
           - quay_password
           - image_name
+          - release
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image_sonar.sh
 
@@ -217,11 +218,20 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_image_sonar
         vars:
-          image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook:${version_id}
-          image_type: versionhook
-          expire_after: 48h
+          image_name: version-post-start-hook-init
+
+  - name: build_readiness_probe_image
+    priority: 60
+    exec_timeout_secs: 600
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_image_sonar
+        vars:
+          image_name: readiness-probe-init
+
 
   - name: e2e_test_feature_compatibility_version
     commands:
@@ -336,15 +346,25 @@ tasks:
           new_image: quay.io/mongodb/mongodb-kubernetes-operator
           image_type: mongodb-kubernetes-operator
 
-  - name: release_version_upgrade_hook
+
+  - name: release_version_upgrade_post_start_hook
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: release_docker_image
+      - func: build_and_push_image_sonar
         vars:
-          old_image: quay.io/mongodb/community-operator-version-upgrade-post-start-hook
-          new_image: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook
-          image_type: version-upgrade-hook
+          image_type: version-post-start-hook-init
+          release: true
+
+
+  - name: release_readiness_probe
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_image_sonar
+        vars:
+          image_type: readiness-probe-init
+          release: true
 
 
 buildvariants:
@@ -360,6 +380,8 @@ buildvariants:
       - name: build_e2e_image
         variant: init_test_run
       - name: build_prehook_image
+        variant: init_test_run
+      - name: build_readiness_probe_image
         variant: init_test_run
       - name: build_agent_image_ubuntu
         variant: init_test_run
@@ -379,6 +401,8 @@ buildvariants:
         variant: init_test_run
       - name: build_prehook_image
         variant: init_test_run
+      - name: build_readiness_probe_image
+        variant: init_test_run
       - name: build_agent_image_ubi
         variant: init_test_run
     tasks:
@@ -394,6 +418,7 @@ buildvariants:
       - name: build_prehook_image
       - name: build_agent_image_ubi
       - name: build_agent_image_ubuntu
+      - name: build_readiness_probe_image
 
   - name: release_blocker
     display_name: release_blocker
@@ -419,4 +444,5 @@ buildvariants:
       - ubuntu1604-test
     tasks:
     - name: release_operator
-    - name: release_version_upgrade_hook
+    - name: release_version_upgrade_post_start_hook
+    - name: release_readiness_probe

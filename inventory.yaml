@@ -11,6 +11,7 @@ images:
       - name: agent-template-ubuntu
         task_type: dockerfile_template
         distro: ubuntu
+        tags: ["ubuntu"]
 
         inputs:
           - agent_version
@@ -24,6 +25,7 @@ images:
       - name: agent-ubuntu-build
         task_type: docker_build
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+        tags: ["ubuntu"]
 
         labels:
           quay.expires-after: 48h
@@ -42,6 +44,7 @@ images:
       - name: agent-template-ubi
         task_type: dockerfile_template
         distro: ubi
+        tags: ["ubi"]
 
         inputs:
           - agent_version
@@ -56,6 +59,7 @@ images:
       - name: agent-ubi-build
         task_type: docker_build
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+        tags: ["ubi"]
 
         labels:
           quay.expires-after: 48h
@@ -63,3 +67,69 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
+
+
+  - name: readiness-probe-init
+    vars:
+      context: .
+
+    stages:
+    - name: readiness-probe-init-build
+      task_type: docker_build
+      dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
+      tags: ["readiness-probe"]
+
+      labels:
+        quay.expires-after: 48h
+
+      output:
+        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          tag: $(inputs.params.version_id)
+
+    - name: readiness-probe-init-release
+      task_type: tag_image
+      tags: ["release", "readiness-probe"]
+
+      inputs:
+        - release_version
+
+      source:
+        registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+        tag: $(inputs.params.version_id)
+
+      destination:
+        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
+          tag: $(inputs.params.release_version)
+
+
+  - name: version-post-start-hook-init
+    vars:
+      context: .
+
+    stages:
+      - name: version-post-start-hook-init-build
+        task_type: docker_build
+        dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
+        tags: ["post-start-hook"]
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+            tag: $(inputs.params.version_id)
+
+      - name: version-post-start-hook-init-build-release
+        task_type: tag_image
+        tags: ["release", "post-start-hook"]
+
+        inputs:
+          - release_version
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
+            tag: $(inputs.params.release_version)
