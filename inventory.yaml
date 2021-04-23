@@ -170,35 +170,57 @@ images:
       context: .
 
     stages:
-    - name: readiness-probe-init-build
-      task_type: docker_build
-      dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
-      tags: ["readiness-probe"]
+      - name: readiness-init-context-build
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
+        tags: ["readiness-probe"]
 
-      inputs:
-        - expire_after
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-context-dev
+            tag: $(inputs.params.version_id)
 
-      labels:
-        quay.expires-after: $(inputs.params.expire_after)
+      - name: readiness-init-build
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness
+        tags: ["readiness-probe"]
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-context-dev:$(inputs.params.version_id)
 
-      output:
-        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-context-dev
+            tag: $(inputs.params.version_id)
+
+
+      - name: readiness-init-context-release
+        task_type: tag_image
+        tags: ["release", "readiness-probe"]
+
+        inputs:
+          - release_version
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-context-dev
           tag: $(inputs.params.version_id)
 
-    - name: readiness-probe-init-release
-      task_type: tag_image
-      tags: ["release", "readiness-probe"]
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-context
+            tag: $(inputs.params.release_version)
 
-      inputs:
-        - release_version
 
-      source:
-        registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
-        tag: $(inputs.params.version_id)
+      - name: readiness-init-build-release
+        task_type: tag_image
+        tags: ["release", "readiness-probe"]
 
-      destination:
-        - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
-          tag: $(inputs.params.release_version)
+        inputs:
+          - release_version
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
+            tag: $(inputs.params.release_version)
 
 
   - name: version-post-start-hook-init
