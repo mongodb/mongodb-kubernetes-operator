@@ -25,4 +25,3 @@
  ## Updated Image Tags
  * mongodb-kubernetes-operator:0.6.0
  * mongodb-agent:0.29.0.6830-1
- * mongodb-kubernetes-readinessprobe:1.0.3
