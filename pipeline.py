@@ -1,7 +1,7 @@
 import argparse
 import json
 import sys
-from typing import Dict, Optional, Union, Callable, Text
+from typing import Dict, Optional
 
 from sonar.sonar import process_image
 
