@@ -25,7 +25,7 @@ const (
 	MongodbName = "mongod"
 
 	versionUpgradeHookName         = "mongod-posthook"
-	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
+	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
 	dataVolumeName                 = "data-volume"
 	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
@@ -169,7 +169,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts)),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
+				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 			),
 		))
 }
@@ -261,7 +261,7 @@ func logsPvc() persistentvolumeclaim.Modification {
 // this container will copy the readiness probe binary into the /opt/scripts directory.
 func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
 	return container.Apply(
-		container.WithName(readinessProbeContainerName),
+		container.WithName(ReadinessProbeContainerName),
 		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
 		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
