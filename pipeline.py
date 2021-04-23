@@ -110,7 +110,7 @@ def sonar_build_image(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
-    parser.add_argument("--release", type=bool)
+    parser.add_argument("--release", type=lambda x: x.lower() == "true")
     return parser.parse_args()
 
 
