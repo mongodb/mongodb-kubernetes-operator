@@ -15,7 +15,7 @@ spec:
       serviceAccountName: mongodb-kubernetes-operator
       containers:
         - name: mongodb-kubernetes-operator
-          image: quay.io/mongodb/mongodb-kubernetes-operator:0.5.2
+          image: quay.io/mongodb/mongodb-kubernetes-operator:0.6.0
           command:
           - mongodb-kubernetes-operator
           imagePullPolicy: Always
@@ -35,6 +35,6 @@ spec:
             - name: AGENT_IMAGE # The MongoDB Agent the operator will deploy to manage MongoDB deployments
               value: quay.io/mongodb/mongodb-agent:10.29.0.6830-1
             - name: READINESS_PROBE_IMAGE
-              value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.1
+              value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3
             - name: VERSION_UPGRADE_HOOK_IMAGE
               value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
