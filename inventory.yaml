@@ -206,20 +206,42 @@ images:
       context: .
 
     stages:
-      - name: version-post-start-hook-init-build
+      - name: version-post-start-hook-init-context-build
         task_type: docker_build
-        dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
         tags: ["post-start-hook"]
 
-        inputs:
-          - expire_after
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-context-dev
+            tag: $(inputs.params.version_id)
 
-        labels:
-          quay.expires-after: $(inputs.params.expire_after)
+      - name: version-post-start-hook-init-build
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
+        tags: ["post-start-hook"]
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-context-dev:$(inputs.params.version_id)
 
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
             tag: $(inputs.params.version_id)
+
+
+      - name: version-post-start-hook-init-context-release
+        task_type: tag_image
+        tags: ["release", "post-start-hook"]
+
+        inputs:
+          - release_version
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-context
+            tag: $(inputs.params.release_version)
+
 
       - name: version-post-start-hook-init-build-release
         task_type: tag_image

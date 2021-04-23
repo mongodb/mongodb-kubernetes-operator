@@ -1,0 +1,6 @@
+ARG imagebase
+FROM ${imagebase} as base
+
+FROM busybox
+
+COPY --from=base /probes/readinessprobe /probes/readinessprobe
