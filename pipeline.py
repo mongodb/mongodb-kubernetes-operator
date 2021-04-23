@@ -24,11 +24,10 @@ def build_agent_image_ubi(config: DevConfig) -> None:
     image_name = "agent-ubi"
     with open("release.json") as f:
         release = json.loads(f.read())
+
     args = {
         "agent_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "rhel70-x86_64",
-        "agent_distro": "rhel7_x86_64",
         "registry": config.repo_url,
     }
 
@@ -48,8 +47,6 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
     args = {
         "agent_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "ubuntu1604-x86_64",
-        "agent_distro": "linux_x86_64",
         "registry": config.repo_url,
     }
 

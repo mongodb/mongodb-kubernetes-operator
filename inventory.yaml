@@ -7,25 +7,46 @@ images:
       context: .
       template_context: scripts/dev/templates/agent
 
+    inputs:
+      - agent_version
+      - tools_version
+
     stages:
+      - name: agent-ubuntu-context
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: ["ubuntu"]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: linux_x86_64
+          tools_distro: ubuntu1604-x86_64
+
+        output:
+          - registry: $(inputs.params.registry)/agent-ubuntu-context-dev
+            tag: $(inputs.params.version_id)
+
       - name: agent-template-ubuntu
         task_type: dockerfile_template
-        distro: ubuntu
         tags: ["ubuntu"]
+        distro: ubuntu
 
+        # TODO: remove - this is only here as sonar raises a key error on version_id
+        # if no other inputs are specified.
         inputs:
-          - agent_version
-          - tools_version
-          - tools_distro
-          - agent_distro
+          - noop
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
       - name: agent-ubuntu-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
         tags: ["ubuntu"]
+
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/agent-ubuntu-context-dev:$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h
@@ -40,17 +61,35 @@ images:
       context: .
       template_context: scripts/dev/templates/agent
 
+    inputs:
+      - agent_version
+      - tools_version
+
     stages:
+      - name: agent-ubi-context
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: ["ubi"]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: rhel7_x86_64
+          tools_distro: rhel70-x86_64
+
+        output:
+          - registry: $(inputs.params.registry)/agent-ubi-context-dev
+            tag: $(inputs.params.version_id)
+
+
       - name: agent-template-ubi
         task_type: dockerfile_template
         distro: ubi
         tags: ["ubi"]
 
+        # TODO: remove - this is only here as sonar raises a key error on version_id
+        # if no other inputs are specified.
         inputs:
-          - agent_version
-          - tools_version
-          - tools_distro
-          - agent_distro
+          - noop
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
@@ -58,8 +97,11 @@ images:
 
       - name: agent-ubi-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
         tags: ["ubi"]
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/agent-ubi-context-dev:$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h

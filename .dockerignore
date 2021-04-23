@@ -1,6 +1,5 @@
 .github
 .idea
-agent
 zz_*
 vendor/
 scripts/
