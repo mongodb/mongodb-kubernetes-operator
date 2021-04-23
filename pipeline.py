@@ -69,10 +69,6 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     with open("release.json") as f:
         release = json.loads(f.read())
 
-    expire_after = "48h"
-    if config.is_release:
-        expire_after = "Never"
-
     config.ensure_tag_is_run("readiness-probe")
 
     expire_after = "48h"
