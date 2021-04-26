@@ -31,8 +31,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
-REPO_URL := $(shell cat ~/.community-operator-dev/config.json | jq -r .repo_url)
-OPERATOR_IMAGE := $(shell cat ~/.community-operator-dev/config.json | jq -r .operator_image)
+REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
+OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
 IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
