@@ -52,7 +52,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
+          - registry: $(inputs.params.registry)/mongodb-agent-dev
             tag: $(inputs.params.version_id)
 
       - name: agent-template-ubuntu-s3
@@ -78,6 +78,19 @@ images:
         destination:
           - registry: $(inputs.params.registry)/mongodb-agent-ubuntu
             tag: $(inputs.params.release_version)-context
+
+      - name: agent-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-agent-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent
+            tag: $(inputs.params.release_version)
 
   - name: agent-ubi
     vars:
@@ -151,6 +164,20 @@ images:
         destination:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi
             tag: $(inputs.params.release_version)-context
+
+      - name: agent-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+            tag: $(inputs.params.release_version)
+
 
   - name: readiness-probe-init
     vars:

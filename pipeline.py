@@ -75,9 +75,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("post-start-hook")
 
     sonar_build_image(
