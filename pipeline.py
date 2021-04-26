@@ -20,17 +20,24 @@ DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
 
-def build_agent_image_ubi(config: DevConfig) -> None:
-    image_name = "agent-ubi"
+def _load_release() -> Dict:
     with open("release.json") as f:
         release = json.loads(f.read())
+    return release
 
-    args = {
+
+def _build_agent_args(config: DevConfig) -> Dict[str, str]:
+    release = _load_release()
+    return {
         "agent_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
         "registry": config.repo_url,
     }
 
+
+def build_agent_image_ubi(config: DevConfig) -> None:
+    image_name = "agent-ubi"
+    args = _build_agent_args(config)
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
@@ -42,14 +49,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
 
 def build_agent_image_ubuntu(config: DevConfig) -> None:
     image_name = "agent-ubuntu"
-    with open("release.json") as f:
-        release = json.loads(f.read())
-    args = {
-        "agent_version": release["agent"]["version"],
-        "tools_version": release["agent"]["tools_version"],
-        "registry": config.repo_url,
-    }
-
+    args = _build_agent_args(config)
     config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
@@ -60,9 +60,7 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
 
 
 def build_readiness_probe_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("readiness-probe")
 
     sonar_build_image(

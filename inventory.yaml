@@ -1,5 +1,7 @@
 vars:
   registry: <registry>
+  s3_bucket_http: https://enterprise-operator-dockerfiles.s3.amazonaws.com/dockerfiles/mongodb-agent
+  s3_bucket: s3://enterprise-operator-dockerfiles/dockerfiles/mongodb-agent
 
 images:
   - name: agent-ubuntu
@@ -31,11 +33,6 @@ images:
         tags: ["ubuntu"]
         distro: ubuntu
 
-        # TODO: remove - this is only here as sonar raises a key error on version_id
-        # if no other inputs are specified.
-        inputs:
-          - noop
-
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
@@ -55,6 +52,29 @@ images:
           - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
             tag: $(inputs.params.version_id)
 
+      - name: agent-template-ubuntu-s3
+        task_type: dockerfile_template
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.release_version)
+
+      - name: agent-context-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubuntu-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-context
+            tag: $(inputs.params.release_version)-context
 
   - name: agent-ubi
     vars:
@@ -86,11 +106,6 @@ images:
         distro: ubi
         tags: ["ubi"]
 
-        # TODO: remove - this is only here as sonar raises a key error on version_id
-        # if no other inputs are specified.
-        inputs:
-          - noop
-
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
@@ -110,6 +125,29 @@ images:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
 
+      - name: agent-template-ubi-s3
+        task_type: dockerfile_template
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubi-$(inputs.params.release_version)
+
+      - name: agent-context-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubi-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-context
+            tag: $(inputs.params.release_version)-context
 
   - name: readiness-probe-init
     vars:

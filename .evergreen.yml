@@ -115,6 +115,8 @@ functions:
       params:
         env:
           MONGODB_COMMUNITY_CONFIG: ${workdir}/mongodb-kubernetes-operator/scripts/ci/config.json
+          AWS_ACCESS_KEY_ID: ${community_aws_access_key_id}
+          AWS_SECRET_ACCESS_KEY: ${community_aws_secret_access_key}
         include_expansions_in_env:
           - version_id
           - quay_user_name
