@@ -30,6 +30,7 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
     release = _load_release()
     return {
         "agent_version": release["agent"]["version"],
+        "release_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
         "registry": config.repo_url,
     }
