@@ -28,7 +28,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/agent-ubuntu-dev
+          - registry: $(inputs.params.registry)/mongodb-agent-dev
             tag: $(inputs.params.version_id)-context
 
       - name: agent-template-ubuntu
@@ -46,7 +46,7 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/agent-ubuntu-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/mongodb-agent-dev:$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
@@ -72,7 +72,7 @@ images:
         distro: ubuntu
 
         source:
-          registry: $(inputs.params.registry)/agent-ubuntu-dev
+          registry: $(inputs.params.registry)/mongodb-agent-dev
           tag: $(inputs.params.version_id)-context
 
         destination:
@@ -113,7 +113,7 @@ images:
           tools_distro: rhel70-x86_64
 
         output:
-          - registry: $(inputs.params.registry)/agent-ubi-dev
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)-context
 
 
@@ -132,7 +132,7 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/agent-ubi-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/mongodb-agent-ubi-dev:$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
@@ -158,7 +158,7 @@ images:
         distro: ubi
 
         source:
-          registry: $(inputs.params.registry)/agent-ubi-dev
+          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
           tag: $(inputs.params.version_id)-context
 
         destination:
