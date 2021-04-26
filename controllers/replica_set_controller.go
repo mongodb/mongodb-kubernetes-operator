@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
@@ -313,6 +315,11 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 		return true, nil
 	}
 
+	if isPreReadinessInitContainerStatefulSet(sts) {
+		r.log.Debugf("The existing StatefulSet did not have the readiness probe init container, skipping pod annotation check.")
+		return true, nil
+	}
+
 	r.log.Debugf("Waiting for agents to reach version %d", ac.Version)
 	// Note: we pass in the expected number of replicas this reconciliation as we scale members one at a time. If we were
 	// to pass in the final member count, we would be waiting for agents that do not exist yet to be ready.
@@ -555,4 +562,10 @@ func getDomain(service, namespace, clusterName string) string {
 		clusterName = "cluster.local"
 	}
 	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
+}
+
+// isPreReadinessInitContainerStatefulSet determines if the existing StatefulSet has been configured with the readiness probe init container.
+// if this is not the case, then we should ensure to skip past the annotation check otherwise the pods will remain in pending state forever.
+func isPreReadinessInitContainerStatefulSet(sts appsv1.StatefulSet) bool {
+	return container.GetByName(construct.ReadinessProbeContainerName, sts.Spec.Template.Spec.InitContainers) == nil
 }
