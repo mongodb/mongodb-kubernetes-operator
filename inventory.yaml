@@ -76,6 +76,19 @@ images:
           - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-context
             tag: $(inputs.params.release_version)-context
 
+      - name: agent-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-agent-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent
+            tag: $(inputs.params.release_version)
+
   - name: agent-ubi
     vars:
       context: .
@@ -148,6 +161,20 @@ images:
         destination:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-context
             tag: $(inputs.params.release_version)-context
+
+      - name: agent-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubi-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+            tag: $(inputs.params.release_version)
+
 
   - name: readiness-probe-init
     vars:
