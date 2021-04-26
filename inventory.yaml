@@ -33,11 +33,6 @@ images:
         tags: ["ubuntu"]
         distro: ubuntu
 
-        # TODO: remove - this is only here as sonar raises a key error on version_id
-        # if no other inputs are specified.
-        inputs:
-          - noop
-
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
@@ -110,11 +105,6 @@ images:
         task_type: dockerfile_template
         distro: ubi
         tags: ["ubi"]
-
-        # TODO: remove - this is only here as sonar raises a key error on version_id
-        # if no other inputs are specified.
-        inputs:
-          - noop
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
