@@ -76,8 +76,6 @@ type MongoDBStatefulSetOwner interface {
 	AutomationConfigSecretName() string
 	// GetUpdateStrategyType returns the UpdateStrategyType of the statefulset.
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
-	// Persistent returns whether or not the statefulset should have persistent volumes added.
-	Persistent() bool
 	// HasSeparateDataAndLogsVolumes returns whether or not the volumes for data and logs would need to be different.
 	HasSeparateDataAndLogsVolumes() bool
 	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
@@ -120,23 +118,21 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	dataVolumeClaim := statefulset.NOOP()
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
-	if mdb.Persistent() {
-		if mdb.HasSeparateDataAndLogsVolumes() {
-			logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-			dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-			dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
-			logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
-			mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
-			mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
-		} else {
-			mounts := []corev1.VolumeMount{
-				statefulset.CreateVolumeMount(dataVolumeName, "/data", statefulset.WithSubPath("data")),
-				statefulset.CreateVolumeMount(dataVolumeName, automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
-			}
-			mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
-			mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
-			singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+	if mdb.HasSeparateDataAndLogsVolumes() {
+		logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
+		dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
+		dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+		logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
+		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
+		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
+	} else {
+		mounts := []corev1.VolumeMount{
+			statefulset.CreateVolumeMount(dataVolumeName, "/data", statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(dataVolumeName, automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
+		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
+		mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
+		singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
 	}
 
 	podSecurityContext := podtemplatespec.NOOP()
