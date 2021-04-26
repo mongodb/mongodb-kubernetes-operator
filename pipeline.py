@@ -28,17 +28,12 @@ def _load_release() -> Dict:
 
 def _build_agent_args(config: DevConfig) -> Dict[str, str]:
     release = _load_release()
-    args = {
+    return {
         "agent_version": release["agent"]["version"],
+        "release_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
         "registry": config.repo_url,
-        "expire_after": "48h",
     }
-
-    if config.is_release:
-        args["release_version"] = release["agent"]["version"]
-        args["expire_after"] = "Never"
-    return args
 
 
 def build_agent_image_ubi(config: DevConfig) -> None:
@@ -66,14 +61,8 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
 
 
 def build_readiness_probe_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("readiness-probe")
-
-    expire_after = "48h"
-    if config.is_release:
-        expire_after = "Never"
 
     sonar_build_image(
         "readiness-probe-init",
@@ -81,20 +70,13 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
-            "expire_after": expire_after,
         },
     )
 
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("post-start-hook")
-
-    expire_after = "48h"
-    if config.is_release:
-        expire_after = "Never"
 
     sonar_build_image(
         "version-post-start-hook-init",
@@ -102,7 +84,6 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
-            "expire_after": expire_after,
         },
     )
 
@@ -126,7 +107,7 @@ def sonar_build_image(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
-    parser.add_argument("--release", type=bool)
+    parser.add_argument("--release", type=lambda x: x.lower() == "true")
     return parser.parse_args()
 
 
