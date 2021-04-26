@@ -168,7 +168,7 @@ images:
         distro: ubi
 
         source:
-          registry: $(inputs.params.registry)/agent-ubi-dev
+          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
           tag: $(inputs.params.version_id)
 
         destination:
