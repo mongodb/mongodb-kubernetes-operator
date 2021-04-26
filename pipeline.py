@@ -20,18 +20,25 @@ DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
 
-def build_agent_image_ubi(config: DevConfig) -> None:
-    image_name = "agent-ubi"
+def _load_release() -> Dict:
     with open("release.json") as f:
         release = json.loads(f.read())
-    args = {
+    return release
+
+
+def _build_agent_args(config: DevConfig) -> Dict[str, str]:
+    release = _load_release()
+    return {
         "agent_version": release["agent"]["version"],
+        "release_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "rhel70-x86_64",
-        "agent_distro": "rhel7_x86_64",
         "registry": config.repo_url,
     }
 
+
+def build_agent_image_ubi(config: DevConfig) -> None:
+    image_name = "agent-ubi"
+    args = _build_agent_args(config)
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
@@ -43,16 +50,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
 
 def build_agent_image_ubuntu(config: DevConfig) -> None:
     image_name = "agent-ubuntu"
-    with open("release.json") as f:
-        release = json.loads(f.read())
-    args = {
-        "agent_version": release["agent"]["version"],
-        "tools_version": release["agent"]["tools_version"],
-        "tools_distro": "ubuntu1604-x86_64",
-        "agent_distro": "linux_x86_64",
-        "registry": config.repo_url,
-    }
-
+    args = _build_agent_args(config)
     config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
@@ -63,9 +61,7 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
 
 
 def build_readiness_probe_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("readiness-probe")
 
     sonar_build_image(
@@ -79,9 +75,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
-    with open("release.json") as f:
-        release = json.loads(f.read())
-
+    release = _load_release()
     config.ensure_tag_is_run("post-start-hook")
 
     sonar_build_image(
@@ -113,7 +107,7 @@ def sonar_build_image(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
-    parser.add_argument("--release", type=bool)
+    parser.add_argument("--release", type=lambda x: x.lower() == "true")
     return parser.parse_args()
 
 

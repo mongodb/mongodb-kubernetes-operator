@@ -1,5 +1,7 @@
 vars:
   registry: <registry>
+  s3_bucket_http: https://enterprise-operator-dockerfiles.s3.amazonaws.com/dockerfiles/mongodb-agent
+  s3_bucket: s3://enterprise-operator-dockerfiles/dockerfiles/mongodb-agent
 
 images:
   - name: agent-ubuntu
@@ -7,50 +9,115 @@ images:
       context: .
       template_context: scripts/dev/templates/agent
 
+    inputs:
+      - agent_version
+      - tools_version
+
     stages:
+      - name: agent-ubuntu-context
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: ["ubuntu"]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: linux_x86_64
+          tools_distro: ubuntu1604-x86_64
+
+        output:
+          - registry: $(inputs.params.registry)/agent-ubuntu-context-dev
+            tag: $(inputs.params.version_id)
+
       - name: agent-template-ubuntu
         task_type: dockerfile_template
-        distro: ubuntu
         tags: ["ubuntu"]
-
-        inputs:
-          - agent_version
-          - tools_version
-          - tools_distro
-          - agent_distro
+        distro: ubuntu
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
       - name: agent-ubuntu-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
         tags: ["ubuntu"]
+
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/agent-ubuntu-context-dev:$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
+          - registry: $(inputs.params.registry)/mongodb-agent-dev
             tag: $(inputs.params.version_id)
 
+      - name: agent-template-ubuntu-s3
+        task_type: dockerfile_template
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.release_version)
+
+      - name: agent-context-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubuntu-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-context
+            tag: $(inputs.params.release_version)-context
+
+      - name: agent-ubuntu-release
+        task_type: tag_image
+        tags: ["ubuntu", "release"]
+        distro: ubuntu
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-agent-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent
+            tag: $(inputs.params.release_version)
 
   - name: agent-ubi
     vars:
       context: .
       template_context: scripts/dev/templates/agent
 
+    inputs:
+      - agent_version
+      - tools_version
+
     stages:
+      - name: agent-ubi-context
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: ["ubi"]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: rhel7_x86_64
+          tools_distro: rhel70-x86_64
+
+        output:
+          - registry: $(inputs.params.registry)/agent-ubi-context-dev
+            tag: $(inputs.params.version_id)
+
+
       - name: agent-template-ubi
         task_type: dockerfile_template
         distro: ubi
         tags: ["ubi"]
-
-        inputs:
-          - agent_version
-          - tools_version
-          - tools_distro
-          - agent_distro
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
@@ -58,8 +125,11 @@ images:
 
       - name: agent-ubi-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
         tags: ["ubi"]
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/agent-ubi-context-dev:$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h
@@ -67,6 +137,43 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
+
+      - name: agent-template-ubi-s3
+        task_type: dockerfile_template
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubi-$(inputs.params.release_version)
+
+      - name: agent-context-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/agent-ubi-context-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-context
+            tag: $(inputs.params.release_version)-context
+
+      - name: agent-ubi-release
+        task_type: tag_image
+        tags: ["ubi", "release"]
+        distro: ubi
+
+        source:
+          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+          tag: $(inputs.params.version_id)
+
+        destination:
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+            tag: $(inputs.params.release_version)
 
 
   - name: readiness-probe-init

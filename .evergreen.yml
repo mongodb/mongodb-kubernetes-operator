@@ -115,6 +115,8 @@ functions:
       params:
         env:
           MONGODB_COMMUNITY_CONFIG: ${workdir}/mongodb-kubernetes-operator/scripts/ci/config.json
+          AWS_ACCESS_KEY_ID: ${community_aws_access_key_id}
+          AWS_SECRET_ACCESS_KEY: ${community_aws_secret_access_key}
         include_expansions_in_env:
           - version_id
           - quay_user_name
@@ -366,6 +368,23 @@ tasks:
           image_type: readiness-probe-init
           release: true
 
+  - name: release_agent_ubuntu
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_image_sonar
+        vars:
+          image_type: agent-ubuntu
+          release: true
+
+  - name: release_agent_ubi
+    commands:
+      - func: clone
+      - func: setup_virtualenv
+      - func: build_and_push_image_sonar
+        vars:
+          image_type: agent-ubi
+          release: true
 
 buildvariants:
   - name: e2e_tests_ubuntu
@@ -446,3 +465,5 @@ buildvariants:
     - name: release_operator
     - name: release_version_upgrade_post_start_hook
     - name: release_readiness_probe
+    - name: release_agent_ubuntu
+    - name: release_agent_ubi
