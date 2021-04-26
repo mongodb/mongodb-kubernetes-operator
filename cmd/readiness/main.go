@@ -66,14 +66,14 @@ func isPodReady(conf config.Config) bool {
 	}
 
 	// If the agent has reached the goal state - returning true
-	ok, err := isInGoalState(health, conf)
-
+	inGoalState, err := isInGoalState(health, conf)
 	if err != nil {
 		logger.Errorf("There was problem checking the health status: %s", err)
 		panic(err)
 	}
 
-	if ok {
+	inReadyState := isInReadyState(health)
+	if inGoalState && inReadyState {
 		logger.Info("Agent has reached goal state")
 		return true
 	}
@@ -198,6 +198,7 @@ func kubernetesClientset() (kubernetes.Interface, error) {
 	}
 	return clientset, nil
 }
+
 func main() {
 	clientSet, err := kubernetesClientset()
 	if err != nil {
@@ -221,4 +222,25 @@ func main() {
 	if !isPodReady(config) {
 		os.Exit(1)
 	}
+}
+
+// isInReadyState checks the MongoDB Server state. It returns true if the state
+// is PRIMARY or SECONDARY.
+func isInReadyState(health health.Status) bool {
+	if len(health.Healthiness) == 0 {
+		return true
+	}
+	for _, processHealth := range health.Healthiness {
+		// We know this loop should run only once, in Kubernetes there's
+		// only 1 server managed per host.
+
+		// Every time the process health is created by the agent,
+		// it checks if the MongoDB process is up and populates this field
+		// (https://github.com/10gen/mms-automation/blob/bb72f74a22d98cfa635c1317e623386b089dc69f/go_planner/src/com.tengen/cm/healthcheck/status.go#L43)
+		// So it's enough to check that this value is not the zero-value for int64
+
+		// The case in which the agent is too old to publish replication status is handled inside "IsReadyState"
+		return processHealth.LastMongoUpTime != 0 && processHealth.IsReadyState()
+	}
+	return false
 }

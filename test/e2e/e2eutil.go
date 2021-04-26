@@ -153,17 +153,13 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv
 			Namespace: mongodbNamespace,
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
-			Members:                     3,
-			Type:                        "ReplicaSet",
-			Version:                     "4.4.0",
-			FeatureCompatibilityVersion: "4.4",
+			Members: 3,
+			Type:    "ReplicaSet",
+			Version: "4.4.0",
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
 					Modes: []mdbv1.AuthMode{"SCRAM"},
 				},
-			},
-			AdditionalMongodConfig: mdbv1.MongodConfiguration{
-				Object: map[string]interface{}{},
 			},
 			Users: []mdbv1.MongoDBUser{
 				{

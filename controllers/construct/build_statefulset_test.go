@@ -1,4 +1,4 @@
-package controllers
+package construct
 
 import (
 	"os"
@@ -13,18 +13,34 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func init() {
-	os.Setenv(versionUpgradeHookImageEnv, "version-upgrade-hook-image")
+	os.Setenv(VersionUpgradeHookImageEnv, "version-upgrade-hook-image")
+}
+
+func newTestReplicaSet() mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "my-rs",
+			Namespace:   "my-ns",
+			Annotations: map[string]string{},
+		},
+		Spec: mdbv1.MongoDBCommunitySpec{
+			Members: 3,
+			Version: "4.2.2",
+		},
+	}
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
-	_ = os.Setenv(mongodbRepoUrl, "repo")
-	_ = os.Setenv(mongodbImageEnv, "mongo")
+	_ = os.Setenv(MongodbRepoUrl, "repo")
+	_ = os.Setenv(MongodbImageEnv, "mongo")
+	_ = os.Setenv(AgentImageEnv, "agent-image")
 
 	mdb := newTestReplicaSet()
-	stsFunc := buildStatefulSetModificationFunction(mdb)
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
 	sts := &appsv1.StatefulSet{}
 
 	t.Run("1st Call", func(t *testing.T) {
@@ -47,18 +63,18 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Equal(t, mdb.ServiceName(), sts.Spec.ServiceName)
 	assert.Equal(t, mdb.Name, sts.Name)
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
-	assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	assert.Equal(t, operatorServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 4)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 1)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
-	agentContainer := sts.Spec.Template.Spec.Containers[1]
+	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "agent-image", agentContainer.Image)
 	probe := agentContainer.ReadinessProbe
-	assert.True(t, reflect.DeepEqual(probes.New(defaultReadiness()), *probe))
-	assert.Equal(t, probes.New(defaultReadiness()).FailureThreshold, probe.FailureThreshold)
+	assert.True(t, reflect.DeepEqual(probes.New(DefaultReadiness()), *probe))
+	assert.Equal(t, probes.New(DefaultReadiness()).FailureThreshold, probe.FailureThreshold)
 	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
 	assert.Len(t, agentContainer.VolumeMounts, 6)
+	assert.NotNil(t, agentContainer.ReadinessProbe)
 
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "agent-scripts")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
@@ -67,9 +83,8 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "logs-volume")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-keyfile")
 
-	mongodContainer := sts.Spec.Template.Spec.Containers[0]
+	mongodContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
-	assert.NotNil(t, sts.Spec.Template.Spec.Containers[1].ReadinessProbe)
 	assert.Len(t, mongodContainer.VolumeMounts, 5)
 
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "data-volume")

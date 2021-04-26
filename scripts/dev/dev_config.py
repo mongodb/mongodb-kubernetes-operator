@@ -1,9 +1,24 @@
-from typing import Dict, Optional
+from __future__ import annotations
+from typing import Dict, Optional, List
+from enum import Enum
 import json
 import os
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
+
+
+class Distro(Enum):
+    UBUNTU = 0
+    UBI = 1
+
+    @staticmethod
+    def from_string(distro_name: str) -> Distro:
+        distro_name = distro_name.lower()
+        return {
+            "ubuntu": Distro.UBUNTU,
+            "ubi": Distro.UBI,
+        }[distro_name]
 
 
 def get_config_path() -> str:
@@ -15,8 +30,17 @@ class DevConfig:
     DevConfig is a wrapper around the developer configuration file
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, distro: Distro):
         self._config = config
+        self._distro = distro
+        self.include_tags: List[str] = []
+        self.skip_tags: List[str] = []
+
+    def ensure_tag_is_run(self, tag: str) -> None:
+        if tag not in self.include_tags:
+            self.include_tags.append(tag)
+        if tag in self.skip_tags:
+            self.skip_tags.remove(tag)
 
     @property
     def namespace(self) -> str:
@@ -25,6 +49,10 @@ class DevConfig:
     @property
     def repo_url(self) -> str:
         return self._config["repo_url"]
+
+    @property
+    def expire_after(self) -> str:
+        return self._config.get("expire_after", "never")
 
     @property
     def operator_image(self) -> str:
@@ -39,17 +67,25 @@ class DevConfig:
         return self._config["version_upgrade_hook_image"]
 
     @property
-    def testrunner_image(self) -> str:
-        return self._config["testrunner_image"]
+    def agent_image(self) -> str:
+        if self._distro == Distro.UBI:
+            return self._config["agent_image_ubi"]
+        return self._config["agent_image_ubuntu"]
+
+    def ensure_skip_tag(self, tag: str) -> None:
+        if tag not in self.skip_tags:
+            self.skip_tags.append(tag)
 
 
-def load_config(config_file_path: str = None) -> DevConfig:
+def load_config(
+    config_file_path: Optional[str] = None, distro: Distro = Distro.UBUNTU
+) -> DevConfig:
     if config_file_path is None:
         config_file_path = get_config_path()
 
     try:
         with open(config_file_path, "r") as f:
-            return DevConfig(json.loads(f.read()))
+            return DevConfig(json.loads(f.read()), distro=distro)
     except FileNotFoundError:
         print(
             f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"

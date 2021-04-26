@@ -37,6 +37,13 @@ func TestContainer(t *testing.T) {
 			probes.WithFailureThreshold(15),
 			probes.WithPeriodSeconds(10),
 		)),
+		WithStartupProbe(
+			probes.Apply(
+				probes.WithExecCommand([]string{"startup-exec"}),
+				probes.WithFailureThreshold(20),
+				probes.WithPeriodSeconds(30),
+			),
+		),
 		WithResourceRequirements(resourcerequirements.Defaults()),
 		WithCommand([]string{"container-cmd"}),
 		WithEnvs(
@@ -70,6 +77,11 @@ func TestContainer(t *testing.T) {
 	assert.Equal(t, int32(15), liveNessProbe.FailureThreshold)
 	assert.Equal(t, int32(10), liveNessProbe.PeriodSeconds)
 	assert.Equal(t, "liveness-exec", liveNessProbe.Exec.Command[0])
+
+	startupProbe := c.StartupProbe
+	assert.Equal(t, int32(20), startupProbe.FailureThreshold)
+	assert.Equal(t, int32(30), startupProbe.PeriodSeconds)
+	assert.Equal(t, "startup-exec", startupProbe.Exec.Command[0])
 
 	assert.Equal(t, c.Resources, resourcerequirements.Defaults())
 

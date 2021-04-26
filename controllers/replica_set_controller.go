@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 
@@ -23,20 +24,16 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/stretchr/objx"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
@@ -54,31 +51,8 @@ import (
 )
 
 const (
-	agentImageEnv                = "AGENT_IMAGE"
-	clusterDNSName               = "CLUSTER_DNS_NAME"
-	versionUpgradeHookImageEnv   = "VERSION_UPGRADE_HOOK_IMAGE"
-	readinessProbeImageEnv       = "READINESS_PROBE_IMAGE"
-	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	mongodbImageEnv              = "MONGODB_IMAGE"
-	mongodbRepoUrl               = "MONGODB_REPO_URL"
-	headlessAgentEnv             = "HEADLESS_AGENT"
-	podNamespaceEnv              = "POD_NAMESPACE"
-	automationConfigEnv          = "AUTOMATION_CONFIG_MAP"
+	clusterDNSName = "CLUSTER_DNS_NAME"
 
-	agentName                      = "mongodb-agent"
-	mongodbName                    = "mongod"
-	versionUpgradeHookName         = "mongod-posthook"
-	readinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	dataVolumeName                 = "data-volume"
-	logVolumeName                  = "logs-volume"
-	readinessProbePath             = "/opt/scripts/readinessprobe"
-	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
-	operatorServiceAccountName     = "mongodb-kubernetes-operator"
-	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
-
-	// lastVersionAnnotationKey should indicate which version of MongoDB was last
-	// configured
-	lastVersionAnnotationKey    = "mongodb.com/v1.lastVersion"
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 )
 
@@ -212,7 +186,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Resetting StatefulSet UpdateStrategy to RollingUpdate")
-	if err := r.resetStatefulSetUpdateStrategy(mdb); err != nil {
+	if err := statefulset.ResetUpdateStrategy(&mdb, r.client); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
@@ -243,8 +217,13 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return res, err
 	}
 
-	if err := r.updateCurrentSpecAnnotation(mdb); err != nil {
-		r.log.Errorf("Could not save current state as an annotation: %s", err)
+	// the last version will be duplicated in two annotations.
+	// This is needed to reuse the update strategy logic in enterprise
+	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
+		r.log.Errorf("Could not save current version as an annotation: %s", err)
+	}
+	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
+		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
@@ -254,6 +233,19 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
 	return res, err
+}
+
+// updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
+func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
+	currentSpec, err := json.Marshal(mdb.Spec)
+	if err != nil {
+		return err
+	}
+
+	specAnnotations := map[string]string{
+		lastSuccessfulConfiguration: string(currentSpec),
+	}
+	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
 }
 
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
@@ -286,7 +278,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 		return false, errors.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", getUpdateStrategyType(mdb))
+	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
 
@@ -320,6 +312,11 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 	// the StatefulSet has not yet been created, so the next stage of reconciliation will be
 	// creating the StatefulSet and ensuring it reaches the Running phase.
 	if apiErrors.IsNotFound(err) {
+		return true, nil
+	}
+
+	if isPreReadinessInitContainerStatefulSet(sts) {
+		r.log.Debugf("The existing StatefulSet did not have the readiness probe init container, skipping pod annotation check.")
 		return true, nil
 	}
 
@@ -357,7 +354,7 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 
 	// when we change version, we need the StatefulSet images to be updated first, then the agent can get to goal
 	// state on the new version.
-	if isChangingVersion(mdb) {
+	if mdb.IsChangingVersion() {
 		r.log.Debug("Version change in progress, the StatefulSet must be updated first")
 		return false
 	}
@@ -376,19 +373,6 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		func() (bool, error) {
 			return r.deployStatefulSet(mdb)
 		})
-}
-
-// resetStatefulSetUpdateStrategy ensures the stateful set is configured back to using RollingUpdateStatefulSetStrategyType
-// and does not keep using OnDelete
-func (r *ReplicaSetReconciler) resetStatefulSetUpdateStrategy(mdb mdbv1.MongoDBCommunity) error {
-	if !isChangingVersion(mdb) {
-		return nil
-	}
-	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	_, err := statefulset.GetAndUpdate(r.client, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
-		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-	})
-	return err
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
@@ -415,20 +399,6 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 	return nil
 }
 
-// setAnnotations updates the mongodb resource annotations by applying the provided annotations
-// on top of the existing ones
-func (r ReplicaSetReconciler) setAnnotations(nsName types.NamespacedName, annotations map[string]string) error {
-	mdb := mdbv1.MongoDBCommunity{}
-	return r.client.GetAndUpdate(nsName, &mdb, func() {
-		if mdb.Annotations == nil {
-			mdb.Annotations = map[string]string{}
-		}
-		for key, val := range annotations {
-			mdb.Annotations[key] = val
-		}
-	})
-}
-
 // ensureAutomationConfig makes sure the AutomationConfig secret has been successfully created. The automation config
 // that was updated/created is returned.
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
@@ -450,7 +420,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
-	fcv := mdb.GetFCV()
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
@@ -459,7 +428,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetFCV(&fcv).
+		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		AddModifications(getMongodConfigModification(mdb)).
@@ -545,33 +514,6 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	)
 }
 
-func (r ReplicaSetReconciler) updateCurrentSpecAnnotation(mdb mdbv1.MongoDBCommunity) error {
-	currentSpec, err := json.Marshal(mdb.Spec)
-	if err != nil {
-		return err
-	}
-
-	annotations := map[string]string{
-		lastSuccessfulConfiguration: string(currentSpec),
-	}
-	return r.setAnnotations(mdb.NamespacedName(), annotations)
-}
-
-// getPreviousSpec returns the last spec of the resource that was successfully achieved.
-func getPreviousSpec(mdb mdbv1.MongoDBCommunity) mdbv1.MongoDBCommunitySpec {
-
-	previousSpec, ok := mdb.Annotations[lastSuccessfulConfiguration]
-	if !ok {
-		return mdbv1.MongoDBCommunitySpec{}
-	}
-
-	spec := mdbv1.MongoDBCommunitySpec{}
-	if err := json.Unmarshal([]byte(previousSpec), &spec); err != nil {
-		return mdbv1.MongoDBCommunitySpec{}
-	}
-	return spec
-}
-
 // getMongodConfigModification will merge the additional configuration in the CRD
 // into the configuration set up by the operator.
 func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
@@ -584,15 +526,6 @@ func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Mo
 	}
 }
 
-// getUpdateStrategyType returns the type of RollingUpgradeStrategy that the StatefulSet
-// should be configured with
-func getUpdateStrategyType(mdb mdbv1.MongoDBCommunity) appsv1.StatefulSetUpdateStrategyType {
-	if !isChangingVersion(mdb) {
-		return appsv1.RollingUpdateStatefulSetStrategyType
-	}
-	return appsv1.OnDeleteStatefulSetStrategyType
-}
-
 // buildStatefulSet takes a MongoDB resource and converts it into
 // the corresponding stateful set
 func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
@@ -601,171 +534,17 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 	return sts, nil
 }
 
-// isChangingVersion returns true if an attempted version change is occurring.
-func isChangingVersion(mdb mdbv1.MongoDBCommunity) bool {
-	prevSpec := getPreviousSpec(mdb)
-	return prevSpec.Version != "" && prevSpec.Version != mdb.Spec.Version
-}
-
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(agentName),
-		container.WithImage(os.Getenv(agentImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithReadinessProbe(defaultReadiness()),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand([]string{
-			"agent/mongodb-agent",
-			"-cluster=" + clusterFilePath,
-			"-skipMongoStart",
-			"-noDaemonize",
-			"-healthCheckFilePath=" + agentHealthStatusFilePathValue,
-			"-serveStatusPort=5000",
-			"-useLocalMongoDbTools",
-		},
-		),
-		container.WithEnvs(
-			corev1.EnvVar{
-				Name:  headlessAgentEnv,
-				Value: "true",
-			},
-			corev1.EnvVar{
-				Name: podNamespaceEnv,
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						APIVersion: "v1",
-						FieldPath:  "metadata.namespace",
-					},
-				},
-			},
-			corev1.EnvVar{
-				Name:  automationConfigEnv,
-				Value: automationConfigSecretName,
-			},
-			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: agentHealthStatusFilePathValue,
-			},
-		),
-	)
-}
-
-func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(versionUpgradeHookName),
-		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
-		container.WithImage(os.Getenv(versionUpgradeHookImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithVolumeMounts(volumeMount),
-	)
-}
-
-// readinessProbeInit returns a modification function which will add the readiness probe container.
-// this container will copy the readiness probe binary into the /opt/scripts directory.
-func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
-	return container.Apply(
-		container.WithName(readinessProbeContainerName),
-		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
-		container.WithImage(os.Getenv(readinessProbeImageEnv)),
-		container.WithImagePullPolicy(corev1.PullAlways),
-		container.WithVolumeMounts(volumeMount),
-	)
-}
-
-func getMongoDBImage(version string) string {
-	repoUrl := os.Getenv(mongodbRepoUrl)
-	if strings.HasSuffix(repoUrl, "/") {
-		repoUrl = strings.TrimRight(repoUrl, "/")
-	}
-	mongoImageName := os.Getenv(mongodbImageEnv)
-	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
-}
-
-func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
-	mongoDbCommand := []string{
-		"/bin/sh",
-		"-c",
-		`
-# run post-start hook to handle version changes
-/hooks/version-upgrade
-
-# wait for config to be created by the agent
-while [ ! -f /data/automation-mongod.conf ]; do sleep 3 ; done ; sleep 2 ;
-
-# start mongod with this configuration
-exec mongod -f /data/automation-mongod.conf ;
-`,
-	}
-
-	return container.Apply(
-		container.WithName(mongodbName),
-		container.WithImage(getMongoDBImage(version)),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
-		container.WithCommand(mongoDbCommand),
-		container.WithEnvs(
-			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: "/healthstatus/agent-health-status.json",
-			},
-		),
-		container.WithVolumeMounts(volumeMounts),
-	)
-}
-
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	labels := map[string]string{
-		"app": mdb.ServiceName(),
-	}
-
-	// the health status volume is required in both agent and mongod pods.
-	// the mongod requires it to determine if an upgrade is happening and needs to kill the pod
-	// to prevent agent deadlock
-	healthStatusVolume := statefulset.CreateVolumeFromEmptyDir("healthstatus")
-	agentHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/var/log/mongodb-mms-automation/healthstatus")
-	mongodHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/healthstatus")
-
-	// hooks volume is only required on the mongod pod.
-	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
-	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
-
-	// scripts volume is only required on the mongodb-agent pod.
-	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
-	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
-
-	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
-	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
-
-	dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-	logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
 	return statefulset.Apply(
-		statefulset.WithName(mdb.Name),
-		statefulset.WithNamespace(mdb.Namespace),
-		statefulset.WithServiceName(mdb.ServiceName()),
-		statefulset.WithLabels(labels),
-		statefulset.WithMatchLabels(labels),
+		commonModification,
 		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
-		statefulset.WithReplicas(mdb.StatefulSetReplicasThisReconciliation()),
-		statefulset.WithUpdateStrategyType(getUpdateStrategyType(mdb)),
-		statefulset.WithVolumeClaim(dataVolumeName, dataPvc()),
-		statefulset.WithVolumeClaim(logVolumeName, logsPvc()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
-				podtemplatespec.WithPodLabels(labels),
-				podtemplatespec.WithVolume(healthStatusVolume),
-				podtemplatespec.WithVolume(hooksVolume),
-				podtemplatespec.WithVolume(automationConfigVolume),
-				podtemplatespec.WithVolume(scriptsVolume),
-				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
-				podtemplatespec.WithContainer(agentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, dataVolumeMount, scriptsVolumeMount, logVolumeMount})),
-				podtemplatespec.WithContainer(mongodbName, mongodbContainer(mdb.Spec.Version, []corev1.VolumeMount{mongodHealthStatusVolumeMount, dataVolumeMount, hooksVolumeMount, logVolumeMount})),
-				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(readinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 				buildTLSPodSpecModification(mdb),
-				buildScramPodSpecModification(mdb),
 			),
 		),
+
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 	)
 }
@@ -785,26 +564,8 @@ func getDomain(service, namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterName)
 }
 
-func defaultReadiness() probes.Modification {
-	return probes.Apply(
-		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(60), // TODO: this value needs further consideration
-		probes.WithInitialDelaySeconds(5),
-	)
-}
-
-func dataPvc() persistentvolumeclaim.Modification {
-	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(dataVolumeName),
-		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
-		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildDefaultStorageRequirements()),
-	)
-}
-
-func logsPvc() persistentvolumeclaim.Modification {
-	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(logVolumeName),
-		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
-		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildStorageRequirements("2G")),
-	)
+// isPreReadinessInitContainerStatefulSet determines if the existing StatefulSet has been configured with the readiness probe init container.
+// if this is not the case, then we should ensure to skip past the annotation check otherwise the pods will remain in pending state forever.
+func isPreReadinessInitContainerStatefulSet(sts appsv1.StatefulSet) bool {
+	return container.GetByName(construct.ReadinessProbeContainerName, sts.Spec.Template.Spec.InitContainers) == nil
 }

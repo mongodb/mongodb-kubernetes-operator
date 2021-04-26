@@ -10,7 +10,7 @@ import k8s_conditions
 import dump_diagnostic
 from dockerutil import build_and_push_image
 from typing import Dict
-from dev_config import load_config, DevConfig
+from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
 import argparse
 import os
@@ -147,6 +147,10 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                             "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
                         },
                         {
+                            "name": "AGENT_IMAGE",
+                            "value": f"{dev_config.repo_url}/{dev_config.agent_image}:{args.tag}",
+                        },
+                        {
                             "name": "TEST_NAMESPACE",
                             "value": dev_config.namespace,
                         },
@@ -251,6 +255,12 @@ def parse_args() -> argparse.Namespace:
         help="Watch all namespaces",
         action="store_true",
     )
+    parser.add_argument(
+        "--distro",
+        help="The distro of images that should be used",
+        type=str,
+        default="ubuntu",
+    )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()
 
@@ -301,7 +311,7 @@ def main() -> int:
     args = parse_args()
     config.load_kube_config()
 
-    dev_config = load_config(args.config_file)
+    dev_config = load_config(args.config_file, Distro.from_string(args.distro))
     create_kube_config(args.config_file)
 
     try:

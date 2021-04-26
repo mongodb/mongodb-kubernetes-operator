@@ -5,6 +5,7 @@
 - [Install the Operator](#install-the-operator)
   - [Prerequisites](#prerequisites)
   - [Understand Deployment Scopes](#understand-deployment-scopes)
+  - [Configure the MongoDB Docker Image or Container Registry](#configure-the-mongodb-docker-image-or-container-registry)
   - [Procedure](#procedure)
 - [Upgrade the Operator](#upgrade-the-operator)
 
@@ -21,7 +22,8 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
    ```
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
    ```
-4. Review the possible Operator [deployment scopes](#understand-mongodb-community-operator-deployment-scopes) and configure the Operator to watch other namespaces, if necessary.
+4. **Optional** Review the possible Operator [deployment scopes](#understand-mongodb-community-operator-deployment-scopes) and configure the Operator to watch other namespaces.
+5. **Optional** Configure the [MongoDB Docker image or container registry](#configure-the-mongodb-docker-image-or-container-registry).
 
 ### Understand Deployment Scopes
 
@@ -65,13 +67,47 @@ To configure the Operator to watch resources in other namespaces:
    ```sh
    kubectl apply -f deploy/clusterwide
    ```
-3. For each namespace that you want the Operator to watch, run the following commands to deploy a role and role-binding in that namespace:
+3. For each namespace that you want the Operator to watch, run the following
+   commands to deploy a Role, RoleBinding and ServiceAccount in that namespace:
 
    ```sh
-   kubectl apply -f deploy/operator/role.yaml -n <namespace> && kubectl apply -f deploy/operator/role_binding.yaml -n <namespace>
+   kubectl apply -k config/rbac --namespace <my-namespace>
    ```
 
 4. [Install the operator](#procedure).
+
+### Configure the MongoDB Docker Image or Container Registry
+
+By default, the Operator pulls the MongoDB database Docker image from `registry.hub.docker.com/library/mongo`.
+
+To configure the Operator to use a different image or container registry
+for MongoDB Docker images:
+
+1. In the Operator [resource definition](../config/manager/manager.yaml), set the `MONGODB_IMAGE` and `MONGODB_REPO_URL` environment variables:
+
+   | Environment Variable | Description | Default |
+   |----|----|----|
+   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"library/mongo"` |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"registry.hub.docker.com"` |
+
+   ```yaml
+       spec:
+         containers:
+           - name: mongodb-kubernetes-operator
+             image: quay.io/mongodb/mongodb-kubernetes-operator:0.5.1
+             command:
+               - mongodb-kubernetes-operator
+             imagePullPolicy: Always
+             env:
+               - name: MONGODB_IMAGE
+                 value: <path/to/image>
+               - name: MONGODB_REPO_URL
+                 value: <container-registry-url>
+   ```
+
+2. Save the file.
+
+3. [Install the operator](#procedure).
 
 ### Procedure
 
@@ -96,15 +132,15 @@ To install the MongoDB Community Kubernetes Operator:
 
     a. Invoke the following command:
     ```
-    kubectl apply -k config/rbac/
+    kubectl apply -k config/rbac/ --namespace <my-namespace>
     ```
     b. Verify that the resources have been created:
     ```
-    kubectl get role mongodb-kubernetes-operator
+    kubectl get role mongodb-kubernetes-operator --namespace <my-namespace>
 
-    kubectl get rolebinding mongodb-kubernetes-operator
+    kubectl get rolebinding mongodb-kubernetes-operator --namespace <my-namespace>
 
-    kubectl get serviceaccount mongodb-kubernetes-operator
+    kubectl get serviceaccount mongodb-kubernetes-operator --namespace <my-namespace>
     ```
 4. Install the Operator.
 
@@ -121,7 +157,7 @@ To install the MongoDB Community Kubernetes Operator:
 
 To upgrade the MongoDB Community Kubernetes Operator to a specific version:
 
-1. Change the version in the [operator yaml file](../config/manager/manager.yaml)
+1. Change the version in the Operator [resource definition](../config/manager/manager.yaml)
 2. Change to the directory in which you cloned the repository.
 3. Checkout the specific tag matching the operator version (e.g. `v0.5.1`)
 4. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).

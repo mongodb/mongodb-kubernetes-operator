@@ -1,3 +1,5 @@
+import json
+
 import jinja2
 import argparse
 import os
@@ -20,7 +22,8 @@ def operator_params(files_to_add: List[str]) -> DockerParameters:
 
 def e2e_params(files_to_add: List[str]) -> DockerParameters:
     return {
-        "base_image": f"golang:{GOLANG_TAG}",  # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
+        "base_image": f"golang:{GOLANG_TAG}",
+        # TODO: make this image smaller, error: 'exec: "gcc": executable file not found in $PATH' with golang:alpine
         "files_to_add": files_to_add,
     }
 
@@ -33,8 +36,10 @@ def render(image_name: str, files_to_add: List[str]) -> str:
 
     render_values = param_dict.get(image_name, dict())
 
+    search_path = str(render_values.get("template_path", "scripts/dev/templates"))
+
     env = jinja2.Environment()
-    env.loader = jinja2.FileSystemLoader(searchpath="scripts/dev/templates")
+    env.loader = jinja2.FileSystemLoader(searchpath=search_path)
     return env.get_template(f"Dockerfile.{image_name}").render(render_values)
 
 

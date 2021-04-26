@@ -20,8 +20,10 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -38,7 +40,7 @@ import (
 )
 
 func init() {
-	os.Setenv("AGENT_IMAGE", "agent-image")
+	os.Setenv(construct.AgentImageEnv, "agent-image")
 }
 
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
@@ -120,8 +122,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
-	_ = os.Setenv(mongodbRepoUrl, "repo")
-	_ = os.Setenv(mongodbImageEnv, "mongo")
+	_ = os.Setenv(construct.MongodbRepoUrl, "repo")
+	_ = os.Setenv(construct.MongodbImageEnv, "mongo")
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
@@ -136,13 +138,13 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Equal(t, agentName, agentContainer.Name)
-	assert.Equal(t, os.Getenv(agentImageEnv), agentContainer.Image)
-	expectedProbe := probes.New(defaultReadiness())
+	assert.Equal(t, construct.AgentName, agentContainer.Name)
+	assert.Equal(t, os.Getenv(construct.AgentImageEnv), agentContainer.Image)
+	expectedProbe := probes.New(construct.DefaultReadiness())
 	assert.True(t, reflect.DeepEqual(&expectedProbe, agentContainer.ReadinessProbe))
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, mongodbName, mongodbContainer.Name)
+	assert.Equal(t, construct.MongodbName, mongodbContainer.Name)
 	assert.Equal(t, "repo/mongo:4.2.2", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
@@ -207,7 +209,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, Same Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		mdb.Annotations[lastVersionAnnotationKey] = "4.0.0"
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = "4.0.0"
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -215,7 +217,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 	t.Run("On No Version Change, First Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
-		delete(mdb.Annotations, lastVersionAnnotationKey)
+		delete(mdb.Annotations, annotations.LastAppliedMongoDBVersion)
 		sts, err := buildStatefulSet(mdb)
 		assert.NoError(t, err)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
@@ -232,7 +234,7 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		bytes, err := json.Marshal(prevSpec)
 		assert.NoError(t, err)
 
-		mdb.Annotations[lastSuccessfulConfiguration] = string(bytes)
+		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = string(bytes)
 		sts, err := buildStatefulSet(mdb)
 
 		assert.NoError(t, err)
@@ -302,6 +304,32 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
+}
+
+func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
+	mdb := newTestReplicaSet()
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	assert.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
+
+	// Upgrading minor version does not change the FCV on the automationConfig
+	mdbRef := &mdb
+	mdbRef.Spec.Version = "4.4.0"
+	_ = mgr.Client.Update(context.TODO(), mdbRef)
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	assert.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
+
 }
 
 func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
@@ -474,6 +502,48 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	assert.Equal(t, 5, mdb.Status.CurrentMongoDBMembers)
 }
 
+func TestIgnoreUnknownUsers(t *testing.T) {
+	t.Run("Ignore Unkown Users set to true", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := true
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers is not set", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = nil
+		assertAuthoritativeSet(t, mdb, false)
+	})
+
+	t.Run("IgnoreUnknownUsers set to false", func(t *testing.T) {
+		mdb := newTestReplicaSet()
+		ignoreUnknownUsers := false
+		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
+		assertAuthoritativeSet(t, mdb, true)
+	})
+
+}
+
+// assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
+// results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
+func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+
+	bytes := s.Data[automationconfig.ConfigKey]
+	ac, err := automationconfig.FromBytes(bytes)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedValue, ac.Auth.AuthoritativeSet)
+}
+
 func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
@@ -515,12 +585,6 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, mdb.Status.CurrentMongoDBMembers)
-}
-
-func TestOpenshift_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "openshift_mdb.yaml")
-	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[1].Env[3].Name)
-	assert.Equal(t, "MANAGED_SECURITY_CONTEXT", sts.Spec.Template.Spec.Containers[0].Env[1].Name)
 }
 
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {

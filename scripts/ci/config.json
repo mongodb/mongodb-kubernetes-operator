@@ -4,5 +4,7 @@
     "operator_image": "community-operator-dev",
     "e2e_image": "community-operator-e2e",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-    "testrunner_image": "community-operator-testrunner"
+    "testrunner_image": "community-operator-testrunner",
+    "agent_image_ubuntu": "mongodb-agent-ubuntu-dev",
+    "agent_image_ubi": "mongodb-agent-ubi-dev"
 }
