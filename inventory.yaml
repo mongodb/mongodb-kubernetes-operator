@@ -76,7 +76,7 @@ images:
           tag: $(inputs.params.version_id)-context
 
         destination:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubuntu
+          - registry: $(inputs.params.registry)/mongodb-agent
             tag: $(inputs.params.release_version)-context
 
       - name: agent-ubuntu-release
