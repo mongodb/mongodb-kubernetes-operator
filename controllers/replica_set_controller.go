@@ -127,7 +127,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	return sm.Reconcile()
+	res, err := sm.Reconcile()
+
+	// if any errors are surfaced, we reset and start from the beginning.
+	if err != nil {
+		log.Errorf("Error during reconciliation: %s", err)
+		return reconcile.Result{Requeue: true}, resetStateMachineHistory(r.client, mdb)
+	}
+	return res, err
 }
 
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
@@ -205,7 +212,6 @@ func deployAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 		return true, nil
 	}
 
-	log.Debugf("Waiting for agents to reach version %d", ac.Version)
 	if isPreReadinessInitContainerStatefulSet(sts) {
 		log.Debugf("The existing StatefulSet did not have the readiness probe init container, skipping pod annotation check.")
 		return true, nil

@@ -13,6 +13,11 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
+//const (
+//	cacheRefreshEnv     = "CACHE_REFRESH_TIME_SEC"
+//	defaultCacheRefresh = int(2 * time.Second)
+//)
+
 func (r *ReplicaSetReconciler) getMongoDBCommunity(nsName types.NamespacedName) (mdbv1.MongoDBCommunity, error) {
 	mdb := mdbv1.MongoDBCommunity{}
 	err := r.client.Get(context.TODO(), nsName, &mdb)
@@ -28,21 +33,23 @@ func (r *ReplicaSetReconciler) LoadNextState(nsName types.NamespacedName) (strin
 		return "", err
 	}
 
-	startingStateName, err := getLastStateName(mdb)
+	nextState, err := getNextState(mdb)
 	if err != nil {
 		return "", errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
 	}
 
-	if startingStateName == "" {
-		startingStateName = reconciliationStartStateName
+	if nextState == "" {
+		nextState = reconciliationStartStateName
 	}
-	return startingStateName, nil
+	return nextState, nil
 }
 
 func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateName string) error {
 	if stateName == "" {
 		return nil
 	}
+
+	time.Sleep(time.Second * 2)
 
 	var err error
 	attempts := 3
@@ -61,6 +68,12 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 			mdb.Annotations = map[string]string{}
 		}
 
+		// if the next state already exists within the state history, it means we are creating a cycle within the graph.
+		// if this is the case we error out and the state machine will be reset.
+		if allStates.ContainsState(stateName) {
+			return errors.Errorf("attempting to save state [%s], that has already been completed. State history: %+v", stateName, allStates.StateHistory)
+		}
+
 		allStates.NextState = stateName
 		allStates.StateHistory = append(allStates.StateHistory, stateName)
 
@@ -70,9 +83,8 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 		}
 
 		mdb.Annotations[stateMachineAnnotation] = string(bytes)
-		err = r.client.Update(context.TODO(), &mdb)
-		if err == nil {
-			break
+		if err := r.client.Update(context.TODO(), &mdb); err == nil {
+			return nil
 		}
 
 		if apierrors.IsTransientError(err) {
@@ -82,10 +94,13 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 		}
 		return err
 	}
+
 	return err
 
 }
 
+// getExistingStateMachineStatesFromAnnotation returns a MongoDBStates from
+// on the annotation of the resource.
 func getExistingStateMachineStatesFromAnnotation(mdb mdbv1.MongoDBCommunity) (MongoDBStates, error) {
 	if mdb.Annotations == nil {
 		return newStartingStates(), nil
@@ -103,7 +118,8 @@ func getExistingStateMachineStatesFromAnnotation(mdb mdbv1.MongoDBCommunity) (Mo
 	return allStates, nil
 }
 
-func getLastStateName(mdb mdbv1.MongoDBCommunity) (string, error) {
+// getNextState returns the next state that should be executed.
+func getNextState(mdb mdbv1.MongoDBCommunity) (string, error) {
 	allStates, err := getExistingStateMachineStatesFromAnnotation(mdb)
 	if err != nil {
 		return "", err

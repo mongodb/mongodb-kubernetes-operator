@@ -34,12 +34,22 @@ var (
 	deployStatefulSetStateName              = "DeployStatefulSet"
 	resetStatefulSetUpdateStrategyStateName = "ResetStatefulSetUpdateStrategy"
 	reconciliationEndStateName              = "ReconciliationEnd"
+	reconciliationRetryStateName            = "ReconciliationRetry"
 	updateStatusStateName                   = "UpdateStatus"
 )
 
 type MongoDBStates struct {
 	NextState    string   `json:"nextState"`
 	StateHistory []string `json:"stateHistory"`
+}
+
+func (m MongoDBStates) ContainsState(state string) bool {
+	for _, s := range m.StateHistory {
+		if s == state {
+			return true
+		}
+	}
+	return false
 }
 
 // BuildStateMachine creates a State Machine that is configured with all of the different transitions that are possible
@@ -61,6 +71,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	resetUpdateStrategyState := NewResetStatefulSetUpdateStrategyState(client, mdb)
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endReconciliationState := NewReconciliationEndState(client, mdb, log)
+	retryReconciliationState := NewRetryReconciliationState(client, mdb, log)
 
 	sm.AddDirectTransition(reconciliationStart, validateSpecState)
 
@@ -87,8 +98,9 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddDirectTransition(resetUpdateStrategyState, updateStatusState)
 
-	// if we're scaling, we should go back and update the StatefulSet/AutomationConfig again.
-	sm.AddTransition(updateStatusState, deployMongoDBReplicaSetStartState, state.FromBool(scale.IsStillScaling(&mdb)))
+	// if we're scaling, we should requeue a reconciliation. We can only scale MongoDB members one at a time,
+	// so we repeat the whole reconciliation process per member we are scaling up/down.
+	sm.AddTransition(updateStatusState, retryReconciliationState, state.FromBool(scale.IsStillScaling(&mdb)))
 	sm.AddDirectTransition(updateStatusState, endReconciliationState)
 	return sm, nil
 }
@@ -365,6 +377,22 @@ func NewReconciliationEndState(client kubernetesClient.Client, mdb mdbv1.MongoDB
 	}
 }
 
+// NewRetryReconciliationState prepares the resource annotation for the next reconciliation. This state should be
+// used if the intended path is a full retry of the reconciliation loop starting from the beginning.
+func NewRetryReconciliationState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+	return state.State{
+		Name: reconciliationRetryStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			if err := setNextState(client, mdb, reconciliationStartStateName); err != nil {
+				log.Errorf("Failed resetting State Machine annotation: %s", err)
+				return result.RetryState(5)
+			}
+			log.Infow("Requeuing reconciliation")
+			return result.RetryState(5)
+		},
+	}
+}
+
 // newStartingStates returns a MongoDBStates instance which will cause the State Machine
 // to transition to the first state.
 func newStartingStates() MongoDBStates {
@@ -388,11 +416,7 @@ func setNextState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, st
 	}
 
 	annotations.SetAnnotation(&mdb, stateMachineAnnotation, string(bytes))
-
-	if err := client.Update(context.TODO(), &mdb); err != nil {
-		return err
-	}
-	return nil
+	return client.Update(context.TODO(), &mdb)
 }
 
 // resetStateMachineHistory resets the history of states that have occurred. This should happen
@@ -410,9 +434,5 @@ func resetStateMachineHistory(client kubernetesClient.Client, mdb mdbv1.MongoDBC
 	}
 
 	annotations.SetAnnotation(&mdb, stateMachineAnnotation, string(bytes))
-
-	if err := client.Update(context.TODO(), &mdb); err != nil {
-		return err
-	}
-	return nil
+	return client.Update(context.TODO(), &mdb)
 }
