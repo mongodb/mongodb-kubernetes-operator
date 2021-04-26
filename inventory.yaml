@@ -46,7 +46,7 @@ images:
           imagebase: $(inputs.params.registry)/agent-ubuntu-context-dev:$(inputs.params.version_id)
 
         labels:
-          quay.expires-after: $(inputs.params.expire_after)
+          quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubuntu-dev
@@ -159,11 +159,8 @@ images:
       dockerfile: scripts/dev/dockerfiles/Dockerfile.readiness
       tags: ["readiness-probe"]
 
-      inputs:
-        - expire_after
-
       labels:
-        quay.expires-after: $(inputs.params.expire_after)
+        quay.expires-after: 48h
 
       output:
         - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
@@ -195,11 +192,8 @@ images:
         dockerfile: scripts/dev/dockerfiles/Dockerfile.versionhook
         tags: ["post-start-hook"]
 
-        inputs:
-          - expire_after
-
         labels:
-          quay.expires-after: $(inputs.params.expire_after)
+          quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
