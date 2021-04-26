@@ -31,7 +31,9 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= <operator-registry>/mongodb-kubernetes-operator
+REPO_URL := $(shell cat ~/.community-operator-dev/config.json | jq -r .repo_url)
+OPERATOR_IMAGE := $(shell cat ~/.community-operator-dev/config.json | jq -r .operator_image)
+IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=true,crdVersions=v1beta1"
@@ -71,7 +73,7 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
