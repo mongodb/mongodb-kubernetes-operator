@@ -13,9 +13,12 @@ VALID_IMAGE_NAMES = frozenset(
         "agent-ubuntu",
         "readiness-probe-init",
         "version-post-start-hook-init",
+        "operator-ubi",
+        "e2e",
     ]
 )
 
+GOLANG_TAG = "1.14"
 DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
@@ -89,6 +92,33 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
     )
 
 
+def build_operator_ubi_image(config: DevConfig) -> None:
+    config.ensure_tag_is_run("ubi")
+    sonar_build_image(
+        "operator-ubi",
+        config,
+        args={
+            "registry": config.repo_url,
+            "builder": "true",
+            "builder_image": f"golang:{GOLANG_TAG}",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+        },
+        inventory="inventories/operator-inventory.yaml",
+    )
+
+
+def build_e2e_image(config: DevConfig) -> None:
+    sonar_build_image(
+        "e2e",
+        config,
+        args={
+            "registry": config.repo_url,
+            "base_image": f"golang:{GOLANG_TAG}",
+        },
+        inventory="inventories/e2e-inventory.yaml",
+    )
+
+
 def sonar_build_image(
     image_name: str,
     config: DevConfig,
@@ -137,6 +167,8 @@ def main() -> int:
         "agent-ubuntu": build_agent_image_ubuntu,
         "readiness-probe-init": build_readiness_probe_image,
         "version-post-start-hook-init": build_version_post_start_hook_image,
+        "operator-ubi": build_operator_ubi_image,
+        "e2e": build_e2e_image,
     }[image_name]
 
     image_build_function(config)

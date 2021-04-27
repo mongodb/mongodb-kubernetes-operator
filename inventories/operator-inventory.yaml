@@ -1,0 +1,33 @@
+vars:
+  registry: <registry>
+
+images:
+  - name: operator-ubi
+    vars:
+      context: .
+      template_context: scripts/dev/templates
+
+    stages:
+      - name: operator-template-ubi
+        task_type: dockerfile_template
+        tags: ["ubi"]
+        distro: operator
+
+        inputs:
+          - builder
+          - builder_image
+          - base_image
+
+        output:
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+      - name: operator-build-ubi
+        task_type: docker_build
+        tags: ["ubi"]
+
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+        output:
+          - registry: $(inputs.params.registry)/community-operator-dev
+            tag: $(inputs.params.version_id)
+

@@ -2,33 +2,32 @@ vars:
   registry: <registry>
 
 images:
-  - name: operator-ubi
+  - name: e2e
     vars:
       context: .
       template_context: scripts/dev/templates
 
     stages:
-      - name: operator-template-ubi
+      - name: e2e-template
         task_type: dockerfile_template
-        tags: ["ubi"]
-        distro: operator
+        distro: e2e
 
         inputs:
           - builder
-          - builder_image
           - base_image
-          - files_to_add
 
         output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.ubi-$(inputs.params.version_id)
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
-      - name: operator-build-ubi
+      - name: e2e-build
         task_type: docker_build
-        tags: ["ubi"]
 
-        dockerfile: scripts/dev/templates/operator/Dockerfile.ubi-$(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+        labels:
+          quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/community-operator-dev
+          - registry: $(inputs.params.registry)/community-operator-e2e
             tag: $(inputs.params.version_id)
 

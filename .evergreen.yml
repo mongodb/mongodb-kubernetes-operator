@@ -176,11 +176,9 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_image_sonar
         vars:
-          image_type: operator
-          image: quay.io/mongodb/community-operator-dev:${version_id}
-          expire_after: 48h
+          image_name: operator-ubi
 
   - name: build_e2e_image
     priority: 60
@@ -188,11 +186,10 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: build_and_push_image
+      - func: build_and_push_image_sonar
         vars:
-          image: quay.io/mongodb/community-operator-e2e:${version_id}
-          image_type: e2e
-          expire_after: 48h
+          image_name: e2e
+
 
   - name: build_agent_image_ubuntu
     priority: 60
