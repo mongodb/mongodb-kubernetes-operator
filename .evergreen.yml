@@ -151,7 +151,7 @@ functions:
           - atlas_database
         add_to_path:
           - ${workdir}/bin
-        command: "python scripts/ci/add_supported_release.py --image ${image_name}"
+        command: "python3 scripts/ci/add_supported_release.py --image ${image_name}"
 
 task_groups:
 - name: e2e_test_group
