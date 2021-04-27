@@ -249,7 +249,7 @@ images:
         tags: ["readiness-probe", "release"]
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe:$(inputs.params.release_version)-context
 
         labels:
           quay.expires-after: Never
@@ -315,7 +315,7 @@ images:
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
         tags: ["release", "post-start-hook"]
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook:$(inputs.params.release_version)-context
 
         labels:
           quay.expires-after: Never
