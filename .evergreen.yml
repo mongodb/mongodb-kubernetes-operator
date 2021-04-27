@@ -387,7 +387,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: agent-ubuntu
+          image_name: agent-ubuntu
           release: true
       - func: add_supported_release
         vars:
@@ -399,7 +399,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: agent-ubi
+          image_name: agent-ubi
           release: true
       - func: add_supported_release
         vars:
