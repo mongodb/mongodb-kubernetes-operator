@@ -140,6 +140,19 @@ functions:
           - image_type
         command: scripts/ci/run_image_release.sh
 
+  add_supported_release:
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator
+        include_expansions_in_env:
+          - atlas_connection_string
+          - atlas_password
+          - atlas_database
+        add_to_path:
+          - ${workdir}/bin
+        command: "python scripts/ci/add_supported_release.py --image ${image_name}"
+
 task_groups:
 - name: e2e_test_group
   max_hosts: 8
@@ -376,6 +389,9 @@ tasks:
         vars:
           image_type: agent-ubuntu
           release: true
+      - func: add_supported_release
+        vars:
+          image_name: mongodb-agent
 
   - name: release_agent_ubi
     commands:
@@ -385,6 +401,9 @@ tasks:
         vars:
           image_type: agent-ubi
           release: true
+      - func: add_supported_release
+        vars:
+          image_name: mongodb-agent
 
 buildvariants:
   - name: e2e_tests_ubuntu
