@@ -33,6 +33,7 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "release_version": release["agent"]["version"],
         "tools_version": release["agent"]["tools_version"],
         "registry": config.repo_url,
+        "s3_bucket": "{}/{}".format(config.s3_bucket, "mongodb-agent"),
     }
 
 
