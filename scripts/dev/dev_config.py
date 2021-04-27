@@ -51,6 +51,10 @@ class DevConfig:
         return self._config["repo_url"]
 
     @property
+    def s3_bucket(self) -> str:
+        return self._config["s3_bucket"]
+
+    @property
     def expire_after(self) -> str:
         return self._config.get("expire_after", "never")
 

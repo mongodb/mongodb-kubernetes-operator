@@ -1,7 +1,5 @@
 vars:
   registry: <registry>
-  s3_bucket_http: https://enterprise-operator-dockerfiles.s3.amazonaws.com/dockerfiles/mongodb-agent
-  s3_bucket: s3://enterprise-operator-dockerfiles/dockerfiles/mongodb-agent
 
 images:
   - name: agent-ubuntu
@@ -62,9 +60,10 @@ images:
 
         inputs:
           - release_version
+          - s3_bucket
 
         output:
-          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubuntu-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubuntu-$(inputs.params.release_version)
 
       - name: agent-context-ubuntu-release
         task_type: tag_image
@@ -150,7 +149,7 @@ images:
           - release_version
 
         output:
-          - dockerfile: $(inputs.params.s3_bucket)/Dockerfile.ubi-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubi-$(inputs.params.release_version)
 
       - name: agent-context-ubi-release
         task_type: tag_image
