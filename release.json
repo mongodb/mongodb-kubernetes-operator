@@ -2,7 +2,7 @@
   "mongodb-kubernetes-operator": "0.6.0",
   "version-upgrade-hook": "1.0.2",
   "readiness-probe": "1.0.3",
-  "agent": {
+  "mongodb-agent": {
       "version": "10.29.0.6830-1",
       "tools_version": "100.2.0"
   }
