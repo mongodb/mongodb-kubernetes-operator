@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.7.0
-	github.com/xdg/stringprep v1.0.0
+	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.5.1
 	go.uber.org/zap v1.16.0
 	k8s.io/api v0.19.2
