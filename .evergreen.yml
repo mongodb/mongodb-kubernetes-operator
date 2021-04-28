@@ -94,6 +94,18 @@ functions:
           - distro
         binary: scripts/ci/run_test.sh
 
+  python_venv: &python_venv
+    command: subprocess.exec
+    type: setup
+    params:
+      command: virtualenv --python /opt/python/3.7/bin/python3 ./venv
+
+  python_requirements: &python_requirements
+    command: subprocess.exec
+    type: setup
+    params:
+      working_dir: mongodb-kubernetes-operator
+      command: ${workdir}/venv/bin/python -m pip install -r requirements.txt --quiet --no-warn-script-location
 
   build_and_push_image:
     - command: subprocess.exec
@@ -139,6 +151,20 @@ functions:
           - new_image
           - image_type
         command: scripts/ci/run_image_release.sh
+
+  add_supported_release:
+    - *python_venv
+    - *python_requirements
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: mongodb-kubernetes-operator
+        include_expansions_in_env:
+          - atlas_connection_string
+          - atlas_password
+          - atlas_database
+          - image_name
+        command: "${workdir}/venv/bin/python scripts/ci/add_supported_release.py --c ${image_name}"
 
 task_groups:
 - name: e2e_test_group
@@ -374,8 +400,11 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: agent-ubuntu
+          image_name: agent-ubuntu
           release: true
+      - func: add_supported_release
+        vars:
+          image_name: mongodb-agent
 
   - name: release_agent_ubi
     commands:
@@ -383,8 +412,11 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: agent-ubi
+          image_name: agent-ubi
           release: true
+      - func: add_supported_release
+        vars:
+          image_name: mongodb-agent
 
 buildvariants:
   - name: e2e_tests_ubuntu
