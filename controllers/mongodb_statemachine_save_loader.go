@@ -85,7 +85,8 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 		}
 
 		mdb.Annotations[stateMachineAnnotation] = string(bytes)
-		if err := r.client.Update(context.TODO(), &mdb); err == nil {
+		err = r.client.Update(context.TODO(), &mdb)
+		if err == nil {
 			return nil
 		}
 
