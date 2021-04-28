@@ -66,30 +66,38 @@ images:
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubuntu-$(inputs.params.release_version)
 
       - name: agent-context-ubuntu-release
-        task_type: tag_image
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
         tags: ["ubuntu", "release"]
-        distro: ubuntu
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: linux_x86_64
+          tools_distro: ubuntu1604-x86_64
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-agent-dev
-          tag: $(inputs.params.version_id)-context
+        labels:
+          quay.expires-after: Never
 
-        destination:
+        output:
           - registry: $(inputs.params.registry)/mongodb-agent
-            tag: $(inputs.params.release_version)-context
+            tag: $(inputs.params.version_id)-context
 
       - name: agent-ubuntu-release
-        task_type: tag_image
+        task_type: docker_build
         tags: ["ubuntu", "release"]
         distro: ubuntu
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-agent-dev
-          tag: $(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
-        destination:
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-agent:$(inputs.params.version_id)-context
+
+        labels:
+          quay.expires-after: Never
+
+        output:
           - registry: $(inputs.params.registry)/mongodb-agent
-            tag: $(inputs.params.release_version)
+            tag: $(inputs.params.version_id)
 
   - name: agent-ubi
     vars:
@@ -110,6 +118,9 @@ images:
           tools_version: $(inputs.params.tools_version)
           agent_distro: rhel7_x86_64
           tools_distro: rhel70-x86_64
+
+        labels:
+          quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
@@ -152,31 +163,36 @@ images:
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubi-$(inputs.params.release_version)
 
       - name: agent-context-ubi-release
-        task_type: tag_image
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
         tags: ["ubi", "release"]
-        distro: ubi
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: rhel7_x86_64
+          tools_distro: rhel70-x86_64
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
-          tag: $(inputs.params.version_id)-context
+        labels:
+          quay.expires-after: Never
 
-        destination:
+        output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi
-            tag: $(inputs.params.release_version)-context
+            tag: $(inputs.params.version_id)-context
 
       - name: agent-ubi-release
-        task_type: tag_image
+        task_type: docker_build
         tags: ["ubi", "release"]
-        distro: ubi
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
-          tag: $(inputs.params.version_id)
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-agent-ubi:$(inputs.params.version_id)-context
 
-        destination:
+        labels:
+          quay.expires-after: Never
+
+        output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi
-            tag: $(inputs.params.release_version)
-
+            tag: $(inputs.params.version_id)
 
   - name: readiness-probe-init
     vars:
@@ -212,33 +228,36 @@ images:
 
 
       - name: readiness-init-context-release
-        task_type: tag_image
-        tags: ["release", "readiness-probe"]
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
+        tags: ["readiness-probe", "release"]
+
+        labels:
+          quay.expires-after: Never
 
         inputs:
           - release_version
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
-          tag: $(inputs.params.version_id)-context
-
-        destination:
+        output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
             tag: $(inputs.params.release_version)-context
 
 
       - name: readiness-init-build-release
-        task_type: tag_image
-        tags: ["release", "readiness-probe"]
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness
+        tags: ["readiness-probe", "release"]
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe:$(inputs.params.release_version)-context
+
+        labels:
+          quay.expires-after: Never
 
         inputs:
           - release_version
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
-          tag: $(inputs.params.version_id)
-
-        destination:
+        output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
             tag: $(inputs.params.release_version)
 
@@ -276,32 +295,34 @@ images:
 
 
       - name: version-post-start-hook-init-context-release
-        task_type: tag_image
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
         tags: ["release", "post-start-hook"]
+
+        labels:
+          quay.expires-after: Never
 
         inputs:
           - release_version
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
-          tag: $(inputs.params.version_id)-context
-
-        destination:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-context
+        output:
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
             tag: $(inputs.params.release_version)-context
 
 
       - name: version-post-start-hook-init-build-release
-        task_type: tag_image
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
         tags: ["release", "post-start-hook"]
+        buildargs:
+          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook:$(inputs.params.release_version)-context
+
+        labels:
+          quay.expires-after: Never
 
         inputs:
           - release_version
 
-        source:
-          registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
-          tag: $(inputs.params.version_id)
-
-        destination:
+        output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
             tag: $(inputs.params.release_version)
