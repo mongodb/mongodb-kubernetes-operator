@@ -1,10 +1,11 @@
 {
-    "namespace": "default",
-    "repo_url": "quay.io/mongodb",
-    "operator_image": "community-operator-dev",
-    "e2e_image": "community-operator-e2e",
-    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-    "testrunner_image": "community-operator-testrunner",
-    "agent_image_ubuntu": "mongodb-agent-dev",
-    "agent_image_ubi": "mongodb-agent-ubi-dev"
+  "namespace": "default",
+  "repo_url": "quay.io/mongodb",
+  "operator_image": "community-operator-dev",
+  "e2e_image": "community-operator-e2e",
+  "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
+  "testrunner_image": "community-operator-testrunner",
+  "agent_image_ubuntu": "mongodb-agent-dev",
+  "agent_image_ubi": "mongodb-agent-ubi-dev",
+  "s3_bucket": "s3://enterprise-operator-dockerfiles/dockerfiles"
 }
