@@ -38,6 +38,8 @@ var (
 	updateStatusStateName                   = "UpdateStatus"
 )
 
+// MongoDBStates stores information about state history and the
+// next state that should be entered.
 type MongoDBStates struct {
 	NextState    string   `json:"nextState"`
 	StateHistory []string `json:"stateHistory"`

@@ -3,7 +3,10 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/apierrors"
 	"github.com/pkg/errors"
@@ -13,22 +16,15 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
-//const (
-//	cacheRefreshEnv     = "CACHE_REFRESH_TIME_SEC"
-//	defaultCacheRefresh = int(2 * time.Second)
-//)
+const (
+	cacheRefreshEnv            = "CACHE_REFRESH_TIME_SEC"
+	defaultCacheRefreshSeconds = "2"
+)
 
-func (r *ReplicaSetReconciler) getMongoDBCommunity(nsName types.NamespacedName) (mdbv1.MongoDBCommunity, error) {
-	mdb := mdbv1.MongoDBCommunity{}
-	err := r.client.Get(context.TODO(), nsName, &mdb)
-	if err != nil {
-		return mdbv1.MongoDBCommunity{}, err
-	}
-	return mdb, nil
-}
-
+// LoadNextState fetches the next state that should be executed. This is fetched
+// from the annotations of the resource of the given NamespacedName.
 func (r *ReplicaSetReconciler) LoadNextState(nsName types.NamespacedName) (string, error) {
-	mdb, err := r.getMongoDBCommunity(nsName)
+	mdb, err := r.client.GetMongoDBCommunity(nsName)
 	if err != nil {
 		return "", err
 	}
@@ -38,23 +34,29 @@ func (r *ReplicaSetReconciler) LoadNextState(nsName types.NamespacedName) (strin
 		return "", errors.Errorf("error fetching last state name from MongoDBCommunity annotations: %s", err)
 	}
 
+	// if there is no next state, we assume we are starting from scratch, and need to start at the first state.
 	if nextState == "" {
 		nextState = reconciliationStartStateName
 	}
 	return nextState, nil
 }
 
+// SaveNextState saves the given state as an annotation to the given resource.
+// If this state is already present, an error will be returned. This is to prevent
+// cycles within the state machine. In the case of this error, we should reset all
+// history and start from the beginning.
 func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateName string) error {
 	if stateName == "" {
 		return nil
 	}
 
-	time.Sleep(time.Second * 2)
+	if err := waitForCacheRefresh(); err != nil {
+		return err
+	}
 
-	var err error
 	attempts := 3
 	for i := 0; i < attempts; i++ {
-		mdb, err := r.getMongoDBCommunity(nsName)
+		mdb, err := r.client.GetMongoDBCommunity(nsName)
 		if err != nil {
 			return err
 		}
@@ -94,9 +96,21 @@ func (r *ReplicaSetReconciler) SaveNextState(nsName types.NamespacedName, stateN
 		}
 		return err
 	}
+	return nil
 
-	return err
+}
 
+// waitForCacheRefresh waits a period of time to ensure that the cache has reset.
+// we need to wait a period of time before updating the resource again or else we
+// will see stale data.
+func waitForCacheRefresh() error {
+	sleepTime := envvar.GetEnvOrDefault(cacheRefreshEnv, defaultCacheRefreshSeconds)
+	sleepTimeSeconds, err := strconv.Atoi(sleepTime)
+	if err != nil {
+		return err
+	}
+	time.Sleep(time.Second * time.Duration(sleepTimeSeconds))
+	return nil
 }
 
 // getExistingStateMachineStatesFromAnnotation returns a MongoDBStates from
