@@ -231,7 +231,7 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 }
 
 // findContainerByName will find either a container or init container by name in a pod template spec
-func findContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *corev1.Container {
+func FindContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *corev1.Container {
 	containerIdx := findIndexByName(name, podTemplateSpec.Spec.Containers)
 	if containerIdx != notFound {
 		return &podTemplateSpec.Spec.Containers[containerIdx]
