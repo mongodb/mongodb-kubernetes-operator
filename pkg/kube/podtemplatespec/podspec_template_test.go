@@ -356,7 +356,7 @@ func TestWithContainerFrom(t *testing.T) {
 	// Test that first container remains as it was
 	assert.Equal(t, defaultPodSpec.Spec.Containers[0], getDefaultContainer(), "First container should have not been changed")
 
-	// Test the new contaienr to be identical to the first one except the image and the name
+	// Test the new container to be identical to the first one except the image and the name
 	oldContainer := defaultPodSpec.Spec.Containers[0]
 	newContainer := defaultPodSpec.Spec.Containers[1]
 	assert.Equal(t, "container-1", newContainer.Name)
