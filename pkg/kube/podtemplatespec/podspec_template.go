@@ -48,8 +48,9 @@ func WithContainer(name string, containerfunc func(*corev1.Container)) Modificat
 	}
 }
 
-// WithContainerFrom copies the container with name `name` and applies the modifications to it
-// if no container with that name exists, it returns NOOP
+// WithContainerFrom copies the container with name `name` into a new one named `newContainerName`
+// and applies the modifications to it, then adds it to the containers.
+// If no container with that name exists, it returns NOOP
 func WithContainerFrom(name string, newContainerName string, funcs ...func(container *corev1.Container)) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		from := FindContainerByName(name, podTemplateSpec)
