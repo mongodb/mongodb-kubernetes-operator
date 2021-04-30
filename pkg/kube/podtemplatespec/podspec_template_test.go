@@ -341,6 +341,30 @@ func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
 	assert.Equal(t, "new-volume-3", mergedPodSpecTemplate.Spec.Volumes[2].Name)
 }
 
+func TestWithContainerFrom(t *testing.T) {
+	defaultPodSpec := getDefaultPodSpec()
+
+	Apply(
+		WithContainerFrom("container-0",
+			"container-1",
+			container.WithImage("image-1"),
+		),
+	)(&defaultPodSpec)
+
+	assert.Len(t, defaultPodSpec.Spec.Containers, 2, "Should have added a new container")
+
+	// Test that first container remains as it was
+	assert.Equal(t, defaultPodSpec.Spec.Containers[0], getDefaultContainer(), "First container should have not been changed")
+
+	// Test the new contaienr to be identical to the first one except the image and the name
+	oldContainer := defaultPodSpec.Spec.Containers[0]
+	newContainer := defaultPodSpec.Spec.Containers[1]
+	assert.Equal(t, "container-1", newContainer.Name)
+	assert.Equal(t, "image-1", newContainer.Image)
+	assert.Equal(t, oldContainer.ReadinessProbe, newContainer.ReadinessProbe)
+	assert.Equal(t, oldContainer.VolumeMounts, newContainer.VolumeMounts)
+}
+
 func int64Ref(i int64) *int64 {
 	return &i
 }

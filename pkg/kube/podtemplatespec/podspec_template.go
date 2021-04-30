@@ -48,6 +48,23 @@ func WithContainer(name string, containerfunc func(*corev1.Container)) Modificat
 	}
 }
 
+// WithContainerFrom copies the container with name `name` and applies the modifications to it
+// if no container with that name exists, it returns NOOP
+func WithContainerFrom(name string, newContainerName string, funcs ...func(container *corev1.Container)) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		from := FindContainerByName(name, podTemplateSpec)
+		if from == nil {
+			return
+		}
+		dest := from.DeepCopy()
+		dest.Name = newContainerName
+		for _, f := range funcs {
+			f(dest)
+		}
+		podTemplateSpec.Spec.Containers = append(podTemplateSpec.Spec.Containers, *dest)
+	}
+}
+
 // WithContainerByIndex applies the modifications to the container with the provided index
 // if the index is out of range, a new container is added to accept these changes.
 func WithContainerByIndex(index int, funcs ...func(container *corev1.Container)) func(podTemplateSpec *corev1.PodTemplateSpec) {
