@@ -26,7 +26,7 @@ const (
 
 	versionUpgradeHookName         = "mongod-posthook"
 	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	dataVolumeName                 = "data-volume"
+	dataVolumeName                 = "data"
 	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
 	agentHealthStatusFilePathEnv   = "AGENT_STATUS_FILEPATH"
