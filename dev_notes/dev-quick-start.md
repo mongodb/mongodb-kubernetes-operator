@@ -55,11 +55,12 @@ cat > ~/.community-operator-dev/config.json << EOL
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
-    "prestop_hook_image": "prehook",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 EOL
 ```
+
+More details about the config options can be found [here](./config-options.md)
 
 #### build and deploy the operator to the cluster
 ```bash
@@ -74,9 +75,25 @@ kubectl get pods
 
 #### Deploy a Replica Set
 ```bash
-kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml
+make deploy-dev-quick-start-rs
 ```
 
+#### See the deployed replica set
+```bash
+kubectl get pods
+
+NAME                                           READY   STATUS    RESTARTS   AGE
+mongodb-kubernetes-operator-5568d769b8-smt4h   1/1     Running   0          4m12s
+quick-start-rs-0                               2/2     Running   0          2m49s
+quick-start-rs-1                               2/2     Running   0          2m5s
+quick-start-rs-2                               2/2     Running   0          87s
+
+
+kubectl get statefulset quick-start-rs
+
+NAME             READY   AGE
+quick-start-rs   3/3     3m10s
+```
 
 ### Clean up all resources
 ```bash
