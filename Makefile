@@ -76,12 +76,6 @@ deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy-rs: manifests kustomize
-	$(KUSTOMIZE) edit set image config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-
-
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -

@@ -1,24 +1,15 @@
 
 #### Prerequisites
 
-* Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* Install [jq](https://stedolan.github.io/jq/download/) 
-* Optionally install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) if you want to use a local cluster.
-
-* create a python virtual environment
+* install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* create a python virtual enironment 
 
 ```bash
 python3 -m venv /path/to/new/virtual/environment
 source path/to/new/virtual/environment/bin/activate
 ```
+* install python dependencies ```pip install -r requirements.txt```
 
-* install python dependencies 
-```
-pip install -r requirements.txt
-
-# Note: sonar requires access to the 10gen repo and is used for the release pipeline
-pip install git+ssh://git@github.com/10gen/sonar.git@0.0.10
-```
 
 #### Create a Kind cluster and a local registry
 ```bash
@@ -30,7 +21,7 @@ pip install git+ssh://git@github.com/10gen/sonar.git@0.0.10
 export KUBECONFIG=~/.kube/kind
 ```
 
-#### Get kind credentials
+#### get kind credentials
 ```bash
 kind export kubeconfig
 
@@ -38,8 +29,7 @@ kind export kubeconfig
 kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 ```
 
-
-#### (Optional) Create a non-default namespace to work in
+#### create the namespace to work in
 ```bash
 kubectl create namespace mongodb
 
@@ -51,11 +41,12 @@ kubectl config set-context --current --namespace=mongodb
 ```bash
 cat > ~/.community-operator-dev/config.json << EOL
 {
-    "namespace": "default",
+    "namespace": "mongodb",
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
     "prestop_hook_image": "prehook",
+    "testrunner_image": "test-runner",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 EOL
@@ -63,7 +54,7 @@ EOL
 
 #### build and deploy the operator to the cluster
 ```bash
-make docker-build docker-push deploy
+python scripts/dev/build_and_deploy_operator.py
 ```
 
 
@@ -75,10 +66,4 @@ kubectl get pods
 #### Deploy a Replica Set
 ```bash
 kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml
-```
-
-
-### Clean up all resources
-```bash
-make undeploy
 ```
