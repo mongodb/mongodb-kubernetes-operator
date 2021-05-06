@@ -58,7 +58,7 @@ func buildResourceList(cpu, memory string) (corev1.ResourceList, error) {
 // This is used by the StatefulSet PersistentVolumeClaimTemplate.
 // TODO: Allow to change these values.
 func BuildDefaultStorageRequirements() corev1.ResourceList {
-	g10, _ := resource.ParseQuantity("10G")
+	g10, _ := resource.ParseQuantity("16G")
 	res := corev1.ResourceList{}
 	res[corev1.ResourceStorage] = g10
 	return res
