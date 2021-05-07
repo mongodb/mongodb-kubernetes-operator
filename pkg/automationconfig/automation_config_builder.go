@@ -112,6 +112,13 @@ func (b *Builder) SetCAFilePath(caFilePath string) *Builder {
 	return b
 }
 
+func (b *Builder) AddVersions(versions []MongoDbVersionConfig) *Builder {
+	for _, v := range versions {
+		b.AddVersion(v)
+	}
+	return b
+}
+
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 	for idx := range version.Builds {
 		if version.Builds[idx].Modules == nil {
