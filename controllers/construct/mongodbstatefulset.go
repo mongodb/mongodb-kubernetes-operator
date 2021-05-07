@@ -26,7 +26,6 @@ const (
 
 	versionUpgradeHookName         = "mongod-posthook"
 	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
 	agentHealthStatusFilePathEnv   = "AGENT_STATUS_FILEPATH"
 	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
@@ -81,6 +80,8 @@ type MongoDBStatefulSetOwner interface {
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 	// DataVolumeName returns the name that the data volume should have
 	DataVolumeName() string
+	// LogsVolumeName returns the name that the data volume should have
+	LogsVolumeName() string //
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -120,10 +121,10 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
-		logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
+		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
 		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data")
 		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
-		logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
+		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
@@ -246,9 +247,9 @@ func dataPvc(dataVolumeName string) persistentvolumeclaim.Modification {
 	)
 }
 
-func logsPvc() persistentvolumeclaim.Modification {
+func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(logVolumeName),
+		persistentvolumeclaim.WithName(logsVolumeName),
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
 		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildStorageRequirements("2G")),
 	)
