@@ -26,7 +26,6 @@ const (
 
 	versionUpgradeHookName         = "mongod-posthook"
 	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	dataVolumeName                 = "data-volume"
 	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
 	agentHealthStatusFilePathEnv   = "AGENT_STATUS_FILEPATH"
@@ -80,6 +79,8 @@ type MongoDBStatefulSetOwner interface {
 	HasSeparateDataAndLogsVolumes() bool
 	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
+	// DataVolumeName returns the name that the data volume should have
+	DataVolumeName() string
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -120,19 +121,19 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
 		logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-		dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data")
+		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 		logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
 		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(dataVolumeName, "/data", statefulset.WithSubPath("data")),
-			statefulset.CreateVolumeMount(dataVolumeName, automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data", statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
 		mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
-		singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+		singleModeVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 	}
 
 	podSecurityContext := podtemplatespec.NOOP()
@@ -237,7 +238,7 @@ func DefaultReadiness() probes.Modification {
 	)
 }
 
-func dataPvc() persistentvolumeclaim.Modification {
+func dataPvc(dataVolumeName string) persistentvolumeclaim.Modification {
 	return persistentvolumeclaim.Apply(
 		persistentvolumeclaim.WithName(dataVolumeName),
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
