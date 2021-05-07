@@ -99,3 +99,7 @@ quick-start-rs   3/3     3m10s
 ```bash
 make undeploy
 ```
+
+### Running Tests
+
+Follow the tests in [contributing.md](../docs/contributing.md) to run e2e tests.

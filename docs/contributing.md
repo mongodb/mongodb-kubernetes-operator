@@ -51,8 +51,7 @@ to be able to run properly. Create a json file with the following content:
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
-    "version_upgrade_hook_image": "version_upgrade_hook",
-    "testrunner_image": "test-runner"
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 ```
 
@@ -92,7 +91,7 @@ python -m pip install -r requirements.txt
 Unit tests should be run from the root of the project with:
 
 ```sh
-go test ./pkg/...
+make test
 ```
 
 # Running E2E Tests
@@ -122,6 +121,9 @@ The tests should run individually using the runner like this:
 # python scripts/dev/e2e.py --test <test-name>
 # for example
 python scripts/dev/e2e.py --test replica_set
+
+# or if you hasve not yet built the e2e test image
+python scripts/dev/e2e.py --test replica_set --build-images
 ```
 
 This will run the `replica_set` E2E test which is a simple test that installs a
