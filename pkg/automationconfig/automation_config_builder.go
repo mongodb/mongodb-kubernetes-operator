@@ -3,6 +3,7 @@ package automationconfig
 import (
 	"fmt"
 	"path"
+	"reflect"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -108,6 +109,13 @@ func (b *Builder) SetFCV(fcv string) *Builder {
 
 func (b *Builder) SetCAFilePath(caFilePath string) *Builder {
 	b.cafilePath = caFilePath
+	return b
+}
+
+func (b *Builder) AddVersions(versions []MongoDbVersionConfig) *Builder {
+	for _, v := range versions {
+		b.AddVersion(v)
+	}
 	return b
 }
 
@@ -238,8 +246,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		b.auth = &disabled
 	}
 
-	if len(b.versions) == 0 {
-		b.versions = append(b.versions, buildDummyMongoDbVersionConfig(b.mongodbVersion))
+	dummyConfig := buildDummyMongoDbVersionConfig(b.mongodbVersion)
+	if !versionsContain(b.versions, dummyConfig) {
+		b.versions = append(b.versions, dummyConfig)
 	}
 
 	currentAc := AutomationConfig{
@@ -295,6 +304,15 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 func toProcessName(name string, index int) string {
 	return fmt.Sprintf("%s-%d", name, index)
+}
+
+func versionsContain(versions []MongoDbVersionConfig, version MongoDbVersionConfig) bool {
+	for _, v := range versions {
+		if reflect.DeepEqual(v, version) {
+			return true
+		}
+	}
+	return false
 }
 
 // buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which

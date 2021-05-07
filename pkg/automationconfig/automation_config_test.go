@@ -95,7 +95,7 @@ func TestMongoDbVersions(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
-	assert.Len(t, ac.Versions, 1)
+	assert.Len(t, ac.Versions, 2)
 	assert.Len(t, ac.Versions[0].Builds, 1)
 
 	// TODO: be able to pass amount of builds
@@ -123,7 +123,7 @@ func TestMongoDbVersions(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
-	assert.Len(t, ac.Versions, 2)
+	assert.Len(t, ac.Versions, 3)
 	assert.Len(t, ac.Versions[0].Builds, 1)
 	assert.Len(t, ac.Versions[1].Builds, 2)
 }
@@ -218,7 +218,7 @@ func TestMongoDBVersionsConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		versions := ac.Versions
-		assert.Len(t, versions, 1)
+		assert.Len(t, versions, 2)
 		v := versions[0]
 		dummyConfig := buildDummyMongoDbVersionConfig("4.4.2")
 		assert.NotEqual(t, v, dummyConfig)

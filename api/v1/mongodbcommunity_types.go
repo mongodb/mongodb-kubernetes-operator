@@ -534,6 +534,14 @@ func (m MongoDBCommunity) GetAnnotations() map[string]string {
 	return m.Annotations
 }
 
+func (m MongoDBCommunity) DataVolumeName() string {
+	return "data-volume"
+}
+
+func (m MongoDBCommunity) LogsVolumeName() string {
+	return "logs-volume"
+}
+
 type automationConfigReplicasScaler struct {
 	current, desired int
 }
