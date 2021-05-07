@@ -81,7 +81,7 @@ type MongoDBStatefulSetOwner interface {
 	// DataVolumeName returns the name that the data volume should have
 	DataVolumeName() string
 	// LogsVolumeName returns the name that the data volume should have
-	LogsVolumeName() string //
+	LogsVolumeName() string
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
