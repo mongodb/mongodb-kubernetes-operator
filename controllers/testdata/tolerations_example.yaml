@@ -6,7 +6,6 @@ spec:
   members: 3
   type: ReplicaSet
   version: "4.2.6"
-  persistent: true
   statefulSet:
     spec:
       template:
