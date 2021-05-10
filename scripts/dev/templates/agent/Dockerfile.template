@@ -27,7 +27,7 @@ RUN mkdir -p /agent \
 
 COPY --from=base /data/mongodb-agent.tar.gz /agent
 COPY --from=base /data/mongodb-tools.tgz /agent
-COPY --from=base /data/licenses /licenses
+COPY --from=base /data/LICENSE /licenses/LICENSE
 
 RUN tar xfz /agent/mongodb-agent.tar.gz \
     && mv mongodb-mms-automation-agent-*/mongodb-mms-automation-agent /agent/mongodb-agent \
