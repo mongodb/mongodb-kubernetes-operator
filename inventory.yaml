@@ -45,6 +45,7 @@ images:
 
         buildargs:
           imagebase: $(inputs.params.registry)/mongodb-agent-dev:$(inputs.params.version_id)-context
+          agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
@@ -91,6 +92,7 @@ images:
 
         buildargs:
           imagebase: $(inputs.params.registry)/mongodb-agent:$(inputs.params.version_id)-context
+          agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: Never
@@ -143,6 +145,7 @@ images:
 
         buildargs:
           imagebase: $(inputs.params.registry)/mongodb-agent-ubi-dev:$(inputs.params.version_id)-context
+          agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
@@ -186,6 +189,7 @@ images:
 
         buildargs:
           imagebase: $(inputs.params.registry)/mongodb-agent-ubi:$(inputs.params.version_id)-context
+          agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: Never
