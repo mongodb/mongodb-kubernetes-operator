@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
@@ -54,6 +57,24 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 	t.Run("3rd Call", func(t *testing.T) {
 		stsFunc(sts)
 		assertStatefulSetIsBuiltCorrectly(t, mdb, sts)
+	})
+}
+
+func TestMongod_Container(t *testing.T) {
+	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}))
+
+	t.Run("Has correct Env vars", func(t *testing.T) {
+		assert.Len(t, c.Env, 1)
+		assert.Equal(t, agentHealthStatusFilePathEnv, c.Env[0].Name)
+		assert.Equal(t, "/healthstatus/agent-health-status.json", c.Env[0].Value)
+	})
+
+	t.Run("Image is correct", func(t *testing.T) {
+		assert.Equal(t, getMongoDBImage("4.2"), c.Image)
+	})
+
+	t.Run("Resource requirements are correct", func(t *testing.T) {
+		assert.Equal(t, resourcerequirements.Defaults(), c.Resources)
 	})
 }
 

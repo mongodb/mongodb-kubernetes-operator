@@ -216,6 +216,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		process.SetSystemLog(SystemLog{
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+			LogAppend:   true,
 		})
 
 		if b.fcv != "" {
