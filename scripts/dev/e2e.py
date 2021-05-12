@@ -156,8 +156,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "VERSION_UPGRADE_HOOK_IMAGE",
-                            # TODO: this needs to come from somewhere else
-                            "value": "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2",
+                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{args.tag}",
                         },
                         {
                             "name": "READINESS_PROBE_IMAGE",

@@ -144,10 +144,10 @@ func deployOperator() error {
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
-		withVersionUpgradeHookImage(testConfig.versionUpgradeHookImage),
 		withEnvVar("WATCH_NAMESPACE", watchNamespace),
 		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
+		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
@@ -233,30 +233,6 @@ func updateEnvVarList(envVarList []corev1.EnvVar, key, val string) []corev1.EnvV
 		}
 	}
 	return append(envVarList, corev1.EnvVar{Name: key, Value: val})
-}
-
-// withVersionUpgradeHookImage sets the value of the VERSION_UPGRADE_HOOK_IMAGE
-// EnvVar from first container to `image`. The EnvVar is updated
-// if it exists. Or appended if there is no EnvVar with this `Name`.
-func withVersionUpgradeHookImage(image string) func(runtime.Object) {
-	return func(obj runtime.Object) {
-		if dep, ok := obj.(*appsv1.Deployment); ok {
-			versionUpgradeHookEnv := corev1.EnvVar{
-				Name:  construct.VersionUpgradeHookImageEnv,
-				Value: image,
-			}
-			found := false
-			for idx := range dep.Spec.Template.Spec.Containers[0].Env {
-				if dep.Spec.Template.Spec.Containers[0].Env[idx].Name == versionUpgradeHookEnv.Name {
-					dep.Spec.Template.Spec.Containers[0].Env[idx].Value = versionUpgradeHookEnv.Value
-					found = true
-				}
-			}
-			if !found {
-				dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, versionUpgradeHookEnv)
-			}
-		}
-	}
 }
 
 // withOperatorImage assumes that the underlying type is an appsv1.Deployment
