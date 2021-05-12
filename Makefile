@@ -76,6 +76,11 @@ deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
+# Deploy a simple ReplicaSet, this is intended for first time use only as part of the quick start guide.
+deploy-dev-quick-start-rs: manifests kustomize
+	kubectl create secret generic quick-start-rs --from-literal=password=dev-quick-start-password --from-literal=username=admin || true
+	kubectl apply -f dev_notes/dev_quick_start_resources/dev_quick_start_rs.yaml
+
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
