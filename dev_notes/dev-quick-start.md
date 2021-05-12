@@ -47,7 +47,8 @@ cat > ~/.community-operator-dev/config.json << EOL
     "e2e_image": "e2e",
     "prestop_hook_image": "prehook",
     "testrunner_image": "test-runner",
-    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
+    "readiness_probe_image": "mongodb-kubernetes-readinessprobe"
 }
 EOL
 ```
