@@ -71,6 +71,10 @@ class DevConfig:
         return self._config["version_upgrade_hook_image"]
 
     @property
+    def readiness_probe_image(self) -> str:
+        return self._config["readiness_probe_image"]
+
+    @property
     def agent_image(self) -> str:
         if self._distro == Distro.UBI:
             return self._config["agent_image_ubi"]

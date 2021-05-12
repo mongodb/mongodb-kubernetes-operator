@@ -55,6 +55,9 @@ cat > ~/.community-operator-dev/config.json << EOL
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
+    "testrunner_image": "test-runner",
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
+    "readiness_probe_image": "mongodb-kubernetes-readinessprobe"
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 EOL
