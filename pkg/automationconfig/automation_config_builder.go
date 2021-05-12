@@ -327,13 +327,14 @@ func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
 				Platform:     "linux",
 				Architecture: "amd64",
 				Flavor:       "rhel",
-				Modules:      []string{},
+				// Enterprise must be included for use with the AppDB in the enterprise codebase.
+				Modules: []string{"enterprise"},
 			},
 			{
 				Platform:     "linux",
 				Architecture: "amd64",
 				Flavor:       "ubuntu",
-				Modules:      []string{},
+				Modules:      []string{"enterprise"},
 			},
 		},
 	}
