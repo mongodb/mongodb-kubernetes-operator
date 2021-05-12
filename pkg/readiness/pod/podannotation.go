@@ -1,26 +1,25 @@
 package pod
 
 import (
-	"strconv"
-
 	"go.uber.org/zap"
+	"strconv"
+	"strings"
+
 	"k8s.io/client-go/kubernetes"
 )
 
-type mongodbAgentVersion struct {
-	Version string `json:"agent.mongodb.com/version"`
-}
+const mongodbAgentVersionAnnotation = "agent.mongodb.com/version"
 
 func PatchPodAnnotation(podNamespace string, lastVersionAchieved int64, memberName string, clientSet kubernetes.Interface) error {
 	patcher := NewKubernetesPodPatcher(clientSet)
-	mdbAgentVersion := mongodbAgentVersion{Version: strconv.FormatInt(lastVersionAchieved, 10)}
+	mdbAgentVersion := strconv.FormatInt(lastVersionAchieved, 10)
 	return patchPod(patcher, podNamespace, mdbAgentVersion, memberName)
 }
 
-func patchPod(patcher Patcher, podNamespace string, mdbAgentVersion mongodbAgentVersion, memberName string) error {
+func patchPod(patcher Patcher, podNamespace string, mdbAgentVersion string, memberName string) error {
 	payload := []patchValue{{
 		Op:    "add",
-		Path:  "/metadata/annotations",
+		Path:  "/metadata/annotations/" + strings.Replace(mongodbAgentVersionAnnotation, "/", "~1", -1),
 		Value: mdbAgentVersion,
 	}}
 
