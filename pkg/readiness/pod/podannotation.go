@@ -1,7 +1,9 @@
 package pod
 
 import (
+	"context"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
 
@@ -11,20 +13,30 @@ import (
 const mongodbAgentVersionAnnotation = "agent.mongodb.com/version"
 
 func PatchPodAnnotation(podNamespace string, lastVersionAchieved int64, memberName string, clientSet kubernetes.Interface) error {
-	patcher := NewKubernetesPodPatcher(clientSet)
-	mdbAgentVersion := strconv.FormatInt(lastVersionAchieved, 10)
-	return patchPod(patcher, podNamespace, mdbAgentVersion, memberName)
-}
+	pod, err := clientSet.CoreV1().Pods(podNamespace).Get(context.Background(), memberName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
 
-func patchPod(patcher Patcher, podNamespace string, mdbAgentVersion string, memberName string) error {
-	payload := []patchValue{{
+	var payload []patchValue
+
+	if len(pod.Annotations) == 0 {
+		payload = append(payload, patchValue{
+			Op: "add",
+			Path: "/metadata/annotations",
+			Value: make(map[string]string),
+		})
+	}
+	mdbAgentVersion := strconv.FormatInt(lastVersionAchieved, 10)
+	payload = append(payload, patchValue{
 		Op:    "add",
 		Path:  "/metadata/annotations/" + strings.Replace(mongodbAgentVersionAnnotation, "/", "~1", -1),
 		Value: mdbAgentVersion,
-	}}
+	})
 
-	pod, err := patcher.patchPod(podNamespace, memberName, payload)
-	if pod != nil {
+	patcher := NewKubernetesPodPatcher(clientSet)
+	updatedPod, err := patcher.patchPod(podNamespace, memberName, payload)
+	if updatedPod != nil {
 		zap.S().Debugf("Updated Pod annotation: %v (%s)", pod.Annotations, memberName)
 	}
 	return err
