@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -320,7 +321,7 @@ func versionsContain(versions []MongoDbVersionConfig, version MongoDbVersionConf
 // will be valid for any version of MongoDB. This is used as a default if no
 // versions are manually specified.
 func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
-	return MongoDbVersionConfig{
+	versionConfig := MongoDbVersionConfig{
 		Name: version,
 		Builds: []BuildConfig{
 			{
@@ -337,4 +338,12 @@ func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
 			},
 		},
 	}
+
+	// if we are using an enterprise version of MongoDB, we need to add the enterprise string to the modules array.
+	if strings.HasSuffix(version, "-ent") {
+		for i := range versionConfig.Builds {
+			versionConfig.Builds[i].Modules = append(versionConfig.Builds[i].Modules, "enterprise")
+		}
+	}
+	return versionConfig
 }
