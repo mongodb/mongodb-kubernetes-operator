@@ -30,4 +30,6 @@ images:
         output:
           - registry: $(inputs.params.registry)/community-operator-e2e
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/community-operator-e2e
+            tag: latest
 

@@ -96,13 +96,25 @@ vet:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-# Build the docker image
-docker-build: dockerfile
-	docker build -t ${IMG} .
+# Build and push the operator image
+operator:
+	python pipeline.py --image-name operator-ubi
 
-# Push the docker image
-docker-push:
-	docker push ${IMG}
+e2e:
+	python pipeline.py --image-name e2e
+
+agent:
+	python pipeline.py --image-name agent-ubuntu
+
+readiness-probe:
+	python pipeline.py --image-name readiness-probe-init
+
+version-upgrade-post-start-hook:
+	python pipeline.py --image-name version-post-start-hook-init
+
+# create all required images
+all-images: operator e2e agent readiness-probe version-upgrade-post-start-hook
+
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -141,7 +153,7 @@ bundle: manifests kustomize
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-# Generate Dockerfile
-.PHONY: dockerfile
-dockerfile:
-	python scripts/dev/dockerfile_generator.py ${DOCKERFILE} > Dockerfile
+## Generate Dockerfile
+#.PHONY: dockerfile
+#dockerfile:
+#	python scripts/dev/dockerfile_generator.py ${DOCKERFILE} > Dockerfile

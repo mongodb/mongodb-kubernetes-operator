@@ -30,4 +30,6 @@ images:
         output:
           - registry: $(inputs.params.registry)/community-operator-dev
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/community-operator-dev
+            tag: latest
 

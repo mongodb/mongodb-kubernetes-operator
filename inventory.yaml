@@ -52,6 +52,8 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-dev
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/mongodb-agent-dev
+            tag: latest
 
       - name: agent-template-ubuntu-s3
         task_type: dockerfile_template
@@ -150,6 +152,8 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+            tag: latest
 
       - name: agent-template-ubi-s3
         task_type: dockerfile_template
@@ -225,6 +229,8 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+            tag: latest
 
 
       - name: readiness-init-context-release
@@ -292,6 +298,8 @@ images:
         output:
           - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
             tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+            tag: latest
 
 
       - name: version-post-start-hook-init-context-release
