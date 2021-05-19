@@ -2,10 +2,11 @@ package pod
 
 import (
 	"context"
-	"go.uber.org/zap"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/client-go/kubernetes"
 )
@@ -22,8 +23,8 @@ func PatchPodAnnotation(podNamespace string, lastVersionAchieved int64, memberNa
 
 	if len(pod.Annotations) == 0 {
 		payload = append(payload, patchValue{
-			Op: "add",
-			Path: "/metadata/annotations",
+			Op:    "add",
+			Path:  "/metadata/annotations",
 			Value: make(map[string]string),
 		})
 	}

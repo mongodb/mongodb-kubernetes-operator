@@ -55,21 +55,17 @@ cat > ~/.community-operator-dev/config.json << EOL
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
-    "testrunner_image": "test-runner",
+    "prestop_hook_image": "prehook",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
     "readiness_probe_image": "mongodb-kubernetes-readinessprobe"
-    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 EOL
 ```
 
-More details about the config options can be found [here](./config-options.md)
-
-#### build and deploy the operator to the cluster
+#### build all required images and deploy operator to cluster
 ```bash
-make docker-build docker-push deploy
+make all-images deploy
 ```
-
 
 #### See the operator deployment
 ```bash

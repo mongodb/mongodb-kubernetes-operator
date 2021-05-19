@@ -98,17 +98,36 @@ fmt:
 vet:
 	go vet ./...
 
+e2e: install
+	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-# Build the docker image
-docker-build: dockerfile
-	docker build -t ${IMG} .
+# Build and push the operator image
+operator-image:
+	python pipeline.py --image-name operator-ubi
 
-# Push the docker image
-docker-push:
-	docker push ${IMG}
+# Build and push e2e test image
+e2e-image:
+	python pipeline.py --image-name e2e
+
+# Build and push agent image
+agent-image:
+	python pipeline.py --image-name agent-ubuntu
+
+# Build and push readiness probe image
+readiness-probe-image:
+	python pipeline.py --image-name readiness-probe-init
+
+# Build and push version upgrade post start hook image
+version-upgrade-post-start-hook-image:
+	python pipeline.py --image-name version-post-start-hook-init
+
+# create all required images
+all-images: operator-image e2e-image agent-image readiness-probe-image version-upgrade-post-start-hook-image
+
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -146,8 +165,3 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-# Generate Dockerfile
-.PHONY: dockerfile
-dockerfile:
-	python scripts/dev/dockerfile_generator.py ${DOCKERFILE} > Dockerfile
