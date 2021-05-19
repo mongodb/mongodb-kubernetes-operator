@@ -222,7 +222,7 @@ func WithAnnotations(annotations map[string]string) Modification {
 // WithVolumeMounts will add volume mounts to a container or init container by name
 func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		c := findContainerByName(containerName, podTemplateSpec)
+		c := FindContainerByName(containerName, podTemplateSpec)
 		if c == nil {
 			return
 		}
@@ -230,8 +230,8 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 	}
 }
 
-// findContainerByName will find either a container or init container by name in a pod template spec
-func findContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *corev1.Container {
+// FindContainerByName will find either a container or init container by name in a pod template spec
+func FindContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *corev1.Container {
 	containerIdx := findIndexByName(name, podTemplateSpec.Spec.Containers)
 	if containerIdx != notFound {
 		return &podTemplateSpec.Spec.Containers[containerIdx]

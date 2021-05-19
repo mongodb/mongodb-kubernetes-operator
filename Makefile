@@ -33,6 +33,7 @@ BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Image URL to use all building/pushing image targets
 REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
 OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
+NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
 IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -74,7 +75,12 @@ uninstall: manifests kustomize
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+
+# Deploy a simple ReplicaSet, this is intended for first time use only as part of the quick start guide.
+deploy-dev-quick-start-rs: manifests kustomize
+	kubectl create secret generic quick-start-rs --from-literal=password=dev-quick-start-password --from-literal=username=admin || true
+	kubectl apply -f dev_notes/dev_quick_start_resources/dev_quick_start_rs.yaml
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:

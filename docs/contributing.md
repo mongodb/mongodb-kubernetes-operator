@@ -50,6 +50,7 @@ to be able to run properly. Create a json file with the following content:
     "namespace": "default",
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
+<<<<<<< HEAD
     "e2e_image": "community-e2e",
     "version_upgrade_hook_image": "version_upgrade_hook",
     "prestop_hook_image": "prehook",
@@ -57,6 +58,10 @@ to be able to run properly. Create a json file with the following content:
     "agent_image_ubuntu": "mongodb-agent-dev",
     "agent_image_ubi": "mongodb-agent-ubi-dev",
     "readiness_probe_image": "mongodb-kubernetes-readiness"
+=======
+    "e2e_image": "e2e",
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
+>>>>>>> master
 }
 ```
 

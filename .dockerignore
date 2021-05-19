@@ -4,3 +4,5 @@ zz_*
 vendor/
 scripts/
 .git/
+# allow agent LICENSE
+!scripts/dev/templates/agent/LICENSE

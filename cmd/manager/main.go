@@ -11,15 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 const (
@@ -54,7 +52,7 @@ func hasRequiredVariables(logger *zap.Logger, envVariables ...string) bool {
 func main() {
 	log, err := configureLogger()
 	if err != nil {
-		os.Exit(1)
+		log.Sugar().Fatalf("Failed to configure logger: %v", err)
 	}
 
 	if !hasRequiredVariables(log, construct.AgentImageEnv, construct.VersionUpgradeHookImageEnv, construct.ReadinessProbeImageEnv) {
@@ -64,7 +62,7 @@ func main() {
 	// Get watch namespace from environment variable.
 	namespace, nsSpecified := os.LookupEnv(WatchNamespaceEnv)
 	if !nsSpecified {
-		os.Exit(1)
+		log.Sugar().Fatal("No namespace specified to watch")
 	}
 
 	// If namespace is a wildcard use the empty string to represent all namespaces
@@ -79,8 +77,7 @@ func main() {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
-		setupLog.Error(err, "Unable to get config")
-		os.Exit(1)
+		log.Sugar().Fatalf("Unable to get config: %v", err)
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
@@ -88,22 +85,19 @@ func main() {
 		Namespace: watchNamespace,
 	})
 	if err != nil {
-		setupLog.Error(err, "Unable to create manager")
-		os.Exit(1)
+		log.Sugar().Fatalf("Unable to create manager: %v", err)
 	}
 
 	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
 	if err := mdbv1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "Unable to add mdbv1 to scheme")
-		os.Exit(1)
+		log.Sugar().Fatalf("Unable to add mdbv1 to scheme: %v", err)
 	}
 
 	// Setup Controller.
 	if err = controllers.NewReconciler(mgr).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Unable to create controller")
-		os.Exit(1)
+		log.Sugar().Fatalf("Unable to create controller: %v", err)
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -111,7 +105,6 @@ func main() {
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "Unable to start manager")
-		os.Exit(1)
+		log.Sugar().Fatalf("Unable to start manager: %v", err)
 	}
 }

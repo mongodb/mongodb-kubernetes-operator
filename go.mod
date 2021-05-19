@@ -3,7 +3,7 @@ module github.com/mongodb/mongodb-kubernetes-operator
 go 1.15
 
 require (
-	github.com/blang/semver v3.5.0+incompatible
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/go-logr/logr v0.4.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.12
@@ -15,10 +15,10 @@ require (
 	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.5.1
 	go.uber.org/zap v1.16.0
-	k8s.io/api v0.19.2
+	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.21.0
-	k8s.io/client-go v0.19.2
-	sigs.k8s.io/controller-runtime v0.7.0
+	k8s.io/client-go v0.20.4
+	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/yaml v1.2.0
 )
 
