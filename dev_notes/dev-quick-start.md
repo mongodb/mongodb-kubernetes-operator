@@ -46,17 +46,15 @@ cat > ~/.community-operator-dev/config.json << EOL
     "operator_image": "mongodb-kubernetes-operator",
     "e2e_image": "e2e",
     "prestop_hook_image": "prehook",
-    "testrunner_image": "test-runner",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
 }
 EOL
 ```
 
-#### build and deploy the operator to the cluster
+#### build all required images and deploy operator to cluster
 ```bash
-python scripts/dev/build_and_deploy_operator.py
+make all-images deploy
 ```
-
 
 #### See the operator deployment
 ```bash

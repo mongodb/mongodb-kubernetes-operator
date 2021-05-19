@@ -92,7 +92,7 @@ fmt:
 vet:
 	go vet ./...
 
-e2e: manifests
+e2e: install
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Generate code
@@ -103,15 +103,19 @@ generate: controller-gen
 operator-image:
 	python pipeline.py --image-name operator-ubi
 
+# Build and push e2e test image
 e2e-image:
 	python pipeline.py --image-name e2e
 
+# Build and push agent image
 agent-image:
 	python pipeline.py --image-name agent-ubuntu
 
+# Build and push readiness probe image
 readiness-probe-image:
 	python pipeline.py --image-name readiness-probe-init
 
+# Build and push version upgrade post start hook image
 version-upgrade-post-start-hook-image:
 	python pipeline.py --image-name version-post-start-hook-init
 

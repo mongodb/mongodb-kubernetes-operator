@@ -35,7 +35,8 @@ kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 4. Build and deploy the operator:
 
 ```sh
-python ./scripts/dev/build_and_deploy_operator.py
+# builds all required images and then deploys the operator
+make all-images deploy
 ```
 
 
@@ -44,21 +45,3 @@ Note: this will build and push the operator at `repo_url/mongodb-kubernetes-oper
 5. Change the [manager yaml file](../config/manager/manager.yaml) `image` field to have the image you just built
 
 6. You can now deploy your resources following the [docs](../docs/README.md)
-
-
-## Troubleshooting
-If you run into an issue in step 1, you can try the following steps as workaround:
-1. Manually build the operator Dockerfile
-```sh
-python ./scripts/dev/dockerfile_generator.py > Dockerfile
-```
-
-2. Build the image
-```sh
-docker build . -t localhost:5000/mongodb-kubernetes-operator
-```
-
-3. Push the image
-```sh
-docker push localhost:5000/mongodb-kubernetes-operator
-```

@@ -50,9 +50,13 @@ to be able to run properly. Create a json file with the following content:
     "namespace": "default",
     "repo_url": "localhost:5000",
     "operator_image": "mongodb-kubernetes-operator",
-    "e2e_image": "e2e",
+    "e2e_image": "community-e2e",
     "version_upgrade_hook_image": "version_upgrade_hook",
-    "testrunner_image": "test-runner"
+    "prestop_hook_image": "prehook",
+    "testrunner_image": "test-runner",
+    "agent_image_ubuntu": "mongodb-agent-dev",
+    "agent_image_ubi": "mongodb-agent-ubi-dev",
+    "readiness_probe_image": "mongodb-kubernetes-readiness"
 }
 ```
 
@@ -92,7 +96,7 @@ python -m pip install -r requirements.txt
 Unit tests should be run from the root of the project with:
 
 ```sh
-go test ./pkg/...
+make test
 ```
 
 # Running E2E Tests
@@ -119,26 +123,18 @@ replica_set_scale
 The tests should run individually using the runner like this:
 
 ```sh
-# python scripts/dev/e2e.py --test <test-name>
-# for example
-python scripts/dev/e2e.py --test replica_set
+make e2e test=<test-name>
 ```
 
 This will run the `replica_set` E2E test which is a simple test that installs a
 MongoDB Replica Set and asserts that the deployed server can be connected to.
 
 
-The python script has several flags to control its behaviour, please run
-
-```sh
-python scripts/dev/e2e.py --help
-```
-
 to get a list.
 
 ## Troubleshooting
 When you run a test locally, if the `e2e-test` pod is present, you will have to
-first manually delete it; failing to do so will cause the `test-runner` pod to fail.
+first manually delete it; failing to do so will cause the `e2e-test` pod to fail.
 
 # Writing new E2E tests
 
@@ -149,7 +145,7 @@ Adding a new test is as easy as to create a new directory in `test/e2e` with the
 new E2E test, and to run them:
 
 ```sh
-python scripts/dev/e2e.py --test <new-test>
+make e2e test=<test-name>
 ```
 
 # Before Committing your code
