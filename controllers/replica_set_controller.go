@@ -451,6 +451,7 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetClusterIP("None").
 		SetPort(27017).
 		SetPublishNotReadyAddresses(true).
+		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
 		Build()
 }
 
@@ -501,7 +502,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	auth := automationconfig.Auth{}
-	if err := scram.Enable(&auth, r.client, mdb); err != nil {
+	if err := scram.Enable(&auth, r.client, mdb, []metav1.OwnerReference{getOwnerReference(mdb)}); err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 

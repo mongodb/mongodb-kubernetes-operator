@@ -175,14 +175,14 @@ func TestConfigureScram(t *testing.T) {
 		s := newMockedSecretGetUpdateCreateDeleter()
 
 		auth := automationconfig.Auth{}
-		err := Enable(&auth, s, mdb)
+		err := Enable(&auth, s, mdb, nil)
 		assert.Error(t, err)
 	})
 	t.Run("Agent Credentials Secret should be created if there are no users", func(t *testing.T) {
 		mdb := buildConfigurable("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
 		auth := automationconfig.Auth{}
-		err := Enable(&auth, s, mdb)
+		err := Enable(&auth, s, mdb, nil)
 		assert.NoError(t, err)
 
 		passwordSecret, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
@@ -207,7 +207,7 @@ func TestConfigureScram(t *testing.T) {
 
 		s := newMockedSecretGetUpdateCreateDeleter(agentPasswordSecret)
 		auth := automationconfig.Auth{}
-		err := Enable(&auth, s, mdb)
+		err := Enable(&auth, s, mdb, nil)
 		assert.NoError(t, err)
 
 		ps, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
@@ -229,7 +229,7 @@ func TestConfigureScram(t *testing.T) {
 
 		s := newMockedSecretGetUpdateCreateDeleter(keyfileSecret)
 		auth := automationconfig.Auth{}
-		err := Enable(&auth, s, mdb)
+		err := Enable(&auth, s, mdb, nil)
 		assert.NoError(t, err)
 
 		ks, err := s.GetSecret(mdb.GetAgentKeyfileSecretNamespacedName())
@@ -243,7 +243,7 @@ func TestConfigureScram(t *testing.T) {
 		mdb := buildConfigurable("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
 		auth := automationconfig.Auth{}
-		err := Enable(&auth, s, mdb)
+		err := Enable(&auth, s, mdb, nil)
 		assert.NoError(t, err)
 	})
 }
