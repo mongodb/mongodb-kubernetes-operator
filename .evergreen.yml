@@ -107,20 +107,6 @@ functions:
       working_dir: mongodb-kubernetes-operator
       command: ${workdir}/venv/bin/python -m pip install -r requirements.txt --quiet --no-warn-script-location
 
-  build_and_push_image:
-    - command: subprocess.exec
-      type: setup
-      params:
-        include_expansions_in_env:
-          - version_id
-          - quay_user_name
-          - quay_password
-          - image
-          - image_type
-          - expire_after
-        working_dir: mongodb-kubernetes-operator
-        binary: scripts/ci/build_and_push_image.sh
-
   build_and_push_image_sonar:
     - command: subprocess.exec
       type: setup

@@ -92,28 +92,31 @@ fmt:
 vet:
 	go vet ./...
 
+e2e: manifests
+	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build and push the operator image
-operator:
+operator-image:
 	python pipeline.py --image-name operator-ubi
 
-e2e:
+e2e-image:
 	python pipeline.py --image-name e2e
 
-agent:
+agent-image:
 	python pipeline.py --image-name agent-ubuntu
 
-readiness-probe:
+readiness-probe-image:
 	python pipeline.py --image-name readiness-probe-init
 
-version-upgrade-post-start-hook:
+version-upgrade-post-start-hook-image:
 	python pipeline.py --image-name version-post-start-hook-init
 
 # create all required images
-all-images: operator e2e agent readiness-probe version-upgrade-post-start-hook
+all-images: operator-image e2e-image agent-image readiness-probe-image version-upgrade-post-start-hook-image
 
 
 # Download controller-gen locally if necessary
@@ -152,8 +155,3 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-## Generate Dockerfile
-#.PHONY: dockerfile
-#dockerfile:
-#	python scripts/dev/dockerfile_generator.py ${DOCKERFILE} > Dockerfile
