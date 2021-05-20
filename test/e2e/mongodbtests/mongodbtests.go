@@ -367,6 +367,4 @@ func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamesp
 	assert.Equal(t, "MongoDBCommunity", ownerReferences[0].Kind)
 	assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
 	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
-
-	t.Logf("%s %s/%s has the correct OwnerReference!", resourceType, resourceNamespacedName.Name, resourceNamespacedName.Namespace)
 }

@@ -44,6 +44,9 @@ type Configurable interface {
 
 	// NamespacedName returns the NamespacedName for the resource that is being configured.
 	NamespacedName() types.NamespacedName
+
+	// GetOwnerReferences returns the OwnerReference pointing to the current resource.
+	GetOwnerReferences() []metav1.OwnerReference
 }
 
 // Role is a struct which will map to automationconfig.Role.
@@ -100,7 +103,7 @@ type Options struct {
 // Enable will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable, ownerReferences []metav1.OwnerReference) error {
+func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) error {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
 		return errors.Errorf("could not generate password: %s", err)
@@ -117,13 +120,13 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	}
 
 	// ensure that the agent password secret exists or read existing password.
-	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), ownerReferences, AgentPasswordKey, generatedPassword)
+	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), mdb.GetOwnerReferences(), AgentPasswordKey, generatedPassword)
 	if err != nil {
 		return err
 	}
 
 	// ensure that the agent keyfile secret exists or read existing keyfile.
-	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), ownerReferences, AgentKeyfileKey, generatedContents)
+	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), AgentKeyfileKey, generatedContents)
 	if err != nil {
 		return err
 	}
