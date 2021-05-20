@@ -279,12 +279,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	// }
 
 	if b.tlsConfig != nil {
-		currentAc.SSLConfig = nil
+		//	currentAc.SSLConfig = nil
 		currentAc.TLSConfig = b.tlsConfig
 	}
 
 	if b.sslConfig != nil {
-		currentAc.TLSConfig = nil
+		//	currentAc.TLSConfig = nil
 		currentAc.SSLConfig = b.sslConfig
 	}
 
