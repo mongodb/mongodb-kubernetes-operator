@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -43,37 +46,38 @@ func init() {
 // - if AppDB: the 'mmsStatus[0].lastGoalVersionAchieved' field is compared with the one from mounted automation config
 // Additionally if the previous check hasn't returned 'true' the "deadlock" case is checked to make sure the Agent is
 // not waiting for the other members.
-func isPodReady(conf config.Config) bool {
-	healthStatus, err := conf.HealthStatusProvider.HealthStatus()
+func isPodReady(conf config.Config) (bool, error) {
+	healthStatus, err := parseHealthStatus(conf.HealthStatusReader)
 	if err != nil {
-		panic(err)
+		logger.Errorf("There was problem parsing health status file: %s", err)
+		return false, err
 	}
 
 	// The 'statuses' file can be empty only for OM Agents
 	if len(healthStatus.Healthiness) == 0 && !isHeadlessMode() {
 		logger.Info("'statuses' is empty. We assume there is no automation config for the agent yet.")
-		return true
+		return true, nil
 	}
 
 	// If the agent has reached the goal state
 	inGoalState, err := isInGoalState(healthStatus, conf)
 	if err != nil {
 		logger.Errorf("There was problem checking the health status: %s", err)
-		panic(err)
+		return false, err
 	}
 
 	inReadyState := isInReadyState(healthStatus)
 	if inGoalState && inReadyState {
 		logger.Info("Agent has reached goal state")
-		return true
+		return true, nil
 	}
 
 	// Failback logic: the agent is not in goal state and got stuck in some steps
 	if !inGoalState && hasDeadlockedSteps(healthStatus) {
-		return true
+		return true, nil
 	}
 
-	return false
+	return false, nil
 }
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
@@ -177,6 +181,17 @@ func kubernetesClientset() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
+func parseHealthStatus(reader io.Reader) (health.Status, error) {
+	var health health.Status
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return health, err
+	}
+
+	err = json.Unmarshal(data, &health)
+	return health, err
+}
+
 func main() {
 	clientSet, err := kubernetesClientset()
 	if err != nil {
@@ -197,9 +212,15 @@ func main() {
 		panic(err)
 	}
 	logger = log.Sugar()
-	if !isPodReady(config) {
+
+	ready, err := isPodReady(config)
+	if err != nil {
+		panic(err)
+	}
+	if !ready {
 		os.Exit(1)
 	}
+
 }
 
 // isInReadyState checks the MongoDB Server state. It returns true if the mongod process is up and its state

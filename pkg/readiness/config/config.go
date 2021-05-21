@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -23,7 +24,7 @@ type Config struct {
 	Namespace                  string
 	Hostname                   string
 	AutomationConfigSecretName string
-	HealthStatusProvider       HealthStatusProvider
+	HealthStatusReader         io.Reader
 	LogFilePath                string
 }
 
@@ -47,12 +48,17 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", hostNameEnv)
 		}
 	}
+	file, err := os.Open(healthStatusFilePath)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
 	return Config{
 		ClientSet:                  clientSet,
 		Namespace:                  namespace,
 		AutomationConfigSecretName: automationConfigName,
 		Hostname:                   hostname,
-		HealthStatusProvider:       FileHealthStatusProvider{HealthStatusFilePath: healthStatusFilePath},
+		HealthStatusReader:         file,
 		LogFilePath:                logFilePath,
 	}, nil
 }

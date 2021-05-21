@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -19,20 +22,24 @@ import (
 // TestDeadlockDetection verifies that if the agent is stuck in "WaitAllRsMembersUp" phase (started > 15 seconds ago)
 // then the function returns "ready"
 func TestDeadlockDetection(t *testing.T) {
-	assert.True(t, isPodReady(testConfig("testdata/health-status-deadlocked.json")))
+	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked.json"))
+	assert.True(t, ready)
+	assert.NoError(t, err)
 }
 
 // TestNoDeadlock verifies that if the agent has started (but not finished) "WaitRsInit" and then there is another
 // started phase ("WaitFeatureCompatibilityVersionCorrect") then no deadlock is found as the latter is considered to
 // be the "current" step
 func TestNoDeadlock(t *testing.T) {
-	health, err := testConfig("testdata/health-status-no-deadlock.json").HealthStatusProvider.HealthStatus()
+	health, err := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
 	assert.NoError(t, err)
 	stepStatus := findCurrentStep(health.ProcessPlans)
 
 	assert.Equal(t, "WaitFeatureCompatibilityVersionCorrect", stepStatus.Step)
 
-	assert.False(t, isPodReady(testConfig("testdata/health-status-no-deadlock.json")))
+	ready, err := isPodReady(testConfig("testdata/health-status-no-deadlock.json"))
+	assert.False(t, ready)
+	assert.NoError(t, err)
 }
 
 // TestDeadlockDetection verifies that if the agent is in "WaitAllRsMembersUp" phase but started < 15 seconds ago
@@ -40,53 +47,64 @@ func TestNoDeadlock(t *testing.T) {
 // Note, that the status file is artificial: it has two plans (the first one is complete and has no moves) to make sure
 // the readiness logic takes only the last plan for consideration
 func TestNotReadyWaitingForRsReady(t *testing.T) {
-	assert.False(t, isPodReady(testConfig("testdata/health-status-pending.json")))
+	ready, err := isPodReady(testConfig("testdata/health-status-pending.json"))
+	assert.False(t, ready)
+	assert.NoError(t, err)
 }
 
 // TestNotReadyHealthFileHasNoPlans verifies that the readiness script doesn't panic if the health file has unexpected
 // data (there are no plans at all)
 func TestNotReadyHealthFileHasNoPlans(t *testing.T) {
-	assert.False(t, isPodReady(testConfig("testdata/health-status-no-plans.json")))
+	ready, err := isPodReady(testConfig("testdata/health-status-no-plans.json"))
+	assert.False(t, ready)
+	assert.NoError(t, err)
 }
 
 // TestNotReadyHealthFileHasNoProcesses verifies that the readiness script doesn't panic if the health file has unexpected
 // data (there are no processes at all)
 func TestNotReadyHealthFileHasNoProcesses(t *testing.T) {
-	assert.False(t, isPodReady(testConfig("testdata/health-status-no-processes.json")))
-}
-
-// TestNotReadyHealthFileAbsent verifies that the readiness logic panics is the health file is absent.
-// Note, that historically the absence of the file was interpreted as "ready" when older version of agents
-// could be used. But now all supported Agent versions always produce this file.
-func TestNotReadyHealthFileAbsent(t *testing.T) {
-	assert.Panics(t, func() { isPodReady(testConfig("non-existing.json")) })
+	ready, err := isPodReady(testConfig("testdata/health-status-no-processes.json"))
+	assert.False(t, ready)
+	assert.NoError(t, err)
 }
 
 func TestNotReadyMongodIsDown(t *testing.T) {
 	t.Run("Mongod is down for 90 seconds", func(t *testing.T) {
-		assert.False(t, isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*90)))
+		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*90))
+		assert.False(t, ready)
+		assert.NoError(t, err)
 	})
 	t.Run("Mongod is down for 1 hour", func(t *testing.T) {
-		assert.False(t, isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*1)))
+		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*1))
+		assert.False(t, ready)
+		assert.NoError(t, err)
 	})
 	t.Run("Mongod is down for 2 days", func(t *testing.T) {
-		assert.False(t, isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*48)))
+		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*48))
+		assert.False(t, ready)
+		assert.NoError(t, err)
 	})
 }
 
 func TestReadyMongodIsUp(t *testing.T) {
 	t.Run("Mongod is down for 30 seconds", func(t *testing.T) {
-		assert.True(t, isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30)))
+		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30))
+		assert.True(t, ready)
+		assert.NoError(t, err)
 	})
 	t.Run("Mongod is down for 1 second", func(t *testing.T) {
-		assert.True(t, isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*1)))
+		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*1))
+		assert.True(t, ready)
+		assert.NoError(t, err)
 	})
 }
 
 // TestReady verifies that the probe reports "ready" despite "WaitRsInit" stage reporting as not reached
 // (this is some bug in Automation Agent which we can work with)
 func TestReady(t *testing.T) {
-	assert.True(t, isPodReady(testConfig("testdata/health-status-ok.json")))
+	ready, err := isPodReady(testConfig("testdata/health-status-ok.json"))
+	assert.True(t, ready)
+	assert.NoError(t, err)
 }
 
 // TestNoDeadlockForDownloadProcess verifies that the steps not listed as "riskySteps" (like "download") are not
@@ -126,7 +144,9 @@ func TestHeadlessAgentHasntReachedGoal(t *testing.T) {
 	_ = os.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 6))
-	assert.False(t, isPodReady(c))
+	ready, err := isPodReady(c)
+	assert.False(t, ready)
+	assert.NoError(t, err)
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
 
@@ -139,7 +159,9 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 	_ = os.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 5))
-	assert.True(t, isPodReady(c))
+	ready, err := isPodReady(c)
+	assert.True(t, ready)
+	assert.NoError(t, err)
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
 
@@ -148,15 +170,21 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 
 func TestPodReadiness(t *testing.T) {
 	t.Run("Pod readiness is correctly checked when no ReplicationStatus is present on the file ", func(t *testing.T) {
-		assert.True(t, isPodReady(testConfig("testdata/health-status-no-replication.json")))
+		ready, err := isPodReady(testConfig("testdata/health-status-no-replication.json"))
+		assert.True(t, ready)
+		assert.NoError(t, err)
 	})
 
 	t.Run("MongoDB replication state is reported by agents", func(t *testing.T) {
-		assert.True(t, isPodReady(testConfig("testdata/health-status-ok-no-replica-status.json")))
+		ready, err := isPodReady(testConfig("testdata/health-status-ok-no-replica-status.json"))
+		assert.True(t, ready)
+		assert.NoError(t, err)
 	})
 
 	t.Run("If replication state is not PRIMARY or SECONDARY, Pod is not ready", func(t *testing.T) {
-		assert.False(t, isPodReady(testConfig("testdata/health-status-not-readable-state.json")))
+		ready, err := isPodReady(testConfig("testdata/health-status-not-readable-state.json"))
+		assert.False(t, ready)
+		assert.NoError(t, err)
 	})
 }
 
@@ -165,10 +193,17 @@ func testConfig(healthFilePath string) config.Config {
 }
 
 func testConfigWithMongoUp(healthFilePath string, timeSinceMongoLastUp time.Duration) config.Config {
-	status, err := config.FileHealthStatusProvider{HealthStatusFilePath: healthFilePath}.HealthStatus()
+	file, err := os.Open(healthFilePath)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
+	defer file.Close()
+
+	status, err := parseHealthStatus(file)
+	if err != nil {
+		panic(err)
+	}
+
 	for key, processHealth := range status.Healthiness {
 		processHealth.LastMongoUpTime = time.Now().Add(-timeSinceMongoLastUp).Unix()
 		// Need to reassign the object back to map as 'processHealth' is a copy of the struct
@@ -176,17 +211,17 @@ func testConfigWithMongoUp(healthFilePath string, timeSinceMongoLastUp time.Dura
 	}
 
 	return config.Config{
-		HealthStatusProvider:       TestHealthStatusProvider{healthStatus: status},
+		HealthStatusReader:         NewTestHealthStatusReader(status),
 		Namespace:                  "test-ns",
 		AutomationConfigSecretName: "test-mongodb-automation-config",
 		Hostname:                   "test-mongodb-0",
 	}
 }
 
-type TestHealthStatusProvider struct {
-	healthStatus health.Status
-}
-
-func (t TestHealthStatusProvider) HealthStatus() (health.Status, error) {
-	return t.healthStatus, nil
+func NewTestHealthStatusReader(status health.Status) io.Reader {
+	data, err := json.Marshal(status)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.NewReader(data)
 }
