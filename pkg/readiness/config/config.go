@@ -23,7 +23,7 @@ type Config struct {
 	Namespace                  string
 	Hostname                   string
 	AutomationConfigSecretName string
-	HealthStatusFilePath       string
+	HealthStatusProvider       HealthStatusProvider
 	LogFilePath                string
 }
 
@@ -52,7 +52,7 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 		Namespace:                  namespace,
 		AutomationConfigSecretName: automationConfigName,
 		Hostname:                   hostname,
-		HealthStatusFilePath:       healthStatusFilePath,
+		HealthStatusProvider:       FileHealthStatusProvider{HealthStatusFilePath: healthStatusFilePath},
 		LogFilePath:                logFilePath,
 	}, nil
 }
