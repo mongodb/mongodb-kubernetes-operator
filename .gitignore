@@ -95,3 +95,6 @@ Dockerfile.ubuntu-*
 
 .community-operator-dev
 .ssh
+.kube
+.docker
+.aws
