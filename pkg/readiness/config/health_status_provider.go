@@ -8,6 +8,8 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/health"
 )
 
+// HealthStatusProvider is an interface for providing the 'health.Status' object to the readiness probe. Abstracting out
+// this to the interface allows to perform unit-testing easier as allows to modify the config on-the-fly.
 type HealthStatusProvider interface {
 	HealthStatus() (health.Status, error)
 }
