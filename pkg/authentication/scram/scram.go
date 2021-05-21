@@ -45,7 +45,7 @@ type Configurable interface {
 	// NamespacedName returns the NamespacedName for the resource that is being configured.
 	NamespacedName() types.NamespacedName
 
-	// GetOwnerReferences returns the OwnerReference pointing to the current resource.
+	// GetOwnerReferences returns the OwnerReferences pointing to the current resource.
 	GetOwnerReferences() []metav1.OwnerReference
 }
 
