@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
@@ -77,7 +80,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 // SetupWithManager sets up the controller with the Manager and configures the necessary watches.
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mdbv1.MongoDBCommunity{}).
+		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
 		Complete(r)
 }
 
