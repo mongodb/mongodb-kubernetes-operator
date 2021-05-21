@@ -4,7 +4,7 @@
 
 - Bug fixes
   - when deleting MongoDB Resource cleanup related resources (k8s services, secrets).
-
+  - fixed an issue where the operator would reconcile based on events emitted by itself in certain situations.
 ## MongoDB Agent ReadinessProbe
 
 - Changes
