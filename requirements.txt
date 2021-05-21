@@ -1,3 +1,4 @@
+git+ssh://git@github.com/10gen/sonar.git@0.0.10
 docker==4.3.1
 kubernetes==11.0.0
 jinja2==2.11.3

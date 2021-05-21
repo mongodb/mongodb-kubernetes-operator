@@ -1,13 +1,53 @@
 FROM golang:1.15
 
-
 ENV GO111MODULE=on
-ENV GOPATH ""
+
+# install docker client
+RUN apt-get update -y  && apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
+    && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
+
+# install kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl \
+    && chmod +x ./kubectl \
+    && mv ./kubectl /usr/local/bin
+
+ENV KUSTOMIZE_VER 2.0.0
+# install kustomize
+RUN curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/v${KUSTOMIZE_VER}/kustomize_${KUSTOMIZE_VER}_linux_amd64  -o /usr/bin/kustomize \
+    && chmod +x /usr/bin/kustomize
+
+# install python
+RUN apt-get install -y  python3-pip && pip3 install --upgrade pip
+COPY requirements.txt requirements.txt
+
+# Copy SSH key for git private repos
+ADD .ssh  /root/.ssh
+
+RUN git config --global user.name "Cian Hatton"
+RUN git config --global user.email "cianhatton@gmail.com"
+
+RUN pip install -r requirements.txt
+
+RUN apt-get -y -qq update && \
+	apt-get install -y -qq curl && \
+	apt-get clean docker-ce
+
+# install jq to parse json within bash scripts
+RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq && \
+  chmod +x /usr/local/bin/jq
+
+
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# configuration for dev scripts
+ADD .community-operator-dev/ /root/.community-operator-dev/
+
+ADD .kube /root/.kube
+
+# COPY go.mod go.sum ./
+# RUN go mod download
+
+ADD .docker/config.json /root/.docker/config.json
 
 WORKDIR /workspace
-COPY go.mod go.sum ./
-RUN go mod download
-
-ADD . .
-
-COPY testdata/tls/ testdata/tls/
