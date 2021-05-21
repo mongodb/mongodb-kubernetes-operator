@@ -62,7 +62,7 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: install
-	$(KUSTOMIZE) build config/run | kubectl apply -n $(NAMESPACE) -f -
+	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster

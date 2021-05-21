@@ -20,6 +20,13 @@
 * Bug fixes (*CVE issues go first*)
   * Fixes an issue ...
 
+## MongoDB Agent ReadinessProbe
+* Breaking Changes
+  * Breaking Change 1
+* Changes
+  * Change 1
+* Bug fixes (*CVE issues go first*)
+  * Fixes an issue ...
 
 ## Known Issues
 * Issue 1
