@@ -98,3 +98,4 @@ Dockerfile.ubuntu-*
 .kube
 .docker
 .aws
+operator-sdk_linux_amd64

@@ -7,3 +7,5 @@ scripts/
 # allow agent LICENSE
 !scripts/dev/templates/agent/LICENSE
 vendor
+.mypy_cache
+.build/_output

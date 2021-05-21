@@ -66,20 +66,20 @@ run: install
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
-install: manifests kustomize
+install: manifests
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize
+uninstall: manifests
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
+deploy: manifests
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
 	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
 
 # Deploy a simple ReplicaSet, this is intended for first time use only as part of the quick start guide.
-deploy-dev-quick-start-rs: manifests kustomize
+deploy-dev-quick-start-rs: manifests
 	kubectl create secret generic quick-start-rs --from-literal=password=dev-quick-start-password --from-literal=username=admin || true
 	kubectl apply -f dev_notes/dev_quick_start_resources/dev_quick_start_rs.yaml
 
@@ -88,7 +88,7 @@ undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests:
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
@@ -103,7 +103,7 @@ e2e: install
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Generate code
-generate: controller-gen
+generate:
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build and push the operator image
@@ -132,13 +132,13 @@ all-images: operator-image e2e-image agent-image readiness-probe-image version-u
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-controller-gen:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+#controller-gen:
+#	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize:
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+#kustomize:
+#	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))

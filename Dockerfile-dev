@@ -50,4 +50,18 @@ ADD .kube /root/.kube
 
 ADD .docker/config.json /root/.docker/config.json
 
+ENV OPERATOR_SDK_VERSION=1.3.0
+# TODO: download instead of add locally
+ADD operator-sdk_linux_amd64 /usr/bin/operator-sdk
+RUN chmod +x  /usr/bin/operator-sdk
+#RUN wget https://github.com/operator-framework/operator-sdk/releases/download/v${OPERATOR_SDK_VERSION}/operator-sdk_linux_amd64
+#RUN mv operator-sdk_linux_amd64.2 /usr/bin/operator-sdk \
+#    && chmod +x /usr/bin/operator-sdk
+
+
+RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1
+RUN mkdir -p /workspace/bin && mv /go/bin/controller-gen /workspace/bin/controller-gen
+
+RUN mv /usr/bin/kustomize /workspace/bin/kustomize
+
 WORKDIR /workspace
