@@ -82,7 +82,7 @@ local-config.json
 .idea
 vendor
 __pycache__
-Dockerfile
+docker-dev/Dockerfile
 Dockerfile_python_formatting
 logs/*
 testbin/bin
@@ -93,9 +93,11 @@ testbin/bin
 Dockerfile.ubi-*
 Dockerfile.ubuntu-*
 
-.community-operator-dev
+docker-dev/.community-operator-dev
 .ssh
 .kube
-.docker
-.aws
-operator-sdk_linux_amd64
+docker-dev/.docker
+docker-dev/.aws
+docker-dev/operator-sdk_linux_amd64
+
+!docker-dev/Dockerfile

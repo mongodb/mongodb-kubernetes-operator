@@ -1,0 +1,26 @@
+# run with "docker-compose run docker-dev bash"
+version: "3.9"
+services:
+  docker-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/cianhatton/go/src/github.com/mongodb/mongodb-kubernetes-operator:/workspace
+      - ~/.community-operator-dev:/root/.community-operator-dev
+      - ~/.ssh:/root/.ssh
+      - ~/.kube:/root/.kube
+      - ~/.docker:/root/.docker
+      - ~/.gitconfig:/root/.gitconfig
+      - ~/.aws:/root/.aws
+      - ~/.bash_profile:/root/.bash_profile
+    command: ["sleep", "infinity"]
+    environment:
+      WATCH_NAMESPACE: default
+      OPERATOR_NAME: mongodb-kubernetes-operator
+      AGENT_IMAGE: quay.io/mongodb/mongodb-agent:10.29.0.6830-1
+      VERSION_UPGRADE_HOOK_IMAGE: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
+      READINESS_PROBE_IMAGE: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3
+      MONGODB_IMAGE: library/mongo
+      MONGODB_REPO_URL: registry.hub.docker.com

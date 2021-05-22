@@ -69,6 +69,10 @@ run: install
 install: manifests
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
+# install required crds, e2e service accounts and roles
+e2e-install: install
+	kubectl apply -f deploy/e2e
+
 # Uninstall CRDs from a cluster
 uninstall: manifests
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
@@ -99,8 +103,14 @@ fmt:
 vet:
 	go vet ./...
 
+# Run an e2e test, this deploys the e2e test pod to run the test.
 e2e: install
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+
+# Run an e2e test locally, this does not deploy the e2e test pod.
+e2e-local: e2e-install
+	# deply all required e2e service accounts and roles
+	go test -v -timeout=30m -failfast ./test/e2e/$(test)
 
 # Generate code
 generate:
