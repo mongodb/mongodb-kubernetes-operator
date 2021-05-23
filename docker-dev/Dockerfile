@@ -16,13 +16,14 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s
 
 # install kustomize
 ENV KUSTOMIZE_VER 2.0.0
-RUN mkdir -p /workspace/bin/ \
-    && curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/v${KUSTOMIZE_VER}/kustomize_${KUSTOMIZE_VER}_linux_amd64  -o /workspace/bin/kustomize \
-    && chmod +x /workspace/bin/kustomize
+RUN curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/v${KUSTOMIZE_VER}/kustomize_${KUSTOMIZE_VER}_linux_amd64  \
+    && chmod +x ./kustomize_${KUSTOMIZE_VER}_linux_amd64 \
+    && mv ./kustomize_${KUSTOMIZE_VER}_linux_amd64 /usr/local/bin/kustomize
+
 
 # install controller-gen
 RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1 \
-    && mkdir -p /workspace/bin && mv /go/bin/controller-gen /workspace/bin/controller-gen
+    && mv /go/bin/controller-gen /usr/local/bin/controller-gen
 
 # install python
 COPY requirements.txt requirements.txt
@@ -31,7 +32,7 @@ RUN apt-get install -y  python3-pip && pip3 install --upgrade pip \
     && ln -sf /usr/bin/python3 /usr/bin/python
 
 # Note: must run `pip install git+ssh://git@github.com/10gen/sonar.git@0.0.10` manually once
-# connect to container with correct permissions.
+# connected to container with correct permissions.
 
 # install jq to parse json within bash scripts
 RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq && \
@@ -39,8 +40,8 @@ RUN curl -o /usr/local/bin/jq http://stedolan.github.io/jq/download/linux64/jq &
 
 
 ENV OPERATOR_SDK_VERSION=1.3.0
-RUN curl https://github.com/operator-framework/operator-sdk/releases/download/v${OPERATOR_SDK_VERSION}/operator-sdk_linux_amd64 -o /go/bin/operator-sdk  \
-    && chmod +x /go/bin/operator-sdk
+RUN curl https://github.com/operator-framework/operator-sdk/releases/download/v${OPERATOR_SDK_VERSION}/operator-sdk_linux_amd64 -o /usr/local/bin/operator-sdk  \
+    && chmod +x /usr/local/bin/operator-sdk
 
 
 WORKDIR /workspace

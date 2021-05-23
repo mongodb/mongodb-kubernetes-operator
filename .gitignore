@@ -93,11 +93,6 @@ testbin/bin
 Dockerfile.ubi-*
 Dockerfile.ubuntu-*
 
-docker-dev/.community-operator-dev
-.ssh
-.kube
-docker-dev/.docker
-docker-dev/.aws
-docker-dev/operator-sdk_linux_amd64
-
+# docker development values
+docker-dev/.env
 !docker-dev/Dockerfile

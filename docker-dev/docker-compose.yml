@@ -6,15 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /Users/cianhatton/go/src/github.com/mongodb/mongodb-kubernetes-operator:/workspace
-      - ~/.community-operator-dev:/root/.community-operator-dev
-      - ~/.ssh:/root/.ssh
-      - ~/.kube:/root/.kube
-      - ~/.docker:/root/.docker
-      - ~/.gitconfig:/root/.gitconfig
-      - ~/.aws:/root/.aws
-      - ~/.bash_profile:/root/.bash_profile
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${PATH_TO_PROJECT_ROOT}:/workspace"
+      - "~/.community-operator-dev:/root/.community-operator-dev"
+      - "~/.ssh:/root/.ssh"
+      - "~/.kube:/root/.kube"
+      - "~/.docker:/root/.docker"
+      - "~/.gitconfig:/root/.gitconfig"
+      - "~/.aws:/root/.aws"
+      - "~/.bash_profile:/root/.bash_profile"
     command: ["sleep", "infinity"]
     environment:
       WATCH_NAMESPACE: default

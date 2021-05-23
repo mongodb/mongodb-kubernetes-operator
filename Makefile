@@ -93,7 +93,7 @@ undeploy:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crd/bases
+	controller-gen $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -142,12 +142,13 @@ all-images: operator-image e2e-image agent-image readiness-probe-image version-u
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-#controller-gen:
+controller-gen:
 #	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
 # Download kustomize locally if necessary
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-#kustomize:
+#KUSTOMIZE = $(shell pwd)/bin/kustomize
+KUSTOMIZE = kustomize
+kustomize:
 #	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
