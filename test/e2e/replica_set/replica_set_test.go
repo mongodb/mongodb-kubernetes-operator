@@ -22,10 +22,8 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSet(t *testing.T) {
 	ctx := setup.InitTest(t)
+	defer ctx.Teardown()
 
-	if ctx.ShouldPerformCleanup {
-		defer ctx.Cleanup()
-	}
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")

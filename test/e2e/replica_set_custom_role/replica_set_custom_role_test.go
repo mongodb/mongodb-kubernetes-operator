@@ -23,10 +23,7 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetCustomRole(t *testing.T) {
 	ctx := setup.InitTest(t)
-
-	if ctx.ShouldPerformCleanup {
-		defer ctx.Cleanup()
-	}
+	defer ctx.Teardown()
 
 	someDB := "test"
 	someCollection := "foo"

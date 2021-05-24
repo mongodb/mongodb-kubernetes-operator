@@ -27,10 +27,7 @@ func TestMain(m *testing.M) {
 func TestReplicaSetMultiple(t *testing.T) {
 
 	ctx := setup.InitTest(t)
-
-	if ctx.ShouldPerformCleanup {
-		defer ctx.Cleanup()
-	}
+	defer ctx.Teardown()
 
 	mdb0, user0 := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 	mdb1, user1 := e2eutil.NewTestMongoDB(ctx, "mdb1", "")

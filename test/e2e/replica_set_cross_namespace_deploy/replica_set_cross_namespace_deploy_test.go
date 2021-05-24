@@ -25,10 +25,7 @@ func TestMain(m *testing.M) {
 
 func TestCrossNamespaceDeploy(t *testing.T) {
 	ctx := setup.InitTest(t)
-
-	if ctx.ShouldPerformCleanup {
-		defer ctx.Cleanup()
-	}
+	defer ctx.Teardown()
 
 	postfix, err := generate.RandomValidDNS1123Label(5)
 	if err != nil {

@@ -26,10 +26,7 @@ func TestMain(m *testing.M) {
 func TestReplicaSetUpgradeVersion(t *testing.T) {
 
 	ctx := setup.InitTest(t)
-
-	if ctx.ShouldPerformCleanup {
-		defer ctx.Cleanup()
-	}
+	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 	mdb.Spec.Version = "4.2.0"
