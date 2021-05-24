@@ -254,7 +254,7 @@ tasks:
     commands:
       - func: run_e2e_test
         vars:
-          test: feature_compatibility_version
+          test: feature_compatibility_version_upgrade
 
   - name: e2e_test_replica_set
     commands:
