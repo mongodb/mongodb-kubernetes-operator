@@ -26,21 +26,21 @@ func TestMain(m *testing.M) {
 // same time. One of them is scaled to 5 and then back to 3
 func TestReplicaSetMultiple(t *testing.T) {
 
-	ctx, shouldCleanup := setup.InitTest(t)
+	ctx := setup.InitTest(t)
 
-	if shouldCleanup {
+	if ctx.ShouldPerformCleanup {
 		defer ctx.Cleanup()
 	}
 
-	mdb0, user0 := e2eutil.NewTestMongoDB("mdb0", "")
-	mdb1, user1 := e2eutil.NewTestMongoDB("mdb1", "")
+	mdb0, user0 := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb1, user1 := e2eutil.NewTestMongoDB(ctx, "mdb1", "")
 
-	_, err := setup.GeneratePasswordForUser(user0, ctx, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user0, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = setup.GeneratePasswordForUser(user1, ctx, "")
+	_, err = setup.GeneratePasswordForUser(ctx, user1, "")
 	if err != nil {
 		t.Fatal(err)
 	}

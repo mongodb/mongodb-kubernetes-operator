@@ -37,16 +37,18 @@ const (
 	roleDir        = "/workspace/config/rbac"
 )
 
-func InitTest(t *testing.T) (*e2eutil.Context, bool) {
-	ctx := e2eutil.NewContext(t)
+func InitTest(t *testing.T) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, os.Getenv(performCleanup) == "True")
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err := deployOperator(); err != nil {
 		t.Fatal(err)
 	}
 
-	clean := os.Getenv(performCleanup)
-
-	return ctx, clean == "True"
+	return ctx
 }
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
@@ -92,7 +94,7 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
-func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, namespace string) (string, error) {
+func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, namespace string) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
 	if passwordKey == "" {
 		passwordKey = "password"
