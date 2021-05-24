@@ -1,4 +1,4 @@
-# run with "docker-compose run docker-dev bash"
+# run with "docker-compose up --detach"
 version: "3.9"
 services:
   docker-dev:
