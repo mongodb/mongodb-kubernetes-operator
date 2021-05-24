@@ -75,8 +75,8 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+	python scripts/dev/create_kustomize_dev_yaml.py
+	$(KUSTOMIZE) build config/dev | kubectl apply -n $(NAMESPACE) -f -
 
 # Deploy a simple ReplicaSet, this is intended for first time use only as part of the quick start guide.
 deploy-dev-quick-start-rs: manifests kustomize
