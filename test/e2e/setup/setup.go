@@ -9,6 +9,8 @@ import (
 	"path"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/pkg/errors"
@@ -112,7 +114,18 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, names
 		SetField(passwordKey, password).
 		Build()
 
-	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
+	err = e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
+
+	// as we just need there to be a password, it's fine to re-use an existing one (from a previous test run if it was not deleted).
+	if apiErrors.IsAlreadyExists(err) {
+		existingSecret := corev1.Secret{}
+		if err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdbu.PasswordSecretRef.Name, Namespace: namespace}, &existingSecret); err != nil {
+			return "", err
+		}
+		return string(existingSecret.Data[mdbu.PasswordSecretRef.Key]), nil
+	}
+
+	return password, err
 }
 
 func deployOperator() error {
