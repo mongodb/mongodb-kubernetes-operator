@@ -48,11 +48,12 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", hostNameEnv)
 		}
 	}
+	// Note, that we shouldn't close the file here - it will be closed very soon by the 'ioutil.ReadAll'
+	// in main.go
 	file, err := os.Open(healthStatusFilePath)
 	if err != nil {
 		return Config{}, err
 	}
-	defer file.Close()
 	return Config{
 		ClientSet:                  clientSet,
 		Namespace:                  namespace,

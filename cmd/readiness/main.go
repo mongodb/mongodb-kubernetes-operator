@@ -220,7 +220,6 @@ func main() {
 	if !ready {
 		os.Exit(1)
 	}
-
 }
 
 // isInReadyState checks the MongoDB Server state. It returns true if the mongod process is up and its state
