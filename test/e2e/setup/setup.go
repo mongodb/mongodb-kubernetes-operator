@@ -119,10 +119,10 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, names
 	// as we just need there to be a password, it's fine to re-use an existing one (from a previous test run if it was not deleted).
 	if apiErrors.IsAlreadyExists(err) {
 		existingSecret := corev1.Secret{}
-		if err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdbu.PasswordSecretRef.Name, Namespace: namespace}, &existingSecret); err != nil {
+		if err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdbu.PasswordSecretRef.Name, Namespace: nsp}, &existingSecret); err != nil {
 			return "", err
 		}
-		return string(existingSecret.Data[mdbu.PasswordSecretRef.Key]), nil
+		return string(existingSecret.Data[passwordKey]), nil
 	}
 
 	return password, err
