@@ -35,7 +35,7 @@ const (
 	roleDir        = "/workspace/config/rbac"
 )
 
-func InitTest(t *testing.T) *e2eutil.Context {
+func Setup(t *testing.T) *e2eutil.Context {
 	ctx, err := e2eutil.NewContext(t, os.Getenv(performCleanup) == "True")
 
 	if err != nil {

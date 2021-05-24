@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetCustomRole(t *testing.T) {
-	ctx := setup.InitTest(t)
+	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	someDB := "test"

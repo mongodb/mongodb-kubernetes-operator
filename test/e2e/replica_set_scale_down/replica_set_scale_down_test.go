@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetScaleDown(t *testing.T) {
-	ctx := setup.InitTest(t)
+	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "replica-set-scale-down", "")

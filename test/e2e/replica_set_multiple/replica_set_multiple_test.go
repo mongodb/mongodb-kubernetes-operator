@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 // same time. One of them is scaled to 5 and then back to 3
 func TestReplicaSetMultiple(t *testing.T) {
 
-	ctx := setup.InitTest(t)
+	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	mdb0, user0 := e2eutil.NewTestMongoDB(ctx, "mdb0", "")

@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
-	ctx := setup.InitTest(t)
+	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
