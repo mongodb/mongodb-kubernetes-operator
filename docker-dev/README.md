@@ -28,7 +28,7 @@ Optional:
  
 ```bash
 _get_docker_container_id(){
-    echo "$(dcl | fzf | awk '{ print $1 }')"
+    echo "$(docker container ls | tail -n +2 | fzf | awk '{ print $1 }')"
 }
 
 de(){
