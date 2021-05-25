@@ -49,15 +49,17 @@ kubectl config set-context --current --namespace=mongodb
 
 #### create a config file for the dev environment
 ```bash
+mkdir -p ~/.community-operator-dev
 cat > ~/.community-operator-dev/config.json << EOL
 {
     "namespace": "default",
     "repo_url": "localhost:5000",
-    "operator_image": "mongodb-kubernetes-operator",
+    "operator_image": "community-operator-dev",
     "e2e_image": "e2e",
     "prestop_hook_image": "prehook",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-    "readiness_probe_image": "mongodb-kubernetes-readinessprobe"
+    "readiness_probe_image": "mongodb-kubernetes-readinessprobe",
+    "s3_bucket": ""
 }
 EOL
 ```
