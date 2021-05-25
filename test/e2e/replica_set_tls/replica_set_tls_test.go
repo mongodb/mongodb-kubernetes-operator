@@ -21,15 +21,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetTLS(t *testing.T) {
-	ctx, shouldCleanup := setup.InitTest(t)
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb-tls", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	_, err := setup.GeneratePasswordForUser(user, ctx, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}

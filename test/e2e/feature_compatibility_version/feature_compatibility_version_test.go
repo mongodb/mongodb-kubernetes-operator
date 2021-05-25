@@ -23,17 +23,14 @@ func TestMain(m *testing.M) {
 
 func TestFeatureCompatibilityVersion(t *testing.T) {
 
-	ctx, shouldCleanup := setup.InitTest(t)
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
-
-	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 	mdb.Spec.Version = "4.0.6"
 	mdb.Spec.FeatureCompatibilityVersion = "4.0"
 
-	_, err := setup.GeneratePasswordForUser(user, ctx, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
