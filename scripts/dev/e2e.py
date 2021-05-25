@@ -152,6 +152,14 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                             "name": "PERFORM_CLEANUP",
                             "value": f"{args.perform_cleanup}",
                         },
+                        {
+                            "name": "DEPLOY_DIR",
+                            "value": "/workspace/config/manager",
+                        },
+                        {
+                            "name": "ROLE_DIR",
+                            "value": "/workspace/config/rbac",
+                        },
                     ],
                     "command": [
                         "go",

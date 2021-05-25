@@ -9,6 +9,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	"github.com/pkg/errors"
@@ -30,13 +32,13 @@ import (
 )
 
 const (
-	performCleanup = "PERFORM_CLEANUP"
-	deployDir      = "/workspace/config/manager"
-	roleDir        = "/workspace/config/rbac"
+	performCleanupEnv = "PERFORM_CLEANUP"
+	deployDirEnv      = "DEPLOY_DIR"
+	roleDirEnv        = "ROLE_DIR"
 )
 
 func Setup(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, os.Getenv(performCleanup) == "True")
+	ctx, err := e2eutil.NewContext(t, os.Getenv(performCleanupEnv) == "True")
 
 	if err != nil {
 		t.Fatal(err)
@@ -128,6 +130,7 @@ func deployOperator() error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
+	roleDir := envvar.GetEnvOrDefault(roleDirEnv, "config/rbac")
 	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
 	}
@@ -141,6 +144,8 @@ func deployOperator() error {
 	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
+
+	deployDir := envvar.GetEnvOrDefault(deployDirEnv, "config/manager")
 	fmt.Println("Successfully created the operator Role Binding")
 	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "manager.yaml"),
 		&appsv1.Deployment{},
