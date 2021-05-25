@@ -30,7 +30,7 @@ containerdConfigPatches:
     endpoint = ["http://${ip}:${reg_port}"]
 EOF
 
-# Document the local registry
+# Document the local registry (from  https://kind.sigs.k8s.io/docs/user/local-registry/)
 # https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
