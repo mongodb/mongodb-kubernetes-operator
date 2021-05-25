@@ -110,6 +110,7 @@ def build_operator_ubi_image(config: DevConfig) -> None:
             "builder_image": f"golang:{GOLANG_TAG}",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "operator_image": config.operator_image,
+            "operator_image_dev": config.operator_image_dev,
             "release_version": release["mongodb-kubernetes-operator"],
         },
         inventory="inventories/operator-inventory.yaml",
