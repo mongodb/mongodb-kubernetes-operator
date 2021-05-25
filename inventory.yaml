@@ -10,6 +10,7 @@ images:
     inputs:
       - agent_version
       - tools_version
+      - agent_image
 
     stages:
       - name: agent-ubuntu-context
@@ -26,7 +27,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_version)
             tag: $(inputs.params.version_id)-context
 
       - name: agent-template-ubuntu
@@ -44,16 +45,16 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-agent-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/mongodb-agent-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: latest
 
       - name: agent-template-ubuntu-s3
@@ -111,6 +112,7 @@ images:
     inputs:
       - agent_version
       - tools_version
+      - agent_version
 
     stages:
       - name: agent-ubi-context
@@ -127,7 +129,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)-context
 
 
@@ -143,19 +145,20 @@ images:
       - name: agent-ubi-build
         task_type: docker_build
         tags: ["ubi"]
+
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-agent-ubi-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: latest
 
       - name: agent-template-ubi-s3
@@ -183,7 +186,7 @@ images:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)-context
 
       - name: agent-ubi-release
@@ -206,17 +209,19 @@ images:
     vars:
       context: .
 
+    inputs:
+      - readiness_probe_image
+
     stages:
       - name: readiness-init-context-build
         task_type: docker_build
         dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
         tags: ["readiness-probe"]
-
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.version_id)-context
 
       - name: readiness-init-build
@@ -228,12 +233,12 @@ images:
 
         tags: ["readiness-probe"]
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image):$(inputs.params.version_id)-context
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: latest
 
 
@@ -249,7 +254,7 @@ images:
           - release_version
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
+          - registry: $(inputs.params.registry)/(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)-context
 
 
@@ -259,7 +264,7 @@ images:
         tags: ["readiness-probe", "release"]
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe:$(inputs.params.release_version)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image):$(inputs.params.release_version)-context
 
         labels:
           quay.expires-after: Never
@@ -268,13 +273,16 @@ images:
           - release_version
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-readinessprobe
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)
 
 
   - name: version-post-start-hook-init
     vars:
       context: .
+
+    inputs:
+      - version_post_start_hook_image
 
     stages:
       - name: version-post-start-hook-init-context-build
@@ -286,7 +294,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.version_id)-context
 
       - name: version-post-start-hook-init-build
@@ -294,15 +302,15 @@ images:
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
         tags: ["post-start-hook"]
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image):$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: latest
 
 
@@ -318,7 +326,7 @@ images:
           - release_version
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.release_version)-context
 
 
@@ -327,7 +335,7 @@ images:
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
         tags: ["release", "post-start-hook"]
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook:$(inputs.params.release_version)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image):$(inputs.params.release_version)-context
 
         labels:
           quay.expires-after: Never
@@ -336,5 +344,5 @@ images:
           - release_version
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-kubernetes-operator-version-upgrade-post-start-hook
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.release_version)
