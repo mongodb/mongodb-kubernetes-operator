@@ -130,7 +130,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "OPERATOR_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.operator_image_dev}:{args.tag}",
                         },
                         {
                             "name": "AGENT_IMAGE",
@@ -142,11 +142,11 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "VERSION_UPGRADE_HOOK_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image_dev}:{args.tag}",
                         },
                         {
                             "name": "READINESS_PROBE_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.readiness_probe_image}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image_dev}:{args.tag}",
                         },
                         {
                             "name": "PERFORM_CLEANUP",
