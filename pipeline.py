@@ -105,6 +105,7 @@ def build_operator_ubi_image(config: DevConfig) -> None:
             "builder": "true",
             "builder_image": f"golang:{GOLANG_TAG}",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "operator_image": config.operator_image,
         },
         inventory="inventories/operator-inventory.yaml",
     )
@@ -117,6 +118,7 @@ def build_e2e_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "base_image": f"golang:{GOLANG_TAG}",
+            "e2e_image": config.e2e_image,
         },
         inventory="inventories/e2e-inventory.yaml",
     )
