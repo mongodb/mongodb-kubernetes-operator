@@ -13,7 +13,7 @@ require (
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/xdg/stringprep v1.0.3
-	go.mongodb.org/mongo-driver v1.5.1
+	go.mongodb.org/mongo-driver v1.5.2
 	go.uber.org/zap v1.16.0
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.21.0

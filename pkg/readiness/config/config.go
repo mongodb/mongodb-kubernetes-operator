@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -23,7 +24,7 @@ type Config struct {
 	Namespace                  string
 	Hostname                   string
 	AutomationConfigSecretName string
-	HealthStatusFilePath       string
+	HealthStatusReader         io.Reader
 	LogFilePath                string
 }
 
@@ -47,12 +48,18 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", hostNameEnv)
 		}
 	}
+	// Note, that we shouldn't close the file here - it will be closed very soon by the 'ioutil.ReadAll'
+	// in main.go
+	file, err := os.Open(healthStatusFilePath)
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
 		ClientSet:                  clientSet,
 		Namespace:                  namespace,
 		AutomationConfigSecretName: automationConfigName,
 		Hostname:                   hostname,
-		HealthStatusFilePath:       healthStatusFilePath,
+		HealthStatusReader:         file,
 		LogFilePath:                logFilePath,
 	}, nil
 }
