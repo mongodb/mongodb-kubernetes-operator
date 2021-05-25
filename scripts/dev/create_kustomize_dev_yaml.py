@@ -7,6 +7,8 @@ from dev_config import load_config
 
 
 def main() -> int:
+
+    # TODO: CLOUDP-86212 this script should be removed when Helm replaces Kustomize is introduced.
     dev_config = load_config()
     dev_yaml = {
         "apiVersion": "apps/v1",
