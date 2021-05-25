@@ -35,6 +35,7 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "agent_version": release["mongodb-agent"]["version"],
         "release_version": release["mongodb-agent"]["version"],
         "tools_version": release["mongodb-agent"]["tools_version"],
+        "agent_image": config.agent_image,
         "registry": config.repo_url,
         "s3_bucket": config.s3_bucket,
     }
@@ -74,6 +75,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
+            "readiness_probe_image": config.readiness_probe_image,
         },
     )
 
@@ -88,6 +90,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
+            "version_post_start_hook_image": config.version_upgrade_hook_image,
         },
     )
 
