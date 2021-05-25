@@ -11,6 +11,7 @@ images:
       - agent_version
       - tools_version
       - agent_image
+      - agent_image_dev
 
     stages:
       - name: agent-ubuntu-context
@@ -27,7 +28,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: $(inputs.params.version_id)-context
 
       - name: agent-template-ubuntu
@@ -45,16 +46,16 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: latest
 
       - name: agent-template-ubuntu-s3
@@ -83,7 +84,7 @@ images:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)-context
 
       - name: agent-ubuntu-release
@@ -94,14 +95,14 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-agent:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)
 
   - name: agent-ubi
@@ -112,7 +113,8 @@ images:
     inputs:
       - agent_version
       - tools_version
-      - agent_version
+      - agent_image
+      - agent_image_dev
 
     stages:
       - name: agent-ubi-context
@@ -129,7 +131,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: $(inputs.params.version_id)-context
 
 
@@ -149,16 +151,16 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: latest
 
       - name: agent-template-ubi-s3
@@ -195,14 +197,14 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/mongodb-agent-ubi:$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/mongodb-agent-ubi
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)
 
   - name: readiness-probe-init
@@ -211,6 +213,7 @@ images:
 
     inputs:
       - readiness_probe_image
+      - readiness_probe_image_dev
 
     stages:
       - name: readiness-init-context-build
@@ -221,7 +224,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: $(inputs.params.version_id)-context
 
       - name: readiness-init-build
@@ -233,12 +236,12 @@ images:
 
         tags: ["readiness-probe"]
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: latest
 
 
@@ -283,6 +286,7 @@ images:
 
     inputs:
       - version_post_start_hook_image
+      - version_post_start_hook_image_dev
 
     stages:
       - name: version-post-start-hook-init-context-build
@@ -294,7 +298,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: $(inputs.params.version_id)-context
 
       - name: version-post-start-hook-init-build
@@ -302,15 +306,15 @@ images:
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
         tags: ["post-start-hook"]
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev):$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: latest
 
 
