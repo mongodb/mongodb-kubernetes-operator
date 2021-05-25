@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
 	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -22,7 +24,15 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const TestdataDir = "/workspace/testdata/tls"
+const testDataDirEnv = "TEST_DATA_DIR"
+
+func TestDataDir() string {
+	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata")
+}
+
+func TlsTestDataDir() string {
+	return fmt.Sprintf("%s/tls", TestDataDir())
+}
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
