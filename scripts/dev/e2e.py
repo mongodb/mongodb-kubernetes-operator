@@ -146,7 +146,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "READINESS_PROBE_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image_dev}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.readiness_probe_image_dev}:{args.tag}",
                         },
                         {
                             "name": "PERFORM_CLEANUP",
