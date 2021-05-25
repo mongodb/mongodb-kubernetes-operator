@@ -27,7 +27,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_version)
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.version_id)-context
 
       - name: agent-template-ubuntu
