@@ -99,6 +99,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
 
 def build_operator_ubi_image(config: DevConfig) -> None:
+    release = _load_release()
     config.ensure_tag_is_run("ubi")
     sonar_build_image(
         "operator-ubi",
@@ -109,6 +110,7 @@ def build_operator_ubi_image(config: DevConfig) -> None:
             "builder_image": f"golang:{GOLANG_TAG}",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "operator_image": config.operator_image,
+            "release_version": release["mongodb-kubernetes-operator"],
         },
         inventory="inventories/operator-inventory.yaml",
     )
