@@ -6,7 +6,8 @@ images:
     vars:
       context: .
       template_context: scripts/dev/templates
-
+    inputs:
+      - e2e_image
     stages:
       - name: e2e-template
         task_type: dockerfile_template
@@ -28,8 +29,8 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/community-operator-e2e
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/community-operator-e2e
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
             tag: latest
 
