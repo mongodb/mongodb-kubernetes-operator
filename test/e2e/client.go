@@ -1,15 +1,19 @@
 package e2eutil
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
@@ -59,6 +63,10 @@ func (ctx *Context) AddCleanupFunc(fn func() error) {
 // E2ETestClient is a wrapper on client.Client that provides cleanup functionality.
 type E2ETestClient struct {
 	Client client.Client
+	// We need the core API client for some operations that the controller-runtime client doesn't support
+	// (e.g. exec into the container)
+	CoreV1Client corev1client.CoreV1Client
+	restConfig   *rest.Config
 }
 
 // NewE2ETestClient creates a new E2ETestClient.
@@ -67,7 +75,11 @@ func newE2ETestClient(config *rest.Config, scheme *runtime.Scheme) (*E2ETestClie
 	if err != nil {
 		return nil, err
 	}
-	return &E2ETestClient{Client: cli}, err
+	coreClient, err := corev1client.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return &E2ETestClient{Client: cli, CoreV1Client: *coreClient, restConfig: config}, err
 }
 
 // Create wraps client.Create to provide post-test cleanup functionality.
@@ -105,6 +117,42 @@ func (c *E2ETestClient) Update(ctx context.Context, obj client.Object) error {
 // Get wraps client.Get.
 func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 	return c.Client.Get(ctx, key, obj)
+}
+
+func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (string, error) {
+	req := c.CoreV1Client.RESTClient().
+		Post().
+		Namespace(pod.Namespace).
+		Resource("pods").
+		Name(pod.Name).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   []string{"/bin/sh", "-c", command},
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       true,
+		}, scheme.ParameterCodec)
+
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	exec, err := remotecommand.NewSPDYExecutor(c.restConfig, "POST", req.URL())
+	if err != nil {
+		panic(err)
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	if err != nil {
+		return "", fmt.Errorf(`failed executing command "%s" on %v/%v: %s ("%s")`, command, pod.Namespace, pod.Name, err, errBuf.String())
+	}
+
+	if errBuf.String() != "" {
+		return buf.String(), fmt.Errorf("remote command %s on %v/%v raised an error: %s", command, pod.Namespace, pod.Name, errBuf.String())
+	}
+	return buf.String(), nil
 }
 
 // RunTest is the main entry point function for an e2e test.

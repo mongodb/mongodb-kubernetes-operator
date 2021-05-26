@@ -7,10 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -127,6 +126,22 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 			mdb.Name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
 		ready := condition(sts)
 		return ready, nil
+	})
+}
+
+func WaitForPodReadiness(t *testing.T, isReady bool, containerName string, timeout time.Duration, pod corev1.Pod) error {
+	return wait.Poll(time.Second*3, timeout, func() (done bool, err error) {
+		err = TestClient.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)
+		if err != nil {
+			return false, err
+		}
+		for _, status := range pod.Status.ContainerStatuses {
+			t.Logf("%s (%s), ready: %v\n", pod.Name, status.Name, status.Ready)
+			if status.Name == containerName && status.Ready == isReady {
+				return true, nil
+			}
+		}
+		return false, nil
 	})
 }
 
