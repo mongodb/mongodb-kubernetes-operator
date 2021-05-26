@@ -53,7 +53,6 @@ to be able to run properly. Create a json file with the following content:
   "e2e_image": "community-e2e",
   "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
   "prestop_hook_image": "prehook",
-  "testrunner_image": "test-runner",
   "agent_image_ubuntu": "mongodb-agent-dev",
   "agent_image_ubi": "mongodb-agent-ubi-dev",
   "readiness_probe_image": "mongodb-kubernetes-readiness"

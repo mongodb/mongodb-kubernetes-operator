@@ -28,9 +28,10 @@ func EnableTLS(mdb *v1.MongoDBCommunity, optional bool) func(*testing.T) {
 func RotateCertificate(mdb *v1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		// Load new certificate and key
-		cert, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server_rotated.crt"))
+		testDataDir := e2eutil.TlsTestDataDir()
+		cert, err := ioutil.ReadFile(path.Join(testDataDir, "server_rotated.crt"))
 		assert.NoError(t, err)
-		key, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server_rotated.key"))
+		key, err := ioutil.ReadFile(path.Join(testDataDir, "server_rotated.key"))
 		assert.NoError(t, err)
 
 		certKeySecret := secret.Builder().
