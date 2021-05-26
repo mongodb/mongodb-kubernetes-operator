@@ -7,6 +7,9 @@ images:
       context: .
       template_context: scripts/dev/templates
 
+    inputs:
+      - operator_image_dev
+
     stages:
       - name: operator-template-ubi
         task_type: dockerfile_template
@@ -28,8 +31,8 @@ images:
         dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
         output:
-          - registry: $(inputs.params.registry)/community-operator-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
             tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/community-operator-dev
+          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
             tag: latest
 

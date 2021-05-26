@@ -43,6 +43,8 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
 def build_agent_image_ubi(config: DevConfig) -> None:
     image_name = "agent-ubi"
     args = _build_agent_args(config)
+    args["agent_image"] = config.agent_image_ubi
+    args["agent_image_dev"] = config.agent_dev_image_ubi
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
@@ -55,6 +57,8 @@ def build_agent_image_ubi(config: DevConfig) -> None:
 def build_agent_image_ubuntu(config: DevConfig) -> None:
     image_name = "agent-ubuntu"
     args = _build_agent_args(config)
+    args["agent_image"] = config.agent_image_ubuntu
+    args["agent_image_dev"] = config.agent_dev_image_ubuntu
     config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
@@ -74,6 +78,8 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
+            "readiness_probe_image": config.readiness_probe_image,
+            "readiness_probe_image_dev": config.readiness_probe_image_dev,
         },
     )
 
@@ -88,6 +94,8 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
+            "version_post_start_hook_image": config.version_upgrade_hook_image,
+            "version_post_start_hook_image_dev": config.version_upgrade_hook_image_dev,
         },
     )
 
@@ -102,6 +110,8 @@ def build_operator_ubi_image(config: DevConfig) -> None:
             "builder": "true",
             "builder_image": f"golang:{GOLANG_TAG}",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "operator_image": config.operator_image,
+            "operator_image_dev": config.operator_image_dev,
         },
         inventory="inventories/operator-inventory.yaml",
     )
@@ -114,6 +124,7 @@ def build_e2e_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "base_image": f"golang:{GOLANG_TAG}",
+            "e2e_image": config.e2e_image,
         },
         inventory="inventories/e2e-inventory.yaml",
     )
