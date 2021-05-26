@@ -146,7 +146,7 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB(nil, "mdb0", namespace)
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", namespace)
 
 	_, err = setup.GeneratePasswordForUser(ctx, user, namespace)
 	if err != nil {
