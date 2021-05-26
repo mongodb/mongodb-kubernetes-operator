@@ -142,7 +142,7 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 	})
 }
 
-func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
+func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
 		mongodbNamespace = OperatorNamespace
@@ -167,7 +167,7 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv
 					DB:   "admin",
 					PasswordSecretRef: mdbv1.SecretKeyReference{
 						Key:  fmt.Sprintf("%s-password", name),
-						Name: fmt.Sprintf("%s-password-secret", name),
+						Name: fmt.Sprintf("%s-%s-password-secret", name, ctx.ExecutionId),
 					},
 					Roles: []mdbv1.Role{
 						// roles on testing db for general connectivity

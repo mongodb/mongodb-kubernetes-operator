@@ -24,14 +24,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetScaleDown(t *testing.T) {
-	ctx, shouldCleanup := setup.InitTest(t)
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
-	mdb, user := e2eutil.NewTestMongoDB("replica-set-scale-down", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "replica-set-scale-down", "")
 
-	_, err := setup.GeneratePasswordForUser(user, ctx, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
