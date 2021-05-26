@@ -79,19 +79,19 @@ class DevConfig:
     def role_dir(self) -> str:
         if "role_dir" in self._config:
             return self._config["role_dir"]
-        return os.getcwd() + "/config/rbac"
+        return os.path.join(os.getcwd(), "config", "rbac")
 
     @property
     def deploy_dir(self) -> str:
         if "deploy_dir" in self._config:
             return self._config["deploy_dir"]
-        return os.getcwd() + "/config/manager"
+        return os.path.join(os.getcwd(), "config", "manager")
 
     @property
     def test_data_dir(self) -> str:
         if "test_data_dir" in self._config:
             return self._config["test_data_dir"]
-        return os.getcwd() + "/testdata"
+        return os.path.join(os.getcwd(), "testdata")
 
     @property
     def agent_image(self) -> str:

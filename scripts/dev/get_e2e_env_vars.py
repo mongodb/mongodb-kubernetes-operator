@@ -19,12 +19,12 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
     return {
         "ROLE_DIR": dev_config.role_dir,
         "DEPLOY_DIR": dev_config.deploy_dir,
-        "OPERATOR_IMAGE": dev_config.operator_image,
-        "VERSION_UPGRADE_HOOK_IMAGE": dev_config.version_upgrade_hook_image,
-        "AGENT_IMAGE": dev_config.agent_image,
+        "OPERATOR_IMAGE": f"{dev_config.repo_url}/{dev_config.operator_image}",
+        "VERSION_UPGRADE_HOOK_IMAGE": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image}",
+        "AGENT_IMAGE": f"{dev_config.repo_url}/{dev_config.agent_image}",
         "TEST_DATA_DIR": dev_config.test_data_dir,
         "TEST_NAMESPACE": dev_config.namespace,
-        "READINESS_PROBE_IMAGE": dev_config.readiness_probe_image,
+        "READINESS_PROBE_IMAGE": f"{dev_config.repo_url}/{dev_config.readiness_probe_image}",
         "PERFORM_CLEANUP": "true" if cleanup else "false",
     }
 

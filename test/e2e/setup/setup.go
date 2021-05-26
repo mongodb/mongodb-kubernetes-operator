@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"testing"
 
@@ -38,7 +37,7 @@ const (
 )
 
 func Setup(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, strings.ToLower(os.Getenv(performCleanupEnv)) == "true")
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
 	if err != nil {
 		t.Fatal(err)
