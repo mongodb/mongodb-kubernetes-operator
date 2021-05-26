@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Dict, Optional, List
+
+import json
+from typing import Dict, Optional
 from enum import Enum
 import os
 from dataclasses import dataclass
@@ -7,6 +9,17 @@ from dataclasses_json import dataclass_json
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
+REQUIRED_CONFIG_KEYS = frozenset(
+    [
+        "repo_url",
+        "operator_image",
+        "e2e_image",
+        "readiness_probe_image",
+        "version_upgrade_hook_image",
+        "agent_image_ubi",
+        "agent_image_ubuntu",
+    ]
+)
 
 
 class Distro(Enum):
@@ -96,9 +109,47 @@ def load_config(config_file_path: Optional[str] = None) -> DevConfig:
 
     try:
         with open(config_file_path, "r") as f:
-            return DevConfig.from_json(f.read())  # type: ignore
+            json_config = json.loads(f.read())
+            _ensure_dev_images_are_configured(json_config)
+            _validate_config(json_config)
+            return DevConfig.from_dict(json_config)  # type: ignore
     except FileNotFoundError:
         print(
             f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"
         )
         raise
+
+
+def _validate_config(config: Dict[str, str]) -> None:
+    """
+    _validate_config raises a ValueError if there are any missing keys
+    in the given DevConfig.
+    """
+    missing_keys = REQUIRED_CONFIG_KEYS.difference(config.keys())
+    if missing_keys:
+        raise ValueError(
+            "DevConfig is missing the required keys: [{}]".format(
+                ",".join(missing_keys)
+            )
+        )
+
+
+def _ensure_dev_images_are_configured(config: Dict[str, str]) -> None:
+    """
+    _ensure_dev_images_are_configured makes sure that all of the corresponding dev
+    images are set. Locally these can be the same as the regular images, but on evergreen
+    they can be set to different registries. i.e. not the same registries that the images
+    are released to.
+    """
+    _ensure_dev_image("readiness_probe_image", config)
+    _ensure_dev_image("operator_image", config)
+    _ensure_dev_image("readiness_probe_image", config)
+    _ensure_dev_image("version_upgrade_hook_image", config)
+    _ensure_dev_image("agent_image_ubi", config)
+    _ensure_dev_image("agent_image_ubuntu", config)
+
+
+def _ensure_dev_image(image: str, config: Dict[str, str]) -> None:
+    """use the same dev registry for dev/regular images when unspecified."""
+    if f"{image}_dev" not in config:
+        config[f"{image}_dev"] = config[image]

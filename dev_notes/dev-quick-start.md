@@ -53,13 +53,13 @@ mkdir -p ~/.community-operator-dev
 cat > ~/.community-operator-dev/config.json << EOL
 {
     "namespace": "default",
+    "readiness_probe_image": "mongodb-kubernetes-readiness",
+    "operator_image": "mongodb-kubernetes-operator",
     "repo_url": "localhost:5000",
-    "operator_image": "community-operator-dev",
     "e2e_image": "e2e",
-    "prestop_hook_image": "prehook",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-    "readiness_probe_image": "mongodb-kubernetes-readinessprobe",
-    "s3_bucket": ""
+    "agent_image_ubuntu": "mongodb-agent-dev",
+    "agent_image_ubi": "mongodb-agent-ubi-dev"
 }
 EOL
 ```
