@@ -1,8 +1,9 @@
 from __future__ import annotations
 from typing import Dict, Optional, List
 from enum import Enum
-import json
 import os
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 
 CONFIG_PATH = "~/.community-operator-dev/config.json"
 FULL_CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -25,129 +26,77 @@ def get_config_path() -> str:
     return os.getenv("MONGODB_COMMUNITY_CONFIG", FULL_CONFIG_PATH)
 
 
+@dataclass_json
+@dataclass
 class DevConfig:
-    """
-    DevConfig is a wrapper around the developer configuration file
-    """
+    # The namespace that will be used for deploying resources or running tests.
+    namespace: str
 
-    def __init__(self, config: Dict, distro: Distro):
-        self._config = config
-        self._distro = distro
-        self.include_tags: List[str] = []
-        self.skip_tags: List[str] = []
+    # The central repo url where all images will be pushed or pulled.
+    repo_url: str
 
-    def ensure_tag_is_run(self, tag: str) -> None:
-        if tag not in self.include_tags:
-            self.include_tags.append(tag)
-        if tag in self.skip_tags:
-            self.skip_tags.remove(tag)
+    # The image name of the released operator image.
+    operator_image: str
 
-    @property
-    def namespace(self) -> str:
-        return self._config["namespace"]
+    # The image name that will be used for the e2e test application.
+    e2e_image: str
 
-    @property
-    def repo_url(self) -> str:
-        return self._config["repo_url"]
+    # The image name of the ubi agent that will be built for development workflow.
+    agent_image_ubi_dev: str
 
-    @property
-    def s3_bucket(self) -> str:
-        return self._config["s3_bucket"]
+    # The image name of the ubuntu agent that will be built for development workflow.
+    agent_image_ubuntu_dev: str
 
-    @property
-    def expire_after(self) -> str:
-        return self._config.get("expire_after", "never")
+    # The image name of the readiness probe image.
+    readiness_probe_image: str = ""
 
-    @property
-    def operator_image(self) -> str:
-        return self._config["operator_image"]
+    # The image name of the version upgrade hook that will be built for development workflow.
+    version_upgrade_hook_image_dev: str = ""
 
-    @property
-    def operator_image_dev(self) -> str:
-        return self._get_dev_image("operator_image_dev", "operator_image")
+    # The image name of the readiness probe that will be built for development workflow.
+    readiness_probe_image_dev: str = ""
 
-    @property
-    def e2e_image(self) -> str:
-        return self._config["e2e_image"]
+    # The image name of the operator that will be built for development workflow.
+    operator_image_dev: str = ""
 
-    @property
-    def version_upgrade_hook_image(self) -> str:
-        return self._config["version_upgrade_hook_image"]
+    # The image name of the released agent ubi image.
+    agent_image_ubi: str = ""
 
-    @property
-    def version_upgrade_hook_image_dev(self) -> str:
-        return self._get_dev_image(
-            "version_upgrade_hook_image_dev", "version_upgrade_hook_image"
-        )
+    # The image name of the released agent ubuntu image.
+    agent_image_ubuntu: str = ""
 
-    @property
-    def readiness_probe_image(self) -> str:
-        return self._config["readiness_probe_image"]
+    # The image of the target release destination image for the version upgrade hook
+    version_upgrade_hook_image: str = ""
 
-    # these directories are used from within the E2E tests when running locally.
+    # optional, required only to run the release process "locally", i.e. publish Dockerfiles to the specified
+    # S3 bucket
+    s3_bucket: str = ""
+
     @property
     def role_dir(self) -> str:
-        if "role_dir" in self._config:
-            return self._config["role_dir"]
         return os.path.join(os.getcwd(), "config", "rbac")
 
     @property
     def deploy_dir(self) -> str:
-        if "deploy_dir" in self._config:
-            return self._config["deploy_dir"]
         return os.path.join(os.getcwd(), "config", "manager")
 
     @property
     def test_data_dir(self) -> str:
-        if "test_data_dir" in self._config:
-            return self._config["test_data_dir"]
         return os.path.join(os.getcwd(), "testdata")
 
-    @property
-    def readiness_probe_image_dev(self) -> str:
-        return self._get_dev_image("readiness_probe_image_dev", "readiness_probe_image")
-
-    @property
-    def agent_dev_image_ubi(self) -> str:
-        return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
-
-    @property
-    def agent_dev_image_ubuntu(self) -> str:
-        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
-
-    @property
-    def agent_image_ubuntu(self) -> str:
-        return self._config["agent_image_ubuntu"]
-
-    @property
-    def agent_image_ubi(self) -> str:
-        return self._config["agent_image_ubi"]
-
-    @property
-    def agent_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self.agent_dev_image_ubi
-        return self.agent_dev_image_ubuntu
-
-    def ensure_skip_tag(self, tag: str) -> None:
-        if tag not in self.skip_tags:
-            self.skip_tags.append(tag)
-
-    def _get_dev_image(self, dev_image: str, image: str) -> str:
-        if dev_image in self._config:
-            return self._config[dev_image]
-        return self._config[image]
+    def agent_image(self, distro: Distro) -> str:
+        if distro == Distro.UBUNTU:
+            return self.agent_image_ubuntu_dev
+        return self.agent_image_ubi_dev
 
 
-def load_config(
-    config_file_path: Optional[str] = None, distro: Distro = Distro.UBUNTU
-) -> DevConfig:
+def load_config(config_file_path: Optional[str] = None) -> DevConfig:
     if config_file_path is None:
         config_file_path = get_config_path()
 
     try:
         with open(config_file_path, "r") as f:
-            return DevConfig(json.loads(f.read()), distro=distro)
+            return DevConfig.from_json(f.read())  # type: ignore
     except FileNotFoundError:
         print(
             f"No DevConfig found. Please ensure that the configuration file exists at '{config_file_path}'"

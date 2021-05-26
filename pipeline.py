@@ -1,7 +1,7 @@
 import argparse
 import json
 import sys
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from sonar.sonar import process_image
 
@@ -23,6 +23,22 @@ DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
 
+class PipelineTags:
+    def __init__(self) -> None:
+        self.include_tags: List[str] = []
+        self.skip_tags: List[str] = []
+
+    def ensure_tag_is_run(self, tag: str) -> None:
+        if tag not in self.include_tags:
+            self.include_tags.append(tag)
+        if tag in self.skip_tags:
+            self.skip_tags.remove(tag)
+
+    def ensure_skip_tag(self, tag: str) -> None:
+        if tag not in self.skip_tags:
+            self.skip_tags.append(tag)
+
+
 def _load_release() -> Dict:
     with open("release.json") as f:
         release = json.loads(f.read())
@@ -40,41 +56,41 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
     }
 
 
-def build_agent_image_ubi(config: DevConfig) -> None:
+def build_agent_image_ubi(config: DevConfig, tags: PipelineTags) -> None:
     image_name = "agent-ubi"
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubi
     args["agent_image_dev"] = config.agent_dev_image_ubi
-    config.ensure_tag_is_run("ubi")
+    tags.ensure_tag_is_run("ubi")
 
     sonar_build_image(
         image_name,
-        config,
+        tags,
         args=args,
     )
 
 
-def build_agent_image_ubuntu(config: DevConfig) -> None:
+def build_agent_image_ubuntu(config: DevConfig, tags: PipelineTags) -> None:
     image_name = "agent-ubuntu"
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubuntu
     args["agent_image_dev"] = config.agent_dev_image_ubuntu
-    config.ensure_tag_is_run("ubuntu")
+    tags.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
         image_name,
-        config,
+        tags,
         args=args,
     )
 
 
-def build_readiness_probe_image(config: DevConfig) -> None:
+def build_readiness_probe_image(config: DevConfig, tags: PipelineTags) -> None:
     release = _load_release()
-    config.ensure_tag_is_run("readiness-probe")
+    tags.ensure_tag_is_run("readiness-probe")
 
     sonar_build_image(
         "readiness-probe-init",
-        config,
+        tags,
         args={
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
@@ -84,13 +100,13 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     )
 
 
-def build_version_post_start_hook_image(config: DevConfig) -> None:
+def build_version_post_start_hook_image(config: DevConfig, tags: PipelineTags) -> None:
     release = _load_release()
-    config.ensure_tag_is_run("post-start-hook")
+    tags.ensure_tag_is_run("post-start-hook")
 
     sonar_build_image(
         "version-post-start-hook-init",
-        config,
+        tags,
         args={
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
@@ -100,11 +116,11 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
     )
 
 
-def build_operator_ubi_image(config: DevConfig) -> None:
-    config.ensure_tag_is_run("ubi")
+def build_operator_ubi_image(config: DevConfig, tags: PipelineTags) -> None:
+    tags.ensure_tag_is_run("ubi")
     sonar_build_image(
         "operator-ubi",
-        config,
+        tags,
         args={
             "registry": config.repo_url,
             "builder": "true",
@@ -117,10 +133,10 @@ def build_operator_ubi_image(config: DevConfig) -> None:
     )
 
 
-def build_e2e_image(config: DevConfig) -> None:
+def build_e2e_image(config: DevConfig, tags: PipelineTags) -> None:
     sonar_build_image(
         "e2e",
-        config,
+        tags,
         args={
             "registry": config.repo_url,
             "base_image": f"golang:{GOLANG_TAG}",
@@ -132,7 +148,7 @@ def build_e2e_image(config: DevConfig) -> None:
 
 def sonar_build_image(
     image_name: str,
-    config: DevConfig,
+    tags: PipelineTags,
     args: Optional[Dict[str, str]] = None,
     inventory: str = "inventory.yaml",
 ) -> None:
@@ -141,8 +157,8 @@ def sonar_build_image(
         image_name,
         build_args=args,
         inventory=inventory,
-        include_tags=config.include_tags,
-        skip_tags=config.skip_tags,
+        include_tags=tags.include_tags,
+        skip_tags=tags.skip_tags,
     )
 
 
@@ -163,15 +179,16 @@ def main() -> int:
         )
         return 1
 
+    pipeline_tags = PipelineTags()
     config = load_config()
 
     # by default we do not want to run any release tasks. We must explicitly
     # use the --release flag to run them.
-    config.ensure_skip_tag("release")
+    pipeline_tags.ensure_skip_tag("release")
 
     # specify --release to release the image
     if args.release:
-        config.ensure_tag_is_run("release")
+        pipeline_tags.ensure_tag_is_run("release")
 
     image_build_function = {
         "agent-ubi": build_agent_image_ubi,
@@ -182,7 +199,7 @@ def main() -> int:
         "e2e": build_e2e_image,
     }[image_name]
 
-    image_build_function(config)
+    image_build_function(config, pipeline_tags)
     return 0
 
 

@@ -134,7 +134,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "AGENT_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.agent_image}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.agent_image(args.distro)}:{args.tag}",
                         },
                         {
                             "name": "TEST_NAMESPACE",
@@ -266,7 +266,7 @@ def main() -> int:
     args = parse_args()
     config.load_kube_config()
 
-    dev_config = load_config(args.config_file, Distro.from_string(args.distro))
+    dev_config = load_config(args.config_file)
     create_kube_config(args.config_file)
 
     try:
