@@ -8,7 +8,6 @@ images:
       template_context: scripts/dev/templates
 
     inputs:
-      - operator_image
       - operator_image_dev
 
     stages:
