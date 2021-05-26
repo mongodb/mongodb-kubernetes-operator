@@ -35,8 +35,6 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "agent_version": release["mongodb-agent"]["version"],
         "release_version": release["mongodb-agent"]["version"],
         "tools_version": release["mongodb-agent"]["tools_version"],
-        "agent_image": config.agent_image,
-        "agent_image_dev": config.agent_dev_image,
         "registry": config.repo_url,
         "s3_bucket": config.s3_bucket,
     }
@@ -45,6 +43,8 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
 def build_agent_image_ubi(config: DevConfig) -> None:
     image_name = "agent-ubi"
     args = _build_agent_args(config)
+    args["agent_image"] = config.agent_image_ubi
+    args["agent_image_dev"] = config.agent_dev_image_ubi
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
@@ -57,6 +57,8 @@ def build_agent_image_ubi(config: DevConfig) -> None:
 def build_agent_image_ubuntu(config: DevConfig) -> None:
     image_name = "agent-ubuntu"
     args = _build_agent_args(config)
+    args["agent_image"] = config.agent_image_ubuntu
+    args["agent_image_dev"] = config.agent_dev_image_ubuntu
     config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(

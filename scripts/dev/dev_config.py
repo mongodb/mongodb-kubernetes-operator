@@ -108,16 +108,26 @@ class DevConfig:
         return self._get_dev_image("readiness_probe_image_dev", "readiness_probe_image")
 
     @property
-    def agent_dev_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
+    def agent_dev_image_ubi(self) -> str:
+        return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
+
+    @property
+    def agent_dev_image_ubuntu(self) -> str:
         return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
+
+    @property
+    def agent_image_ubuntu(self) -> str:
+        return self._config["agent_image_ubuntu"]
+
+    @property
+    def agent_image_ubi(self) -> str:
+        return self._config["agent_image_ubi"]
 
     @property
     def agent_image(self) -> str:
         if self._distro == Distro.UBI:
-            return self._config["agent_image_ubi"]
-        return self._config["agent_image_ubuntu"]
+            return self.agent_dev_image_ubi
+        return self.agent_dev_image_ubuntu
 
     def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:
