@@ -38,7 +38,7 @@ const (
 )
 
 func Setup(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, os.Getenv(performCleanupEnv) == "True")
+	ctx, err := e2eutil.NewContext(t, strings.ToLower(os.Getenv(performCleanupEnv)) == "true")
 
 	if err != nil {
 		t.Fatal(err)
