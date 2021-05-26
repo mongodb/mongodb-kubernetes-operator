@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+
+	"github.com/pkg/errors"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/pkg/errors"
@@ -21,7 +25,15 @@ import (
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const TestdataDir = "/workspace/testdata/tls"
+const testDataDirEnv = "TEST_DATA_DIR"
+
+func TestDataDir() string {
+	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata")
+}
+
+func TlsTestDataDir() string {
+	return fmt.Sprintf("%s/tls", TestDataDir())
+}
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
@@ -157,7 +169,7 @@ func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Durati
 	})
 }
 
-func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
+func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
 		mongodbNamespace = OperatorNamespace
@@ -182,7 +194,7 @@ func NewTestMongoDB(name string, namespace string) (mdbv1.MongoDBCommunity, mdbv
 					DB:   "admin",
 					PasswordSecretRef: mdbv1.SecretKeyReference{
 						Key:  fmt.Sprintf("%s-password", name),
-						Name: fmt.Sprintf("%s-password-secret", name),
+						Name: fmt.Sprintf("%s-%s-password-secret", name, ctx.ExecutionId),
 					},
 					Roles: []mdbv1.Role{
 						// roles on testing db for general connectivity

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,17 +38,35 @@ func (*CleanupOptions) ApplyToCreate(*client.CreateOptions) {}
 
 // Context tracks cleanup functions to be called at the end of a test.
 type Context struct {
-	cleanupFuncs [](func() error)
-	t            *testing.T
+	// shouldPerformCleanup indicates whether or not cleanup should happen after this test
+	shouldPerformCleanup bool
+
+	// ExecutionId is a unique identifier for this test run.
+	ExecutionId string
+
+	// cleanupFuncs is a list of functions which will clean up resources
+	// after the test ends.
+	cleanupFuncs []func() error
+
+	// t is the testing.T which will be used for the duration of the test.
+	t *testing.T
 }
 
 // NewContext creates a context.
-func NewContext(t *testing.T) *Context {
-	return &Context{t: t}
+func NewContext(t *testing.T, performCleanup bool) (*Context, error) {
+	testId, err := generate.RandomValidDNS1123Label(10)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Context{t: t, ExecutionId: testId, shouldPerformCleanup: performCleanup}, nil
 }
 
-// Cleanup is called at the end of a test.
-func (ctx *Context) Cleanup() {
+// Teardown is called at the end of a test.
+func (ctx *Context) Teardown() {
+	if !ctx.shouldPerformCleanup {
+		return
+	}
 	for _, fn := range ctx.cleanupFuncs {
 		err := fn()
 		if err != nil {

@@ -432,7 +432,8 @@ func WithoutTls() OptionApplier {
 // getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data
-	caPEM, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "ca.crt"))
+	testDataDir := e2eutil.TlsTestDataDir()
+	caPEM, err := ioutil.ReadFile(path.Join(testDataDir, "ca.crt"))
 	if err != nil {
 		return nil, err
 	}
