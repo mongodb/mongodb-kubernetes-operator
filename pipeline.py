@@ -61,7 +61,7 @@ def build_agent_image_ubi(config: DevConfig, tags: PipelineTags) -> None:
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubi
     args["agent_image_dev"] = config.agent_image_ubi_dev
-    tags.ensure_tag_is_run("ubi")
+    config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
         image_name,
@@ -75,7 +75,7 @@ def build_agent_image_ubuntu(config: DevConfig, tags: PipelineTags) -> None:
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubuntu
     args["agent_image_dev"] = config.agent_image_ubuntu_dev
-    tags.ensure_tag_is_run("ubuntu")
+    config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
         image_name,
