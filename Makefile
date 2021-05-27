@@ -107,7 +107,7 @@ e2e-k8s: install e2e-image
 # e.g. make e2e test=replica_set cleanup=true
 e2e: install
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-	go test -v -timeout=30m -failfast ./test/e2e/$(test)
+	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
 
 # Generate code
 generate: controller-gen
