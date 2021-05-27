@@ -234,7 +234,7 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 func DefaultReadiness() probes.Modification {
 	return probes.Apply(
 		probes.WithExecCommand([]string{readinessProbePath}),
-		probes.WithFailureThreshold(20),
+		probes.WithFailureThreshold(40),
 		probes.WithInitialDelaySeconds(5),
 	)
 }
