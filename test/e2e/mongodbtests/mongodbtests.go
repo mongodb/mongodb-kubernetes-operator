@@ -27,7 +27,7 @@ import (
 // SkipTestIfLocal skips tests locally which tests connectivity to mongodb pods
 func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 	if testing.Short() {
-		t.Skip(msg)
+		t.Log("Skipping [" + msg + "]")
 		return
 	}
 	t.Run(msg, f)
