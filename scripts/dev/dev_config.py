@@ -63,12 +63,22 @@ class DevConfig:
         return self._config["operator_image"]
 
     @property
+    def operator_image_dev(self) -> str:
+        return self._get_dev_image("operator_image_dev", "operator_image")
+
+    @property
     def e2e_image(self) -> str:
         return self._config["e2e_image"]
 
     @property
     def version_upgrade_hook_image(self) -> str:
         return self._config["version_upgrade_hook_image"]
+
+    @property
+    def version_upgrade_hook_image_dev(self) -> str:
+        return self._get_dev_image(
+            "version_upgrade_hook_image_dev", "version_upgrade_hook_image"
+        )
 
     @property
     def readiness_probe_image(self) -> str:
@@ -94,14 +104,39 @@ class DevConfig:
         return os.path.join(os.getcwd(), "testdata")
 
     @property
+    def readiness_probe_image_dev(self) -> str:
+        return self._get_dev_image("readiness_probe_image_dev", "readiness_probe_image")
+
+    @property
+    def agent_dev_image_ubi(self) -> str:
+        return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
+
+    @property
+    def agent_dev_image_ubuntu(self) -> str:
+        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
+
+    @property
+    def agent_image_ubuntu(self) -> str:
+        return self._config["agent_image_ubuntu"]
+
+    @property
+    def agent_image_ubi(self) -> str:
+        return self._config["agent_image_ubi"]
+
+    @property
     def agent_image(self) -> str:
         if self._distro == Distro.UBI:
-            return self._config["agent_image_ubi"]
-        return self._config["agent_image_ubuntu"]
+            return self.agent_dev_image_ubi
+        return self.agent_dev_image_ubuntu
 
     def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:
             self.skip_tags.append(tag)
+
+    def _get_dev_image(self, dev_image: str, image: str) -> str:
+        if dev_image in self._config:
+            return self._config[dev_image]
+        return self._config[image]
 
 
 def load_config(
