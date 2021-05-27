@@ -44,7 +44,7 @@ func TestReplicaSet(t *testing.T) {
 		// and in this case it won't restart
 		t.Run("Kill mongod process", mongodbtests.ExecInContainer(&mdb, 0, "mongod", "kill 1"))
 		// CLOUDP-89260: mongod uptime 1 minute and readiness probe failureThreshold 40 (40 * 5 -> 200 seconds)
-		t.Run("Pod agent container becomes not-ready", mongodbtests.PodContainerBecomesNotReady(&mdb, 0, "mongodb-agent", time.Minute*6))
+		t.Run("Pod agent container becomes not-ready", mongodbtests.PodContainerBecomesNotReady(&mdb, 0, "mongodb-agent", time.Minute*7))
 	})
 	t.Run("Ensure Agent container gets fixed", func(t *testing.T) {
 		// Note, that we call this command on the 'mongodb-agent' container as the 'mongod' container is down and we cannot
