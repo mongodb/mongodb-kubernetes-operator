@@ -2,7 +2,7 @@
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-###v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
+### v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
 
 
 This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
