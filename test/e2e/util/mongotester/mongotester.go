@@ -429,6 +429,13 @@ func WithoutTls() OptionApplier {
 	}
 }
 
+// WithSRV will add SRV connection string
+func WithSRV(uri string) OptionApplier {
+	opt := &options.ClientOptions{}
+	opt.ApplyURI(uri)
+	return clientOptionAdder{option: opt}
+}
+
 // getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data

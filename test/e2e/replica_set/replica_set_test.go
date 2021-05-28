@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -40,6 +41,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
+	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(mongotester.WithSRV(mdb.MongoSRVURI())))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }
