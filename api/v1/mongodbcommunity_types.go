@@ -452,7 +452,7 @@ func (m MongoDBCommunity) MongoURI() string {
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
 func (m MongoDBCommunity) MongoSRVURI() string {
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s.svc.%s", m.ServiceName(), clusterDomain)
+	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
 }
 
 func (m MongoDBCommunity) Hosts() []string {
