@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"github.com/stretchr/testify/assert"
@@ -44,13 +43,14 @@ func TestReplicaSet(t *testing.T) {
 		// and in this case it won't restart
 		t.Run("Kill mongod process", mongodbtests.ExecInContainer(&mdb, 0, "mongod", "kill 1"))
 		// CLOUDP-89260: mongod uptime 1 minute and readiness probe failureThreshold 40 (40 * 5 -> 200 seconds)
-		t.Run("Pod agent container becomes not-ready", mongodbtests.PodContainerBecomesNotReady(&mdb, 0, "mongodb-agent", time.Minute*10))
+		// note, that this may take much longer on evergreen than locally
+		t.Run("Pod agent container becomes not-ready", mongodbtests.PodContainerBecomesNotReady(&mdb, 0, "mongodb-agent"))
 	})
 	t.Run("Ensure Agent container gets fixed", func(t *testing.T) {
 		// Note, that we call this command on the 'mongodb-agent' container as the 'mongod' container is down and we cannot
 		// execute shell there. But both containers share the same /data directory so we can do it from any of them.
 		t.Run("Fix mongod data files", mongodbtests.ExecInContainer(&mdb, 0, "mongodb-agent", "mv /data/tmp/WiredTiger.wt /data/"))
 		// Eventually the agent will start mongod again
-		t.Run("Pod agent container becomes ready", mongodbtests.PodContainerBecomesReady(&mdb, 0, "mongodb-agent", time.Minute*3))
+		t.Run("Pod agent container becomes ready", mongodbtests.PodContainerBecomesReady(&mdb, 0, "mongodb-agent"))
 	})
 }

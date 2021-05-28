@@ -353,16 +353,19 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 	}
 }
 
-func PodContainerBecomesNotReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string, timeout time.Duration) func(*testing.T) {
+// PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes not ready.
+func PodContainerBecomesNotReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		assert.NoError(t, e2eutil.WaitForPodReadiness(t, false, containerName, timeout, pod))
+		assert.NoError(t, e2eutil.WaitForPodReadiness(t, false, containerName, time.Minute*10, pod))
 	}
 }
-func PodContainerBecomesReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string, timeout time.Duration) func(*testing.T) {
+
+// PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes ready.
+func PodContainerBecomesReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		assert.NoError(t, e2eutil.WaitForPodReadiness(t, true, containerName, timeout, pod))
+		assert.NoError(t, e2eutil.WaitForPodReadiness(t, true, containerName, time.Minute*3, pod))
 	}
 }
 
