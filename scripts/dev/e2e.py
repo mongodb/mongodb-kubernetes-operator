@@ -1,14 +1,9 @@
 #!/usr/bin/env python
 
 from kubernetes.client.rest import ApiException
-from build_and_deploy_operator import (
-    build_and_push_operator,
-    deploy_operator,
-    load_yaml_from_file,
-)
+
 import k8s_conditions
 import dump_diagnostic
-from dockerutil import build_and_push_image
 from typing import Dict
 from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
@@ -18,6 +13,11 @@ import sys
 import yaml
 
 TEST_POD_NAME = "e2e-test"
+
+
+def load_yaml_from_file(path: str) -> Dict:
+    with open(path, "r") as f:
+        return yaml.full_load(f.read())
 
 
 def _load_test_service_account() -> Dict:
@@ -92,20 +92,6 @@ def create_kube_config(config_file: str) -> None:
     )
 
 
-def build_and_push_e2e(repo_url: str, tag: str, path: str) -> None:
-    """
-    build_and_push_e2e builds and pushes the e2e image.
-    """
-    build_and_push_image(repo_url, tag, path, "e2e")
-
-
-def build_and_push_version_upgrade_hook(repo_url: str, tag: str, path: str) -> None:
-    """
-    build_and_push_version_upgrade_hook builds and pushes the version upgrade hook image.
-    """
-    build_and_push_image(repo_url, tag, path, "versionhook")
-
-
 def _delete_test_pod(config_file: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
@@ -144,7 +130,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "OPERATOR_IMAGE",
-                            "value": f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
+                            "value": f"{dev_config.repo_url}/{dev_config.operator_image_dev}:{args.tag}",
                         },
                         {
                             "name": "AGENT_IMAGE",
@@ -156,8 +142,11 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "VERSION_UPGRADE_HOOK_IMAGE",
-                            # TODO: this needs to come from somewhere else
-                            "value": "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2",
+                            "value": f"{dev_config.repo_url}/{dev_config.version_upgrade_hook_image_dev}:{args.tag}",
+                        },
+                        {
+                            "name": "READINESS_PROBE_IMAGE",
+                            "value": f"{dev_config.repo_url}/{dev_config.readiness_probe_image_dev}:{args.tag}",
                         },
                         {
                             "name": "PERFORM_CLEANUP",
@@ -225,16 +214,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Name of the test to run")
     parser.add_argument(
-        "--install-operator",
-        help="Install the operator instead of assuming one already exists",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--build-images",
-        help="Build e2e and version upgrade hook images",
-        action="store_true",
-    )
-    parser.add_argument(
         "--tag",
         help="Tag for the images, it will be the same for all images",
         type=str,
@@ -265,30 +244,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_and_push_images(args: argparse.Namespace, dev_config: DevConfig) -> None:
-    if args.install_operator:
-        build_and_push_operator(
-            dev_config.repo_url,
-            f"{dev_config.repo_url}/{dev_config.operator_image}:{args.tag}",
-            ".",
-        )
-        deploy_operator()
-
-    if args.build_images:
-        build_and_push_e2e(
-            dev_config.repo_url,
-            "{}/{}:{}".format(dev_config.repo_url, dev_config.e2e_image, args.tag),
-            ".",
-        )
-        build_and_push_version_upgrade_hook(
-            dev_config.repo_url,
-            "{}/{}:{}".format(
-                dev_config.repo_url, dev_config.version_upgrade_hook_image, args.tag
-            ),
-            ".",
-        )
-
-
 def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> None:
     _prepare_test_environment(args.config_file)
     create_test_pod(args, dev_config)
@@ -315,7 +270,6 @@ def main() -> int:
     create_kube_config(args.config_file)
 
     try:
-        build_and_push_images(args, dev_config)
         prepare_and_run_test(args, dev_config)
     finally:
         if not args.skip_dump_diagnostic:

@@ -11,8 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
@@ -135,7 +133,7 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
 		SetField(fileName, certKey).
-		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
+		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)

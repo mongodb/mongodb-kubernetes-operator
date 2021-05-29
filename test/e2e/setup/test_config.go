@@ -19,6 +19,7 @@ type testConfig struct {
 	clusterWide             bool
 	performCleanup          bool
 	agentImage              string
+	readinessProbeImage     string
 }
 
 func loadTestConfigFromEnv() testConfig {
@@ -29,5 +30,6 @@ func loadTestConfigFromEnv() testConfig {
 		agentImage:              envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent:10.29.0.6830-1"), // TODO: better way to decide default agent image.
 		clusterWide:             envvar.ReadBool(clusterWideEnvName),
 		performCleanup:          envvar.ReadBool(performCleanupEnvName),
+		readinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
 	}
 }

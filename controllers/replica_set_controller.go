@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
@@ -36,9 +37,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -297,7 +296,7 @@ func ensureAutomationConfig(client kubernetesClient.Client, mdb mdbv1.MongoDBCom
 	return automationconfig.EnsureSecret(
 		client,
 		types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace},
-		[]metav1.OwnerReference{getOwnerReference(mdb)},
+		mdb.GetOwnerReferences(),
 		ac,
 	)
 
@@ -318,7 +317,7 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetClusterIP("None").
 		SetPort(27017).
 		SetPublishNotReadyAddresses(true).
-		SetOwnerReferences([]metav1.OwnerReference{getOwnerReference(mdb)}).
+		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 }
 
@@ -415,7 +414,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
 	return statefulset.Apply(
 		commonModification,
-		statefulset.WithOwnerReference([]metav1.OwnerReference{getOwnerReference(mdb)}),
+		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				buildTLSPodSpecModification(mdb),
@@ -424,14 +423,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 	)
-}
-
-func getOwnerReference(mdb mdbv1.MongoDBCommunity) metav1.OwnerReference {
-	return *metav1.NewControllerRef(&mdb, schema.GroupVersionKind{
-		Group:   mdbv1.GroupVersion.Group,
-		Version: mdbv1.GroupVersion.Version,
-		Kind:    mdb.Kind,
-	})
 }
 
 func getDomain(service, namespace, clusterName string) string {

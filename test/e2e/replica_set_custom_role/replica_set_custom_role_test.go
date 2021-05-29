@@ -22,18 +22,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetCustomRole(t *testing.T) {
-	ctx, shouldCleanup := setup.InitTest(t)
-
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
 	someDB := "test"
 	someCollection := "foo"
 	anyDB := ""
 	anyCollection := ""
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 	mdb.Spec.Security.Roles = []mdbv1.CustomRole{
 		{
 			Role: "testRole",
@@ -74,7 +71,7 @@ func TestReplicaSetCustomRole(t *testing.T) {
 		},
 	}
 
-	_, err := setup.GeneratePasswordForUser(user, ctx, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}

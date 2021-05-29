@@ -15,9 +15,7 @@ WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download
 
-{% for file in files_to_add %}
-ADD {{file}} {{file}}
-{% endfor %}
+ADD . .
 
 # build the binary
 {% block build_binary -%}

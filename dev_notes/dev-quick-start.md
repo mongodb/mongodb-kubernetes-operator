@@ -1,15 +1,24 @@
 
 #### Prerequisites
 
-* install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* create a python virtual enironment 
+* Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* Install [jq](https://stedolan.github.io/jq/download/) 
+* Optionally install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) if you want to use a local cluster.
+
+* create a python virtual environment
 
 ```bash
 python3 -m venv /path/to/new/virtual/environment
 source path/to/new/virtual/environment/bin/activate
 ```
-* install python dependencies ```pip install -r requirements.txt```
 
+* install python dependencies 
+```
+pip install -r requirements.txt
+
+# Note: sonar requires access to the 10gen repo and is used for the release pipeline
+pip install git+ssh://git@github.com/10gen/sonar.git@0.0.10
+```
 
 #### Create a Kind cluster and a local registry
 ```bash
@@ -21,7 +30,7 @@ source path/to/new/virtual/environment/bin/activate
 export KUBECONFIG=~/.kube/kind
 ```
 
-#### get kind credentials
+#### Get kind credentials
 ```bash
 kind export kubeconfig
 
@@ -29,7 +38,8 @@ kind export kubeconfig
 kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 ```
 
-#### create the namespace to work in
+
+#### (Optional) Create a non-default namespace to work in
 ```bash
 kubectl create namespace mongodb
 
@@ -39,24 +49,25 @@ kubectl config set-context --current --namespace=mongodb
 
 #### create a config file for the dev environment
 ```bash
+mkdir -p ~/.community-operator-dev
 cat > ~/.community-operator-dev/config.json << EOL
 {
-    "namespace": "mongodb",
+    "namespace": "default",
     "repo_url": "localhost:5000",
-    "operator_image": "mongodb-kubernetes-operator",
+    "operator_image": "community-operator-dev",
     "e2e_image": "e2e",
     "prestop_hook_image": "prehook",
-    "testrunner_image": "test-runner",
-    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook"
+    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
+    "readiness_probe_image": "mongodb-kubernetes-readinessprobe",
+    "s3_bucket": ""
 }
 EOL
 ```
 
-#### build and deploy the operator to the cluster
+#### build all required images and deploy operator to cluster
 ```bash
-python scripts/dev/build_and_deploy_operator.py
+make all-images deploy
 ```
-
 
 #### See the operator deployment
 ```bash
@@ -65,5 +76,31 @@ kubectl get pods
 
 #### Deploy a Replica Set
 ```bash
-kubectl apply -f deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml
+make deploy-dev-quick-start-rs
 ```
+
+#### See the deployed replica set
+```bash
+kubectl get pods
+
+NAME                                           READY   STATUS    RESTARTS   AGE
+mongodb-kubernetes-operator-5568d769b8-smt4h   1/1     Running   0          4m12s
+quick-start-rs-0                               2/2     Running   0          2m49s
+quick-start-rs-1                               2/2     Running   0          2m5s
+quick-start-rs-2                               2/2     Running   0          87s
+
+
+kubectl get statefulset quick-start-rs
+
+NAME             READY   AGE
+quick-start-rs   3/3     3m10s
+```
+
+### Clean up all resources
+```bash
+make undeploy
+```
+
+### Running Tests
+
+Follow the tests in [contributing.md](../docs/contributing.md) to run e2e tests.

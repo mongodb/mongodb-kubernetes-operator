@@ -3,6 +3,8 @@ package automationconfig
 import (
 	"fmt"
 	"path"
+	"reflect"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -111,6 +113,13 @@ func (b *Builder) SetCAFilePath(caFilePath string) *Builder {
 	return b
 }
 
+func (b *Builder) AddVersions(versions []MongoDbVersionConfig) *Builder {
+	for _, v := range versions {
+		b.AddVersion(v)
+	}
+	return b
+}
+
 func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 	for idx := range version.Builds {
 		if version.Builds[idx].Modules == nil {
@@ -208,6 +217,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		process.SetSystemLog(SystemLog{
 			Destination: "file",
 			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
+			LogAppend:   true,
 		})
 
 		if b.fcv != "" {
@@ -238,8 +248,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		b.auth = &disabled
 	}
 
-	if len(b.versions) == 0 {
-		b.versions = append(b.versions, buildDummyMongoDbVersionConfig(b.mongodbVersion))
+	dummyConfig := buildDummyMongoDbVersionConfig(b.mongodbVersion)
+	if !versionsContain(b.versions, dummyConfig) {
+		b.versions = append(b.versions, dummyConfig)
 	}
 
 	currentAc := AutomationConfig{
@@ -263,17 +274,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		},
 	}
 
-	if b.tlsConfig != nil && b.sslConfig != nil {
-		return AutomationConfig{}, errors.Errorf("must specify only one of tlsConfig and sslConfig")
-	}
-
 	if b.tlsConfig != nil {
-		currentAc.SSLConfig = nil
 		currentAc.TLSConfig = b.tlsConfig
 	}
 
 	if b.sslConfig != nil {
-		currentAc.TLSConfig = nil
 		currentAc.SSLConfig = b.sslConfig
 	}
 
@@ -297,11 +302,20 @@ func toProcessName(name string, index int) string {
 	return fmt.Sprintf("%s-%d", name, index)
 }
 
+func versionsContain(versions []MongoDbVersionConfig, version MongoDbVersionConfig) bool {
+	for _, v := range versions {
+		if reflect.DeepEqual(v, version) {
+			return true
+		}
+	}
+	return false
+}
+
 // buildDummyMongoDbVersionConfig create a MongoDbVersionConfig which
 // will be valid for any version of MongoDB. This is used as a default if no
 // versions are manually specified.
 func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
-	return MongoDbVersionConfig{
+	versionConfig := MongoDbVersionConfig{
 		Name: version,
 		Builds: []BuildConfig{
 			{
@@ -318,4 +332,12 @@ func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
 			},
 		},
 	}
+
+	// if we are using an enterprise version of MongoDB, we need to add the enterprise string to the modules array.
+	if strings.HasSuffix(version, "-ent") {
+		for i := range versionConfig.Builds {
+			versionConfig.Builds[i].Modules = append(versionConfig.Builds[i].Modules, "enterprise")
+		}
+	}
+	return versionConfig
 }

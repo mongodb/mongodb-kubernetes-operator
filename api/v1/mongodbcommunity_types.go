@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -378,6 +379,15 @@ func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.Namespaced
 	return types.NamespacedName{Name: m.Name + "-keyfile", Namespace: m.Namespace}
 }
 
+func (m MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
+	ownerReference := *metav1.NewControllerRef(&m, schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    m.Kind,
+	})
+	return []metav1.OwnerReference{ownerReference}
+}
+
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
@@ -532,6 +542,14 @@ func (m MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
 
 func (m MongoDBCommunity) GetAnnotations() map[string]string {
 	return m.Annotations
+}
+
+func (m MongoDBCommunity) DataVolumeName() string {
+	return "data-volume"
+}
+
+func (m MongoDBCommunity) LogsVolumeName() string {
+	return "logs-volume"
 }
 
 type automationConfigReplicasScaler struct {

@@ -26,8 +26,6 @@ const (
 
 	versionUpgradeHookName         = "mongod-posthook"
 	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
-	dataVolumeName                 = "data-volume"
-	logVolumeName                  = "logs-volume"
 	readinessProbePath             = "/opt/scripts/readinessprobe"
 	agentHealthStatusFilePathEnv   = "AGENT_STATUS_FILEPATH"
 	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
@@ -80,6 +78,10 @@ type MongoDBStatefulSetOwner interface {
 	HasSeparateDataAndLogsVolumes() bool
 	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
+	// DataVolumeName returns the name that the data volume should have
+	DataVolumeName() string
+	// LogsVolumeName returns the name that the data volume should have
+	LogsVolumeName() string
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -119,20 +121,20 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
-		logVolumeMount := statefulset.CreateVolumeMount(logVolumeName, automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(dataVolumeName, "/data")
-		dataVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
-		logVolumeClaim = statefulset.WithVolumeClaim(logVolumeName, logsPvc())
+		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data")
+		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
+		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
 		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(dataVolumeName, "/data", statefulset.WithSubPath("data")),
-			statefulset.CreateVolumeMount(dataVolumeName, automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data", statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
 		mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
-		singleModeVolumeClaim = statefulset.WithVolumeClaim(dataVolumeName, dataPvc())
+		singleModeVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 	}
 
 	podSecurityContext := podtemplatespec.NOOP()
@@ -237,7 +239,7 @@ func DefaultReadiness() probes.Modification {
 	)
 }
 
-func dataPvc() persistentvolumeclaim.Modification {
+func dataPvc(dataVolumeName string) persistentvolumeclaim.Modification {
 	return persistentvolumeclaim.Apply(
 		persistentvolumeclaim.WithName(dataVolumeName),
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
@@ -245,9 +247,9 @@ func dataPvc() persistentvolumeclaim.Modification {
 	)
 }
 
-func logsPvc() persistentvolumeclaim.Modification {
+func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 	return persistentvolumeclaim.Apply(
-		persistentvolumeclaim.WithName(logVolumeName),
+		persistentvolumeclaim.WithName(logsVolumeName),
 		persistentvolumeclaim.WithAccessModes(corev1.ReadWriteOnce),
 		persistentvolumeclaim.WithResourceRequests(resourcerequirements.BuildStorageRequirements("2G")),
 	)
@@ -282,9 +284,13 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) contain
 # wait for config and keyfile to be created by the agent
  while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
 
+# with mongod configured to append logs, we need to provide them to stdout as
+# mongod does not write to stdout and a log file
+tail -F /var/log/mongodb-mms-automation/mongodb.log > /dev/stdout &
 
 # start mongod with this configuration
 exec mongod -f %s;
+
 `, automationconfFilePath, keyfileFilePath, automationconfFilePath)
 
 	containerCommand := []string{
