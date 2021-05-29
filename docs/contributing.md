@@ -98,7 +98,7 @@ Unit tests should be run from the root of the project with:
 make test
 ```
 
-# Running E2E Tests
+# E2E Tests
 
 ## Running an E2E test
 
@@ -119,17 +119,42 @@ replica_set_scale
 ...
 ```
 
-The tests should run individually using the runner like this:
+to get a list.
+
+
+There are multiple ways to run a test.
+
+####Deploy the e2e-test pod into your kubernetes cluster.
+
+```sh
+make e2e-k8s test=<test-name>
+```
+
+This will deploy the e2e test pod into the cluster and run the test from there.
+There will be full connectivity to MongoDB from the test pod.
+
+####Run the test locally with go test
 
 ```sh
 make e2e test=<test-name>
 ```
 
-This will run the `replica_set` E2E test which is a simple test that installs a
-MongoDB Replica Set and asserts that the deployed server can be connected to.
+This will run the test locally using `go test`. From your machine, it will not be
+possible to connect to the MongoDB deployments, so the MongoDB connectivity checks are
+skipped when running like this.
 
 
-to get a list.
+####Run the test locally with go test & Telepresence
+```sh
+make e2e-telepresence test=<test-name>
+```
+
+This method uses telepresence to allow connectivity as if your local machine is in the kubernetes cluster,
+there will be full MongoDB connectivity using `go test` locally.
+
+Note: you must install [telepresence](https://www.getambassador.io/docs/telepresence/latest/quick-start/) before using this method.
+
+If on MacOS, you can run `make install-prerequisites-macos` which will perform the installation.
 
 ## Troubleshooting
 When you run a test locally, if the `e2e-test` pod is present, you will have to
