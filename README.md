@@ -2,7 +2,7 @@
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-###v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
+### v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
 
 
 This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
@@ -28,6 +28,8 @@ See the [documentation](/docs) to learn how to:
 1. [Deploy and configure](/docs/deploy-configure.md) MongoDB resources.
 1. [Create a database user](/docs/users.md) with SCRAM authentication.
 1. [Secure MongoDB resource connections](/docs/secure.md) using TLS.
+
+*NOTE: [MongoDB Enterprise Kubernetes Operator](https://docs.mongodb.com/kubernetes-operator/master/) docs are for the enterprise operator use case and NOT for the community operator. In addition to the docs mentioned above, you can refer to this [blog post](https://www.mongodb.com/blog/post/run-secure-containerized-mongodb-deployments-using-the-mongo-db-community-kubernetes-oper) as well to learn more about community operator deployment*
 
 ## Supported Features
 

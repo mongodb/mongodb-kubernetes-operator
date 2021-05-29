@@ -1,28 +1,23 @@
-# MongoDB Kubernetes Operator 0.6.0
+# MongoDB Kubernetes Operator 0.6.1
+
 ## Kubernetes Operator
 
-* Breaking Changes
-  * A new VolumeClaimTemplate has been added `logs-volume`. When you deploy the operator, if there is an existing StatefulSet the operator will attempt to perform an invalid update. The existing StatefulSet must be deleted before upgrading the operator.
+- Bug fixes
+  - when deleting MongoDB Resource cleanup related resources (k8s services, secrets).
   
-  * The user of the mongod and mongodb-agent containers has changed. This means that there will be permissions
-    issues when upgrading from an earlier version of the operator. In order to update the permissions in the volume, you can use an init container.
+- Changes
+  - fixed an issue where the operator would reconcile based on events emitted by itself in certain situations.
 
-* Upgrade instructions
+## MongoDB Agent ReadinessProbe
 
-  Remove the current operator deployment
-  -  `kubectl delete deployment <operator-deployment>`
-  Delete the existing StatefulSet for the MongoDBCommunity resource
-  Note: to ensure existing data is not lost, ensure that the retain policy of your Persistent Volumes is configured correctly. Please reference the [official docs](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming) for these configuration options. 
-  -   `kubectl delete statefulset <mdb-resource-name>`
-  Install the new operator
-  - follow the regular [installation instruction](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md)
-  Patch the StatefulSet once it has been created. This will add an init container that will update the permissions of the existing volume.
-  - `kubectl patch statefulset <sts-name> --type='json' --patch '[ {"op":"add","path":"/spec/template/spec/initContainers/-", "value": { "name": "change-data-dir-permissions", "image": "busybox", "command": [ "chown", "-R", "2000", "/data" ], "securityContext": { "runAsNonRoot": false, "runAsUser": 0, "runAsGroup":0 }, "volumeMounts": [ { "mountPath": "/data", "name" : "data-volume" } ] } } ]'`
-   
-* Bug fixes
-  * Fixes an issue that prevented the agents from reaching goal state when upgrading minor version of MongoDB.
+- Changes
+  - Readiness probe now patches pod annotations rather than overwriting them.
 
- ## Updated Image Tags
- * mongodb-kubernetes-operator:0.6.0
- * mongodb-agent:0.29.0.6830-1
- * mongodb-kubernetes-readinessprobe:1.0.3
+## Updated Image Tags
+
+- mongodb-kubernetes-operator:0.6.1
+- mongodb-kubernetes-readinessprobe:1.0.4
+
+_All the images can be found in:_
+
+https://quay.io/mongodb

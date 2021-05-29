@@ -1,0 +1,6 @@
+# used to run the operator locally
+namePrefix: ""
+
+bases:
+  - ../crd
+  - ../rbac

@@ -1,0 +1,36 @@
+vars:
+  registry: <registry>
+
+images:
+  - name: e2e
+    vars:
+      context: .
+      template_context: scripts/dev/templates
+    inputs:
+      - e2e_image
+    stages:
+      - name: e2e-template
+        task_type: dockerfile_template
+        distro: e2e
+
+        inputs:
+          - builder
+          - base_image
+
+        output:
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+      - name: e2e-build
+        task_type: docker_build
+
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+            tag: $(inputs.params.version_id)
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+            tag: latest
+

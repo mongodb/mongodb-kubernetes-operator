@@ -24,11 +24,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestCrossNamespaceDeploy(t *testing.T) {
-	ctx, shouldCleanup := setup.InitTest(t)
-
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
 	postfix, err := generate.RandomValidDNS1123Label(5)
 	if err != nil {
@@ -149,9 +146,9 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mdb, user := e2eutil.NewTestMongoDB("mdb0", namespace)
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", namespace)
 
-	_, err = setup.GeneratePasswordForUser(user, ctx, namespace)
+	_, err = setup.GeneratePasswordForUser(ctx, user, namespace)
 	if err != nil {
 		t.Fatal(err)
 	}

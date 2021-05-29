@@ -24,6 +24,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// SkipTestIfLocal skips tests locally which tests connectivity to mongodb pods
+func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
+	if testing.Short() {
+		t.Log("Skipping [" + msg + "]")
+		return
+	}
+	t.Run(msg, f)
+}
+
 // StatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
 func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
@@ -74,21 +83,41 @@ func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, 
 
 func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
+		stsNamespacedName := types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}
 		sts := appsv1.StatefulSet{}
-		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		err := e2eutil.TestClient.Get(context.TODO(), stsNamespacedName, &sts)
+
 		if err != nil {
 			t.Fatal(err)
 		}
-		ownerReferences := sts.GetOwnerReferences()
+		assertEqualOwnerReference(t, "StatefulSet", stsNamespacedName, sts.GetOwnerReferences(), expectedOwnerReference)
+	}
+}
 
-		assert.Len(t, ownerReferences, 1, "StatefulSet doesn't have OwnerReferences")
+func ServiceHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+	return func(t *testing.T) {
+		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
+		srv := corev1.Service{}
+		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &srv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertEqualOwnerReference(t, "Service", serviceNamespacedName, srv.GetOwnerReferences(), expectedOwnerReference)
+	}
+}
 
-		assert.Equal(t, expectedOwnerReference.APIVersion, ownerReferences[0].APIVersion)
-		assert.Equal(t, "MongoDBCommunity", ownerReferences[0].Kind)
-		assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
-		assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
+func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+	checkSecret := func(t *testing.T, resourceNamespacedName types.NamespacedName) {
+		secret := corev1.Secret{}
+		err := e2eutil.TestClient.Get(context.TODO(), resourceNamespacedName, &secret)
 
-		t.Logf("StatefulSet %s/%s has the correct OwnerReference!", mdb.Namespace, mdb.Name)
+		assert.NoError(t, err)
+		assertEqualOwnerReference(t, "Secret", resourceNamespacedName, secret.GetOwnerReferences(), expectedOwnerReference)
+	}
+
+	return func(t *testing.T) {
+		checkSecret(t, mdb.GetAgentPasswordSecretNamespacedName())
+		checkSecret(t, mdb.GetAgentKeyfileSecretNamespacedName())
 	}
 }
 
@@ -174,17 +203,23 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 	}
 }
 
+func getOwnerReference(mdb *mdbv1.MongoDBCommunity) metav1.OwnerReference {
+	return *metav1.NewControllerRef(mdb, schema.GroupVersionKind{
+		Group:   mdbv1.GroupVersion.Group,
+		Version: mdbv1.GroupVersion.Version,
+		Kind:    mdb.Kind,
+	})
+}
+
 func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
+		mdbOwnerReference := getOwnerReference(mdb)
 		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
 		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
 		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
-		t.Run("Stateful Set has OwnerReference", StatefulSetHasOwnerReference(mdb,
-			*metav1.NewControllerRef(mdb, schema.GroupVersionKind{
-				Group:   mdbv1.GroupVersion.Group,
-				Version: mdbv1.GroupVersion.Version,
-				Kind:    mdb.Kind,
-			})))
+		t.Run("Stateful Set Has OwnerReference", StatefulSetHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Service Set Has OwnerReference", ServiceHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Agent Secrets Have OwnerReference", AgentSecretsHaveOwnerReference(mdb, mdbOwnerReference))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(),
@@ -332,4 +367,13 @@ func findContainerByName(name string, containers []corev1.Container) *corev1.Con
 	}
 
 	return nil
+}
+
+func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamespacedName types.NamespacedName, ownerReferences []metav1.OwnerReference, expectedOwnerReference metav1.OwnerReference) {
+	assert.Len(t, ownerReferences, 1, fmt.Sprintf("%s %s/%s doesn't have OwnerReferences", resourceType, resourceNamespacedName.Name, resourceNamespacedName.Namespace))
+
+	assert.Equal(t, expectedOwnerReference.APIVersion, ownerReferences[0].APIVersion)
+	assert.Equal(t, "MongoDBCommunity", ownerReferences[0].Kind)
+	assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
+	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"time"
@@ -19,7 +20,8 @@ import (
 )
 
 const (
-	headlessAgent = "HEADLESS_AGENT"
+	headlessAgent                 = "HEADLESS_AGENT"
+	mongodNotReadyIntervalMinutes = time.Minute * 1
 )
 
 var riskySteps []string
@@ -44,58 +46,38 @@ func init() {
 // - if AppDB: the 'mmsStatus[0].lastGoalVersionAchieved' field is compared with the one from mounted automation config
 // Additionally if the previous check hasn't returned 'true' the "deadlock" case is checked to make sure the Agent is
 // not waiting for the other members.
-func isPodReady(conf config.Config) bool {
-	fd, err := os.Open(conf.HealthStatusFilePath)
+func isPodReady(conf config.Config) (bool, error) {
+	healthStatus, err := parseHealthStatus(conf.HealthStatusReader)
 	if err != nil {
-		logger.Warn("No health status file exists, assuming the Automation agent is old")
-		return true
-	}
-	defer fd.Close()
-
-	health, err := readAgentHealthStatus(fd)
-	if err != nil {
-		logger.Errorf("Failed to read agent health status file: %s", err)
-		// panicking allows to see the problem in the events for the pod (kubectl describe pod ..)
-		panic("Failed to read agent health status file: %s")
+		logger.Errorf("There was problem parsing health status file: %s", err)
+		return false, err
 	}
 
 	// The 'statuses' file can be empty only for OM Agents
-	if len(health.Healthiness) == 0 && !isHeadlessMode() {
+	if len(healthStatus.Healthiness) == 0 && !isHeadlessMode() {
 		logger.Info("'statuses' is empty. We assume there is no automation config for the agent yet.")
-		return true
+		return true, nil
 	}
 
-	// If the agent has reached the goal state - returning true
-	inGoalState, err := isInGoalState(health, conf)
+	// If the agent has reached the goal state
+	inGoalState, err := isInGoalState(healthStatus, conf)
 	if err != nil {
 		logger.Errorf("There was problem checking the health status: %s", err)
-		panic(err)
+		return false, err
 	}
 
-	inReadyState := isInReadyState(health)
+	inReadyState := isInReadyState(healthStatus)
 	if inGoalState && inReadyState {
 		logger.Info("Agent has reached goal state")
-		return true
+		return true, nil
 	}
 
 	// Failback logic: the agent is not in goal state and got stuck in some steps
-	if hasDeadlockedSteps(health) {
-		return true
+	if !inGoalState && hasDeadlockedSteps(healthStatus) {
+		return true, nil
 	}
 
-	return false
-}
-
-func readAgentHealthStatus(file *os.File) (health.Status, error) {
-	var health health.Status
-
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return health, err
-	}
-
-	err = json.Unmarshal(data, &health)
-	return health, err
+	return false, nil
 }
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
@@ -199,6 +181,17 @@ func kubernetesClientset() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
+func parseHealthStatus(reader io.Reader) (health.Status, error) {
+	var health health.Status
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return health, err
+	}
+
+	err = json.Unmarshal(data, &health)
+	return health, err
+}
+
 func main() {
 	clientSet, err := kubernetesClientset()
 	if err != nil {
@@ -219,12 +212,17 @@ func main() {
 		panic(err)
 	}
 	logger = log.Sugar()
-	if !isPodReady(config) {
+
+	ready, err := isPodReady(config)
+	if err != nil {
+		panic(err)
+	}
+	if !ready {
 		os.Exit(1)
 	}
 }
 
-// isInReadyState checks the MongoDB Server state. It returns true if the state
+// isInReadyState checks the MongoDB Server state. It returns true if the mongod process is up and its state
 // is PRIMARY or SECONDARY.
 func isInReadyState(health health.Status) bool {
 	if len(health.Healthiness) == 0 {
@@ -233,14 +231,16 @@ func isInReadyState(health health.Status) bool {
 	for _, processHealth := range health.Healthiness {
 		// We know this loop should run only once, in Kubernetes there's
 		// only 1 server managed per host.
+		if !processHealth.ExpectedToBeUp {
+			// Process may be down intentionally (if the process is marked as disabled in the automation config)
+			return true
+		}
 
-		// Every time the process health is created by the agent,
-		// it checks if the MongoDB process is up and populates this field
-		// (https://github.com/10gen/mms-automation/blob/bb72f74a22d98cfa635c1317e623386b089dc69f/go_planner/src/com.tengen/cm/healthcheck/status.go#L43)
-		// So it's enough to check that this value is not the zero-value for int64
-
+		timeMongoUp := time.Unix(processHealth.LastMongoUpTime, 0)
+		mongoUpThreshold := time.Now().Add(-mongodNotReadyIntervalMinutes)
+		mongoIsHealthy := timeMongoUp.After(mongoUpThreshold)
 		// The case in which the agent is too old to publish replication status is handled inside "IsReadyState"
-		return processHealth.LastMongoUpTime != 0 && processHealth.IsReadyState()
+		return mongoIsHealthy && processHealth.IsReadyState()
 	}
 	return false
 }

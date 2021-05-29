@@ -3,6 +3,16 @@ FROM ${imagebase} as base
 
 FROM {{base_image}}
 
+ARG agent_version
+
+LABEL name="MongoDB Agent" \
+      version="${agent_version}" \
+      summary="MongoDB Agent" \
+      description="MongoDB Agent" \
+      vendor="MongoDB" \
+      release="1" \
+      maintainer="support@mongodb.com"
+
 {% block packages -%}
 {% endblock -%}
 
@@ -17,6 +27,7 @@ RUN mkdir -p /agent \
 
 COPY --from=base /data/mongodb-agent.tar.gz /agent
 COPY --from=base /data/mongodb-tools.tgz /agent
+COPY --from=base /data/LICENSE /licenses/LICENSE
 
 RUN tar xfz /agent/mongodb-agent.tar.gz \
     && mv mongodb-mms-automation-agent-*/mongodb-mms-automation-agent /agent/mongodb-agent \

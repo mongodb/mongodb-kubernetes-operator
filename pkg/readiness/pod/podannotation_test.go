@@ -11,17 +11,24 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+// Currently seems like the appending functionality on the library used by the fake
+// implementation to simulate JSONPatch is broken: https://github.com/evanphx/json-patch/issues/138
+// The short term workaround is to have the annotation empty.
+
 // TestPatchPodAnnotation verifies that patching of the pod works correctly
 func TestPatchPodAnnotation(t *testing.T) {
 	clientset := fake.NewSimpleClientset(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-replica-set-0",
 			Namespace: "test-ns",
+			Annotations: map[string]string{
+				mongodbAgentVersionAnnotation: "",
+			},
 		},
 	})
 
 	pod, _ := clientset.CoreV1().Pods("test-ns").Get(context.TODO(), "my-replica-set-0", metav1.GetOptions{})
-	assert.Empty(t, pod.Annotations)
+	assert.Empty(t, pod.Annotations[mongodbAgentVersionAnnotation])
 
 	// adding the annotations
 	assert.NoError(t, PatchPodAnnotation("test-ns", 1, "my-replica-set-0", clientset))

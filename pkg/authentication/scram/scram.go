@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -43,6 +44,9 @@ type Configurable interface {
 
 	// NamespacedName returns the NamespacedName for the resource that is being configured.
 	NamespacedName() types.NamespacedName
+
+	// GetOwnerReferences returns the OwnerReferences pointing to the current resource.
+	GetOwnerReferences() []metav1.OwnerReference
 }
 
 // Role is a struct which will map to automationconfig.Role.
@@ -116,13 +120,13 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	}
 
 	// ensure that the agent password secret exists or read existing password.
-	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), AgentPasswordKey, generatedPassword)
+	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), mdb.GetOwnerReferences(), AgentPasswordKey, generatedPassword)
 	if err != nil {
 		return err
 	}
 
 	// ensure that the agent keyfile secret exists or read existing keyfile.
-	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), AgentKeyfileKey, generatedContents)
+	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), AgentKeyfileKey, generatedContents)
 	if err != nil {
 		return err
 	}

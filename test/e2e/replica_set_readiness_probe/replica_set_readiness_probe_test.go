@@ -25,14 +25,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetReadinessProbeScaling(t *testing.T) {
-	ctx, shouldCleanup := setup.InitTest(t)
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
 
-	if shouldCleanup {
-		defer ctx.Cleanup()
-	}
-
-	mdb, user := e2eutil.NewTestMongoDB("mdb0", "")
-	_, err := setup.GeneratePasswordForUser(user, ctx, "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}

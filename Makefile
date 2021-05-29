@@ -33,6 +33,7 @@ BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Image URL to use all building/pushing image targets
 REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
 OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
+NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
 IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -60,7 +61,8 @@ manager: generate fmt vet
 	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: install
+	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
@@ -74,7 +76,12 @@ uninstall: manifests kustomize
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+
+# Deploy a simple ReplicaSet, this is intended for first time use only as part of the quick start guide.
+deploy-dev-quick-start-rs: manifests kustomize
+	kubectl create secret generic my-user-password --from-literal=password=dev-quick-start-password --from-literal=username=admin || true
+	kubectl apply -f dev_notes/dev_quick_start_resources/dev_quick_start_rs.yaml
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
@@ -92,17 +99,43 @@ fmt:
 vet:
 	go vet ./...
 
+# Run e2e test by deploying test image in kubernetes.
+e2e-k8s: install e2e-image
+	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+
+# Run e2e test locally.
+# e.g. make e2e test=replica_set cleanup=true
+e2e: install
+	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
+	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
+
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-# Build the docker image
-docker-build: dockerfile
-	docker build -t ${IMG} .
+# Build and push the operator image
+operator-image:
+	python pipeline.py --image-name operator-ubi
 
-# Push the docker image
-docker-push:
-	docker push ${IMG}
+# Build and push e2e test image
+e2e-image:
+	python pipeline.py --image-name e2e
+
+# Build and push agent image
+agent-image:
+	python pipeline.py --image-name agent-ubuntu
+
+# Build and push readiness probe image
+readiness-probe-image:
+	python pipeline.py --image-name readiness-probe-init
+
+# Build and push version upgrade post start hook image
+version-upgrade-post-start-hook-image:
+	python pipeline.py --image-name version-post-start-hook-init
+
+# create all required images
+all-images: operator-image e2e-image agent-image readiness-probe-image version-upgrade-post-start-hook-image
+
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -140,8 +173,3 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-# Generate Dockerfile
-.PHONY: dockerfile
-dockerfile:
-	python scripts/dev/dockerfile_generator.py ${DOCKERFILE} > Dockerfile
