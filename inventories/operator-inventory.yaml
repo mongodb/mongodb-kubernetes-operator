@@ -54,4 +54,4 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
-            tag: $(release_version)
+            tag: $(inputs.params.release_version)
