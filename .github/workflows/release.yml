@@ -20,6 +20,10 @@ jobs:
 #          username: ${{ secrets.QUAY_USERNAME }}
 #          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
-      - run: python pipeline.py --image-name operator-ubi --release true
+      - run: |
+          released="$(scripts/ci/determine_required_releases.py mongodb-kubernetes-operator )"
+          if [[ ${released}="unreleased" ]]; then
+            python pipeline.py --image-name operator-ubi --release true
+          fi
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
