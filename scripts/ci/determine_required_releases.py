@@ -39,6 +39,9 @@ def main() -> int:
     if sys.argv[1] not in release:
         raise ValueError("Unknown image type [{}], value values are [{}]".format(sys.argv[1], ','.join(release.keys())))
 
+    if sys.argv[1] not in QUAY_URL_MAP:
+        raise ValueError("No associated image url with key [{}]".format(sys.argv[1]))
+
     tags = _get_all_released_tags(sys.argv[1])
     if release[sys.argv[1]] in tags:
         print("released")
