@@ -9,14 +9,14 @@ jobs:
         include:
           - pipeline-argument: operator-ubi
             release-key: mongodb-kubernetes-operator
-#          - pipeline-argument: version-post-start-hook-init
-#            release-key: version-upgrade-hook
-#          - pipeline-argument: readiness-probe-init
-#            release-key: readiness-probe
-#          - pipeline-argument: agent-ubi
-#            release-key: mongodb-agent
-#          - pipeline-argument: agent-ubuntu
-#            release-key: mongodb-agent
+          - pipeline-argument: version-post-start-hook-init
+            release-key: version-upgrade-hook
+          - pipeline-argument: readiness-probe-init
+            release-key: readiness-probe
+          - pipeline-argument: agent-ubi
+            release-key: mongodb-agent
+          - pipeline-argument: agent-ubuntu
+            release-key: mongodb-agent
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -25,6 +25,7 @@ jobs:
         with:
           python-version: '3.8'
           architecture: 'x64'
+
       - name: Install Python Requirements
         run: pip install -r requirements.txt
       - run: pip install "git+https://${{ secrets.SONAR_GITHUB_TOKEN }}@github.com/10gen/sonar.git@0.0.10"
@@ -34,11 +35,15 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - name: Publish Image To Quay
+
+      - name: Determine if release is needed
+        id: release_status
         run: |
-          released="$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }} )"
-          if [[ ${released}="unreleased" ]]; then
-            python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
-          fi
+          OUTPUT=$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }}) &&
+          echo "::set-output name=OUTPUT::$OUTPUT"
+
+      - name: Publish Image To Quay
+        if: steps.release_status.outputs.OUTPUT == "unreleased"
+        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"

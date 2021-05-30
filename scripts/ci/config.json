@@ -1,11 +1,16 @@
 {
     "namespace": "default",
-    "readiness_probe_image": "mongodb-kubernetes-readiness",
+    "repo_url": "quay.io/mongodb",
     "operator_image": "mongodb-kubernetes-operator",
-    "repo_url": "quay.io/chatton/test",
-    "e2e_image": "community-e2e",
-    "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-    "agent_image_ubuntu": "mongodb-agent-dev",
-    "agent_image_ubi": "mongodb-agent-ubi-dev",
-    "s3_bucket": "s3://chatton-operator-dockerfiles/dockerfiles"
+    "operator_image_dev": "community-operator-dev",
+    "e2e_image": "community-operator-e2e",
+    "version_upgrade_hook_image": "mongodb-kubernetes-operator-version-upgrade-post-start-hook",
+    "version_upgrade_hook_image_dev": "mongodb-kubernetes-operator-version-upgrade-post-start-hook-dev",
+    "agent_image_ubuntu": "mongodb-agent",
+    "agent_image_ubuntu_dev": "mongodb-agent-dev",
+    "agent_image_ubi": "mongodb-agent-ubi",
+    "agent_image_ubi_dev": "mongodb-agent-ubi-dev",
+    "readiness_probe_image": "mongodb-kubernetes-readinessprobe",
+    "readiness_probe_image_dev": "mongodb-kubernetes-readinessprobe-dev",
+    "s3_bucket": "s3://enterprise-operator-dockerfiles/dockerfiles"
 }
