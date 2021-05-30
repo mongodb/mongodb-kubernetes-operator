@@ -9,14 +9,14 @@ jobs:
         include:
           - pipeline-argument: operator-ubi
             release-key: mongodb-kubernetes-operator
-          - pipeline-argument: version-post-start-hook-init
-            release-key: version-upgrade-hook
-          - pipeline-argument: readiness-probe-init
-            release-key: readiness-probe
-          - pipeline-argument: agent-ubi
-            release-key: mongodb-agent
-          - pipeline-argument: agent-ubuntu
-            release-key: mongodb-agent
+#          - pipeline-argument: version-post-start-hook-init
+#            release-key: version-upgrade-hook
+#          - pipeline-argument: readiness-probe-init
+#            release-key: readiness-probe
+#          - pipeline-argument: agent-ubi
+#            release-key: mongodb-agent
+#          - pipeline-argument: agent-ubuntu
+#            release-key: mongodb-agent
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2

@@ -2,7 +2,7 @@
     "namespace": "default",
     "readiness_probe_image": "mongodb-kubernetes-readiness",
     "operator_image": "mongodb-kubernetes-operator",
-    "repo_url": "quay.io/chatton/test",
+    "repo_url": "268558157000.dkr.ecr.us-east-1.amazonaws.com/chatton/ubuntu",
     "e2e_image": "community-e2e",
     "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
     "agent_image_ubuntu": "mongodb-agent-dev",
