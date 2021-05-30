@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
@@ -30,21 +31,23 @@ import (
 )
 
 const (
-	performCleanup = "PERFORM_CLEANUP"
-	deployDir      = "/workspace/config/manager"
-	roleDir        = "/workspace/config/rbac"
+	performCleanupEnv = "PERFORM_CLEANUP"
+	deployDirEnv      = "DEPLOY_DIR"
+	roleDirEnv        = "ROLE_DIR"
 )
 
-func InitTest(t *testing.T) (*e2eutil.Context, bool) {
-	ctx := e2eutil.NewContext(t)
+func Setup(t *testing.T) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err := deployOperator(); err != nil {
 		t.Fatal(err)
 	}
 
-	clean := os.Getenv(performCleanup)
-
-	return ctx, clean == "True"
+	return ctx
 }
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
@@ -53,7 +56,8 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap
-	ca, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "ca.crt"))
+	testDataDir := e2eutil.TlsTestDataDir()
+	ca, err := ioutil.ReadFile(path.Join(testDataDir, "ca.crt"))
 	if err != nil {
 		return nil
 	}
@@ -70,11 +74,11 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 	}
 
 	// Create server key and certificate secret
-	cert, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server.crt"))
+	cert, err := ioutil.ReadFile(path.Join(testDataDir, "server.crt"))
 	if err != nil {
 		return err
 	}
-	key, err := ioutil.ReadFile(path.Join(e2eutil.TestdataDir, "server.key"))
+	key, err := ioutil.ReadFile(path.Join(testDataDir, "server.key"))
 	if err != nil {
 		return err
 	}
@@ -90,7 +94,7 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
-func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, namespace string) (string, error) {
+func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, namespace string) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
 	if passwordKey == "" {
 		passwordKey = "password"
@@ -115,6 +119,14 @@ func GeneratePasswordForUser(mdbu mdbv1.MongoDBUser, ctx *e2eutil.Context, names
 	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
+func roleDir() string {
+	return envvar.GetEnvOrDefault(roleDirEnv, "/workspace/config/rbac")
+}
+
+func deployDir() string {
+	return envvar.GetEnvOrDefault(deployDirEnv, "/workspace/config/manager")
+}
+
 func deployOperator() error {
 	testConfig := loadTestConfigFromEnv()
 
@@ -126,21 +138,22 @@ func deployOperator() error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir, "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
+
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir, "manager.yaml"),
+	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir(), "manager.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),

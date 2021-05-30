@@ -24,6 +24,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// SkipTestIfLocal skips tests locally which tests connectivity to mongodb pods
+func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
+	if testing.Short() {
+		t.Log("Skipping [" + msg + "]")
+		return
+	}
+	t.Run(msg, f)
+}
+
 // StatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
 func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {

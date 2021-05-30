@@ -99,8 +99,15 @@ fmt:
 vet:
 	go vet ./...
 
-e2e: install
+# Run e2e test by deploying test image in kubernetes.
+e2e-k8s: install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+
+# Run e2e test locally.
+# e.g. make e2e test=replica_set cleanup=true
+e2e: install
+	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
+	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
 
 # Generate code
 generate: controller-gen
