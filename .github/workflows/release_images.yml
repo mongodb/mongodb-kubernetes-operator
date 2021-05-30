@@ -20,19 +20,22 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
         with:
           python-version: '3.8'
           architecture: 'x64'
-      - run: pip install -r requirements.txt
+      - name: Install Python Requirements
+        run: pip install -r requirements.txt
       - run: pip install "git+https://${{ secrets.SONAR_GITHUB_TOKEN }}@github.com/10gen/sonar.git@0.0.10"
-#      - name: Login to Quay.io
-#        uses: docker/login-action@v1
-#        with:
-#          registry: quay.io
-#          username: ${{ secrets.QUAY_USERNAME }}
-#          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - run: |
+      - name: Login to Quay.io
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Publish Image To Quay
+        run: |
           released="$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }} )"
           if [[ ${released}="unreleased" ]]; then
             python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
