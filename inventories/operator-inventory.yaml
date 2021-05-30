@@ -8,6 +8,7 @@ images:
       template_context: scripts/dev/templates
 
     inputs:
+      - operator_image
       - operator_image_dev
 
     stages:
@@ -30,9 +31,27 @@ images:
 
         dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
+        labels:
+          quay.expires-after: 48h
+
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
             tag: $(inputs.params.version_id)
           - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
             tag: latest
 
+      - name: operator-release-ubi
+        task_type: docker_build
+        tags: ["release"]
+
+        inputs:
+          - release_version
+
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+
+        labels:
+          quay.expires-after: Never
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+            tag: $(release_version)
