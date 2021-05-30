@@ -4,6 +4,12 @@ on: workflow_dispatch
 jobs:
   release-operator:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - pipeline-argument: operator-ubi
+            release-key: mongodb-kubernetes-operator
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -21,9 +27,9 @@ jobs:
 #          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
       - run: |
-          released="$(scripts/ci/determine_required_releases.py mongodb-kubernetes-operator )"
+          released="$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }} )"
           if [[ ${released}="unreleased" ]]; then
-            python pipeline.py --image-name operator-ubi --release true
+            python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
           fi
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
