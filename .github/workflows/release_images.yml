@@ -1,15 +1,22 @@
-name: Release
+name: Release Images
 on: workflow_dispatch
 
 jobs:
-  release-operator:
+  release-images:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - pipeline-argument: operator-ubi
             release-key: mongodb-kubernetes-operator
-
+          - pipeline-argument: version-post-start-hook-init
+            release-key: version-upgrade-hook
+          - pipeline-argument: readiness-probe-init
+            release-key: readiness-probe
+          - pipeline-argument: agent-ubi
+            release-key: mongodb-agent
+          - pipeline-argument: agent-ubuntu
+            release-key: mongodb-agent
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -25,7 +32,6 @@ jobs:
 #          registry: quay.io
 #          username: ${{ secrets.QUAY_USERNAME }}
 #          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-
       - run: |
           released="$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }} )"
           if [[ ${released}="unreleased" ]]; then
