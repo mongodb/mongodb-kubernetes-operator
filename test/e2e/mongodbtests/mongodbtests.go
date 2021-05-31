@@ -340,7 +340,7 @@ func Connect(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {
 	})
 }
 
-// Connect performs a connectivity check by initializing a mongo client
+// ConnectSRV performs a connectivity check by initializing a mongo client
 // with the SRV connection string and inserting a document into the MongoDB
 // resource. Custom client options can be passed, for example to configure TLS.
 func ConnectSRV(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {

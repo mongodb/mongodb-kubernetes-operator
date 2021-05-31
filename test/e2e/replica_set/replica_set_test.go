@@ -41,7 +41,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(mongotester.WithSRV(mdb.MongoSRVURI()), WithoutTls(), WithReplicaSet(("mdb0"))))
+	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(mongotester.WithSRV(mdb.MongoSRVURI()), WithoutTls(), WithReplicaSet((mdb.Name))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }
