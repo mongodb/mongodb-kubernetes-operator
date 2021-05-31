@@ -166,7 +166,7 @@ Make sure you run commands in the correct namespace.
       apiVersion: mongodbcommunity.mongodb.com/v1
       kind: MongoDBCommunity
       ```
-      If you upgrade from pre-0.3.0 you need to also add the field spec.users[n].scramCredentialsSecretName for each resource. This will be used to determine the name of the generated secret which stores MongoDB user credentials. This field must comply with DNS-1123 rules (must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character).
+      If you upgrade from pre-0.3.0 you need to also add the field spec.users[n].scramCredentialsSecretName for each resource. This will be used to determine the name of the generated secret which stores MongoDB user credentials. This field must comply with DNS-1123 rules (see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/).
    b. Plan a downtime.
 2. Out with the old
 
@@ -185,7 +185,7 @@ Make sure you run commands in the correct namespace.
 3. In with the new
 
    Follow the normal installation procedure above.
-4. Start up your cluster again
+4. Start up your Replica Set again
    a. Re-create your cr using the new Version from Step 1.a
    b. Patch your statefulset to have it update the permissions
       ```
