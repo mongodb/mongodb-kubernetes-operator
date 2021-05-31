@@ -47,3 +47,21 @@ jobs:
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
+
+  draft-github-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+    - name: Determine Release Tag
+      id: release_tag
+      run: |
+        OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < ${{ env.GITHUB_WORKSPACE }}/release.json) &&
+        echo "::set-output name=OUTPUT::$OUTPUT"
+    - uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ steps.release_tag.outputs.OUTPUT }}
+        name: MongoDB Kubernetes Operator
+        bodyFile: "${{ env.GITHUB_WORKSPACE }}/dev_notes/RELEASE_NOTES.md"
+        draft: true
+        token: ${{ secrets.GITHUB_TOKEN }}
