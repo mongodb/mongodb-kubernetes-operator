@@ -124,7 +124,7 @@ to get a list.
 
 There are multiple ways to run a test.
 
-####Deploy the e2e-test pod into your kubernetes cluster.
+### Deploy the e2e-test pod into your kubernetes cluster.
 
 ```sh
 make e2e-k8s test=<test-name>
@@ -133,7 +133,7 @@ make e2e-k8s test=<test-name>
 This will deploy the e2e test pod into the cluster and run the test from there.
 There will be full connectivity to MongoDB from the test pod.
 
-####Run the test locally with go test
+### Run the test locally with go test
 
 ```sh
 make e2e test=<test-name>
@@ -144,7 +144,7 @@ possible to connect to the MongoDB deployments, so the MongoDB connectivity chec
 skipped when running like this.
 
 
-####Run the test locally with go test & Telepresence
+### Run the test locally with go test & Telepresence
 ```sh
 make e2e-telepresence test=<test-name>
 ```
