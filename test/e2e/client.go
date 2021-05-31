@@ -159,7 +159,7 @@ func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (
 	errBuf := &bytes.Buffer{}
 	exec, err := remotecommand.NewSPDYExecutor(c.restConfig, "POST", req.URL())
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdout: buf,

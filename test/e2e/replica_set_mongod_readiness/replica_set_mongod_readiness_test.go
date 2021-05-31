@@ -5,9 +5,6 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	"github.com/stretchr/testify/assert"
-
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -31,9 +28,6 @@ func TestReplicaSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	_, err = FromResource(t, mdb)
-	assert.NoError(t, err)
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
