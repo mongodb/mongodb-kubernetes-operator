@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
@@ -447,7 +448,12 @@ func (m MongoDBCommunity) MongoURI() string {
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
 func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
-	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t", user.Username, password, strings.Join(m.Hosts(), ","), user.Database, m.Spec.Security.TLS.Enabled)
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t",
+		url.QueryEscape(user.Username),
+		url.QueryEscape(password),
+		strings.Join(m.Hosts(), ","),
+		user.Database,
+		m.Spec.Security.TLS.Enabled)
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
