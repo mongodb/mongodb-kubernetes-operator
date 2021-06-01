@@ -257,7 +257,7 @@ images:
           - release_version
 
         output:
-          - registry: $(inputs.params.registry)/(inputs.params.readiness_probe_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)-context
 
 
