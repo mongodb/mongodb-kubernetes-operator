@@ -429,6 +429,22 @@ func WithoutTls() OptionApplier {
 	}
 }
 
+// WithSRV will add SRV connection string
+func WithSRV(uri string) OptionApplier {
+	opt := &options.ClientOptions{}
+	opt.ApplyURI(uri)
+	return clientOptionAdder{option: opt}
+}
+
+// WithReplicaSet will explicitly add a replicaset name
+func WithReplicaSet(rsname string) OptionApplier {
+	return clientOptionAdder{
+		option: &options.ClientOptions{
+			ReplicaSet: &rsname,
+		},
+	}
+}
+
 // getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig() (*tls.Config, error) {
 	// Read the CA certificate from test data
