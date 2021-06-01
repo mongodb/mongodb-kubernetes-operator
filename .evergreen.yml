@@ -371,7 +371,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: version-post-start-hook-init
+          image_name: version-post-start-hook-init
           release: true
 
 
@@ -381,7 +381,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: readiness-probe-init
+          image_name: readiness-probe-init
           release: true
 
   - name: release_agent_ubuntu
