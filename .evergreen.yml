@@ -150,7 +150,8 @@ task_groups:
     - func: create_kind_cluster
   tasks:
     - e2e_test_replica_set
-    - e2e_test_replica_set_readiness_probe
+    - e2e_test_replica_set_recovery
+    - e2e_test_replica_set_mongod_readiness
     - e2e_test_replica_set_scale
     - e2e_test_replica_set_scale_down
     - e2e_test_replica_set_change_version
@@ -249,11 +250,17 @@ tasks:
         vars:
           test: replica_set
 
-  - name: e2e_test_replica_set_readiness_probe
+  - name: e2e_test_replica_set_recovery
     commands:
       - func: run_e2e_test
         vars:
-          test: replica_set_readiness_probe
+          test: replica_set_recovery
+
+  - name: e2e_test_replica_set_mongod_readiness
+    commands:
+      - func: run_e2e_test
+        vars:
+          test: replica_set_mongod_readiness
 
   - name: e2e_test_replica_set_scale
     commands:
@@ -349,7 +356,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: version-post-start-hook-init
+          image_name: version-post-start-hook-init
           release: true
 
 
@@ -359,7 +366,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: readiness-probe-init
+          image_name: readiness-probe-init
           release: true
 
   - name: release_agent_ubuntu

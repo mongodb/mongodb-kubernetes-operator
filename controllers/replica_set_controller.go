@@ -451,6 +451,7 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPort(27017).
+		SetPortName("mongodb").
 		SetPublishNotReadyAddresses(true).
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()

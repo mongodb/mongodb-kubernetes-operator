@@ -62,6 +62,12 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+- apiGroups:
   - apps
   resources:
   - replicasets

@@ -140,6 +140,22 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retr
 	})
 }
 
+func WaitForPodReadiness(t *testing.T, isReady bool, containerName string, timeout time.Duration, pod corev1.Pod) error {
+	return wait.Poll(time.Second*3, timeout, func() (done bool, err error) {
+		err = TestClient.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)
+		if err != nil {
+			return false, err
+		}
+		for _, status := range pod.Status.ContainerStatuses {
+			t.Logf("%s (%s), ready: %v\n", pod.Name, status.Name, status.Ready)
+			if status.Name == containerName && status.Ready == isReady {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+}
+
 // waitForRuntimeObjectToExist waits until a runtime.Object of the given name exists
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {

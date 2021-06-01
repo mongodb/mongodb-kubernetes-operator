@@ -49,8 +49,12 @@ def _prepare_test_environment(config_file: str) -> None:
     )
 
     print("Creating Role Binding")
+    role_binding = _load_test_role_binding()
+    # set namespace specified in config.json
+    role_binding["subjects"][0]["namespace"] = dev_config.namespace
+
     k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_cluster_role_binding(_load_test_role_binding())
+        lambda: rbacv1.create_cluster_role_binding(role_binding)
     )
 
     print("Creating ServiceAccount")
@@ -85,6 +89,13 @@ def create_kube_config(config_file: str) -> None:
     data = {"kubeconfig": kube_config}
     config_map = client.V1ConfigMap(
         metadata=client.V1ObjectMeta(name="kube-config"), data=data
+    )
+
+    print("Creating Namespace")
+    k8s_conditions.ignore_if_already_exists(
+        lambda: corev1.create_namespace(
+            client.V1Namespace(metadata=dict(name=dev_config.namespace))
+        )
     )
 
     k8s_conditions.ignore_if_already_exists(

@@ -67,6 +67,10 @@ func isPodReady(conf config.Config) (bool, error) {
 	}
 
 	inReadyState := isInReadyState(healthStatus)
+	if !inReadyState {
+		logger.Info("Mongod is not ready")
+	}
+
 	if inGoalState && inReadyState {
 		logger.Info("Agent has reached goal state")
 		return true, nil
