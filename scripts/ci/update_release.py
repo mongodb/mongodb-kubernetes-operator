@@ -6,16 +6,29 @@ import yaml
 from typing import Dict
 
 RELATIVE_PATH_TO_MANAGER_YAML = "config/manager/manager.yaml"
+RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML = "deploy/openshift/operator_openshift.yaml"
+
+
+def _load_yaml_file(path):
+    with open(path, "r") as f:
+        return yaml.safe_load(f.read())
+
+
+def _dump_yaml(operator: Dict, path: str):
+    with open(path, "w+") as f:
+        return yaml.dump(operator, f)
+
+
+def update_and_write_file(path: str):
+    release = _load_release()
+    yaml_file = _load_yaml_file(path)
+    _update_operator_deployment(yaml_file, release)
+    _dump_yaml(yaml_file, path)
 
 
 def _load_release() -> Dict:
     with open("release.json", "r") as f:
         return json.loads(f.read())
-
-
-def _load_manager_yaml() -> Dict:
-    with open(RELATIVE_PATH_TO_MANAGER_YAML, "r") as f:
-        return yaml.safe_load(f.read())
 
 
 def _replace_tag(image: str, new_tag: str) -> str:
@@ -36,16 +49,9 @@ def _update_operator_deployment(operator_deployment: Dict, release: Dict) -> Non
             env["value"] = _replace_tag(env["value"], release["mongodb-agent"]["version"])
 
 
-def _update_manager_yaml(operator_deployment: Dict):
-    with open(RELATIVE_PATH_TO_MANAGER_YAML, "w+") as f:
-        return yaml.dump(operator_deployment, f)
-
-
 def main() -> int:
-    release = _load_release()
-    manager = _load_manager_yaml()
-    _update_operator_deployment(manager, release)
-    _update_manager_yaml(manager)
+    update_and_write_file(RELATIVE_PATH_TO_MANAGER_YAML)
+    update_and_write_file(RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML)
     return 0
 
 
