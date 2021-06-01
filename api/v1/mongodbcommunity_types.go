@@ -441,12 +441,13 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDBCommunity) MongoURI() string {
-	members := make([]string, m.Spec.Members)
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	for i := 0; i < m.Spec.Members; i++ {
-		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
-	}
-	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
+	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
+}
+
+// MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
+// and includes the authentication data for the user
+func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t", user.Username, password, strings.Join(m.Hosts(), ","), user.Database, m.Spec.Security.TLS.Enabled)
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment

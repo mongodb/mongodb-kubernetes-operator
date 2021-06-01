@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
@@ -81,6 +82,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
 		Complete(r)
 }
 
@@ -169,6 +171,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
+	if err := r.ensureUserResources(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
 	ready, err := r.deployMongoDBReplicaSet(mdb)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
@@ -216,6 +226,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
+	}
+
+	if err := r.updateConnectionStringSecrets(mdb); err != nil {
+		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
 	// the last version will be duplicated in two annotations.
