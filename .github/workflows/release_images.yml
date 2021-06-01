@@ -4,7 +4,7 @@ on:
     types: [submitted]
 
 jobs:
-  release-images:
+  ReleaseImages:
     runs-on: ubuntu-latest
     if: startsWith(github.event.pull_request.title, 'Release') && github.event.review.state == 'approved'
     strategy:
@@ -51,17 +51,15 @@ jobs:
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
 
-      - name: Merge Release PR
-        uses: pascalgn/automerge-action@v0.14.2
+      - name: Add Supported Release
+        run: python scripts/ci/add_supported_release.py --image ${{ matrix.pipeline-argument }}
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          MERGE_LABELS: ""
-          MERGE_METHOD: squash
-          MERGE_COMMIT_MESSAGE: "Release MongoDB Kubernetes Operator v${{ steps.release_status.outputs.OUTPUT }}"
+          ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
+          ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
 
-  draft-github-release:
+  MergeAndGithubRelease:
     runs-on: ubuntu-latest
-    needs: [release-images]
+    needs: [ReleaseImages]
     steps:
     - name: Checkout Code
       uses: actions/checkout@v2
@@ -70,7 +68,15 @@ jobs:
       run: |
         OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < ${{ env.GITHUB_WORKSPACE }}/release.json) &&
         echo "::set-output name=OUTPUT::$OUTPUT"
-    - uses: ncipollo/release-action@v1
+    - name: Merge Release PR
+      uses: pascalgn/automerge-action@v0.14.2
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        MERGE_LABELS: ""
+        MERGE_METHOD: squash
+        MERGE_COMMIT_MESSAGE: "Release MongoDB Kubernetes Operator v${{ steps.release_tag.outputs.OUTPUT }}"
+    - name: Create Github Release
+      uses: ncipollo/release-action@v1
       with:
         tag: ${{ steps.release_tag.outputs.OUTPUT }}
         name: MongoDB Kubernetes Operator

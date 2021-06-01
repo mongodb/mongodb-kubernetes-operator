@@ -30,10 +30,7 @@ def get_release() -> Dict[str, Any]:
 
 
 def get_atlas_connection_string() -> str:
-    password = os.environ["atlas_password"]
-    cnx_str = os.environ["atlas_connection_string"]
-
-    return cnx_str.format(password=password)
+    return os.environ["ATLAS_CONNECTION_STRING"]
 
 
 def mongo_client() -> pymongo.MongoClient:
@@ -44,7 +41,7 @@ def mongo_client() -> pymongo.MongoClient:
 def add_release_version(image: str, version: str) -> None:
     client = mongo_client()
 
-    database = os.environ["atlas_database"]
+    database = os.environ["ATLAS_DATABASE"]
     collection = client[database][image]
 
     year_from_now = datetime.datetime.now() + datetime.timedelta(days=365)
@@ -77,7 +74,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.image not in VALID_IMAGES:
-        raise ValueError("Image {} not supported".format(args.image))
+        print("Image {} not supported. Not adding release version.".format(args.image))
+        return 0
 
     # for now, there is just one version to add as a supported release.
     version = get_release()[args.image]["version"]
