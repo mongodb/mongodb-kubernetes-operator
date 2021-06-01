@@ -124,19 +124,6 @@ functions:
         working_dir: mongodb-kubernetes-operator
         binary: scripts/ci/build_and_push_image_sonar.sh
 
-  release_docker_image:
-    - command: subprocess.exec
-      type: system
-      params:
-        working_dir: mongodb-kubernetes-operator
-        include_expansions_in_env:
-          - version_id
-          - quay_user_name
-          - quay_password
-          - old_image
-          - new_image
-          - image_type
-        command: scripts/ci/run_image_release.sh
 
   add_supported_release:
     - *python_venv
@@ -358,12 +345,10 @@ tasks:
     commands:
       - func: clone
       - func: setup_virtualenv
-      - func: release_docker_image
+      - func: build_and_push_image_sonar
         vars:
-          old_image: quay.io/mongodb/community-operator-dev
-          new_image: quay.io/mongodb/mongodb-kubernetes-operator
-          image_type: mongodb-kubernetes-operator
-
+          image_name: operator-ubi
+          release: true
 
   - name: release_version_upgrade_post_start_hook
     commands:
