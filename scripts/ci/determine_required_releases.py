@@ -37,7 +37,11 @@ def main() -> int:
     release = _load_release()
 
     if sys.argv[1] not in release:
-        raise ValueError("Unknown image type [{}], valid values are [{}]".format(sys.argv[1], ','.join(release.keys())))
+        raise ValueError(
+            "Unknown image type [{}], valid values are [{}]".format(
+                sys.argv[1], ",".join(release.keys())
+            )
+        )
 
     if sys.argv[1] not in QUAY_URL_MAP:
         raise ValueError("No associated image url with key [{}]".format(sys.argv[1]))
