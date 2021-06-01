@@ -347,7 +347,7 @@ tasks:
       - func: setup_virtualenv
       - func: build_and_push_image_sonar
         vars:
-          image_type: operator-ubi
+          image_name: operator-ubi
           release: true
 
   - name: release_version_upgrade_post_start_hook
