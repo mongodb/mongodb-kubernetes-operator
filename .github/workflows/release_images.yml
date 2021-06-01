@@ -1,9 +1,12 @@
 name: Release Images
-on: workflow_dispatch
+on:
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   release-images:
     runs-on: ubuntu-latest
+    if: startsWith(${{ github.event.pull_request.title }}, 'Release:') && github.event.review.state == 'approved'
     strategy:
       matrix:
         include:
