@@ -340,27 +340,6 @@ func Connect(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {
 	})
 }
 
-// ConnectSRV performs a connectivity check by initializing a mongo client
-// with the SRV connection string and inserting a document into the MongoDB
-// resource. Custom client options can be passed, for example to configure TLS.
-func ConnectSRV(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoSRVURI()))
-	if err != nil {
-		return err
-	}
-
-	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
-		collection := mongoClient.Database("testing").Collection("numbers")
-		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
