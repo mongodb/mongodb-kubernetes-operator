@@ -49,9 +49,9 @@ func TestReplicaSetTLS(t *testing.T) {
 		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls()))
 		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI()), WithTls()))
 		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
-			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser.Username, scramUser.Database)), WithTls()))
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser)), WithTls()))
 		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
-			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser.Username, scramUser.Database)), WithTls()))
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)), WithTls()))
 		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
 		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
 	})
