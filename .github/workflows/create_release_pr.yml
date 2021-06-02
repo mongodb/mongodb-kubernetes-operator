@@ -1,5 +1,9 @@
 name: Create Release PR
-on: workflow_dispatch
+on:
+  workflow_dispatch
+  schedule:
+    - cron: '0 12 * * MON'
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -26,4 +30,3 @@ jobs:
           COMMIT_EMAIL: 'support@mongodb.com'
           PR_BRANCH_NAME: 'release-${PR_ID}'
           PR_TITLE: 'Release MongoDB Kubernetes Operator v${{ steps.release_version.outputs.OUTPUT }}'
-
