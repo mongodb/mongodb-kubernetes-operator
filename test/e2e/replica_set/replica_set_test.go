@@ -25,6 +25,7 @@ func TestReplicaSet(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	scramUser := mdb.GetScramUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
@@ -41,8 +42,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI()), WithoutTls(), WithReplicaSet((mdb.Name))))
-	scramUser := mdb.GetScramUsers()[0]
-	t.Run("Test Connectivity with generated connection string",
+	t.Run("Test Connectivity with generated connection string secret",
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser.Username, scramUser.Database))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))

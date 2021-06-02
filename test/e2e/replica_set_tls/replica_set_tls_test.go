@@ -25,6 +25,7 @@ func TestReplicaSetTLS(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
+	scramUser := mdb.GetScramUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
@@ -46,6 +47,8 @@ func TestReplicaSetTLS(t *testing.T) {
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
 		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls()))
 		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls()))
+		t.Run("Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser.Username, scramUser.Database)), WithTls()))
 		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
 		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
 	})
