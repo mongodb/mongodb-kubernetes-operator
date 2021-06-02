@@ -69,7 +69,7 @@ def add_release_version(image: str, version: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--image", help="image to add a new supported version", type=str
+        "--image-name", help="image to add a new supported version", type=str
     )
     args = parser.parse_args()
 

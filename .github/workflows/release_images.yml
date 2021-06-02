@@ -52,7 +52,7 @@ jobs:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
 
       - name: Add Supported Release
-        run: python scripts/ci/add_supported_release.py --image ${{ matrix.pipeline-argument }}
+        run: python scripts/ci/add_supported_release.py --image-name ${{ matrix.pipeline-argument }}
         env:
           ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
           ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
