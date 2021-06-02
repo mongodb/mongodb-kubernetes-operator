@@ -9,17 +9,17 @@ RELATIVE_PATH_TO_MANAGER_YAML = "config/manager/manager.yaml"
 RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML = "deploy/openshift/operator_openshift.yaml"
 
 
-def _load_yaml_file(path):
+def _load_yaml_file(path: str) -> Dict:
     with open(path, "r") as f:
         return yaml.safe_load(f.read())
 
 
-def _dump_yaml(operator: Dict, path: str):
+def _dump_yaml(operator: Dict, path: str) -> None:
     with open(path, "w+") as f:
         return yaml.dump(operator, f)
 
 
-def update_and_write_file(path: str):
+def update_and_write_file(path: str) -> None:
     release = _load_release()
     yaml_file = _load_yaml_file(path)
     _update_operator_deployment(yaml_file, release)
