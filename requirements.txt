@@ -9,4 +9,5 @@ boto3==1.16.21
 pymongo==3.11.2
 dnspython==2.0.0
 requests==2.24.0
+pyyaml==5.4.1
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
