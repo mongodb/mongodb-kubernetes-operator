@@ -5,7 +5,7 @@ on:
 #    - cron: '0 12 * * MON'
 
 jobs:
-  release:
+  CreateReleasePR:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
