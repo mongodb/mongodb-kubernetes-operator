@@ -37,6 +37,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 			SetName(fmt.Sprintf("mdbc-%s-%s", user.Database, user.Username)).
 			SetNamespace(mdb.Namespace).
 			SetField("connectionString.standard", mdb.MongoAuthUserURI(user, pwd)).
+			SetField("connectionString.standardSrv", mdb.MongoAuthUserSRVURI(user, pwd)).
 			SetField("username", user.Username).
 			SetField("password", pwd).
 			SetOwnerReferences(mdb.GetOwnerReferences()).

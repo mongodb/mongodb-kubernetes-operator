@@ -445,6 +445,12 @@ func (m MongoDBCommunity) MongoURI() string {
 	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
 }
 
+// MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
+func (m MongoDBCommunity) MongoSRVURI() string {
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
+}
+
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
 func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
@@ -457,9 +463,17 @@ func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) str
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoSRVURI() string {
+// and includes the authentication data for the user
+func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) string {
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.%s/%s?ssl=%t",
+		url.QueryEscape(user.Username),
+		url.QueryEscape(password),
+		m.ServiceName(),
+		m.Namespace,
+		clusterDomain,
+		user.Database,
+		m.Spec.Security.TLS.Enabled)
 }
 
 func (m MongoDBCommunity) Hosts() []string {

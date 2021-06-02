@@ -215,11 +215,19 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 	}
 }
 
-func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, username string, database string) string {
+func GetConnectionStringSecret(mdb mdbv1.MongoDBCommunity, username string, database string) corev1.Secret {
 	secret := corev1.Secret{}
 	secretNamespacedName := types.NamespacedName{Name: fmt.Sprintf("mdbc-%s-%s", database, username), Namespace: mdb.Namespace}
 	e2eutil.TestClient.Get(context.TODO(), secretNamespacedName, &secret)
-	return string(secret.Data["connectionString.standard"])
+	return secret
+}
+
+func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, username string, database string) string {
+	return string(GetConnectionStringSecret(mdb, username, database).Data["connectionString.standard"])
+}
+
+func GetSrvConnectionStringForUser(mdb mdbv1.MongoDBCommunity, username string, database string) string {
+	return string(GetConnectionStringSecret(mdb, username, database).Data["connectionString.standardSrv"])
 }
 
 func getOwnerReference(mdb *mdbv1.MongoDBCommunity) metav1.OwnerReference {

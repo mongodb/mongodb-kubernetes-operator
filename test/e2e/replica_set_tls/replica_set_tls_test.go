@@ -46,9 +46,12 @@ func TestReplicaSetTLS(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
 		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls()))
-		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls()))
-		t.Run("Connectivity With Generated Connection String Secret Succeeds",
+		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls()))
+		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI()), WithTls()))
+		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
 			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser.Username, scramUser.Database)), WithTls()))
+		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser.Username, scramUser.Database)), WithTls()))
 		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
 		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
 	})
