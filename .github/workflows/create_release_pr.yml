@@ -1,8 +1,8 @@
 name: Create Release PR
 on:
   workflow_dispatch
-  schedule:
-    - cron: '0 12 * * MON'
+#  schedule:
+#    - cron: '0 12 * * MON'
 
 jobs:
   release:
