@@ -1,4 +1,4 @@
-git+https://github.com/mongodb/sonar@0.0.11
+git+https://github.com/mongodb/sonar@0.0.11#egg=sonar
 docker==4.3.1
 kubernetes==11.0.0
 jinja2==2.11.3
