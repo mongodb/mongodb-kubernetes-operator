@@ -41,10 +41,10 @@ each one of them in charge of some part of the lifecycle of the MongoDB database
 
 # Getting Started
 
-## Please make sure have signed our Contributor Agreement
-You can find it [here](https://www.mongodb.com/legal/contributor-agreement). This will be
-required when creating a PR against this repo!
+## PR Prerequisites
+* Please ensure you have signed our Contributor Agreement. You can find it [here](https://www.mongodb.com/legal/contributor-agreement). 
 
+* Please ensure that all commits are signed.
 
 ## Developer Configuration
 
