@@ -1,4 +1,4 @@
-package replica_set_readiness_probe
+package replica_set_recovery
 
 import (
 	"crypto/rand"
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestReplicaSetReadinessProbeScaling(t *testing.T) {
+func TestReplicaSetRecovery(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 

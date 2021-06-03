@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -233,12 +232,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 // DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
 func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
-		pod := corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%d", mdb.Name, podNum),
-				Namespace: mdb.Namespace,
-			},
-		}
+		pod := podFromMongoDBCommunity(mdb, podNum)
 		if err := e2eutil.TestClient.Delete(context.TODO(), &pod); err != nil {
 			t.Fatal(err)
 		}
@@ -359,6 +353,30 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 	}
 }
 
+// PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes not ready.
+func PodContainerBecomesNotReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
+	return func(t *testing.T) {
+		pod := podFromMongoDBCommunity(mdb, podNum)
+		assert.NoError(t, e2eutil.WaitForPodReadiness(t, false, containerName, time.Minute*10, pod))
+	}
+}
+
+// PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes ready.
+func PodContainerBecomesReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
+	return func(t *testing.T) {
+		pod := podFromMongoDBCommunity(mdb, podNum)
+		assert.NoError(t, e2eutil.WaitForPodReadiness(t, true, containerName, time.Minute*3, pod))
+	}
+}
+
+func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, command string) func(*testing.T) {
+	return func(t *testing.T) {
+		pod := podFromMongoDBCommunity(mdb, podNum)
+		_, err := e2eutil.TestClient.Execute(pod, containerName, command)
+		assert.NoError(t, err)
+	}
+}
+
 func findContainerByName(name string, containers []corev1.Container) *corev1.Container {
 	for _, c := range containers {
 		if c.Name == name {
@@ -367,6 +385,15 @@ func findContainerByName(name string, containers []corev1.Container) *corev1.Con
 	}
 
 	return nil
+}
+
+func podFromMongoDBCommunity(mdb *mdbv1.MongoDBCommunity, podNum int) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%d", mdb.Name, podNum),
+			Namespace: mdb.Namespace,
+		},
+	}
 }
 
 func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamespacedName types.NamespacedName, ownerReferences []metav1.OwnerReference, expectedOwnerReference metav1.OwnerReference) {
