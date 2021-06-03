@@ -5,16 +5,26 @@
 * Install [jq](https://stedolan.github.io/jq/download/) 
 * Optionally install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) if you want to use a local cluster.
 
-* create a python virtual environment
+* create a python virtual environment and activate it (skip if you use pipenv)
 
 ```bash
 python3 -m venv /path/to/new/virtual/environment
 source path/to/new/virtual/environment/bin/activate
 ```
 
-* install python dependencies 
-```
+* install python dependencies (skip if you use pipenv)
+```bash
 pip install -r requirements.txt
+```
+
+* create a python environment and install dependencies (for pipenv users)
+```bash
+pipenv install
+```
+
+* activate the python environment (for pipenv users)
+```bash
+pipenv shell
 ```
 
 #### Create a Kind cluster and a local registry
