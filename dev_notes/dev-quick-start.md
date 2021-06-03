@@ -15,9 +15,6 @@ source path/to/new/virtual/environment/bin/activate
 * install python dependencies 
 ```
 pip install -r requirements.txt
-
-# Note: sonar requires access to the 10gen repo and is used for the release pipeline
-pip install git+ssh://git@github.com/10gen/sonar.git@0.0.10
 ```
 
 #### Create a Kind cluster and a local registry
