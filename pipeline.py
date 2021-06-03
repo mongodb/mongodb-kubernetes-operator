@@ -35,6 +35,8 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "agent_version": release["mongodb-agent"]["version"],
         "release_version": release["mongodb-agent"]["version"],
         "tools_version": release["mongodb-agent"]["tools_version"],
+        "agent_image": config.agent_image,
+        "agent_image_dev": config.agent_dev_image,
         "registry": config.repo_url,
         "s3_bucket": config.s3_bucket,
     }
@@ -101,6 +103,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
 
 def build_operator_ubi_image(config: DevConfig) -> None:
+    release = _load_release()
     config.ensure_tag_is_run("ubi")
     sonar_build_image(
         "operator-ubi",
@@ -112,6 +115,7 @@ def build_operator_ubi_image(config: DevConfig) -> None:
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "operator_image": config.operator_image,
             "operator_image_dev": config.operator_image_dev,
+            "release_version": release["mongodb-kubernetes-operator"],
         },
         inventory="inventories/operator-inventory.yaml",
     )

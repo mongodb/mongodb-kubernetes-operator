@@ -249,7 +249,7 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
 	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
 	assert.Len(t, svc.Spec.Ports, 1)
-	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017})
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017, Name: "mongodb"})
 
 	reconcileThroughAllStates(t, r, mdb)
 }
