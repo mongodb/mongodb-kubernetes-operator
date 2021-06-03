@@ -37,8 +37,8 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 			return err
 		}
 
-		operatorSecret := secret.Builder().
-			SetName(user.GetConnectionStringSecretName()).
+		connectionStringSecret := secret.Builder().
+			SetName(user.GetConnectionStringSecretName(mdb)).
 			SetNamespace(mdb.Namespace).
 			SetField("connectionString.standard", mdb.MongoAuthUserURI(user, pwd)).
 			SetField("connectionString.standardSrv", mdb.MongoAuthUserSRVURI(user, pwd)).
@@ -47,7 +47,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 			SetOwnerReferences(mdb.GetOwnerReferences()).
 			Build()
 
-		if err := secret.CreateOrUpdate(r.client, operatorSecret); err != nil {
+		if err := secret.CreateOrUpdate(r.client, connectionStringSecret); err != nil {
 			return err
 		}
 	}

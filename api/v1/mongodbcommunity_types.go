@@ -462,7 +462,7 @@ func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) str
 		m.Spec.Security.TLS.Enabled)
 }
 
-// MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
+// MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
 // and includes the authentication data for the user
 func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) string {
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
