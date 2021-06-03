@@ -19,9 +19,13 @@ func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
 }
 
 // ValidateUpdate validates that the new Spec, corresponding to the existing one is still valid
-func ValidateUpdate(oldSpec, newSpec mdbv1.MongoDBCommunitySpec) error {
-	if oldSpec.Security.TLS.Enabled && !newSpec.Security.TLS.Enabled {
+func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySpec) error {
+	if oldSpec.Security.TLS.Enabled && !mdb.Spec.Security.TLS.Enabled {
 		return errors.New("TLS can't be set to disabled after it has been enabled")
+	}
+
+	if err := validateUsers(mdb); err != nil {
+		return err
 	}
 
 	return nil

@@ -488,7 +488,7 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	return validation.ValidateUpdate(prevSpec, mdb.Spec)
+	return validation.ValidateUpdate(mdb, prevSpec)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
