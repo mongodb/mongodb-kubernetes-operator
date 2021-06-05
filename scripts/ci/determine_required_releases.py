@@ -28,6 +28,9 @@ def _get_all_released_tags(image_type: str) -> List[str]:
 def _load_release() -> Dict:
     with open("release.json") as f:
         release = json.loads(f.read())
+
+    # agent section is a sub object, we change the mapping so the key corresponds to the version directly.
+    release["mongodb-agent"] = release["mongodb-agent"]["version"]
     return release
 
 
