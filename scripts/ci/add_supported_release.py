@@ -74,7 +74,11 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.image_name not in VALID_IMAGES:
-        print("Image {} not supported. Not adding release version.".format(args.image_name))
+        print(
+            "Image {} not supported. Not adding release version.".format(
+                args.image_name
+            )
+        )
         return 0
 
     # for now, there is just one version to add as a supported release.
