@@ -6,7 +6,7 @@ on:
 jobs:
   ReleaseImages:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.pull_request.title, 'Release') && github.event.review.state == 'approved'
+    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
     strategy:
       matrix:
         include:
@@ -29,13 +29,12 @@ jobs:
           python-version: '3.8'
           architecture: 'x64'
 
-      - name: Install Python Requirements
+      - name: Install Python Dependencies
         run: pip install -r requirements.txt
-      - run: pip install "git+https://${{ secrets.SONAR_GITHUB_TOKEN }}@github.com/10gen/sonar.git@0.0.10"
       - name: Determine if release is needed
         id: release_status
         run: |
-          OUTPUT=$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }}) &&
+          OUTPUT=$(scripts/ci/determine_required_releases.py ${{ matrix.release-key }})
           echo "::set-output name=OUTPUT::$OUTPUT"
 
       - name: Login to Quay.io
@@ -73,6 +72,7 @@ jobs:
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         MERGE_LABELS: ""
+        MERGE_DELETE_BRANCH: true
         MERGE_METHOD: squash
         MERGE_COMMIT_MESSAGE: "Release MongoDB Kubernetes Operator v${{ steps.release_tag.outputs.OUTPUT }}"
     - name: Create Github Release
@@ -80,6 +80,6 @@ jobs:
       with:
         tag: ${{ steps.release_tag.outputs.OUTPUT }}
         name: MongoDB Kubernetes Operator
-        bodyFile: "${{ env.GITHUB_WORKSPACE }}/dev_notes/RELEASE_NOTES.md"
+        bodyFile: "${{ env.GITHUB_WORKSPACE }}/docs/RELEASE_NOTES.md"
         draft: true
         token: ${{ secrets.GITHUB_TOKEN }}
