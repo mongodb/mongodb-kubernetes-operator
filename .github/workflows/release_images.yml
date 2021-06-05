@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
       - name: Publish Image To Quay
-        if: steps.release_status.outputs.OUTPUT == "unreleased"
+        if: steps.release_status.outputs.OUTPUT == unreleased
 
         # TODO: change this to `--release true` after manual testing.
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
