@@ -57,7 +57,7 @@ jobs:
         # TODO: change this to `--release true` after manual testing.
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
         env:
-          MONGODB_COMMUNITY_CONFIG: "$GITHUB_WORKSPACE/scripts/ci/config.json"
+          MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
 
       - name: Add Supported Release
         run: python scripts/ci/add_supported_release.py --image-name ${{ matrix.pipeline-argument }}
@@ -89,6 +89,6 @@ jobs:
       with:
         tag: ${{ steps.release_tag.outputs.OUTPUT }}
         name: MongoDB Kubernetes Operator
-        bodyFile: "$GITHUB_WORKSPACE/docs/RELEASE_NOTES.md"
+        bodyFile: "${{ env.GITHUB_WORKSPACE }}/docs/RELEASE_NOTES.md"
         draft: true
         token: ${{ secrets.GITHUB_TOKEN }}
