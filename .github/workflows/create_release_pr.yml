@@ -1,22 +1,30 @@
 name: Create Release PR
-on: workflow_dispatch
+on:
+  workflow_dispatch
+
 jobs:
-  release:
+  CreateReleasePR:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Determine Release Version
+        id: release_version
+        run: |
+          OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json) &&
+          echo "::set-output name=OUTPUT::$OUTPUT"
       - uses: actions/setup-python@v2
         with:
           python-version: '3.6'
           architecture: 'x64'
       - run: pip install -r requirements.txt
-      - name: create-pr
+      - name: Create Release PR
         uses: technote-space/create-pr-action@v2
         with:
           EXECUTE_COMMANDS: |
             python scripts/ci/update_release.py
-          COMMIT_MESSAGE: 'GitHub Action Release PR'
+          COMMIT_MESSAGE: 'Release Operator v${{ steps.release_version.outputs.OUTPUT }}'
           COMMIT_NAME: 'GitHub Actions'
           COMMIT_EMAIL: 'support@mongodb.com'
-          PR_BRANCH_NAME: 'release-${PR_ID}'
-          PR_TITLE: 'Release MongoDB Kubernetes Operator'
+          PR_BRANCH_NAME: 'release-v${{steps.release_version.outputs.OUTPUT}}'
+          PR_TITLE: 'Release MongoDB Kubernetes Operator v${{ steps.release_version.outputs.OUTPUT }}'
