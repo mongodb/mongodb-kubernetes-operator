@@ -4,24 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"testing"
 	"time"
-
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // SkipTestIfLocal skips tests locally which tests connectivity to mongodb pods
@@ -276,20 +272,6 @@ func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	}
 }
 
-// Connectivity returns a test function which performs
-// a basic MongoDB connectivity test
-func Connectivity(mdb *mdbv1.MongoDBCommunity, username, password string) func(t *testing.T) {
-	return func(t *testing.T) {
-		if err := Connect(mdb, options.Client().SetAuth(options.Credential{
-			AuthMechanism: "SCRAM-SHA-256",
-			Username:      username,
-			Password:      password,
-		})); err != nil {
-			t.Fatalf("Error connecting to MongoDB deployment: %s", err)
-		}
-	}
-}
-
 // Status compares the given status to the actual status of the MongoDB resource
 func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunityStatus) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -348,28 +330,7 @@ func ChangeVersion(mdb *mdbv1.MongoDBCommunity, newVersion string) func(*testing
 	}
 }
 
-// Connect performs a connectivity check by initializing a mongo client
-// and inserting a document into the MongoDB resource. Custom client
-// options can be passed, for example to configure TLS.
-func Connect(mdb *mdbv1.MongoDBCommunity, opts *options.ClientOptions) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	mongoClient, err := mongo.Connect(ctx, opts.ApplyURI(mdb.MongoURI()))
-	if err != nil {
-		return err
-	}
-
-	return wait.Poll(time.Second*1, time.Second*30, func() (done bool, err error) {
-		collection := mongoClient.Database("testing").Collection("numbers")
-		_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
-func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(container corev1.Container) bool) func(*testing.T) {
+func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(c corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
 		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
@@ -377,12 +338,12 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 			t.Fatal(err)
 		}
 
-		container := findContainerByName(containerName, sts.Spec.Template.Spec.Containers)
-		if container == nil {
+		existingContainer := container.GetByName(containerName, sts.Spec.Template.Spec.Containers)
+		if existingContainer == nil {
 			t.Fatalf(`No container found with name "%s" in StatefulSet pod template`, containerName)
 		}
 
-		if !condition(*container) {
+		if !condition(*existingContainer) {
 			t.Fatalf(`Container "%s" does not satisfy condition`, containerName)
 		}
 	}
@@ -410,16 +371,6 @@ func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, com
 		_, err := e2eutil.TestClient.Execute(pod, containerName, command)
 		assert.NoError(t, err)
 	}
-}
-
-func findContainerByName(name string, containers []corev1.Container) *corev1.Container {
-	for _, c := range containers {
-		if c.Name == name {
-			return &c
-		}
-	}
-
-	return nil
 }
 
 func podFromMongoDBCommunity(mdb *mdbv1.MongoDBCommunity, podNum int) corev1.Pod {
