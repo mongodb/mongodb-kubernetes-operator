@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import json
 import sys
 import os
@@ -11,7 +12,7 @@ def _load_release() -> Dict:
     return release
 
 
-def _open_url(url: str):
+def _open_url(url: str) -> None:
     os.system("open '" + url + "'")
 
 
