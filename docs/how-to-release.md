@@ -1,6 +1,9 @@
 
 ## How to Release
 
+* Ensure the versions specified in [release.json](../release.json) are correct. 
+    * Prepare a PR to bump and versions as required. 
+
 * Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
     * All completed tickets for this release can be seen by running `scripts/dev/open_tickets_for_this_release.py`
 
