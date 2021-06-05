@@ -1,12 +1,14 @@
 name: Release Images
-on:
-  pull_request_review:
-    types: [submitted]
+
+# TODO: manual until tested
+on: workflow_dispatch
+#  pull_request_review:
+#    types: [submitted]
 
 jobs:
   ReleaseImages:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
+#    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
     strategy:
       matrix:
         include:
@@ -51,7 +53,9 @@ jobs:
 
       - name: Publish Image To Quay
         if: steps.release_status.outputs.OUTPUT == "unreleased"
-        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
+
+        # TODO: change this to `--release true` after manual testing.
+        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ env.GITHUB_WORKSPACE }}/scripts/ci/config.json"
 
