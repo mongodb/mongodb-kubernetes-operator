@@ -1,17 +1,14 @@
 
 ## How to Release
 
-* Update any finished tickets in [kube-community-next](https://jira.mongodb.org/issues?jql=project%20%3D%20CLOUDP%20AND%20component%20%3D%20%22Kubernetes%20Community%22%20%20AND%20status%20in%20(Resolved%2C%20Closed)%20and%20fixVersion%3D%20kube-community-next%20%20ORDER%20BY%20resolved) to have the version of the release you're doing (kube-community-x.y)
+* Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
+    * All completed tickets for this release can be seen by running `scripts/dev/open_tickets_for_this_release.py`
 
-* Prepare the release PR
-  1. Increment any image version changes.
-  2. Create a github draft release `./scripts/dev/create_github_release.sh`.
-  3. Commit changes.
-  
-* Create release PR
-  1. Reconfigure the Evergreen run to add the relevant release task(s).
+* Run the `Create Release PR` GitHub Action
+    * In the GitHub UI:
+        * `Actions` > `Create Release PR` > `Workflow Dispatch` (run on the master branch)
+        
+* Review and Approve the release PR that is created by this action.
+    * Upon approval, all new images for this release will be built and released, and a Github release draft will be created.
 
-
-* Unblock release task once everything is green
-
-Once the images are released, merge release PR & publish github release
+* Review and publish the new GitHub release draft.
