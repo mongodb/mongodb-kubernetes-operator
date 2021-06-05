@@ -2,6 +2,7 @@ package scram
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -335,4 +336,9 @@ func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secre
 	acUser.ScramSha1Creds = &sha1Creds
 	acUser.ScramSha256Creds = &sha256Creds
 	return acUser, nil
+}
+
+// GetConnectionStringSecretName returns the name of the secret where the operator stores the connection string for current user
+func (u User) GetConnectionStringSecretName(mdb Configurable) string {
+	return fmt.Sprintf("%s-%s-%s", mdb.NamespacedName().Name, u.Database, u.Username)
 }

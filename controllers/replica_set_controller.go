@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
@@ -81,6 +82,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
 		Complete(r)
 }
 
@@ -127,7 +129,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
 
 	r.log.Debug("Validating MongoDB.Spec")
-	if err := r.validateUpdate(mdb); err != nil {
+	if err := r.validateSpec(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -165,6 +167,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	if err := r.ensureUserResources(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -216,6 +226,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
+	}
+
+	if err := r.updateConnectionStringSecrets(mdb); err != nil {
+		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
 	// the last version will be duplicated in two annotations.
@@ -457,14 +471,15 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		Build()
 }
 
-// validateUpdate validates that the new Spec, corresponding to the existing one
-// is still valid. If there is no a previous Spec, then the function assumes this is
-// the first version of the MongoDB resource and skips.
-func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDBCommunity) error {
+// validateSpec checks if MongoDB resource Spec is valid.
+// If there is no a previous Spec, then the function assumes this is the first version
+// and runs the initial spec validations otherwise it validates that the new Spec,
+// corresponding to the existing one is still valid
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
-		// First version of Spec, no need to validate
-		return nil
+		// First version of Spec
+		return validation.ValidateInitalSpec(mdb)
 	}
 
 	prevSpec := mdbv1.MongoDBCommunitySpec{}
@@ -473,7 +488,7 @@ func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	return validation.Validate(prevSpec, mdb.Spec)
+	return validation.ValidateUpdate(mdb, prevSpec)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
