@@ -73,15 +73,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.image not in VALID_IMAGES:
-        print("Image {} not supported. Not adding release version.".format(args.image))
+    if args.image_name not in VALID_IMAGES:
+        print("Image {} not supported. Not adding release version.".format(args.image_name))
         return 0
 
     # for now, there is just one version to add as a supported release.
-    version = get_release()[args.image]["version"]
-    logging.info("Adding new release: {} {}".format(args.image, version))
+    version = get_release()[args.image_name]["version"]
+    logging.info("Adding new release: {} {}".format(args.image_name, version))
 
-    add_release_version(args.image, version)
+    add_release_version(args.image_name, version)
 
     return 0
 
