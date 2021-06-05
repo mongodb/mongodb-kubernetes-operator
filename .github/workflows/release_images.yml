@@ -1,14 +1,13 @@
 name: Release Images
 
-# TODO: manual until tested
-on: push
-#  pull_request_review:
-#    types: [submitted]
+on:
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   ReleaseImages:
     runs-on: ubuntu-latest
-#    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
+    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
     strategy:
       matrix:
         include:
@@ -54,12 +53,12 @@ jobs:
       - name: Publish Image To Quay
         if: steps.release_status.outputs.OUTPUT == 'unreleased'
 
-        # TODO: change this to `--release true` after manual testing.
-        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
+        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
 
       - name: Add Supported Release
+        if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python scripts/ci/add_supported_release.py --image-name ${{ matrix.release-key }}
         env:
           ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
@@ -74,7 +73,7 @@ jobs:
     - name: Determine Release Tag
       id: release_tag
       run: |
-        OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json) &&
+        OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json)
         echo "::set-output name=OUTPUT::$OUTPUT"
     - name: Merge Release PR
       uses: pascalgn/automerge-action@v0.14.2
