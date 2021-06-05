@@ -429,8 +429,8 @@ func WithoutTls() OptionApplier {
 	}
 }
 
-// WithSRV will add SRV connection string
-func WithSRV(uri string) OptionApplier {
+// WithURI will add URI connection string
+func WithURI(uri string) OptionApplier {
 	opt := &options.ClientOptions{}
 	opt.ApplyURI(uri)
 	return clientOptionAdder{option: opt}
