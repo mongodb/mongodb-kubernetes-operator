@@ -60,7 +60,7 @@ jobs:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
 
       - name: Add Supported Release
-        run: python scripts/ci/add_supported_release.py --image-name ${{ matrix.pipeline-argument }}
+        run: python scripts/ci/add_supported_release.py --image-name ${{ matrix.release-key }}
         env:
           ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
           ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
@@ -89,6 +89,6 @@ jobs:
       with:
         tag: ${{ steps.release_tag.outputs.OUTPUT }}
         name: MongoDB Kubernetes Operator
-        bodyFile: "${{ github.workspace }}//docs/RELEASE_NOTES.md"
+        bodyFile: "${{ github.workspace }}/docs/RELEASE_NOTES.md"
         draft: true
         token: ${{ secrets.GITHUB_TOKEN }}
