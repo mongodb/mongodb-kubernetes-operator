@@ -30,7 +30,7 @@ def _load_release() -> Dict:
         release = json.loads(f.read())
 
     # agent section is a sub object, we change the mapping so the key corresponds to the version directly.
-    release["mongodb-agent"] = release["mongodb-agent"]["version"]
+    # release["mongodb-agent"] = release["mongodb-agent"]["version"]
     return release
 
 

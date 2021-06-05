@@ -74,7 +74,7 @@ jobs:
     - name: Determine Release Tag
       id: release_tag
       run: |
-        OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < ${{ env.GITHUB_WORKSPACE }}/release.json) &&
+        OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json) &&
         echo "::set-output name=OUTPUT::$OUTPUT"
     - name: Merge Release PR
       uses: pascalgn/automerge-action@v0.14.2
