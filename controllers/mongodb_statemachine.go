@@ -76,8 +76,8 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endReconciliationState := NewReconciliationEndState(client, mdb, log)
 	retryReconciliationState := NewRetryReconciliationState(client, mdb, log)
-	ensureUsersState := NewEnsureUsersResourceState(reconciler, mdb)
-	connectionStringSecretsState := NewCreateConnectionStringSecretState(reconciler, mdb)
+	ensureUsersState := NewEnsureUsersResourceState(reconciler, mdb, log)
+	connectionStringSecretsState := NewCreateConnectionStringSecretState(reconciler, mdb, log)
 
 	sm.AddDirectTransition(reconciliationStart, validateSpecState)
 
@@ -403,11 +403,11 @@ func NewRetryReconciliationState(client kubernetesClient.Client, mdb mdbv1.Mongo
 }
 
 // NewEnsureUsersResourceState returns a state which ensures that all user kubernetes resources are created.
-func NewEnsureUsersResourceState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity) state.State {
+func NewEnsureUsersResourceState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: ensureUserResourcesStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			if err := r.ensureUserResources(mdb); err != nil {
+			if err := r.ensureUserResources(mdb, log); err != nil {
 				return status.Update(r.client.Status(), &mdb,
 					statusOptions().
 						withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
@@ -420,11 +420,11 @@ func NewEnsureUsersResourceState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommu
 }
 
 // NewCreateConnectionStringSecretState creates connect strings for the users of the given resource.
-func NewCreateConnectionStringSecretState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity) state.State {
+func NewCreateConnectionStringSecretState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: createConnectionStringStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			if err := r.updateConnectionStringSecrets(mdb); err != nil {
+			if err := r.updateConnectionStringSecrets(mdb, log); err != nil {
 				return status.Update(r.client.Status(), &mdb,
 					statusOptions().
 						withMessage(Error, fmt.Sprintf("Could not update connection string secrets: %s", err)).
