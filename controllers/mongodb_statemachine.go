@@ -99,14 +99,14 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	sm.AddDirectTransition(deployStatefulSetState, deployMongoDBReplicaSetEndState)
 
 	sm.AddTransition(deployMongoDBReplicaSetEndState, resetUpdateStrategyState, mdb.IsChangingVersion)
-	sm.AddDirectTransition(deployMongoDBReplicaSetEndState, updateStatusState)
+	sm.AddDirectTransition(deployMongoDBReplicaSetEndState, connectionStringSecretsState)
 
 	sm.AddTransition(deployAutomationConfigState, deployStatefulSetState, state.FromBool(needsToPublishStateFirst))
 	sm.AddDirectTransition(deployAutomationConfigState, deployMongoDBReplicaSetEndState)
 
-	sm.AddDirectTransition(resetUpdateStrategyState, updateStatusState)
-
+	sm.AddDirectTransition(resetUpdateStrategyState, connectionStringSecretsState)
 	sm.AddDirectTransition(connectionStringSecretsState, updateStatusState)
+
 	// if we're scaling, we should requeue a reconciliation. We can only scale MongoDB members one at a time,
 	// so we repeat the whole reconciliation process per member we are scaling up/down.
 	sm.AddTransition(updateStatusState, retryReconciliationState, state.FromBool(scale.IsStillScaling(&mdb)))
