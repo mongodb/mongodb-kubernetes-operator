@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
@@ -75,6 +76,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
 		Complete(r)
 }
 
@@ -104,7 +106,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	// TODO: generalize preparation for resource
 	// Fetch the MongoDB instance
 	mdb := mdbv1.MongoDBCommunity{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, &mdb)
+	err := r.client.Get(ctx, request.NamespacedName, &mdb)
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -117,8 +119,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	log := zap.S().With("ReplicaSet", mdb.Namespace)
-
+	log := zap.S().With("ReplicaSet", request.NamespacedName)
 	sm, err := BuildStateMachine(r.client, mdb, r.secretWatcher, &r, log)
 
 	if err != nil {
@@ -152,11 +153,16 @@ func updateLastSuccessfulConfiguration(client kubernetesClient.Client, mdb mdbv1
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
 // requires for TLS configuration.
 func ensureTLSResources(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	if !mdb.Spec.Security.TLS.Enabled {
+		return nil
+	}
 	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
 	// require the contents.
-	log.Infof("TLS is enabled, creating/updating TLS secret")
-	if err := ensureTLSSecret(client, mdb); err != nil {
-		return errors.Errorf("could not ensure TLS secret: %s", err)
+	if mdb.Spec.Security.TLS.Enabled {
+		log.Infof("TLS is enabled, creating/updating TLS secret")
+		if err := ensureTLSSecret(client, mdb); err != nil {
+			return errors.Errorf("could not ensure TLS secret: %s", err)
+		}
 	}
 	return nil
 }
@@ -322,14 +328,15 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		Build()
 }
 
-// validateUpdate validates that the new Spec, corresponding to the existing one
-// is still valid. If there is no a previous Spec, then the function assumes this is
-// the first version of the MongoDB resource and skips.
-func validateUpdate(mdb mdbv1.MongoDBCommunity) error {
+// validateSpec checks if MongoDB resource Spec is valid.
+// If there is no a previous Spec, then the function assumes this is the first version
+// and runs the initial spec validations otherwise it validates that the new Spec,
+// corresponding to the existing one is still valid
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
-		// First version of Spec, no need to validate
-		return nil
+		// First version of Spec
+		return validation.ValidateInitalSpec(mdb)
 	}
 
 	prevSpec := mdbv1.MongoDBCommunitySpec{}
@@ -338,7 +345,7 @@ func validateUpdate(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	return validation.Validate(prevSpec, mdb.Spec)
+	return validation.ValidateUpdate(mdb, prevSpec)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {

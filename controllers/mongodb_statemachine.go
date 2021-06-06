@@ -24,6 +24,8 @@ var (
 	stateMachineAnnotation = "mongodb.com/v1.stateMachine"
 
 	reconciliationStartStateName            = "ReconciliationStart"
+	ensureUserResourcesStateName            = "EnsureUserResources"
+	createConnectionStringStateName         = "CreateConnectionString"
 	validateSpecStateName                   = "ValidateSpec"
 	createServiceStateName                  = "CreateService"
 	tlsValidationStateName                  = "TLSValidation"
@@ -56,13 +58,13 @@ func (m MongoDBStates) ContainsState(state string) bool {
 
 // BuildStateMachine creates a State Machine that is configured with all of the different transitions that are possible
 // by the operator. A single state's Reconcile method is called when calling the Reconcile method of the State Machine.
-func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, saveLoader state.SaveLoader, log *zap.SugaredLogger) (*state.Machine, error) {
-	sm := state.NewStateMachine(saveLoader, mdb.NamespacedName(), log)
+func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, secretWatcher *watch.ResourceWatcher, reconciler *ReplicaSetReconciler, log *zap.SugaredLogger) (*state.Machine, error) {
+	sm := state.NewStateMachine(reconciler, mdb.NamespacedName(), log)
 
 	needsToPublishStateFirst, reason := needToPublishStateFirst(client, mdb)
 
 	reconciliationStart := NewReconciliationStartState(client, mdb, log)
-	validateSpecState := NewValidateSpecState(client, mdb, log)
+	validateSpecState := NewValidateSpecState(client, reconciler, mdb, log)
 	serviceCreationState := NewCreateServiceState(client, mdb, log)
 	tlsValidationState := NewTLSValidationState(client, mdb, secretWatcher, log)
 	tlsResourcesState := NewEnsureTLSResourcesState(client, mdb, log)
@@ -74,13 +76,17 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 	updateStatusState := NewUpdateStatusState(client, mdb, log)
 	endReconciliationState := NewReconciliationEndState(client, mdb, log)
 	retryReconciliationState := NewRetryReconciliationState(client, mdb, log)
+	ensureUsersState := NewEnsureUsersResourceState(reconciler, mdb)
+	connectionStringSecretsState := NewCreateConnectionStringSecretState(reconciler, mdb)
 
 	sm.AddDirectTransition(reconciliationStart, validateSpecState)
 
 	sm.AddDirectTransition(validateSpecState, serviceCreationState)
 
-	sm.AddTransition(serviceCreationState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
-	sm.AddDirectTransition(serviceCreationState, deployMongoDBReplicaSetStartState)
+	sm.AddDirectTransition(serviceCreationState, ensureUsersState)
+
+	sm.AddTransition(ensureUsersState, tlsValidationState, state.FromBool(mdb.Spec.Security.TLS.Enabled))
+	sm.AddDirectTransition(ensureUsersState, deployMongoDBReplicaSetStartState)
 
 	sm.AddDirectTransition(tlsValidationState, tlsResourcesState)
 
@@ -100,6 +106,7 @@ func BuildStateMachine(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunit
 
 	sm.AddDirectTransition(resetUpdateStrategyState, updateStatusState)
 
+	sm.AddDirectTransition(connectionStringSecretsState, updateStatusState)
 	// if we're scaling, we should requeue a reconciliation. We can only scale MongoDB members one at a time,
 	// so we repeat the whole reconciliation process per member we are scaling up/down.
 	sm.AddTransition(updateStatusState, retryReconciliationState, state.FromBool(scale.IsStillScaling(&mdb)))
@@ -125,11 +132,11 @@ func NewReconciliationStartState(client kubernetesClient.Client, mdb mdbv1.Mongo
 }
 
 // NewValidateSpecState performs validation on the Spec of the MongoDBCommunity resource.
-func NewValidateSpecState(client kubernetesClient.Client, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
+func NewValidateSpecState(client kubernetesClient.Client, reconciler *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) state.State {
 	return state.State{
 		Name: validateSpecStateName,
 		Reconcile: func() (reconcile.Result, error, bool) {
-			if err := validateUpdate(mdb); err != nil {
+			if err := reconciler.validateSpec(mdb); err != nil {
 				return status.Update(client.Status(), &mdb,
 					statusOptions().
 						withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -391,6 +398,40 @@ func NewRetryReconciliationState(client kubernetesClient.Client, mdb mdbv1.Mongo
 			}
 			log.Infow("Requeuing reconciliation")
 			return result.RetryState(5)
+		},
+	}
+}
+
+// NewEnsureUsersResourceState returns a state which ensures that all user kubernetes resources are created.
+func NewEnsureUsersResourceState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity) state.State {
+	return state.State{
+		Name: ensureUserResourcesStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			if err := r.ensureUserResources(mdb); err != nil {
+				return status.Update(r.client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.StateComplete()
+		},
+	}
+}
+
+// NewCreateConnectionStringSecretState creates connect strings for the users of the given resource.
+func NewCreateConnectionStringSecretState(r *ReplicaSetReconciler, mdb mdbv1.MongoDBCommunity) state.State {
+	return state.State{
+		Name: createConnectionStringStateName,
+		Reconcile: func() (reconcile.Result, error, bool) {
+			if err := r.updateConnectionStringSecrets(mdb); err != nil {
+				return status.Update(r.client.Status(), &mdb,
+					statusOptions().
+						withMessage(Error, fmt.Sprintf("Could not update connection string secrets: %s", err)).
+						withFailedPhase(),
+				)
+			}
+			return result.StateComplete()
 		},
 	}
 }

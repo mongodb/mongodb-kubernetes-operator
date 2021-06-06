@@ -53,7 +53,7 @@ func TestWatcher(t *testing.T) {
 		assert.Equal(t, 0, queue.Len())
 	})
 
-	t.Run("Multiple objects to reconile", func(t *testing.T) {
+	t.Run("Multiple objects to reconcile", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
 		watcher.Watch(objNsName, mdb1.NamespacedName())
