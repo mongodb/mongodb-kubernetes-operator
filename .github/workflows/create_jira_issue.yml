@@ -1,0 +1,18 @@
+on: push
+name: Jira Issue Creation Demo
+jobs:
+  jiraIssueCreation:
+    name: Jira Issue Creation Demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Jira Creation Demo
+        uses: bryannice/gitactions-jira-issue-creation@master
+        env:
+          JIRA_ACCOUNT_URL: https://jira.mongodb.org/
+          JIRA_API_TOKEN: ${{ secret.JIRA_API_TOKEN }}
+          JIRA_ISSUE_DESCRIPTION: Investigate creation of Jira Issues from Github Actions
+          JIRA_ISSUE_SUMMARY: Create Jira Issue From Github Action
+          JIRA_ISSUE_TYPE: Bug
+          JIRA_PROJECT: CLOUDP
+          JIRA_USERNAME: ${{ secret.JIRA_EMAIL }}
