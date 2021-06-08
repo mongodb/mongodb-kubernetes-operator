@@ -64,7 +64,7 @@ jobs:
           ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
           ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
 
-  MergeAndDraftGithubRelease:
+  MergeReleasePRAndDraftGithubRelease:
     runs-on: ubuntu-latest
     needs: [ReleaseImages]
     steps:
