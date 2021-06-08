@@ -33,7 +33,7 @@ def _load_release() -> Dict:
 
 def _replace_tag(image: str, new_tag: str) -> str:
     split_image = image.split(":")
-    return f"{split_image[0]}:{new_tag}"
+    return split_image[0] + ":" + new_tag
 
 
 def _update_operator_deployment(operator_deployment: Dict, release: Dict) -> None:
