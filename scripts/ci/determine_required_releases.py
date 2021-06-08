@@ -36,7 +36,7 @@ def _load_image_name_to_version_map() -> Dict:
 
 def main() -> int:
     if len(sys.argv) != 2:
-        raise ValueError("usage: determine_required_releases.py [image-type]")
+        raise ValueError("usage: determine_required_releases.py [image-name]")
     image_name_map = _load_image_name_to_version_map()
 
     if sys.argv[1] not in image_name_map:
