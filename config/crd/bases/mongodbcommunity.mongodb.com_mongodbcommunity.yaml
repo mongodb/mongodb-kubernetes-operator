@@ -78,6 +78,10 @@ spec:
               properties:
                 authentication:
                   properties:
+                    enabled:
+                      description: Enabled specifies whether or not authentication
+                        is enabled.
+                      type: boolean
                     ignoreUnknownUsers:
                       nullable: true
                       type: boolean
@@ -90,6 +94,7 @@ spec:
                         type: string
                       type: array
                   required:
+                  - enabled
                   - modes
                   type: object
                 roles:
