@@ -16,7 +16,7 @@ def _load_yaml_file(path: str) -> Dict:
 
 def _dump_yaml(operator: Dict, path: str) -> None:
     with open(path, "w+") as f:
-        return yaml.dump(operator, f)
+        yaml.dump(operator, f)
 
 
 def update_and_write_file(path: str) -> None:
