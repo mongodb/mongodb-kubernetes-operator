@@ -328,6 +328,10 @@ type LocalObjectReference struct {
 }
 
 type Authentication struct {
+
+	// Enabled specifies whether or not authentication is enabled.
+	Enabled *bool `json:"enabled"`
+
 	// Modes is an array specifying which authentication methods should be enabled.
 	Modes []AuthMode `json:"modes"`
 

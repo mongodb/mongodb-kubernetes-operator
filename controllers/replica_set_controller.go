@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
@@ -431,7 +432,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth *automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -518,9 +519,9 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
-	auth := automationconfig.Auth{}
-	if err := scram.Enable(&auth, r.client, mdb); err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
+	auth, err := getAuth(mdb, r.client)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
 	}
 
 	return buildAutomationConfig(
@@ -530,6 +531,23 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		tlsModification,
 		customRolesModification,
 	)
+}
+
+func getAuth(mdb mdbv1.MongoDBCommunity, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter) (*automationconfig.Auth, error) {
+	authEnabled := true
+	if mdb.Spec.Security.Authentication.Enabled == nil {
+		authEnabled = *mdb.Spec.Security.Authentication.Enabled
+	}
+
+	if !authEnabled {
+		return nil, nil
+	}
+
+	auth := automationconfig.Auth{}
+	if err := scram.Enable(&auth, secretGetUpdateCreateDeleter, mdb); err != nil {
+		return nil, errors.Errorf("could not configure scram authentication: %s", err)
+	}
+	return &auth, nil
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD

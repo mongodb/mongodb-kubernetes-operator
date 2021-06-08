@@ -150,8 +150,8 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 	return b
 }
 
-func (b *Builder) SetAuth(auth Auth) *Builder {
-	b.auth = &auth
+func (b *Builder) SetAuth(auth *Auth) *Builder {
+	b.auth = auth
 	return b
 }
 
