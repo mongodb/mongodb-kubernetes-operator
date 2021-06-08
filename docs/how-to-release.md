@@ -5,7 +5,7 @@
     * Prepare a PR to bump and versions as required. 
 
 * Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
-    * All completed tickets for this release can be seen by running `scripts/dev/open_tickets_for_this_release.py`
+    * Review the [tickets for this release](https://jira.mongodb.org/issues?jql=project%20%3D%20CLOUDP%20AND%20component%20%20%3D%20"Kubernetes%20Community"%20%20AND%20status%20in%20(Resolved%2C%20Closed)%20AND%20fixVersion%20%3D%20kube-community-0.6.0%20) (ensure relevant fix version is in the jql query)
 
 * Run the `Create Release PR` GitHub Action
     * In the GitHub UI:
