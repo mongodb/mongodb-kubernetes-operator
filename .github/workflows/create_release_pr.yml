@@ -3,7 +3,7 @@ on:
   workflow_dispatch
 
 jobs:
-  CreateReleasePR:
+  create-release-pr:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
