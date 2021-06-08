@@ -9,7 +9,7 @@
 
 * Run the `Create Release PR` GitHub Action
     * In the GitHub UI:
-        * `Actions` > `Create Release PR` > `Workflow Dispatch` (run on the master branch)
+        * `Actions` > `Create Release PR` > `Run Workflow` (on master)
         
 * Review and Approve the release PR that is created by this action.
     * Upon approval, all new images for this release will be built and released, and a Github release draft will be created.
