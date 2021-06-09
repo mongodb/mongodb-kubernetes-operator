@@ -12,6 +12,9 @@
 
 - Changes
   - Readiness probe now patches pod annotations rather than overwriting them.
+  
+## Miscellaneous
+Ubuntu-based agent images are now based on Ubuntu 20.04 instead of Ubuntu 16.06
 
 ## Updated Image Tags
 
