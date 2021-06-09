@@ -28,7 +28,7 @@ type Client interface {
 	// TODO: remove this function, add mongodb package which has GetAndUpdate function
 	GetAndUpdate(nsName types.NamespacedName, obj k8sClient.Object, updateFunc func()) error
 	configmap.GetUpdateCreateDeleter
-	service.GetUpdateCreator
+	service.GetUpdateCreateDeleter
 	secret.GetUpdateCreateDeleter
 	statefulset.GetUpdateCreateDeleter
 	pod.Getter

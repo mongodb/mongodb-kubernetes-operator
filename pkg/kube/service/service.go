@@ -37,6 +37,13 @@ type GetUpdateCreator interface {
 	Creator
 }
 
+type GetUpdateCreatDeleter interface {
+	Getter
+	Updater
+	Creator
+	Deleter
+}
+
 // Merge merges `source` into `dest`. Both arguments will remain unchanged
 // a new service will be created and returned.
 // The "merging" process is arbitrary and it only handle specific attributes
