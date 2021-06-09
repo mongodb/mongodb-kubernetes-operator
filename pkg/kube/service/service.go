@@ -37,7 +37,7 @@ type GetUpdateCreator interface {
 	Creator
 }
 
-type GetUpdateCreatDeleter interface {
+type GetUpdateCreateDeleter interface {
 	Getter
 	Updater
 	Creator
