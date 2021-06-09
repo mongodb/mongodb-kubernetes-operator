@@ -140,8 +140,14 @@ func (c client) CreateService(service corev1.Service) error {
 }
 
 // DeleteService provides a thin wrapper around client.Client to delete corev1.Service types
-func (c client) DeleteService(service corev1.Service) error {
-	return c.Delete(context.TODO(), &service)
+func (c client) DeleteService(objectKey k8sClient.ObjectKey) error {
+	svc := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      objectKey.Name,
+			Namespace: objectKey.Namespace,
+		},
+	}
+	return c.Delete(context.TODO(), &svc)
 }
 
 // GetStatefulSet provides a thin wrapper and client.Client to access appsv1.StatefulSet types

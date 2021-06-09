@@ -18,7 +18,7 @@ type Creator interface {
 }
 
 type Deleter interface {
-	DeleteService(service corev1.Service) error
+	DeleteService(objectKey client.ObjectKey) error
 }
 
 type GetDeleter interface {
