@@ -10,11 +10,20 @@ type Getter interface {
 }
 
 type Updater interface {
-	UpdateService(secret corev1.Service) error
+	UpdateService(service corev1.Service) error
 }
 
 type Creator interface {
-	CreateService(secret corev1.Service) error
+	CreateService(service corev1.Service) error
+}
+
+type Deleter interface {
+	DeleteService(objectKey client.ObjectKey) error
+}
+
+type GetDeleter interface {
+	Getter
+	Deleter
 }
 
 type GetUpdater interface {
@@ -26,6 +35,13 @@ type GetUpdateCreator interface {
 	Getter
 	Updater
 	Creator
+}
+
+type GetUpdateCreateDeleter interface {
+	Getter
+	Updater
+	Creator
+	Deleter
 }
 
 // Merge merges `source` into `dest`. Both arguments will remain unchanged
