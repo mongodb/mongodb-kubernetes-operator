@@ -21,7 +21,7 @@ type Deleter interface {
 	DeleteService(service corev1.Service) error
 }
 
-type GetterDeleter interface {
+type GetDeleter interface {
 	Getter
 	Deleter
 }
