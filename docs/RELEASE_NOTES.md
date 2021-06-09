@@ -7,6 +7,7 @@
   
 - Changes
   - fixed an issue where the operator would reconcile based on events emitted by itself in certain situations.
+  - support connection strings using SRV.
   - expose connection strings (including auth/tls values) for deployments as secrets for easy of use. Secrets name template: _\<MongoDB resource name\>-\<db\>-\<user\>_
 
 ## MongoDB Agent ReadinessProbe
