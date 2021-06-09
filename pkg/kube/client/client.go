@@ -139,6 +139,11 @@ func (c client) CreateService(service corev1.Service) error {
 	return c.Create(context.TODO(), &service)
 }
 
+// DeleteService provides a thin wrapper around client.Client to delete corev1.Service types
+func (c client) DeleteService(service corev1.Service) error {
+	return c.Delete(context.TODO(), &service)
+}
+
 // GetStatefulSet provides a thin wrapper and client.Client to access appsv1.StatefulSet types
 func (c client) GetStatefulSet(objectKey k8sClient.ObjectKey) (appsv1.StatefulSet, error) {
 	sts := appsv1.StatefulSet{}
