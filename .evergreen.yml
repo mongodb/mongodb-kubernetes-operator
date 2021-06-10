@@ -399,7 +399,7 @@ buildvariants:
     expansions:
       distro: ubuntu
     run_on:
-      - ubuntu1804-small
+      - ubuntu1804-large
     depends_on:
       - name: build_operator_image
         variant: init_test_run
@@ -419,7 +419,7 @@ buildvariants:
     expansions:
       distro: ubi
     run_on:
-      - ubuntu1804-small
+      - ubuntu1804-large
     depends_on:
       - name: build_operator_image
         variant: init_test_run
