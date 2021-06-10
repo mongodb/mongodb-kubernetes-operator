@@ -36,7 +36,7 @@ spec:
           value: library/mongo
         - name: MONGODB_REPO_URL
           value: registry.hub.docker.com
-        image: quay.io/mongodb/mongodb-kubernetes-operator:0.6.0
+        image: quay.io/mongodb/mongodb-kubernetes-operator:0.6.1
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
       serviceAccountName: mongodb-kubernetes-operator
