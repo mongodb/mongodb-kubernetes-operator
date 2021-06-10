@@ -33,14 +33,24 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 
 // StatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
-func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
-	return statefulSetIsReady(mdb, time.Second*15, time.Minute*12)
+func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	defaultOpts := []wait.Configuration{
+		wait.RetryInterval(time.Second * 15),
+		wait.Timeout(time.Minute * 15),
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	return statefulSetIsReady(mdb, defaultOpts...)
 }
 
 // StatefulSetBecomesUnready ensures the underlying stateful set reaches
 // the unready state.
-func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
-	return statefulSetIsNotReady(mdb, time.Second*15, time.Minute*12)
+func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	defaultOpts := []wait.Configuration{
+		wait.RetryInterval(time.Second * 15),
+		wait.Timeout(time.Minute * 15),
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	return statefulSetIsNotReady(mdb, defaultOpts...)
 }
 
 // StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
@@ -48,7 +58,7 @@ func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 // failure threshold being high
 func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeReadyAfterScaleDown(t, mdb, time.Second*60, time.Minute*45)
+		err := wait.ForStatefulSetToBeReadyAfterScaleDown(t, mdb, wait.RetryInterval(time.Second*60), wait.Timeout(time.Minute*45))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -58,9 +68,9 @@ func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testi
 
 // StatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state
-func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, timeout time.Duration) func(t *testing.T) {
+func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeReady(t, mdb, interval, timeout)
+		err := wait.ForStatefulSetToBeReady(t, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,9 +79,9 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, tim
 }
 
 // statefulSetIsNotReady ensures that the underlying stateful set reaches the unready state.
-func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, interval time.Duration, timeout time.Duration) func(t *testing.T) {
+func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeUnready(t, mdb, interval, timeout)
+		err := wait.ForStatefulSetToBeUnready(t, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -138,7 +148,7 @@ func ConnectionStringSecretsAreConfigured(mdb *mdbv1.MongoDBCommunity, expectedO
 // resource has the correct Update Strategy
 func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, time.Second*15, time.Minute*8)
+		err := wait.ForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, wait.RetryInterval(time.Second*15), wait.Timeout(time.Minute*8))
 		if err != nil {
 			t.Fatal(err)
 		}

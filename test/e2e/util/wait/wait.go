@@ -60,44 +60,48 @@ func ForStatefulSetToExist(stsName string, retryInterval, timeout time.Duration,
 
 // ForStatefulSetToHaveUpdateStrategy waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func ForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+func ForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetCondition(t, mdb, options, func(sts appsv1.StatefulSet) bool {
 		return sts.Spec.UpdateStrategy.Type == strategy
 	})
 }
 
 // ForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
-func ForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+func ForStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetCondition(t, mdb, options, func(sts appsv1.StatefulSet) bool {
 		return statefulset.IsReady(sts, mdb.Spec.Members)
 	})
 }
 
 // ForStatefulSetToBeUnready waits until all replicas of the StatefulSet with the given name
 // is not ready.
-func ForStatefulSetToBeUnready(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+func ForStatefulSetToBeUnready(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetCondition(t, mdb, options, func(sts appsv1.StatefulSet) bool {
 		return !statefulset.IsReady(sts, mdb.Spec.Members)
 	})
 }
 
 // ForStatefulSetToBeReadyAfterScaleDown waits for just the ready replicas to be correct
 // and does not account for the updated replicas
-func ForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration) error {
-	return waitForStatefulSetCondition(t, mdb, retryInterval, timeout, func(sts appsv1.StatefulSet) bool {
+func ForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetCondition(t, mdb, options, func(sts appsv1.StatefulSet) bool {
 		return int32(mdb.Spec.Members) == sts.Status.ReadyReplicas
 	})
 }
 
-func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(set appsv1.StatefulSet) bool) error {
-	_, err := ForStatefulSetToExist(mdb.Name, retryInterval, timeout, mdb.Namespace)
+func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
+	_, err := ForStatefulSetToExist(mdb.Name, waitOpts.RetryInterval, waitOpts.Timeout, mdb.Namespace)
 	if err != nil {
 		return errors.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}
-	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+	return wait.Poll(waitOpts.RetryInterval, waitOpts.Timeout, func() (done bool, err error) {
 		err = e2eutil.TestClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
 		if err != nil {
 			return false, err
