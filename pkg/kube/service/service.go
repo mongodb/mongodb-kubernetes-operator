@@ -1,7 +1,11 @@
 package service
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,6 +46,19 @@ type GetUpdateCreateDeleter interface {
 	Updater
 	Creator
 	Deleter
+}
+
+func DeleteServiceIfItExists(getterDeleter GetDeleter, serviceName types.NamespacedName) error {
+	_, err := getterDeleter.GetService(serviceName)
+	if err != nil {
+		// If it is not found return
+		if apiErrors.IsNotFound(err) {
+			return nil
+		}
+		// Otherwise we got an error when trying to get it
+		return fmt.Errorf("can't get service %s: %s", serviceName, err)
+	}
+	return getterDeleter.DeleteService(serviceName)
 }
 
 // Merge merges `source` into `dest`. Both arguments will remain unchanged
