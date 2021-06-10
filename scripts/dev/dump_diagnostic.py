@@ -1,13 +1,13 @@
 import os
 import shutil
 import yaml
-from typing import Dict, TextIO, List
+from typing import Dict, TextIO, List, Union
 from base64 import b64decode
 import json
 import k8s_request_data
 
 
-def clean_nones(value: Dict) -> Dict:
+def clean_nones(value: Dict) -> Union[List, Dict]:
     """
     Recursively remove all None values from dictionaries and lists, and returns
     the result as a new dictionary or list.
