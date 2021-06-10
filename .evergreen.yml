@@ -98,7 +98,7 @@ functions:
     command: subprocess.exec
     type: setup
     params:
-      command: virtualenv --python /opt/python/3.7/bin/python3 ./venv
+      command: virtualenv --python /opt/python/3.9/bin/python3 ./venv
 
   python_requirements: &python_requirements
     command: subprocess.exec
@@ -137,7 +137,7 @@ functions:
           - atlas_password
           - atlas_database
           - image_name
-        command: "${workdir}/venv/bin/python scripts/ci/add_supported_release.py --c ${image_name}"
+        command: "${workdir}/venv/bin/python scripts/ci/add_supported_release.py --image ${image_name}"
 
 task_groups:
 - name: e2e_test_group
@@ -399,7 +399,7 @@ buildvariants:
     expansions:
       distro: ubuntu
     run_on:
-      - ubuntu1604-build
+      - ubuntu1804-large
     depends_on:
       - name: build_operator_image
         variant: init_test_run
@@ -419,7 +419,7 @@ buildvariants:
     expansions:
       distro: ubi
     run_on:
-      - ubuntu1604-build
+      - ubuntu1804-large
     depends_on:
       - name: build_operator_image
         variant: init_test_run
@@ -437,7 +437,7 @@ buildvariants:
   - name: init_test_run
     display_name: init_test_run
     run_on:
-      - ubuntu1604-build
+      - ubuntu1804-small
     tasks:
       - name: build_operator_image
       - name: build_e2e_image
@@ -467,7 +467,7 @@ buildvariants:
       - name: build_agent_image_ubi
         variant: init_test_run
     run_on:
-      - ubuntu1604-test
+      - ubuntu1804-small
     tasks:
     - name: release_operator
     - name: release_version_upgrade_post_start_hook
