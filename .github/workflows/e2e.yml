@@ -98,6 +98,9 @@ jobs:
           kubectl get pvc -o yaml > logs/pvc.yaml
           kubectl describe deploy > logs/deploy.txt
           kubectl get deploy -o yaml > logs/deploy.yaml
+          kubectl get crd -o yaml > logs/crd.yaml
+          kubectl get logs -l name=mongodb-kubernetes-operator > logs/mongodb-kubernetes-operator.log
+
 
       - name: Upload Diagnostics
         if: ${{ always() }}
