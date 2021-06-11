@@ -41,6 +41,7 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    needs: [setup]
     strategy:
       matrix:
         include:
