@@ -8,7 +8,6 @@ from typing import Dict
 from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
 import argparse
-import os
 import sys
 import yaml
 
@@ -231,7 +230,6 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file, Distro.from_string(args.distro))
-    # create_kube_config(args.config_file)
 
     try:
         prepare_and_run_test(args, dev_config)
