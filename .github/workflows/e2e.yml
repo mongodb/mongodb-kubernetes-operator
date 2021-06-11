@@ -1,5 +1,5 @@
 name: Run E2E
-on: workflow_dispatch
+on: push
 jobs:
   setup:
     runs-on: ubuntu-latest
