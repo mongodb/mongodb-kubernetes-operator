@@ -100,7 +100,8 @@ jobs:
           kubectl describe deploy > logs/deploy.txt
           kubectl get deploy -o yaml > logs/deploy.yaml
           kubectl get crd -o yaml > logs/crd.yaml
-          kubectl get logs -l name=mongodb-kubernetes-operator > logs/mongodb-kubernetes-operator.log
+          kubectl logs -l name=mongodb-kubernetes-operator > logs/mongodb-kubernetes-operator.log
+          kubectl logs e2e-test > logs/e2e-test.log
 
       - name: Upload Diagnostics
         if: ${{ always() }}
