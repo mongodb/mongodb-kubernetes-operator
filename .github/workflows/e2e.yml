@@ -147,9 +147,9 @@ jobs:
       - name: Run Test
         run: |
         if [ -n "${{  matrix.cluster-wide }}" ]; then
-          python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
+            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
         else
-          python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
+            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
         fi
 
 
