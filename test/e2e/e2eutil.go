@@ -106,11 +106,11 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 										Name: "mongod",
 										Resources: corev1.ResourceRequirements{
 											Limits: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.2"),
-												"memory": resource.MustParse("250M"),
+												"cpu":    resource.MustParse("0.15"),
+												"memory": resource.MustParse("200M"),
 											},
 											Requests: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.2"),
+												"cpu":    resource.MustParse("0.15"),
 												"memory": resource.MustParse("200M"),
 											},
 										},
@@ -119,11 +119,11 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 										Name: "mongodb-agent",
 										Resources: corev1.ResourceRequirements{
 											Limits: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.2"),
-												"memory": resource.MustParse("250M"),
+												"cpu":    resource.MustParse("0.15"),
+												"memory": resource.MustParse("200M"),
 											},
 											Requests: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.2"),
+												"cpu":    resource.MustParse("0.15"),
 												"memory": resource.MustParse("200M"),
 											},
 										},
