@@ -144,13 +144,13 @@ jobs:
       - name: Install CRD
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
-      - name: Run Test
-        run: |
-        if [ -n "${{  matrix.cluster-wide }}" ]; then
-            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
-        else
-            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
-        fi
+      - name: Run Clusterwide Test
+        if: matrix.cluster-wide == true
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
+
+      - name: Run Namespaced Test
+        if: matrix.cluster-wide != true
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
 
       - name: Run Kubectl Describe
