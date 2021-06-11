@@ -4,8 +4,8 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        fail-fast: false
         include:
           - pipeline-argument: operator-ubi
           - pipeline-argument: version-post-start-hook-init
