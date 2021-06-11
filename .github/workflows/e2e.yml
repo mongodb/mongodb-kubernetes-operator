@@ -5,6 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        fail-fast: false
         include:
           - pipeline-argument: operator-ubi
           - pipeline-argument: version-post-start-hook-init
@@ -45,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup]
     strategy:
+      fail-fast: false
       matrix:
         include:
           - test-name: replica_set
