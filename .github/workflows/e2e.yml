@@ -86,6 +86,7 @@ jobs:
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
       - name: Upload Diagnostics
+        if: ${{ always() }}
         uses: actions/upload-artifact@v2
         with:
           name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
