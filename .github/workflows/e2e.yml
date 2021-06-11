@@ -85,16 +85,23 @@ jobs:
       - name: Run Kubectl Describe
         if: ${{ always() }}
         run: |
-          mkdir logs
+          mkdir -p logs
           kubectl describe mdbc > logs/mdbc.txt
+          kubectl get mdbc -o yaml > logs/mdbc.yaml
           kubectl describe sts > logs/sts.txt
+          kubectl get sts -o yaml > logs/sts.yaml
           kubectl describe pod > logs/pod.txt
+          kubectl get pod -o yaml > logs/pod.yaml
           kubectl describe pv > logs/pv.txt
+          kubectl get pv -o yaml > logs/pv.yaml
           kubectl describe pvc > logs/pvc.txt
+          kubectl get pvc -o yaml > logs/pvc.yaml
+          kubectl describe deploy > logs/deploy.txt
+          kubectl get deploy -o yaml > logs/deploy.yaml
 
       - name: Upload Diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@v2
         with:
-          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics-"
+          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
           path: "${{ github.workspace }}/logs"
