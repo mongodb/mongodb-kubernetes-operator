@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -92,6 +95,43 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 					},
 					ScramCredentialsSecretName: fmt.Sprintf("%s-my-scram", name),
 				},
+			},
+			StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
+				SpecWrapper: mdbv1.StatefulSetSpecWrapper{
+					Spec: appsv1.StatefulSetSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "mongod",
+										Resources: corev1.ResourceRequirements{
+											Limits: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.2"),
+												"memory": resource.MustParse("250M"),
+											},
+											Requests: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.2"),
+												"memory": resource.MustParse("200M"),
+											},
+										},
+									},
+									{
+										Name: "mongodb-agent",
+										Resources: corev1.ResourceRequirements{
+											Limits: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.2"),
+												"memory": resource.MustParse("250M"),
+											},
+											Requests: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.2"),
+												"memory": resource.MustParse("200M"),
+											},
+										},
+									},
+								},
+							},
+						},
+					}},
 			},
 		},
 	}
