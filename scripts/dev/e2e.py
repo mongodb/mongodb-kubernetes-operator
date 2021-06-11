@@ -217,7 +217,9 @@ def wait_for_pod_to_be_running(
         timeout=240,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Pod never got into Running state!")
+
+        pod = corev1.read_namespaced_pod(name, namespace)
+        raise Exception("Pod never got into Running state: {}".format(pod))
     print("Pod is running")
 
 
