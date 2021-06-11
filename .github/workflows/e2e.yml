@@ -1,5 +1,5 @@
 name: Run E2E
-on: push
+on: workflow_dispatch
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -38,3 +38,33 @@ jobs:
         run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release false
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - test-name: e2e_test_replica_set
+            distro: ubuntu
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt
+
+      - uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v0.9.0"
+      - name: "Run Test"
+        run: |
+          python3 ./scripts/dev/e2e.py --test ${{ github.event.inputs.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ github.event.inputs.distro }}
