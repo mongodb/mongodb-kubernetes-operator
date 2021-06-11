@@ -91,3 +91,19 @@ jobs:
         with:
           name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
           path: "${{ github.workspace }}/logs"
+      - name: Run Kubectl Describe
+        if: ${{ always() }}
+        run: |
+          mkdir logs2
+          kubectl describe mdbc > logs2/mdbc.txt
+          kubectl describe sts > logs2/sts.txt
+          kubectl describe pod > logs2/pod.txt
+          kubectl describe pv > logs2/pv.txt
+          kubectl describe pvc > logs2/pvc.txt
+
+      - name: Upload Diagnostics 2
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics-2"
+          path: "${{ github.workspace }}/logs2"
