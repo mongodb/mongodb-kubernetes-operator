@@ -46,7 +46,7 @@ def add_release_version(image: str, version: str) -> None:
 
     year_from_now = datetime.datetime.now() + datetime.timedelta(days=365)
 
-    existing_entry = collection.find_one({}, {"version": version})
+    existing_entry = collection.find_one({"version": version})
     if existing_entry is not None:
         logging.info("Entry for version {} already present".format(version))
         return
