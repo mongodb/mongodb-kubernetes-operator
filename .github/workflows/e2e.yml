@@ -11,6 +11,7 @@ jobs:
           - pipeline-argument: readiness-probe-init
           - pipeline-argument: agent-ubi
           - pipeline-argument: agent-ubuntu
+          - pipeline-argument: e2e
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
