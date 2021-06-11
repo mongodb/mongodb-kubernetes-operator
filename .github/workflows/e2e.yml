@@ -46,8 +46,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - test-name: e2e_test_replica_set
+          - test-name: replica_set
             distro: ubuntu
+          - test-name: replica_set
+            distro: ubi
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
