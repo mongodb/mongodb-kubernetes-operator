@@ -38,6 +38,7 @@ jobs:
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
+          version_id: "${{ github.run_id }}"
 
   tests:
     runs-on: ubuntu-latest
