@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
-      - name: Push Development Images
+      - name: Build and Push Images
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
@@ -82,25 +82,19 @@ jobs:
       - name: Run Test
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
+      - name: Run Kubectl Describe
+        if: ${{ always() }}
+        run: |
+          mkdir logs
+          kubectl describe mdbc > logs/mdbc.txt
+          kubectl describe sts > logs/sts.txt
+          kubectl describe pod > logs/pod.txt
+          kubectl describe pv > logs/pv.txt
+          kubectl describe pvc > logs/pvc.txt
+
       - name: Upload Diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@v2
         with:
-          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
+          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics-"
           path: "${{ github.workspace }}/logs"
-      - name: Run Kubectl Describe
-        if: ${{ always() }}
-        run: |
-          mkdir logs2
-          kubectl describe mdbc > logs2/mdbc.txt
-          kubectl describe sts > logs2/sts.txt
-          kubectl describe pod > logs2/pod.txt
-          kubectl describe pv > logs2/pv.txt
-          kubectl describe pvc > logs2/pvc.txt
-
-      - name: Upload Diagnostics 2
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics-2"
-          path: "${{ github.workspace }}/logs2"

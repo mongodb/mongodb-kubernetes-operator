@@ -110,7 +110,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 												"memory": resource.MustParse("200M"),
 											},
 											Requests: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.15"),
+												"cpu":    resource.MustParse("0.1"),
 												"memory": resource.MustParse("200M"),
 											},
 										},

@@ -230,12 +230,7 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file, Distro.from_string(args.distro))
-
-    try:
-        prepare_and_run_test(args, dev_config)
-    finally:
-        if not args.skip_dump_diagnostic:
-            dump_diagnostic.dump_all(dev_config.namespace)
+    prepare_and_run_test(args, dev_config)
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
