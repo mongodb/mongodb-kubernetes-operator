@@ -80,5 +80,5 @@ jobs:
       - name: Upload Diagnostics
         uses: actions/upload-artifact@v2
         with:
-          name: diagnostics
+          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
           path: "${{ github.workspace }}/logs"
