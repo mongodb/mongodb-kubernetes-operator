@@ -1,0 +1,44 @@
+name: 'Release Image'
+description: 'Builds and releases and individual image'
+inputs:
+  pipeline-argument:
+    description: "Argument to pass to pipeline"
+    required: true
+  release-key:
+    description: 'Corresponding release.json key'
+    required: true
+runs:
+  using: "composite"
+  steps:
+  - uses: actions/cache@v2
+    with:
+      path: ~/.cache/pip
+      key: ${{ hashFiles('requirements.txt') }}
+
+  - name: Install Python Dependencies
+    run: pip install -r requirements.txt
+  - name: Determine if release is needed
+    id: release_status
+    run: |
+      OUTPUT=$(scripts/ci/determine_required_releases.py ${{ inputs.release-key }})
+      echo "::set-output name=OUTPUT::$OUTPUT"
+
+  - name: Login to Quay.io
+    uses: docker/login-action@v1
+    with:
+      registry: quay.io
+      username: ${{ secrets.QUAY_USERNAME }}
+      password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+  - name: Publish Image To Quay
+    if: steps.release_status.outputs.OUTPUT == 'unreleased'
+    run: python pipeline.py --image-name ${{ inputs.pipeline-argument }} --release true
+    env:
+      MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
+
+  - name: Add Supported Release
+    if: steps.release_status.outputs.OUTPUT == 'unreleased'
+    run: python scripts/ci/add_supported_release.py --image-name ${{ inputs.release-key }}
+    env:
+      ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
+      ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
