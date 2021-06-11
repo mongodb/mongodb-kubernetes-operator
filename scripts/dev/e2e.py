@@ -278,7 +278,7 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file, Distro.from_string(args.distro))
-    create_kube_config(args.config_file)
+    # create_kube_config(args.config_file)
 
     try:
         prepare_and_run_test(args, dev_config)
