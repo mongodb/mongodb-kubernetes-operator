@@ -1,0 +1,41 @@
+name: Run E2E
+on: push
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - pipeline-argument: operator-ubi
+          - pipeline-argument: version-post-start-hook-init
+          - pipeline-argument: readiness-probe-init
+          - pipeline-argument: agent-ubi
+          - pipeline-argument: agent-ubuntu
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Push Development Images
+        if: steps.release_status.outputs.OUTPUT == 'unreleased'
+        run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release false
+        env:
+          MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
