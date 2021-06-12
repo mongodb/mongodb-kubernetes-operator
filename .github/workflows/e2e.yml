@@ -158,6 +158,7 @@ jobs:
           version: "v0.8.1"
 
       - name: Install CRD
+        if: steps.last_run_status.outputs.last_run_status != 'success'
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
       - name: Run Clusterwide Test
