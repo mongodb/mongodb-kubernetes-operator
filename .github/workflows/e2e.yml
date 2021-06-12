@@ -122,6 +122,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Set default run status
+        run: echo "::set-output name=last_run_status::default" > last_run_status
+
+      - name: Restore last run status
+        id: last_run
+        uses: actions/cache@v2
+        with:
+          path: |
+            last_run_status
+          key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
+
+      - name: Set last run status
+        id: last_run_status
+        run: cat last_run_status
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
@@ -137,6 +152,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Setup Kind Cluster
+        if: steps.last_run_status.outputs.last_run_status != 'success'
         uses: engineerd/setup-kind@v0.5.0
         with:
           version: "v0.8.1"
@@ -145,13 +161,16 @@ jobs:
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
       - name: Run Clusterwide Test
-        if: matrix.cluster-wide == true
+        if: matrix.cluster-wide == true && steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
 
       - name: Run Namespaced Test
-        if: matrix.cluster-wide != true
+        if: matrix.cluster-wide != true steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
+        # if we get here, the test has passed.
+      - name: Save run status
+        run: echo "::set-output name=last_run_status::success" > last_run_status
 
       - name: Run Kubectl Describe
         if: ${{ always() }}
