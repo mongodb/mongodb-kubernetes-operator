@@ -42,7 +42,7 @@ jobs:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
           version_id: "${{ github.run_id }}"
 
-  tests:
+  tests-ubuntu:
     runs-on: ubuntu-latest
     needs: [setup]
     strategy:
@@ -50,72 +50,111 @@ jobs:
       matrix:
         include:
           - test-name: replica_set
-            distro: ubuntu
           - test-name: replica_set_recovery
-            distro: ubuntu
           - test-name: replica_set_recovery
-            distro: ubuntu
           - test-name: replica_set_mongod_readiness
-            distro: ubuntu
           - test-name: replica_set_scale
-            distro: ubuntu
           - test-name: replica_set_scale_down
-            distro: ubuntu
           - test-name: replica_set_change_version
-            distro: ubuntu
           - test-name: feature_compatibility_version
-            distro: ubuntu
           - test-name: feature_compatibility_version_upgrade
-            distro: ubuntu
           - test-name: replica_set_tls
-            distro: ubuntu
           - test-name: replica_set_tls_upgrade
-            distro: ubuntu
           - test-name: statefulset_arbitrary_config
-            distro: ubuntu
           - test-name: statefulset_arbitrary_config_update
-            distro: ubuntu
           - test-name: replica_set_mongod_config
-            distro: ubuntu
           - test-name: replica_set_cross_namespace_deploy
-            distro: ubuntu
             cluster-wide: true
           - test-name: replica_set_custom_role
-            distro: ubuntu
 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Setup Kind Cluster
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v0.8.1"
+
+      - name: Install CRD
+        run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+
+      - name: Run Clusterwide Test
+        if: matrix.cluster-wide == true
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ubuntu --cluster-wide
+
+      - name: Run Namespaced Test
+        if: matrix.cluster-wide != true
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ubuntu
+
+
+      - name: Run Kubectl Describe
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          kubectl describe mongodbcommunity > logs/mdbc.txt
+          kubectl get mongodbcommunity -o yaml > logs/mdbc.yaml
+          kubectl describe sts > logs/sts.txt
+          kubectl get sts -o yaml > logs/sts.yaml
+          kubectl describe pod > logs/pod.txt
+          kubectl get pod -o yaml > logs/pod.yaml
+          kubectl describe pv > logs/pv.txt
+          kubectl get pv -o yaml > logs/pv.yaml
+          kubectl describe pvc > logs/pvc.txt
+          kubectl get pvc -o yaml > logs/pvc.yaml
+          kubectl describe deploy > logs/deploy.txt
+          kubectl get deploy -o yaml > logs/deploy.yaml
+          kubectl get crd -o yaml > logs/crd.yaml
+          kubectl logs -l name=mongodb-kubernetes-operator > logs/mongodb-kubernetes-operator.log
+          kubectl logs e2e-test > logs/e2e-test.log
+
+      - name: Upload Diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        continue-on-error: true
+        with:
+          name: "${{ matrix.test-name }}-ubuntu-diagnostics"
+          path: "${{ github.workspace }}/logs"
+
+  tests-ubi:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - test-name: replica_set
-            distro: ubi
           - test-name: replica_set_recovery
-            distro: ubi
           - test-name: replica_set_recovery
-            distro: ubi
           - test-name: replica_set_mongod_readiness
-            distro: ubi
           - test-name: replica_set_scale
-            distro: ubi
           - test-name: replica_set_scale_down
-            distro: ubi
           - test-name: replica_set_change_version
-            distro: ubi
           - test-name: feature_compatibility_version
-            distro: ubi
           - test-name: feature_compatibility_version_upgrade
-            distro: ubi
           - test-name: replica_set_tls
-            distro: ubi
           - test-name: replica_set_tls_upgrade
-            distro: ubi
           - test-name: statefulset_arbitrary_config
-            distro: ubi
           - test-name: statefulset_arbitrary_config_update
-            distro: ubi
           - test-name: replica_set_mongod_config
-            distro: ubi
           - test-name: replica_set_cross_namespace_deploy
-            distro: ubi
             cluster-wide: true
           - test-name: replica_set_custom_role
-            distro: ubi
 
 
     steps:
@@ -146,11 +185,11 @@ jobs:
 
       - name: Run Clusterwide Test
         if: matrix.cluster-wide == true
-        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ubi --cluster-wide
 
       - name: Run Namespaced Test
         if: matrix.cluster-wide != true
-        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ubi
 
 
       - name: Run Kubectl Describe
@@ -179,5 +218,5 @@ jobs:
         uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
-          name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
+          name: "${{ matrix.test-name }}-ubi-diagnostics"
           path: "${{ github.workspace }}/logs"
