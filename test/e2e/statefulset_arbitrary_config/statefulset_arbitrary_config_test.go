@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -33,11 +32,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	overrideSpec := v1.StatefulSetConfiguration{}
-	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers = []corev1.Container{
-		{Name: "mongodb-agent", ReadinessProbe: &corev1.Probe{TimeoutSeconds: 100}}}
-
-	mdb.Spec.StatefulSetConfiguration = overrideSpec
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers[0].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
 
 	tester, err := mongotester.FromResource(t, mdb)
 	if err != nil {
