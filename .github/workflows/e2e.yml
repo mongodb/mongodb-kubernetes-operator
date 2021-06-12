@@ -165,7 +165,7 @@ jobs:
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
 
       - name: Run Namespaced Test
-        if: matrix.cluster-wide != true steps.last_run_status.outputs.last_run_status != 'success'
+        if: matrix.cluster-wide != true && steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
         # if we get here, the test has passed.
