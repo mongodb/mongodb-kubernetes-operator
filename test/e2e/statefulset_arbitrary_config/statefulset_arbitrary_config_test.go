@@ -32,7 +32,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers[0].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
 
 	tester, err := mongotester.FromResource(t, mdb)
 	if err != nil {

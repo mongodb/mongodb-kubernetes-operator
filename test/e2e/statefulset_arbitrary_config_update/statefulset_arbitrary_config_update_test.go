@@ -45,7 +45,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	overrideSpec := mdb.Spec.StatefulSetConfiguration
-	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers[0].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
+	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
 
 	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 
