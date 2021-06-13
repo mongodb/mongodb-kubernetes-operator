@@ -174,9 +174,9 @@ jobs:
           fi
           python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
 
-        # if we get here, the test has passed.
       - name: Save run status
-        run: echo "::set-output name=last_run_status::success" > last_run_status
+        if: ${{ always() }}
+        run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}" > last_run_status
 
       - name: Dump Diagnostics
         id: dump_diagnostics
