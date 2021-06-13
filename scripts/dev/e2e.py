@@ -195,7 +195,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cluster-wide",
         help="Watch all namespaces",
-        action="store_true",
+        type=lambda x: x.lower() == "true",
     )
     parser.add_argument(
         "--distro",

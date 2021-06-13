@@ -133,8 +133,7 @@ jobs:
         id: last_run
         uses: actions/cache@v2
         with:
-          path: |
-            last_run_status
+          path: last_run_status
           key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
 
       - name: Set last run status
@@ -168,12 +167,7 @@ jobs:
       - name: Run Test
         id: e2e_test
         if: matrix.cluster-wide != true && steps.last_run_status.outputs.last_run_status != 'success'
-        run: |
-          if ${{ matrix.clusterwide }} == "true"; then
-            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
-          else
-            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
-          fi
+        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${{ matrix.cluster-wide }}
 
         # if we get here, the test has passed.
       - name: Save run status
