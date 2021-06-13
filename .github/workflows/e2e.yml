@@ -166,10 +166,12 @@ jobs:
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
       - name: Run Clusterwide Test
+        id: cluster_wide_test
         if: matrix.cluster-wide == true && steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
 
       - name: Run Namespaced Test
+        id: namespaced_test
         if: matrix.cluster-wide != true && steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
 
@@ -177,29 +179,14 @@ jobs:
       - name: Save run status
         run: echo "::set-output name=last_run_status::success" > last_run_status
 
-      - name: Run Kubectl Describe
-        if: ${{ always() }}
+      - name: Dump Diagnostics
+        id: dump_diagnostics
+        if: steps.namespaced_test.outcome == 'failure' || steps.cluster_wide_test.outcome == 'failure'
         continue-on-error: true
-        run: |
-          mkdir -p logs
-          kubectl describe mongodbcommunity > logs/mdbc.txt
-          kubectl get mongodbcommunity -o yaml > logs/mdbc.yaml
-          kubectl describe sts > logs/sts.txt
-          kubectl get sts -o yaml > logs/sts.yaml
-          kubectl describe pod > logs/pod.txt
-          kubectl get pod -o yaml > logs/pod.yaml
-          kubectl describe pv > logs/pv.txt
-          kubectl get pv -o yaml > logs/pv.yaml
-          kubectl describe pvc > logs/pvc.txt
-          kubectl get pvc -o yaml > logs/pvc.yaml
-          kubectl describe deploy > logs/deploy.txt
-          kubectl get deploy -o yaml > logs/deploy.yaml
-          kubectl get crd -o yaml > logs/crd.yaml
-          kubectl logs -l name=mongodb-kubernetes-operator > logs/mongodb-kubernetes-operator.log
-          kubectl logs e2e-test > logs/e2e-test.log
+        run: scripts/ci/dump_diagnostics.sh
 
       - name: Upload Diagnostics
-        if: ${{ always() }}
+        if: steps.dump_diagnostics.outcome == 'success'
         uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
