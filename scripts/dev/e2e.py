@@ -3,7 +3,6 @@
 from kubernetes.client.rest import ApiException
 
 import k8s_conditions
-import dump_diagnostic
 from typing import Dict
 from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
