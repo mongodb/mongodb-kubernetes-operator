@@ -167,7 +167,12 @@ jobs:
       - name: Run Test
         id: e2e_test
         if: steps.last_run_status.outputs.last_run_status != 'success'
-        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${{ matrix.cluster-wide }}
+        run: |
+        cluster_wide=${{ matrix.cluster-wide }}
+        if cluster_wide = ""; then
+          cluster_wide="false"
+        fi
+        python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
 
         # if we get here, the test has passed.
       - name: Save run status
