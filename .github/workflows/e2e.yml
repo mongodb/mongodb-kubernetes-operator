@@ -123,7 +123,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set default run status
-        run: echo "::set-output name=last_run_status::default" > last_run_status
+        run: echo "::set-output name=last_run_status::pending" > last_run_status
 
         # Tracking of the state of the previous test run is a workaround to the fact that it is not
         # possible to re-run a single failed job, only re-running the entire workflow is currently possible.
@@ -175,7 +175,7 @@ jobs:
           python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
 
       - name: Save run status
-        if: ${{ always() }}
+        if: always()
         run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}" > last_run_status
 
       - name: Dump Diagnostics
