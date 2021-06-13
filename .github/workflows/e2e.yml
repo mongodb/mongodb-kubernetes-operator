@@ -165,15 +165,15 @@ jobs:
         if: steps.last_run_status.outputs.last_run_status != 'success'
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
-      - name: Run Clusterwide Test
-        id: cluster_wide_test
-        if: matrix.cluster-wide == true && steps.last_run_status.outputs.last_run_status != 'success'
-        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
-
-      - name: Run Namespaced Test
-        id: namespaced_test
+      - name: Run Test
+        id: e2e_test
         if: matrix.cluster-wide != true && steps.last_run_status.outputs.last_run_status != 'success'
-        run: python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
+        run: |
+          if ${{ matrix.clusterwide }} == "true"; then
+            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide
+          else
+            python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }}
+          fi
 
         # if we get here, the test has passed.
       - name: Save run status
@@ -181,7 +181,7 @@ jobs:
 
       - name: Dump Diagnostics
         id: dump_diagnostics
-        if: steps.namespaced_test.outcome == 'failure' || steps.cluster_wide_test.outcome == 'failure'
+        if: steps.e2e_test.outcome == 'failure'
         continue-on-error: true
         run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
 
