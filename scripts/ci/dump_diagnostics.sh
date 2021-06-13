@@ -5,13 +5,13 @@ mkdir -p diagnostics/secrets
 namespace="$1"
 
 echo "Dumping CRD"
-kubectl get crd mongodbcommunity.mongodbcommunity.mongodb.com -o yaml > diagnostics/crd.yaml || true
+kubectl get crd mongodbcommunity.mongodbcommunity.mongodb.com -o yaml > diagnostics/crd.yaml
 
 # dump logs for every container in every pod in the given namespace
 for pod_name in $(kubectl get pod -n "${namespace}" --output=jsonpath={.items..metadata.name}); do
   for container_name in $(kubectl get pods -n "${namespace}" "${pod_name}" -o jsonpath='{.spec.containers[*].name}'); do
       echo "Writing log file for pod ${pod_name} - container ${container_name} to diagnostics/${pod_name}-${container_name}.log"
-      kubectl logs -n "${namespace}" "${pod_name}" -c "${container_name}" > "diagnostics/${pod_name}-${container_name}.log" || true;
+      kubectl logs -n "${namespace}" "${pod_name}" -c "${container_name}" > "diagnostics/${pod_name}-${container_name}.log";
   done
 done
 
@@ -39,6 +39,6 @@ for secret in $(kubectl get secret -n "${namespace}" --output=jsonpath={.items..
     echo "Dumping secret ${secret}"
     kubectl get secret "${secret}" -o json | jq -r '.data | with_entries(.value |= @base64d)' > "diagnostics/secrets/${secret}.json"
   else
-      echo "Skipping skipping ${secret}"
+    echo "Skipping skipping ${secret}"
   fi
 done
