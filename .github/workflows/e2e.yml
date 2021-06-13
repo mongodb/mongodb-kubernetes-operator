@@ -183,7 +183,7 @@ jobs:
         id: dump_diagnostics
         if: steps.namespaced_test.outcome == 'failure' || steps.cluster_wide_test.outcome == 'failure'
         continue-on-error: true
-        run: scripts/ci/dump_diagnostics.sh
+        run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
 
       - name: Upload Diagnostics
         if: steps.dump_diagnostics.outcome == 'success'
@@ -191,4 +191,4 @@ jobs:
         continue-on-error: true
         with:
           name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
-          path: "${{ github.workspace }}/logs"
+          path: "${{ github.workspace }}/diagnostics"
