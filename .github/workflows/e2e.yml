@@ -20,6 +20,11 @@ jobs:
           - pipeline-argument: agent-ubuntu
           - pipeline-argument: e2e
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Setup Python
