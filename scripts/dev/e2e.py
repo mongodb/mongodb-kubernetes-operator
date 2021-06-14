@@ -3,12 +3,10 @@
 from kubernetes.client.rest import ApiException
 
 import k8s_conditions
-import dump_diagnostic
 from typing import Dict
 from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
 import argparse
-import os
 import sys
 import yaml
 
@@ -65,44 +63,6 @@ def _prepare_test_environment(config_file: str) -> None:
     )
 
 
-def create_kube_config(config_file: str) -> None:
-    """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
-    as a ConfigMap."""
-    corev1 = client.CoreV1Api()
-    print("Creating kube-config ConfigMap")
-    dev_config = load_config(config_file)
-
-    svc = corev1.read_namespaced_service("kubernetes", "default")
-
-    kube_config_path = os.getenv("KUBECONFIG")
-    if kube_config_path is None:
-        raise ValueError("kube_config_path must not be None")
-
-    with open(kube_config_path) as fd:
-        kube_config = yaml.safe_load(fd.read())
-
-    if kube_config is None:
-        raise ValueError("kube_config_path must not be None")
-
-    kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
-    kube_config = yaml.safe_dump(kube_config)
-    data = {"kubeconfig": kube_config}
-    config_map = client.V1ConfigMap(
-        metadata=client.V1ObjectMeta(name="kube-config"), data=data
-    )
-
-    print("Creating Namespace")
-    k8s_conditions.ignore_if_already_exists(
-        lambda: corev1.create_namespace(
-            client.V1Namespace(metadata=dict(name=dev_config.namespace))
-        )
-    )
-
-    k8s_conditions.ignore_if_already_exists(
-        lambda: corev1.create_namespaced_config_map(dev_config.namespace, config_map)
-    )
-
-
 def _delete_test_pod(config_file: str) -> None:
     """
     _delete_testrunner_pod deletes the test runner pod
@@ -131,9 +91,6 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                     "name": TEST_POD_NAME,
                     "image": f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
                     "imagePullPolicy": "Always",
-                    "volumeMounts": [
-                        {"mountPath": "/etc/config", "name": "kube-config-volume"}
-                    ],
                     "env": [
                         {
                             "name": "CLUSTER_WIDE",
@@ -174,14 +131,6 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                     ],
                 }
             ],
-            "volumes": [
-                {
-                    "name": "kube-config-volume",
-                    "configMap": {
-                        "name": "kube-config",
-                    },
-                }
-            ],
         },
     }
     if not k8s_conditions.wait(
@@ -214,10 +163,12 @@ def wait_for_pod_to_be_running(
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
-        timeout=180,
+        timeout=240,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Pod never got into Running state!")
+
+        pod = corev1.read_namespaced_pod(name, namespace)
+        raise Exception("Pod never got into Running state: {}".format(pod))
     print("Pod is running")
 
 
@@ -243,7 +194,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cluster-wide",
         help="Watch all namespaces",
-        action="store_true",
+        type=lambda x: x.lower() == "true",
     )
     parser.add_argument(
         "--distro",
@@ -278,13 +229,7 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file, Distro.from_string(args.distro))
-    create_kube_config(args.config_file)
-
-    try:
-        prepare_and_run_test(args, dev_config)
-    finally:
-        if not args.skip_dump_diagnostic:
-            dump_diagnostic.dump_all(dev_config.namespace)
+    prepare_and_run_test(args, dev_config)
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
