@@ -29,8 +29,6 @@ To deploy your first replica set:
 
    The secrets follow this naming convention: `<metadata.name>-<auth-db>-<username>`, where:
 
-   Where:
-
    | Variable | Description | Value in Sample |
    |----|----|----|
    | `<metadata.name>` | Name of the MongoDB database resource. | `example-mongodb` |
@@ -39,7 +37,7 @@ To deploy your first replica set:
 
    Update the variables in the following command, then run it to retrieve a user's connection strings to the replica set from the secret:
 
-   **NOTE**: The following command requires `[jq](https://stedolan.github.io/jq/)` version 1.6 or higher.</br></br>
+   **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
 
    ```sh
    kubectl get secret <metadata.name>-<auth-db>-<username> -n mongodb -o json | \ 
