@@ -4,7 +4,7 @@ First you need to get familiar with the [Architecture guide](architecture.md), w
 from a high perspective how everything works together.
 
 After our experience building the [Enterprise MongoDB Kubernetes
-Operator](https://github.com/mongodb/mongodb-enterprise-operator), we have
+Operator](https://github.com/mongodb/mongodb-enterprise-kubernetes), we have
 realized that is is very important to have a clean environment to work, and as such we have
 adopted a strategy that makes it easier for everyone to contribute.
 
