@@ -148,6 +148,7 @@ To define a custom role:
 
    | Key | Type | Description | Required? |
    |----|----|----|----|
+   | `spec.security.authentication.ignoreUnknownUsers` | boolean | Flag that indicates whether you can add users that don't exist in the `MongoDBCommunity` resource. If omitted, defaults to `true`. | No | 
    | `spec.security.roles` | array | Array that defines [custom roles](https://docs.mongodb.com/manual/core/security-user-defined-roles/) roles that give you fine-grained access control over your MongoDB deployment. | Yes |
    | `spec.security.roles.role` | string | Name of the custom role. | Yes |
    | `spec.security.roles.db` | string | Database in which you want to store the user-defined role. | Yes |
