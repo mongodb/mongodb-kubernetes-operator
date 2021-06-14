@@ -59,7 +59,7 @@ To configure the Operator to watch resources in other namespaces:
              imagePullPolicy: Always
              env:
                - name: WATCH_NAMESPACE
-                 value: *
+                 value: "*"
    ```
 
 2. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
