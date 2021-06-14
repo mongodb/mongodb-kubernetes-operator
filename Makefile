@@ -83,6 +83,10 @@ e2e: install
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
 
+# Trigger a Github Action of the given test
+e2e-gh:
+	scripts/dev/run_e2e_gh.sh $(test)
+
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
