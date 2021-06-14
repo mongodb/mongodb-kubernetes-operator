@@ -79,27 +79,23 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Setup Kind Cluster
-        if: steps.last_run_status.outputs.last_run_status != 'success'
         uses: engineerd/setup-kind@v0.5.0
         with:
           version: "v0.8.1"
 
       - name: Install CRD
-        if: steps.last_run_status.outputs.last_run_status != 'success'
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
       - name: Run Test
-        if: steps.last_run_status.outputs.last_run_status != 'success'
         run: python3 ./scripts/dev/e2e.py --test ${{ github.event.inputs.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ github.event.inputs.distro }} --cluster-wide ${github.event.inputs.cluster-wide}
 
       - name: Dump Diagnostics
-        id: dump_diagnostics
         if: always()
         continue-on-error: true
         run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
 
       - name: Upload Diagnostics
-        if: always() && steps.dump_diagnostics.outcome == 'success'
+        if: always()
         uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
