@@ -87,7 +87,7 @@ jobs:
         run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
       - name: Run Test
-        run: python3 ./scripts/dev/e2e.py --test ${{ github.event.inputs.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ github.event.inputs.distro }} --cluster-wide ${github.event.inputs.cluster-wide}
+        run: python3 ./scripts/dev/e2e.py --test ${{ github.event.inputs.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ github.event.inputs.distro }} --cluster-wide ${{ github.event.inputs.cluster-wide }}
 
       - name: Dump Diagnostics
         if: always()
