@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -82,6 +83,7 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 // SetupWithManager sets up the controller with the Manager and configures the necessary watches.
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
 		Complete(r)
