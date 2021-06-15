@@ -56,6 +56,7 @@ const (
 	clusterDNSName = "CLUSTER_DNS_NAME"
 
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
+	lastAppliedMongoDBVersion   = "mongodb.com/v1.lastAppliedMongoDBVersion"
 )
 
 func init() {
@@ -232,11 +233,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
-	// the last version will be duplicated in two annotations.
-	// This is needed to reuse the update strategy logic in enterprise
-	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
-		r.log.Errorf("Could not save current version as an annotation: %s", err)
-	}
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
 		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
@@ -259,6 +255,9 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
+		// the last version will be duplicated in two annotations.
+		// This is needed to reuse the update strategy logic in enterprise
+		lastAppliedMongoDBVersion: mdb.Spec.Version,
 	}
 	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
 }

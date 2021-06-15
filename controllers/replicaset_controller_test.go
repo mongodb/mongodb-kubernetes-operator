@@ -523,7 +523,22 @@ func TestIgnoreUnknownUsers(t *testing.T) {
 		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
 		assertAuthoritativeSet(t, mdb, true)
 	})
+}
 
+func TestAnnotationsAreAppliedToResource(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, mdb.Annotations)
+	assert.NotEmpty(t, mdb.Annotations[lastSuccessfulConfiguration], "last successful spec should have been saved as annotation but was not")
+	assert.Equal(t, mdb.Annotations[lastAppliedMongoDBVersion], mdb.Spec.Version, "last version should have been saved as an annotation but was not")
 }
 
 // assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
