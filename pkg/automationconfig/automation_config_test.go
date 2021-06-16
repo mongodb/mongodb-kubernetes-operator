@@ -62,6 +62,203 @@ func TestBuildAutomationConfig(t *testing.T) {
 	}
 }
 
+func TestBuildAutomationConfigWithOneArbiter(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(3).
+		SetArbiters(1).
+		SetFCV("4.0").
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 3)
+	assert.Equal(t, 1, ac.Version)
+
+	for i, p := range ac.Processes {
+		assert.Equal(t, Mongod, p.ProcessType)
+		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
+	}
+
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
+
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
+	assert.Len(t, rs.Members, 3, "there should be the number of replicas provided")
+
+	for i, member := range rs.Members {
+		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, i == 0, member.ArbiterOnly)
+
+		assert.Equal(t, i, member.Id)
+		assert.Equal(t, ac.Processes[i].Name, member.Host)
+	}
+}
+
+func TestBuildAutomationConfigWithZeroArbiter(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(3).
+		SetArbiters(0).
+		SetFCV("4.0").
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 3)
+	assert.Equal(t, 1, ac.Version)
+
+	for i, p := range ac.Processes {
+		assert.Equal(t, Mongod, p.ProcessType)
+		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
+	}
+
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
+
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
+	assert.Len(t, rs.Members, 3, "there should be the number of replicas provided")
+
+	for i, member := range rs.Members {
+		assert.Equal(t, 1, member.Votes)
+		assert.False(t, member.ArbiterOnly)
+
+		assert.Equal(t, i, member.Id)
+		assert.Equal(t, ac.Processes[i].Name, member.Host)
+	}
+}
+
+func TestBuildAutomationConfigWithMultipleArbiters(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(4).
+		SetArbiters(2).
+		SetFCV("4.0").
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 4)
+	assert.Equal(t, 1, ac.Version)
+
+	for i, p := range ac.Processes {
+		assert.Equal(t, Mongod, p.ProcessType)
+		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
+	}
+
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
+
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
+	assert.Len(t, rs.Members, 4, "there should be the number of replicas provided")
+
+	for i, member := range rs.Members {
+		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, i <= 1, member.ArbiterOnly)
+		assert.Equal(t, i, member.Id)
+		assert.Equal(t, ac.Processes[i].Name, member.Host)
+	}
+}
+
+func TestBuildAutomationConfigWithOnlyArbiters(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(4).
+		SetArbiters(4).
+		SetFCV("4.0").
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 4)
+	assert.Equal(t, 1, ac.Version)
+
+	for i, p := range ac.Processes {
+		assert.Equal(t, Mongod, p.ProcessType)
+		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
+	}
+
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
+
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
+	assert.Len(t, rs.Members, 4, "there should be the number of replicas provided")
+
+	for i, member := range rs.Members {
+		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, i <= 4, member.ArbiterOnly)
+		assert.Equal(t, i, member.Id)
+		assert.Equal(t, ac.Processes[i].Name, member.Host)
+	}
+}
+
+func TestBuildAutomationConfigWithMoreAbitersThanMembers(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(4).
+		SetArbiters(8).
+		SetFCV("4.0").
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.Processes, 4)
+	assert.Equal(t, 1, ac.Version)
+
+	for i, p := range ac.Processes {
+		assert.Equal(t, Mongod, p.ProcessType)
+		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
+		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
+		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
+		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, "4.2.0", p.Version)
+		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
+	}
+
+	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
+
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
+	assert.Len(t, rs.Members, 4, "there should be the number of replicas provided")
+
+	for i, member := range rs.Members {
+		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, i <= 4, member.ArbiterOnly)
+		assert.Equal(t, i, member.Id)
+		assert.Equal(t, ac.Processes[i].Name, member.Host)
+	}
+}
+
 func TestReplicaSetHorizons(t *testing.T) {
 	ac, err := NewBuilder().
 		SetName("my-rs").

@@ -3,6 +3,7 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
@@ -121,6 +122,7 @@ type ReplicaSet struct {
 	Id              string             `json:"_id"`
 	Members         []ReplicaSetMember `json:"members"`
 	ProtocolVersion string             `json:"protocolVersion"`
+	NumberArbiters  int                `json:"numberArbiters"`
 }
 
 type ReplicaSetMember struct {
@@ -134,21 +136,28 @@ type ReplicaSetMember struct {
 
 type ReplicaSetHorizons map[string]string
 
-func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, totalVotesSoFar int) ReplicaSetMember {
+func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, totalVotesSoFar int, numberArbiters int) ReplicaSetMember {
 	// ensure that the number of voting members in the replica set is not more than 7
 	// as this is the maximum number of voting members.
 	votes := 1
 	priority := 1
+
+	isArbiter := totalVotesSoFar < numberArbiters
+
 	if totalVotesSoFar > maxVotingMembers {
 		votes = 0
 		priority = 0
 	}
 
+	//TODO: REMOVE THIS once its working
+	fmt.Println("is arbiter: ", isArbiter, "total votes: ", totalVotesSoFar, "num arbiters", numberArbiters,
+		"votes:", votes)
+
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        p.Name,
 		Priority:    priority,
-		ArbiterOnly: false,
+		ArbiterOnly: isArbiter,
 		Votes:       votes,
 		Horizons:    horizons,
 	}
