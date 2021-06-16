@@ -33,6 +33,7 @@ manager: generate fmt vet
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: install
 	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
+	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
