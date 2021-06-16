@@ -25,7 +25,7 @@ To deploy your first replica set:
    kubectl get mongodbcommunity --namespace <my-namespace>
    ```
 
-4. The Community Kubernetes Operator creates secrets that contains user's connection strings and credentials.
+4. The Community Kubernetes Operator creates secrets that contains users' connection strings and credentials.
 
    The secrets follow this naming convention: `<metadata.name>-<auth-db>-<username>`, where:
 
