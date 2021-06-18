@@ -85,7 +85,7 @@ jobs:
     - name: Create Github Release
       uses: ncipollo/release-action@v1
       with:
-        tag: ${{ steps.release_tag.outputs.OUTPUT }}
+        tag: "v${{ steps.release_tag.outputs.OUTPUT }}"
         name: MongoDB Kubernetes Operator
         bodyFile: "${{ github.workspace }}/docs/RELEASE_NOTES.md"
         draft: true
