@@ -1,0 +1,13 @@
+name: Run E2E Fork
+jobs:
+  - path: action_templates/jobs/setup.yaml
+    if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    steps:
+      - cancel-previous
+      - checkout
+      - setup-and-install-python
+      - quay-login
+      - build-and-push-development-images
+
+events:
+  - labeled-pull-request-target

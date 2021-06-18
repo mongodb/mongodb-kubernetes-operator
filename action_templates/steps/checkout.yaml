@@ -1,0 +1,3 @@
+# checkout.yaml
+- name: Checkout Code
+  uses: actions/checkout@v2
