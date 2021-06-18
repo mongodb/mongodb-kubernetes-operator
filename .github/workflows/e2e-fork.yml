@@ -1,16 +1,14 @@
-name: Run E2E
+name: Run E2E (Fork)
 on:
-  pull_request:
+  # pull_request_target means that the secrets of this repo will be used.
+  pull_request_target:
+    types: [labeled]
     branches:
       - master
-  push:
-    branches:
-      - master
-  workflow_dispatch:
-
 jobs:
   setup:
-    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    # we only want ot start this task if the safe-to-test label has been added by someone with write access.
+    if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
