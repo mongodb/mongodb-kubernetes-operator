@@ -1,0 +1,3 @@
+- name: Run Test Single
+  run: |
+    python3 ./scripts/dev/e2e.py --test ${{ github.event.inputs.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ github.event.inputs.distro }} --cluster-wide ${{ github.event.inputs.cluster-wide }}

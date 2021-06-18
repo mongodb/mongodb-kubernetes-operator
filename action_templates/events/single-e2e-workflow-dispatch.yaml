@@ -1,0 +1,13 @@
+workflow_dispatch:
+  inputs:
+    distro:
+      description: 'Distro to run test'
+      required: true
+      default: "ubuntu"
+    test-name:
+      description: 'Name of test to run'
+      required: true
+    cluster-wide:
+      description: 'Whether or not the test is cluster wide'
+      required: true
+      default: "false"
