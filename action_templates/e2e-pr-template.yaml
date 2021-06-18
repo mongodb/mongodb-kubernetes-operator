@@ -1,0 +1,26 @@
+name: Run E2E
+jobs:
+  - path: setup
+    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    steps:
+    - cancel-previous
+    - checkout
+    - setup-and-install-python
+    - quay-login
+    - build-and-push-development-images
+  - path: tests
+    steps:
+    - cancel-previous
+    - checkout
+    - set-run-status
+    - setup-and-install-python
+    - setup-kind-cluster
+    - run-test-matrix
+    - save-run-status
+    - dump-and-upload-diagnostics
+  - path: e2e-success
+
+events:
+  - on-pull-request-master
+  - on-push-master
+  - workflow-dispatch
