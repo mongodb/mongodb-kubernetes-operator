@@ -1,6 +1,6 @@
 name: Run E2E
 jobs:
-  - path: action_templates/jobs/setup.yaml
+  - path: setup
     if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
     steps:
       - cancel-previous

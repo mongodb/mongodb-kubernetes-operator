@@ -1,0 +1,17 @@
+- name: Set default run status
+  run: echo "::set-output name=last_run_status::pending" > last_run_status
+
+  # Tracking of the state of the previous test run is a workaround to the fact that it is not
+  # possible to re-run a single failed job, only re-running the entire workflow is currently possible.
+  # This workaround skips jobs if they have already passed.
+  # see https://github.com/actions/runner/issues/432
+- name: Restore last run status
+  id: last_run
+  uses: actions/cache@v2
+  with:
+    path: last_run_status
+    key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
+
+- name: Set last run status
+  id: last_run_status
+  run: cat last_run_status
