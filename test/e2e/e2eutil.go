@@ -42,6 +42,103 @@ func UpdateMongoDBResource(original *mdbv1.MongoDBCommunity, updateFunc func(*md
 	return TestClient.Update(context.TODO(), original)
 }
 
+func NewTestMongoDBArbiter(ctx *Context, name string, namespace string, noMembers int, arbiters int) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
+	mongodbNamespace := namespace
+	if mongodbNamespace == "" {
+		mongodbNamespace = OperatorNamespace
+	}
+	mdb := mdbv1.MongoDBCommunity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: mongodbNamespace,
+		},
+		Spec: mdbv1.MongoDBCommunitySpec{
+			Members:  noMembers,
+			Type:     "ReplicaSet",
+			Version:  "4.4.0",
+			Arbiters: arbiters,
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
+			Users: []mdbv1.MongoDBUser{
+				{
+					Name: fmt.Sprintf("%s-user", name),
+					DB:   "admin",
+					PasswordSecretRef: mdbv1.SecretKeyReference{
+						Key:  fmt.Sprintf("%s-password", name),
+						Name: fmt.Sprintf("%s-%s-password-secret", name, ctx.ExecutionId),
+					},
+					Roles: []mdbv1.Role{
+						// roles on testing db for general connectivity
+						{
+							DB:   "testing",
+							Name: "readWrite",
+						},
+						{
+							DB:   "testing",
+							Name: "clusterAdmin",
+						},
+						// admin roles for reading FCV
+						{
+							DB:   "admin",
+							Name: "readWrite",
+						},
+						{
+							DB:   "admin",
+							Name: "clusterAdmin",
+						},
+						{
+							DB:   "admin",
+							Name: "userAdmin",
+						},
+					},
+					ScramCredentialsSecretName: fmt.Sprintf("%s-my-scram", name),
+				},
+			},
+			StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
+				SpecWrapper: mdbv1.StatefulSetSpecWrapper{
+					Spec: appsv1.StatefulSetSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "mongod",
+										Resources: corev1.ResourceRequirements{
+											Limits: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.1"),
+												"memory": resource.MustParse("200M"),
+											},
+											Requests: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.1"),
+												"memory": resource.MustParse("200M"),
+											},
+										},
+									},
+									{
+										Name: "mongodb-agent",
+										Resources: corev1.ResourceRequirements{
+											Limits: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.1"),
+												"memory": resource.MustParse("200M"),
+											},
+											Requests: map[corev1.ResourceName]resource.Quantity{
+												"cpu":    resource.MustParse("0.1"),
+												"memory": resource.MustParse("200M"),
+											},
+										},
+									},
+								},
+							},
+						},
+					}},
+			},
+		},
+	}
+	return mdb, mdb.Spec.Users[0]
+}
+
 func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {

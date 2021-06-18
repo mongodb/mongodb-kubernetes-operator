@@ -3,7 +3,6 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
@@ -148,10 +147,6 @@ func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, totalVo
 		votes = 0
 		priority = 0
 	}
-
-	//TODO: REMOVE THIS once its working
-	fmt.Println("is arbiter: ", isArbiter, "total votes: ", totalVotesSoFar, "num arbiters", numberArbiters,
-		"votes:", votes)
 
 	return ReplicaSetMember{
 		Id:          id,
