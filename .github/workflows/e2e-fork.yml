@@ -7,7 +7,7 @@ on:
     paths-ignore:
     - docs/**
 jobs:
-- setup:
+  setup:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -22,12 +22,28 @@ jobs:
   if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator'
     && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
   steps:
-  - name: Cancel Previous Runs
-    uses: styfle/cancel-workflow-action@0.9.0
-    with:
-      access_token: ${{ github.token }}
   - name: Checkout Code
     uses: actions/checkout@v2
+    with:
+      ref: ${{github.event.pull_request.head.ref}}
+      repository: ${{github.event.pull_request.head.repo.full_name}}
+  - name: Set default run status
+    run: echo "::set-output name=last_run_status::pending" > last_run_status
+
+  # Tracking of the state of the previous test run is a workaround to the fact that it is not
+  # possible to re-run a single failed job, only re-running the entire workflow is currently possible.
+  # This workaround skips jobs if they have already passed.
+  # see https://github.com/actions/runner/issues/432
+  - name: Restore last run status
+    id: last_run
+    uses: actions/cache@v2
+    with:
+      path: last_run_status
+      key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
+
+  - name: Set last run status
+    id: last_run_status
+    run: cat last_run_status
   - name: Setup Python
     uses: actions/setup-python@v2
     with:
@@ -38,19 +54,42 @@ jobs:
       key: ${{ hashFiles('requirements.txt') }}
   - name: Install Python Dependencies
     run: pip install -r requirements.txt
-  - name: Login to Quay.io
-    uses: docker/login-action@v1
+  - name: Setup Kind Cluster
+    if: steps.last_run_status.outputs.last_run_status != 'success'
+    uses: engineerd/setup-kind@v0.5.0
     with:
-      registry: quay.io
-      username: ${{ secrets.QUAY_USERNAME }}
-      password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-  - name: Build and Push Images
+      version: v0.8.1
+
+  - name: Install CRD
+    if: steps.last_run_status.outputs.last_run_status != 'success'
+    run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+  - name: Run Test
+    id: e2e_test
+    if: steps.last_run_status.outputs.last_run_status != 'success'
     run: |
-      python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
-    env:
-      MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
-      version_id: ${{ github.run_id }}
-- tests:
+      cluster_wide=${{ matrix.cluster-wide }}
+      if [ -z "$cluster_wide" ]; then
+        cluster_wide="false"
+      fi
+      python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
+  - name: Save run status
+    if: always()
+    run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}" >
+      last_run_status
+  - name: Dump Diagnostics
+    id: dump_diagnostics
+    if: always() && steps.e2e_test.outcome == 'failure'
+    continue-on-error: true
+    run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
+
+  - name: Upload Diagnostics
+    if: always() && steps.dump_diagnostics.outcome == 'success'
+    uses: actions/upload-artifact@v2
+    continue-on-error: true
+    with:
+      name: ${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics
+      path: ${{ github.workspace }}/diagnostics
+  tests:
     runs-on: ubuntu-latest
     needs: [setup]
     strategy:
@@ -124,71 +163,7 @@ jobs:
           cluster-wide: true
         - test-name: replica_set_custom_role
           distro: ubi
-  steps:
-  - with
-  - name: Set default run status
-    run: echo "::set-output name=last_run_status::pending" > last_run_status
-
-  # Tracking of the state of the previous test run is a workaround to the fact that it is not
-  # possible to re-run a single failed job, only re-running the entire workflow is currently possible.
-  # This workaround skips jobs if they have already passed.
-  # see https://github.com/actions/runner/issues/432
-  - name: Restore last run status
-    id: last_run
-    uses: actions/cache@v2
-    with:
-      path: last_run_status
-      key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
-
-  - name: Set last run status
-    id: last_run_status
-    run: cat last_run_status
-  - name: Setup Python
-    uses: actions/setup-python@v2
-    with:
-      python-version: '3.8'
-  - uses: actions/cache@v2
-    with:
-      path: ~/.cache/pip
-      key: ${{ hashFiles('requirements.txt') }}
-  - name: Install Python Dependencies
-    run: pip install -r requirements.txt
-  - name: Setup Kind Cluster
-    if: steps.last_run_status.outputs.last_run_status != 'success'
-    uses: engineerd/setup-kind@v0.5.0
-    with:
-      version: v0.8.1
-
-  - name: Install CRD
-    if: steps.last_run_status.outputs.last_run_status != 'success'
-    run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
-  - name: Run Test
-    id: e2e_test
-    if: steps.last_run_status.outputs.last_run_status != 'success'
-    run: |
-      cluster_wide=${{ matrix.cluster-wide }}
-      if [ -z "$cluster_wide" ]; then
-        cluster_wide="false"
-      fi
-      python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
-  - name: Save run status
-    if: always()
-    run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}" >
-      last_run_status
-  - name: Dump Diagnostics
-    id: dump_diagnostics
-    if: always() && steps.e2e_test.outcome == 'failure'
-    continue-on-error: true
-    run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
-
-  - name: Upload Diagnostics
-    if: always() && steps.dump_diagnostics.outcome == 'success'
-    uses: actions/upload-artifact@v2
-    continue-on-error: true
-    with:
-      name: ${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics
-      path: ${{ github.workspace }}/diagnostics
-- e2e-success:
+  e2e-success:
     if: always()
     needs: [tests]
     runs-on: ubuntu-latest

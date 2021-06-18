@@ -1,5 +1,5 @@
 git+https://github.com/mongodb/sonar@0.0.11#egg=sonar
-git+https://github.com/chatton/GithubActionTemplates@v0.0.2
+file:///Users/cianhatton/checkouts/GithubActionTemplate
 docker==4.3.1
 kubernetes==11.0.0
 jinja2==2.11.3
@@ -12,4 +12,5 @@ pymongo==3.11.4
 dnspython==2.0.0
 requests==2.24.0
 pyyaml==5.4.1
+ruamel.yaml==0.17.9
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability

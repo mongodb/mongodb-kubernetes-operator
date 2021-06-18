@@ -14,7 +14,7 @@ on:
         required: true
         default: 'false'
 jobs:
-- setup:
+  setup:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -26,34 +26,6 @@ jobs:
         - pipeline-argument: agent-ubi
         - pipeline-argument: agent-ubuntu
         - pipeline-argument: e2e
-  steps:
-  - name: Checkout Code
-    uses: actions/checkout@v2
-  - name: Setup Python
-    uses: actions/setup-python@v2
-    with:
-      python-version: '3.8'
-  - uses: actions/cache@v2
-    with:
-      path: ~/.cache/pip
-      key: ${{ hashFiles('requirements.txt') }}
-  - name: Install Python Dependencies
-    run: pip install -r requirements.txt
-  - name: Login to Quay.io
-    uses: docker/login-action@v1
-    with:
-      registry: quay.io
-      username: ${{ secrets.QUAY_USERNAME }}
-      password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-  - name: Build and Push Images
-    run: |
-      python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
-    env:
-      MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
-      version_id: ${{ github.run_id }}
-- single-test:
-    runs-on: ubuntu-latest
-    needs: [setup]
   steps:
   - name: Checkout Code
     uses: actions/checkout@v2
@@ -91,3 +63,6 @@ jobs:
     with:
       name: ${{ github.event.inputs.test-name }}-${{ github.event.inputs.distro }}-diagnostics
       path: ${{ github.workspace }}/diagnostics
+  single-test:
+    runs-on: ubuntu-latest
+    needs: [setup]
