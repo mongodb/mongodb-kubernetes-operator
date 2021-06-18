@@ -3,20 +3,20 @@ jobs:
   - path: setup
     if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
     steps:
-      - cancel-previous
-      - checkout
-      - setup-and-install-python
-      - quay-login
-      - build-and-push-development-images
+    - cancel-previous
+    - checkout
+    - setup-and-install-python
+    - quay-login
+    - build-and-push-development-images
   - path: tests
     steps:
-      - checkout-fork
-      - set-run-status
-      - setup-and-install-python
-      - setup-kind-cluster
-      - run-test-matrix
-      - save-run-status
-      - dump-and-upload-diagnostics
+    - checkout-fork
+    - set-run-status
+    - setup-and-install-python
+    - setup-kind-cluster
+    - run-test-matrix
+    - save-run-status
+    - dump-and-upload-diagnostics
   - path: e2e-success
 
 events:
