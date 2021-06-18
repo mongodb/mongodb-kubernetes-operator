@@ -3,9 +3,13 @@ on:
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
   push:
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:
@@ -212,7 +216,8 @@ jobs:
           path: "${{ github.workspace }}/diagnostics"
 
   e2e-success:
-    if: always()
+    # this e2e-success job only applies to branches within this repo, not to forks.
+    if: always() && github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
     needs: [tests]
     runs-on: ubuntu-latest
     steps:

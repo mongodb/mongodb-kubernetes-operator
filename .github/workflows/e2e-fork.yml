@@ -5,6 +5,8 @@ on:
     types: [labeled]
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
 jobs:
   setup:
     # we only want ot start this task if the safe-to-test label has been added by someone with write access.
@@ -138,6 +140,13 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@v2
+
+        # We checkout the forked repository code.
+        # Because we are using pull_request_target the Github Secrets will be passed
+        # So code should be reviewed before labeling as "safe-to-test"
+        with:
+          ref: ${{github.event.pull_request.head.ref}}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
 
       - name: Set default run status
         run: echo "::set-output name=last_run_status::pending" > last_run_status
