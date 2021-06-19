@@ -3,7 +3,8 @@
   uses: actions/setup-python@v2
   with:
     python-version: '3.8'
-- uses: actions/cache@v2
+- name: Cache Dependencies
+  uses: actions/cache@v2
   with:
     path: ~/.cache/pip
     key: ${{ hashFiles('requirements.txt') }}
