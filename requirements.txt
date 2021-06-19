@@ -1,5 +1,5 @@
 git+https://github.com/mongodb/sonar@0.0.11#egg=sonar
-git+https://github.com/chatton/GithubActionTemplates@v0.0.2
+git+https://github.com/chatton/GithubActionTemplates@v0.0.1
 docker==4.3.1
 kubernetes==11.0.0
 jinja2==2.11.3
