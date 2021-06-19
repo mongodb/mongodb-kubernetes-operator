@@ -14,6 +14,7 @@ jobs:
     - template: set-run-status
     - template: setup-and-install-python
     - template: setup-kind-cluster
+      if: steps.last_run_status.outputs.last_run_status != 'success'
     - template: run-test-matrix
     - template: save-run-status
     - template: dump-and-upload-diagnostics
