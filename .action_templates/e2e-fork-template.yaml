@@ -4,12 +4,13 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
     steps:
     - template: cancel-previous
-    - template: checkout
+    - template: checkout-fork
     - template: setup-and-install-python
     - template: quay-login
     - template: build-and-push-development-images
   - template: tests
     steps:
+    - template: cancel-previous
     - template: checkout-fork
     - template: set-run-status
     - template: setup-and-install-python

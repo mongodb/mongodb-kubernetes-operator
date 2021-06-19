@@ -28,6 +28,9 @@ jobs:
         access_token: ${{ github.token }}
     - name: Checkout Code
       uses: actions/checkout@v2
+      with:
+        ref: ${{github.event.pull_request.head.ref}}
+        repository: ${{github.event.pull_request.head.repo.full_name}}
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
@@ -126,6 +129,10 @@ jobs:
         - test-name: replica_set_custom_role
           distro: ubi
     steps:
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.0
+      with:
+        access_token: ${{ github.token }}
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
