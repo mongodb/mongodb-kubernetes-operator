@@ -1,0 +1,23 @@
+name: Run E2E Fork
+jobs:
+  - template: setup
+    if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    steps:
+    - template: cancel-previous
+    - template: checkout
+    - template: setup-and-install-python
+    - template: quay-login
+    - template: build-and-push-development-images
+  - template: tests
+    steps:
+    - template: checkout-fork
+    - template: set-run-status
+    - template: setup-and-install-python
+    - template: setup-kind-cluster
+    - template: run-test-matrix
+    - template: save-run-status
+    - template: dump-and-upload-diagnostics
+  - template: e2e-success
+
+events:
+  - template: labeled-pull-request-target

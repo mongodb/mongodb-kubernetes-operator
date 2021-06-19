@@ -7,9 +7,9 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 template_mapping = {
-    "action_templates/e2e-fork-template.yaml": ".github/workflows/e2e-fork.yml",
-    "action_templates/e2e-pr-template.yaml": ".github/workflows/e2e.yml",
-    "action_templates/e2e-single-template.yaml": ".github/workflows/e2e-dispatch.yml",
+    ".action_templates/e2e-fork-template.yaml": ".github/workflows/e2e-fork.yml",
+    ".action_templates/e2e-pr-template.yaml": ".github/workflows/e2e.yml",
+    ".action_templates/e2e-single-template.yaml": ".github/workflows/e2e-dispatch.yml",
 }
 
 
