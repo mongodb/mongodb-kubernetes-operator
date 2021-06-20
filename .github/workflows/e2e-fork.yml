@@ -9,6 +9,7 @@
 
 name: Run E2E Fork
 on:
+  # template: .action_templates/events/labeled-pull-request-target.yaml
   pull_request_target:
     types: [labeled]
     branches:
@@ -16,6 +17,7 @@ on:
     paths-ignore:
     - docs/**
 jobs:
+  # template: .action_templates/jobs/setup.yaml
   setup:
     runs-on: ubuntu-latest
     strategy:
@@ -31,18 +33,18 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator'
       && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
     steps:
-    # template: cancel-previous
+    # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
       uses: styfle/cancel-workflow-action@0.9.0
       with:
         access_token: ${{ github.token }}
-    # template: checkout-fork
+    # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
         ref: ${{github.event.pull_request.head.ref}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
-    # template: setup-and-install-python
+    # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
@@ -54,20 +56,21 @@ jobs:
         key: ${{ hashFiles('requirements.txt') }}
     - name: Install Python Dependencies
       run: pip install -r requirements.txt
-    # template: quay-login
+    # template: .action_templates/steps/quay-login.yaml
     - name: Login to Quay.io
       uses: docker/login-action@v1
       with:
         registry: quay.io
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-    # template: build-and-push-development-images
+    # template: .action_templates/steps/build-and-push-development-images.yaml
     - name: Build and Push Images
       run: |
         python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
       env:
         MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
         version_id: ${{ github.run_id }}
+  # template: .action_templates/jobs/tests.yaml
   tests:
     runs-on: ubuntu-latest
     needs: [setup]
@@ -143,18 +146,18 @@ jobs:
         - test-name: replica_set_custom_role
           distro: ubi
     steps:
-    # template: cancel-previous
+    # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
       uses: styfle/cancel-workflow-action@0.9.0
       with:
         access_token: ${{ github.token }}
-    # template: checkout-fork
+    # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
         ref: ${{github.event.pull_request.head.ref}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
-    # template: set-run-status
+    # template: .action_templates/steps/set-run-status.yaml
     - name: Set default run status
       run: echo "::set-output name=last_run_status::pending" > last_run_status
 
@@ -172,7 +175,7 @@ jobs:
     - name: Set last run status
       id: last_run_status
       run: cat last_run_status
-    # template: setup-and-install-python
+    # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
@@ -184,7 +187,7 @@ jobs:
         key: ${{ hashFiles('requirements.txt') }}
     - name: Install Python Dependencies
       run: pip install -r requirements.txt
-    # template: setup-kind-cluster
+    # template: .action_templates/steps/setup-kind-cluster.yaml
     - name: Setup Kind Cluster
       uses: engineerd/setup-kind@v0.5.0
       with:
@@ -194,7 +197,7 @@ jobs:
     - name: Install CRD
       run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
       if: steps.last_run_status.outputs.last_run_status != 'success'
-    # template: run-test-matrix
+    # template: .action_templates/steps/run-test-matrix.yaml
     - name: Run Test
       id: e2e_test
       if: steps.last_run_status.outputs.last_run_status != 'success'
@@ -204,12 +207,12 @@ jobs:
           cluster_wide="false"
         fi
         python3 ./scripts/dev/e2e.py --test ${{ matrix.test-name }} --tag ${{ github.run_id }} --config_file ./scripts/ci/config.json --distro ${{ matrix.distro }} --cluster-wide ${cluster_wide}
-    # template: save-run-status
+    # template: .action_templates/steps/save-run-status.yaml
     - name: Save run status
       if: always()
       run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}"
         > last_run_status
-    # template: dump-and-upload-diagnostics
+    # template: .action_templates/steps/dump-and-upload-diagnostics.yaml
     - name: Dump Diagnostics
       id: dump_diagnostics
       if: always() && steps.e2e_test.outcome == 'failure'
@@ -223,6 +226,7 @@ jobs:
       with:
         name: ${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics
         path: ${{ github.workspace }}/diagnostics
+  # template: .action_templates/jobs/e2e-success.yaml
   e2e-success:
     if: always()
     needs: [tests]
