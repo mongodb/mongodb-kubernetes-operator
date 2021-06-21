@@ -208,6 +208,23 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, e
 	}
 }
 
+// AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
+func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
+	return func(t *testing.T) {
+		currentAc := getAutomationConfig(t, mdb)
+		lsRs := currentAc.ReplicaSets
+		for _, rs := range lsRs {
+			arbiters := 0
+			for _, rsMember := range rs.Members {
+				if rsMember.ArbiterOnly {
+					arbiters += 1
+				}
+			}
+			assert.Equal(t, expectedArbiters, arbiters)
+		}
+	}
+}
+
 // AutomationConfigHasTheExpectedCustomRoles verifies that the automation config has the expected custom roles.
 func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, roles []automationconfig.CustomRole) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -384,6 +401,43 @@ func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, com
 		assert.NoError(t, err)
 	}
 }
+
+func CheckMessageStatusMdb(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, desiredMessageStatus string) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForMongoDBMessageStatus(t, mdb, time.Second*15, time.Minute*5, desiredMessageStatus)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+}
+
+/*func CheckStatusMdb(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, desiredStatus string) func(t *testing.T) {
+
+	return func(t *testing.T) {
+		status := ""
+		stsNamespacedName := types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}
+		mdbLocal := mdbv1.MongoDBCommunity{}
+
+		for i := 0; i < 10 && status == ""; i++ {
+			if err := e2eutil.TestClient.Get(context.TODO(), stsNamespacedName, &mdbLocal); err != nil {
+				t.Fatalf("error getting MongoDB resource: %s", err)
+			}
+			status = mdbLocal.Status.Message
+			if status == "" {
+				time.Sleep(time.Second)
+			}
+		}
+
+		if desiredStatus != "" {
+			assert.Equal(t, status, desiredStatus)
+		} else {
+			assert.Equal(t, mdbLocal.Status.Phase, v1.Pending)
+			print("status: ", status)
+		}
+
+	}
+}*/
 
 func podFromMongoDBCommunity(mdb *mdbv1.MongoDBCommunity, podNum int) corev1.Pod {
 	return corev1.Pod{

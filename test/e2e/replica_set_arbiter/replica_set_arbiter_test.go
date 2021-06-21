@@ -1,21 +1,17 @@
 package replica_set
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	//. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	controllers "github.com/mongodb/mongodb-kubernetes-operator/controllers"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 )
 
 func TestMain(m *testing.M) {
@@ -26,49 +22,44 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestReplicaSetArbiterV2(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
-
-	//mdb, user := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", 3, 3)
-	mdb, _ := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", 3, 4)
-
-	mgr := client.NewManager(&mdb)
-
-	r := controllers.NewReconciler(mgr)
-	_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
-	//assertReconciliationSuccessful(t, res, err)
-	print("output:", " and err:", err, " status: Message: ", mdb.Status.Message, "\nPHASE: ",
-		mdb.Status.Phase, "\n")
-	t.Logf("Mongodb spec %v", mdb.Spec)
-	//t.logf("mongodb spec: %v", )
-}
-
 func TestReplicaSetArbiter(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", 3, 3)
-	//scramUser := mdb.GetScramUsers()[0]
-
+	// Invalid case 1
+	numberArbiters := 3
+	numberMembers := 3
+	desiredStatus := fmt.Sprintf("Error ensuring Arbiter config: number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", numberArbiters, numberMembers)
+	mdb, user := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", numberMembers, numberArbiters)
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
-	//print("BEFORE ERROR\n\n\n\n\n")
 	if err != nil {
-		print("ERROR 1 \n\n\n\n\n")
 		t.Fatal(err)
 	}
-
-	//tester, err := FromResource(t, mdb)
-	/*if err != nil {
-		print("ERROR 2 \n\n\n\n\n")
-		t.Fatal(err)
-	}*/
-
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	//mdb.Status.Message
-	err = e2eutil.TestClient.Create(context.TODO(), &mdb, &e2eutil.CleanupOptions{TestContext: ctx})
-	assert.Error(t, err)
-	t.Logf("Error successfully generated %s/%s", mdb.Name, mdb.Namespace)
-	print("Status:", mdb.Status.Message)
-	print("error: ", err)
+	t.Run("Check status for case 1", mongodbtests.CheckMessageStatusMdb(ctx, &mdb, desiredStatus))
+
+	// Invalid case 2
+	numberArbiters = -1
+	numberMembers = 3
+	desiredStatus = "Error ensuring Arbiter config: number of arbiters must be greater or equal than 0"
+	mdb, user = e2eutil.NewTestMongoDBArbiter(ctx, "mdb1", "", numberMembers, numberArbiters)
+	_, err = setup.GeneratePasswordForUser(ctx, user, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
+	t.Run("Check status for case 2", mongodbtests.CheckMessageStatusMdb(ctx, &mdb, desiredStatus))
+
+	// Valid case 1
+	numberArbiters = 1
+	numberMembers = 3
+	mdb, user = e2eutil.NewTestMongoDBArbiter(ctx, "mdb2", "", numberMembers, numberArbiters)
+	_, err = setup.GeneratePasswordForUser(ctx, user, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
+	t.Run("Check status for case 3", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
+	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
+
 }
