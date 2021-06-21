@@ -31,3 +31,6 @@ jobs:
           # include date in the pr branch name to ensure duplicate branches to not get created.
           PR_BRANCH_NAME: 'release-v${{steps.release_version.outputs.OUTPUT}}-${{ steps.release_version.outputs.DATE }}'
           PR_TITLE: 'Release MongoDB Kubernetes Operator v${{ steps.release_version.outputs.OUTPUT }}'
+
+          # Note: sonar github is a repo scoped token, which allows this action to trigger other actions.
+          GITHUB_TOKEN: ${{ secrets.SONAR_GITHUB_TOKEN }}
