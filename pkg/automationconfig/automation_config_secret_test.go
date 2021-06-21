@@ -93,13 +93,13 @@ func (m mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev
 }
 
 func (m mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret) error {
-	m.secret = &secret
+	//m.secret = &secret
 	return nil
 }
 
 func (m mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret) error {
 	if m.secret != nil {
-		m.secret = &secret
+		//		m.secret = &secret
 		return nil
 	}
 	return alreadyExistsError()
