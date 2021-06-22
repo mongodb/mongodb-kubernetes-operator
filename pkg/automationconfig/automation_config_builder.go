@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"fmt"
-	"path"
 	"reflect"
 	"strings"
 
@@ -221,11 +220,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			Version:                     b.mongodbVersion,
 			AuthSchemaVersion:           5,
 		}
-		process.SetSystemLog(SystemLog{
-			Destination: "file",
-			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-			LogAppend:   true,
-		})
 
 		if b.fcv != "" {
 			process.FeatureCompatibilityVersion = b.fcv
