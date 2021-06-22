@@ -5,6 +5,7 @@
 - Changes
   - stability improvements when changing version of MongoDB.
   - increased number of concurrent resources the operator can act on.
+  - mongodb will now send its log to stdout by default.
 
 ## Updated Image Tags
 
