@@ -208,7 +208,7 @@ func TestMongoDbVersions(t *testing.T) {
 			Architecture: "amd64",
 			GitVersion:   "some-git-version",
 			Platform:     "linux",
-			Url:          "someπ-url",
+			Url:          "some-url",
 			Flavor:       "rhel",
 			MaxOsVersion: "8.0",
 			MinOsVersion: "7.0",
