@@ -88,7 +88,7 @@ for MongoDB Docker images:
    | Environment Variable | Description | Default |
    |----|----|----|
    | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongo"` |
-   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"library"` |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io"` |
 
    ```yaml
        spec:
