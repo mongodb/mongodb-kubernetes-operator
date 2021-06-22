@@ -62,63 +62,12 @@ func TestBuildAutomationConfig(t *testing.T) {
 	}
 }
 
-func TestBuildAutomationConfigWithMultipleArbiters(t *testing.T) {
-	ac, err := NewBuilder().
-		SetName("my-rs").
-		SetDomain("my-ns.svc.cluster.local").
-		SetMongoDBVersion("4.2.0").
-		SetMembers(4).
-		SetArbiters(2).
-		SetFCV("4.0").
-		Build()
-
-	assert.NoError(t, err)
-	assert.Len(t, ac.Processes, 4)
-	assert.Equal(t, 1, ac.Version)
-
-	for i, p := range ac.Processes {
-		assert.Equal(t, Mongod, p.ProcessType)
-		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
-		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
-		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
-		assert.Equal(t, toProcessName("my-rs", i), p.Name)
-		assert.Equal(t, "4.2.0", p.Version)
-		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
-	}
-
-	assert.Empty(t, ac.TLSConfig.CAFilePath, "the config shouldn't have a trusted CA")
-
-	assert.Len(t, ac.ReplicaSets, 1)
-	rs := ac.ReplicaSets[0]
-	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
-	assert.Len(t, rs.Members, 4, "there should be the number of replicas provided")
-
-	for i, member := range rs.Members {
-		assert.Equal(t, i <= 1, member.ArbiterOnly)
-	}
-}
-
-//TODO: Should raise an error at some point
-func TestBuildAutomationConfigWithOnlyArbiters(t *testing.T) {
-	ac, err := NewBuilder().
-		SetMembers(4).
-		SetArbiters(4).
-		Build()
-
-	assert.NoError(t, err)
-
-	rs := ac.ReplicaSets[0]
-	for _, member := range rs.Members {
-		assert.True(t, member.ArbiterOnly, "All the members ")
-	}
-}
-
 func TestBuildAutomationConfigArbiters(t *testing.T) {
 	// Test no arbiter (field specified)
-	no_arbiters := 0
+	noArbiters := 0
 	ac, err := NewBuilder().
 		SetMembers(4).
-		SetArbiters(no_arbiters).
+		SetArbiters(noArbiters).
 		Build()
 
 	assert.NoError(t, err)
@@ -141,17 +90,17 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	}
 
 	// Test only one arbiter
-	no_arbiters = 1
+	noArbiters = 1
 	ac, err = NewBuilder().
 		SetMembers(4).
-		SetArbiters(no_arbiters).
+		SetArbiters(noArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
-		if i < no_arbiters {
+		if i < noArbiters {
 			assert.True(t, member.ArbiterOnly, "The first member should be an arbiter")
 		} else {
 			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
@@ -159,17 +108,17 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	}
 
 	// Test with multiple arbiters
-	no_arbiters = 2
+	noArbiters = 2
 	ac, err = NewBuilder().
 		SetMembers(4).
-		SetArbiters(no_arbiters).
+		SetArbiters(noArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
-		if i < no_arbiters {
+		if i < noArbiters {
 			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
 		} else {
 			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
@@ -177,10 +126,10 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	}
 
 	//Test With only Arbiters
-	no_arbiters = 4
+	noArbiters = 4
 	ac, err = NewBuilder().
-		SetMembers(no_arbiters).
-		SetArbiters(no_arbiters).
+		SetMembers(noArbiters).
+		SetArbiters(noArbiters).
 		Build()
 
 	assert.NoError(t, err)
@@ -188,7 +137,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
 		//TODO: change expect an error
-		if i < no_arbiters {
+		if i < noArbiters {
 			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
 		} else {
 			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
@@ -242,7 +191,7 @@ func TestMongoDbVersions(t *testing.T) {
 			Architecture: "amd64",
 			GitVersion:   "some-git-version",
 			Platform:     "linux",
-			Url:          "some-url",
+			Url:          "someπ-url",
 			Flavor:       "rhel",
 			MaxOsVersion: "8.0",
 			MinOsVersion: "7.0",

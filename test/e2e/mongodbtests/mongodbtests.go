@@ -402,7 +402,8 @@ func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, com
 	}
 }
 
-func CheckMessageStatusMdb(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, desiredMessageStatus string) func(t *testing.T) {
+// StatefulSetMessageIsReceived waits (up to 5 minutes) to get desiredMessageStatus as a mongodb message status or returns a fatal error.
+func StatefulSetMessageIsReceived(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context, desiredMessageStatus string) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := wait.ForMongoDBMessageStatus(t, mdb, time.Second*15, time.Minute*5, desiredMessageStatus)
 		if err != nil {
@@ -411,33 +412,6 @@ func CheckMessageStatusMdb(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, de
 
 	}
 }
-
-/*func CheckStatusMdb(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, desiredStatus string) func(t *testing.T) {
-
-	return func(t *testing.T) {
-		status := ""
-		stsNamespacedName := types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}
-		mdbLocal := mdbv1.MongoDBCommunity{}
-
-		for i := 0; i < 10 && status == ""; i++ {
-			if err := e2eutil.TestClient.Get(context.TODO(), stsNamespacedName, &mdbLocal); err != nil {
-				t.Fatalf("error getting MongoDB resource: %s", err)
-			}
-			status = mdbLocal.Status.Message
-			if status == "" {
-				time.Sleep(time.Second)
-			}
-		}
-
-		if desiredStatus != "" {
-			assert.Equal(t, status, desiredStatus)
-		} else {
-			assert.Equal(t, mdbLocal.Status.Phase, v1.Pending)
-			print("status: ", status)
-		}
-
-	}
-}*/
 
 func podFromMongoDBCommunity(mdb *mdbv1.MongoDBCommunity, podNum int) corev1.Pod {
 	return corev1.Pod{

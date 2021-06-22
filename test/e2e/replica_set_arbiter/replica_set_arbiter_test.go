@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	//. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -29,26 +27,26 @@ func TestReplicaSetArbiter(t *testing.T) {
 	// Invalid case 1
 	numberArbiters := 3
 	numberMembers := 3
-	desiredStatus := fmt.Sprintf("Error ensuring Arbiter config: number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", numberArbiters, numberMembers)
+	desiredStatus := fmt.Sprintf("error validating new Spec: number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", numberArbiters, numberMembers)
 	mdb, user := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", numberMembers, numberArbiters)
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check status for case 1", mongodbtests.CheckMessageStatusMdb(ctx, &mdb, desiredStatus))
+	t.Run("Check status for case 1", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, desiredStatus))
 
 	// Invalid case 2
 	numberArbiters = -1
 	numberMembers = 3
-	desiredStatus = "Error ensuring Arbiter config: number of arbiters must be greater or equal than 0"
+	desiredStatus = "error validating new Spec: number of arbiters must be greater or equal than 0"
 	mdb, user = e2eutil.NewTestMongoDBArbiter(ctx, "mdb1", "", numberMembers, numberArbiters)
 	_, err = setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check status for case 2", mongodbtests.CheckMessageStatusMdb(ctx, &mdb, desiredStatus))
+	t.Run("Check status for case 2", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, desiredStatus))
 
 	// Valid case 1
 	numberArbiters = 1
@@ -59,7 +57,7 @@ func TestReplicaSetArbiter(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check status for case 3", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
+	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
 
 }

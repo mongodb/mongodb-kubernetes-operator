@@ -140,15 +140,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	r.log.Debug("Ensuring the number of arbiters is valid")
-	if err := r.ensureArbiterResources(mdb); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring Arbiter config: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
 	r.log.Debug("Ensuring the service exists")
 	if err := r.ensureService(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
