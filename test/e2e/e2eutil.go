@@ -42,7 +42,7 @@ func UpdateMongoDBResource(original *mdbv1.MongoDBCommunity, updateFunc func(*md
 	return TestClient.Update(context.TODO(), original)
 }
 
-func NewTestMongoDBArbiter(ctx *Context, name string, namespace string, noMembers int, arbiters int) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
+func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
 		mongodbNamespace = OperatorNamespace
@@ -53,10 +53,10 @@ func NewTestMongoDBArbiter(ctx *Context, name string, namespace string, noMember
 			Namespace: mongodbNamespace,
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
-			Members:  noMembers,
+			Members:  3,
 			Type:     "ReplicaSet",
 			Version:  "4.4.0",
-			Arbiters: arbiters,
+			Arbiters: 0,
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
 					Modes: []mdbv1.AuthMode{"SCRAM"},
@@ -137,10 +137,6 @@ func NewTestMongoDBArbiter(ctx *Context, name string, namespace string, noMember
 		},
 	}
 	return mdb, mdb.Spec.Users[0]
-}
-
-func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
-	return NewTestMongoDBArbiter(ctx, name, namespace, 3, 0)
 }
 
 func NewTestTLSConfig(optional bool) mdbv1.TLS {

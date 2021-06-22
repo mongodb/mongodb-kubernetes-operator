@@ -28,7 +28,9 @@ func TestReplicaSetArbiter(t *testing.T) {
 	numberArbiters := 3
 	numberMembers := 3
 	desiredStatus := fmt.Sprintf("error validating new Spec: number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", numberArbiters, numberMembers)
-	mdb, user := e2eutil.NewTestMongoDBArbiter(ctx, "mdb0", "", numberMembers, numberArbiters)
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb.Spec.Arbiters = numberArbiters
+	mdb.Spec.Members = numberMembers
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +42,9 @@ func TestReplicaSetArbiter(t *testing.T) {
 	numberArbiters = -1
 	numberMembers = 3
 	desiredStatus = "error validating new Spec: number of arbiters must be greater or equal than 0"
-	mdb, user = e2eutil.NewTestMongoDBArbiter(ctx, "mdb1", "", numberMembers, numberArbiters)
+	mdb, user = e2eutil.NewTestMongoDB(ctx, "mdb1", "")
+	mdb.Spec.Arbiters = numberArbiters
+	mdb.Spec.Members = numberMembers
 	_, err = setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +55,9 @@ func TestReplicaSetArbiter(t *testing.T) {
 	// Valid case 1
 	numberArbiters = 1
 	numberMembers = 3
-	mdb, user = e2eutil.NewTestMongoDBArbiter(ctx, "mdb2", "", numberMembers, numberArbiters)
+	mdb, user = e2eutil.NewTestMongoDB(ctx, "mdb2", "")
+	mdb.Spec.Arbiters = numberArbiters
+	mdb.Spec.Members = numberMembers
 	_, err = setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
