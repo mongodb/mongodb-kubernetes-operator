@@ -65,7 +65,7 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 	return nil
 }
 
-// validateArbiterSpec checks if the initial Member spec is valid
+// validateArbiterSpec checks if the initial Member spec is valid.
 func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 	if mdb.Spec.Arbiters < 0 {
 		return fmt.Errorf("number of arbiters must be greater or equal than 0")
