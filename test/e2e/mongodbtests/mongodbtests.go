@@ -208,6 +208,23 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, e
 	}
 }
 
+// AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
+func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
+	return func(t *testing.T) {
+		currentAc := getAutomationConfig(t, mdb)
+		lsRs := currentAc.ReplicaSets
+		for _, rs := range lsRs {
+			arbiters := 0
+			for _, rsMember := range rs.Members {
+				if rsMember.ArbiterOnly {
+					arbiters += 1
+				}
+			}
+			assert.Equal(t, expectedArbiters, arbiters)
+		}
+	}
+}
+
 // AutomationConfigHasTheExpectedCustomRoles verifies that the automation config has the expected custom roles.
 func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, roles []automationconfig.CustomRole) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -382,6 +399,17 @@ func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, com
 		pod := podFromMongoDBCommunity(mdb, podNum)
 		_, err := e2eutil.TestClient.Execute(pod, containerName, command)
 		assert.NoError(t, err)
+	}
+}
+
+// StatefulSetMessageIsReceived waits (up to 5 minutes) to get desiredMessageStatus as a mongodb message status or returns a fatal error.
+func StatefulSetMessageIsReceived(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context, desiredMessageStatus string) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForMongoDBMessageStatus(t, mdb, time.Second*15, time.Minute*5, desiredMessageStatus)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 	}
 }
 

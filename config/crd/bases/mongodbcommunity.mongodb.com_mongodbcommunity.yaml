@@ -53,6 +53,10 @@ spec:
                 structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
               nullable: true
               type: object
+            arbiters:
+              description: Arbiters is the number arbiters (each counted as a member)
+                in the replica set
+              type: integer
             featureCompatibilityVersion:
               description: FeatureCompatibilityVersion configures the feature compatibility
                 version that will be set for the deployment

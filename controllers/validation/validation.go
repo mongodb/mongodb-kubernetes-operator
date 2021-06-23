@@ -15,6 +15,10 @@ func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
+	if err := validateArbiterSpec(mdb); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -25,6 +29,10 @@ func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySp
 	}
 
 	if err := validateUsers(mdb); err != nil {
+		return err
+	}
+
+	if err := validateArbiterSpec(mdb); err != nil {
 		return err
 	}
 
@@ -52,6 +60,18 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 	if len(nameCollisions) > 0 {
 		return errors.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
 			strings.Join(nameCollisions, ", "))
+	}
+
+	return nil
+}
+
+// validateArbiterSpec checks if the initial Member spec is valid.
+func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
+	if mdb.Spec.Arbiters < 0 {
+		return fmt.Errorf("number of arbiters must be greater or equal than 0")
+	}
+	if mdb.Spec.Arbiters >= mdb.Spec.Members {
+		return fmt.Errorf("number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", mdb.Spec.Arbiters, mdb.Spec.Members)
 	}
 
 	return nil
