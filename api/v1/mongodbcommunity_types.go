@@ -51,7 +51,7 @@ type MongoDBCommunitySpec struct {
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version"`
 
-	// Arbiters is the number arbiters (each counted as a member) in the replica set
+	// Arbiters is the number of arbiters (each counted as a member) in the replica set
 	// +optional
 	Arbiters int `json:"arbiters"`
 
