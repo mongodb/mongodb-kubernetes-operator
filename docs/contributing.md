@@ -147,6 +147,11 @@ To remove the operator and any created resources you can run
 make undeploy
 ```
 
+Alternatively, you can run the operator locally with
+
+```sh
+make run
+```
 
 # Running Tests
 
