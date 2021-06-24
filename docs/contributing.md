@@ -202,6 +202,8 @@ This will run the `replica_set` E2E test which is a simple test which installs a
 MongoDB Replica Set and asserts that the deployed server can be connected to.
 
 
+ 
+
 ### Run the test locally with go test & Telepresence
 ```sh
 make e2e-telepresence test=<test-name>
@@ -213,6 +215,22 @@ there will be full MongoDB connectivity using `go test` locally.
 Note: you must install [telepresence](https://www.getambassador.io/docs/telepresence/latest/quick-start/) before using this method.
 
 If on MacOS, you can run `make install-prerequisites-macos` which will perform the installation.
+
+### Running with Github Actions
+
+Run a single test
+
+```sh
+make e2e-gh test=<test-name>
+```
+
+Run all tests.
+
+* Navigate to the Actions tab on the github repo
+* `Run E2E` > `Run Workflow` > `Your Branch`
+
+Note: the code must be pushed to a remote branch before this will work.
+
 
 ## Troubleshooting
 When you run a test locally, if the `e2e-test` pod is present, you will have to
