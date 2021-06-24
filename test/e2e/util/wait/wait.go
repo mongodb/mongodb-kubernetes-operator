@@ -38,6 +38,14 @@ func ForMongoDBToReachPhase(t *testing.T, mdb *mdbv1.MongoDBCommunity, phase mdb
 	})
 }
 
+// ForMongoDBMessageStatus waits until the given MongoDB resource gets the expected message status
+func ForMongoDBMessageStatus(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, message string) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDBCommunity) bool {
+		t.Logf("current message: %s, waiting for message: %s", db.Status.Message, message)
+		return db.Status.Message == message
+	})
+}
+
 // waitForMongoDBCondition polls and waits for a given condition to be true
 func waitForMongoDBCondition(mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDBCommunity) bool) error {
 	mdbNew := mdbv1.MongoDBCommunity{}

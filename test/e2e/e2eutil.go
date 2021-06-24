@@ -53,9 +53,10 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 			Namespace: mongodbNamespace,
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
-			Members: 3,
-			Type:    "ReplicaSet",
-			Version: "4.4.0",
+			Members:  3,
+			Type:     "ReplicaSet",
+			Version:  "4.4.0",
+			Arbiters: 0,
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
 					Modes: []mdbv1.AuthMode{"SCRAM"},

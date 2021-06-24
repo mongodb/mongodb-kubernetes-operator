@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"fmt"
-	"path"
 	"reflect"
 	"strings"
 
@@ -30,6 +29,7 @@ type Builder struct {
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
 	members            int
+	arbiters           int
 	domain             string
 	name               string
 	fcv                string
@@ -90,6 +90,11 @@ func (b *Builder) SetSSLConfig(sslConfig TLS) *Builder {
 
 func (b *Builder) SetMembers(members int) *Builder {
 	b.members = members
+	return b
+}
+
+func (b *Builder) SetArbiters(arbiters int) *Builder {
+	b.arbiters = arbiters
 	return b
 }
 
@@ -204,6 +209,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
 		return AutomationConfig{}, errors.Errorf("can't build the automation config: %s", err)
 	}
+	totalVotes := 0
 	for i, h := range hostnames {
 
 		process := &Process{
@@ -214,11 +220,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			Version:                     b.mongodbVersion,
 			AuthSchemaVersion:           5,
 		}
-		process.SetSystemLog(SystemLog{
-			Destination: "file",
-			Path:        path.Join(DefaultAgentLogPath, "/mongodb.log"),
-			LogAppend:   true,
-		})
 
 		if b.fcv != "" {
 			process.FeatureCompatibilityVersion = b.fcv
@@ -234,13 +235,13 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		processes[i] = *process
 
-		totalVotes := 0
 		if b.replicaSetHorizons != nil {
-			members[i] = newReplicaSetMember(*process, i, b.replicaSetHorizons[i], totalVotes)
+			members[i] = newReplicaSetMember(*process, i, b.replicaSetHorizons[i], totalVotes, b.arbiters)
 		} else {
-			members[i] = newReplicaSetMember(*process, i, nil, totalVotes)
+			members[i] = newReplicaSetMember(*process, i, nil, totalVotes, b.arbiters)
 		}
 		totalVotes += members[i].Votes
+
 	}
 
 	if b.auth == nil {

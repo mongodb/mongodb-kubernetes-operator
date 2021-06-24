@@ -38,6 +38,8 @@ tests:
           cluster-wide: true
         - test-name: replica_set_custom_role
           distro: ubuntu
+        - test-name: replica_set_arbiter
+          distro: ubuntu
 
         - test-name: replica_set
           distro: ubi
@@ -71,4 +73,6 @@ tests:
           distro: ubi
           cluster-wide: true
         - test-name: replica_set_custom_role
+          distro: ubi
+        - test-name: replica_set_arbiter
           distro: ubi

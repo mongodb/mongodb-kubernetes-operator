@@ -25,7 +25,7 @@ func TestEnsureSecret(t *testing.T) {
 			SetNamespace(secretNsName.Namespace).
 			Build()
 
-		secretGetUpdateCreator := mockSecretGetUpdateCreator{secret: &s}
+		secretGetUpdateCreator := &mockSecretGetUpdateCreator{secret: &s}
 
 		ac, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig)
 		assert.NoError(t, err)
@@ -45,7 +45,7 @@ func TestEnsureSecret(t *testing.T) {
 		existingSecret, err := newAutomationConfigSecret(oldAc, secretNsName)
 		assert.NoError(t, err)
 
-		secretGetUpdateCreator := mockSecretGetUpdateCreator{secret: &existingSecret}
+		secretGetUpdateCreator := &mockSecretGetUpdateCreator{secret: &existingSecret}
 
 		newAc, err := newAutomationConfigBuilder().SetDomain("different-domain").Build()
 		assert.NoError(t, err)
@@ -83,7 +83,7 @@ type mockSecretGetUpdateCreator struct {
 	secret *corev1.Secret
 }
 
-func (m mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
+func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if m.secret != nil {
 		if objectKey.Name == m.secret.Name && objectKey.Namespace == m.secret.Namespace {
 			return *m.secret, nil
@@ -92,13 +92,13 @@ func (m mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev
 	return corev1.Secret{}, notFoundError()
 }
 
-func (m mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret) error {
+func (m *mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret) error {
 	m.secret = &secret
 	return nil
 }
 
-func (m mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret) error {
-	if m.secret != nil {
+func (m *mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret) error {
+	if m.secret == nil {
 		m.secret = &secret
 		return nil
 	}

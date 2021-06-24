@@ -39,6 +39,12 @@ def _prepare_test_environment(config_file: str) -> None:
     corev1 = client.CoreV1Api()
     dev_config = load_config(config_file)
 
+    print("Creating Namespace")
+    k8s_conditions.ignore_if_already_exists(
+        lambda: corev1.create_namespace(
+            client.V1Namespace(metadata=dict(name=dev_config.namespace))
+        )
+    )
     _delete_test_pod(config_file)
 
     print("Creating Role")
