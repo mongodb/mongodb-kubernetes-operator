@@ -3,7 +3,7 @@
 ## Kubernetes Operator
 
 - Changes
-  - added the support for arbiters for the replica sets.
+  - Members of a Replica Set can be configured as arbiters.
 
 ## Updated Image Tags
 
