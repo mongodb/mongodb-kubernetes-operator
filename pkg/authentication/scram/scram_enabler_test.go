@@ -12,7 +12,7 @@ func TestScramAutomationConfig(t *testing.T) {
 	opts := Options{
 		AuthoritativeSet:   false,
 		KeyFile:            AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: []string{Sha256},
+		AutoAuthMechanisms: []string{Sha256, Sha1},
 		AgentName:          "mms-automation",
 		AutoAuthMechanism:  Sha256,
 	}
@@ -25,10 +25,10 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, "keyfilecontents", auth.Key)
 		assert.Equal(t, "password", auth.AutoPwd)
 		assert.Equal(t, Sha256, auth.AutoAuthMechanism)
-		assert.Len(t, auth.DeploymentAuthMechanisms, 1)
-		assert.Len(t, auth.AutoAuthMechanisms, 1)
-		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
-		assert.Equal(t, []string{Sha256}, auth.AutoAuthMechanisms)
+		assert.Len(t, auth.DeploymentAuthMechanisms, 2)
+		assert.Len(t, auth.AutoAuthMechanisms, 2)
+		assert.Equal(t, []string{Sha256, Sha1}, auth.DeploymentAuthMechanisms)
+		assert.Equal(t, []string{Sha256, Sha1}, auth.AutoAuthMechanisms)
 		assert.Equal(t, AutomationAgentKeyFilePathInContainer, auth.KeyFile)
 		assert.Equal(t, automationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
@@ -36,6 +36,6 @@ func TestScramAutomationConfig(t *testing.T) {
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
 		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 		assert.NoError(t, err)
-		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
+		assert.Equal(t, []string{Sha256, Sha1}, auth.DeploymentAuthMechanisms)
 	})
 }

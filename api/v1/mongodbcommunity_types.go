@@ -40,6 +40,19 @@ const (
 	defaultPasswordKey = "password"
 )
 
+// SCRAM-SHA-256 and MONGODB-CR(which is SCRAM-SHA-1)
+// SCRAM is an alias for SCRAM
+const (
+	NumberAuthMode          = 2
+	DefaultMode    AuthMode = "SCRAM-SHA-256"
+) //TODO: Review if a mutable map is a good choice to manage labels. Another may be to add a function
+// Map the name of the type defined by the user to the name used by the system
+var LabelsMap = map[AuthMode]string{
+	"SCRAM":         scram.Sha256,
+	"SCRAM-SHA-256": scram.Sha256,
+	"SCRAM-SHA-1":   scram.Sha1,
+}
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -346,7 +359,7 @@ type Authentication struct {
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=SCRAM
+// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA256;SCRAM-SHA1
 type AuthMode string
 
 // MongoDBCommunityStatus defines the observed state of MongoDB
@@ -402,12 +415,34 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
+	//Manage the Auth
+	listModes := m.Spec.Security.Authentication.Modes
+	containsDefault := false
+	modesWithSystemNames := make([]string, len(listModes))
+	for i, node := range listModes {
+		if v, ok := LabelsMap[node]; ok {
+
+			modesWithSystemNames[i] = LabelsMap[node]
+			if v == LabelsMap[DefaultMode] {
+				containsDefault = true
+			}
+
+		}
+	}
+
+	var AutoAuthMechanism string
+	if containsDefault || len(listModes) == 0 {
+		AutoAuthMechanism = LabelsMap[DefaultMode]
+	} else {
+		AutoAuthMechanism = LabelsMap[listModes[0]]
+	}
+
 	return scram.Options{
 		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: []string{scram.Sha256},
+		AutoAuthMechanisms: modesWithSystemNames,
 		AgentName:          scram.AgentName,
-		AutoAuthMechanism:  scram.Sha256,
+		AutoAuthMechanism:  AutoAuthMechanism,
 	}
 }
 

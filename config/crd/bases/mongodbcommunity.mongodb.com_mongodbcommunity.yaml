@@ -54,7 +54,7 @@ spec:
               nullable: true
               type: object
             arbiters:
-              description: Arbiters is the number arbiters (each counted as a member)
+              description: Arbiters is the number of arbiters (each counted as a member)
                 in the replica set
               type: integer
             featureCompatibilityVersion:
@@ -91,6 +91,8 @@ spec:
                       items:
                         enum:
                         - SCRAM
+                        - SCRAM-SHA256
+                        - SCRAM-SHA1
                         type: string
                       type: array
                   required:

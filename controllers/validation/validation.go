@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/pkg/errors"
 )
@@ -16,6 +17,10 @@ func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 
 	if err := validateArbiterSpec(mdb); err != nil {
+		return err
+	}
+
+	if err := validateAuthModeSpec(mdb); err != nil {
 		return err
 	}
 
@@ -33,6 +38,10 @@ func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySp
 	}
 
 	if err := validateArbiterSpec(mdb); err != nil {
+		return err
+	}
+
+	if err := validateAuthModeSpec(mdb); err != nil {
 		return err
 	}
 
@@ -72,6 +81,34 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 	if mdb.Spec.Arbiters >= mdb.Spec.Members {
 		return fmt.Errorf("number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", mdb.Spec.Arbiters, mdb.Spec.Members)
+	}
+
+	return nil
+}
+
+// validateAuthModeSpec checks the list of modes does not contain duplicates.
+func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
+	println("VALIDATE\n\n\n\n\n\n\n.")
+	allModes := mdb.Spec.Security.Authentication.Modes
+	mapModes := make(map[v1.AuthMode]struct{})
+
+	if len(allModes) == 0 {
+		//mdb.Spec.Security.Authentication.Modes = []v1.AuthMode{v1.DefaultMode}
+		return nil
+	}
+
+	// Convert the labels to the 'official' value
+	for i, mode := range allModes {
+
+		if value, ok := v1.LabelsMap[mode]; !ok {
+			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
+		}
+		mapModes[allModes[i]] = struct{}{}
+	}
+
+	// Check that each Mode in the array is declared only once
+	if len(mapModes) != len(allModes) {
+		return fmt.Errorf("some authentications are declared twice or more")
 	}
 
 	return nil
