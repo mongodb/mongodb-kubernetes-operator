@@ -433,6 +433,7 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 	var AutoAuthMechanism string
 	if containsDefault || len(listModes) == 0 {
 		AutoAuthMechanism = LabelsMap[DefaultMode]
+		modesWithSystemNames = []string{AutoAuthMechanism}
 	} else {
 		AutoAuthMechanism = LabelsMap[listModes[0]]
 	}
