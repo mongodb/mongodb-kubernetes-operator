@@ -27,7 +27,6 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployments
   - replicasets
   - statefulsets
   verbs:
