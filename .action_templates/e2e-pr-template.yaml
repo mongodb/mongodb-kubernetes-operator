@@ -1,7 +1,7 @@
 name: Run E2E
 jobs:
   - template: setup
-    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator' && github.actor != 'dependabot[bot]'
     steps:
     - template: cancel-previous
     - template: checkout
