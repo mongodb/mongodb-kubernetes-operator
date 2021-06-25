@@ -1,0 +1,13 @@
+- name: Dump Diagnostics
+  id: dump_diagnostics
+  if: always() && steps.e2e_test.outcome == 'failure'
+  continue-on-error: true
+  run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
+
+- name: Upload Diagnostics
+  if: always() && steps.dump_diagnostics.outcome == 'success'
+  uses: actions/upload-artifact@v2
+  continue-on-error: true
+  with:
+    name: "${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics"
+    path: "${{ github.workspace }}/diagnostics"
