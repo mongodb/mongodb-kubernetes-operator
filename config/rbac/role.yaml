@@ -2,7 +2,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   name: mongodb-kubernetes-operator
 rules:
 - apiGroups:
@@ -10,7 +9,6 @@ rules:
   resources:
   - pods
   - services
-  - services/finalizers
   - persistentvolumeclaims
   - configmaps
   - secrets
@@ -35,14 +33,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps
-  resourceNames:
-  - mongodb-kubernetes-operator
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
-- apiGroups:
   - ""
   resources:
   - pods
@@ -56,10 +46,8 @@ rules:
   - mongodbcommunity/spec
   - mongodbcommunity/finalizers
   verbs:
-  - create
-  - delete
   - get
-  - list
   - patch
+  - list
   - update
   - watch
