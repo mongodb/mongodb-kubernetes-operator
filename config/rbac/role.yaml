@@ -59,13 +59,6 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - apps
-  resources:
-  - replicasets
-  - deployments
-  verbs:
-  - get
-- apiGroups:
   - mongodbcommunity.mongodb.com
   resources:
   - mongodbcommunity
