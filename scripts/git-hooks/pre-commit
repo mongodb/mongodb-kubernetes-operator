@@ -78,7 +78,7 @@ function generate_github_actions(){
   git add .github/workflows
 }
 
-#generate_github_actions
+generate_github_actions
 generate_crd
 go_imports
 black_formatting

@@ -7,22 +7,15 @@
 #
 ##################################################################################
 
-name: Run E2E
+name: Run E2E Fork
 on:
-  # template: .action_templates/events/on-pull-request-master.yaml
-  pull_request:
+  # template: .action_templates/events/labeled-pull-request-target.yaml
+  pull_request_target:
+    types: [labeled]
     branches:
     - master
     paths-ignore:
     - docs/**
-  # template: .action_templates/events/on-push-master.yaml
-  push:
-    branches:
-    - master
-    paths-ignore:
-    - docs/**
-  # template: .action_templates/events/workflow-dispatch.yaml
-  workflow_dispatch: {}
 jobs:
   # template: .action_templates/jobs/setup.yaml
   setup:
@@ -37,16 +30,20 @@ jobs:
         - pipeline-argument: agent-ubi
         - pipeline-argument: agent-ubuntu
         - pipeline-argument: e2e
-    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator'
+      && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
       uses: styfle/cancel-workflow-action@0.9.0
       with:
         access_token: ${{ github.token }}
-    # template: .action_templates/steps/checkout.yaml
+    # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
+      with:
+        ref: ${{github.event.pull_request.head.ref}}
+        repository: ${{github.event.pull_request.head.repo.full_name}}
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -158,9 +155,12 @@ jobs:
       uses: styfle/cancel-workflow-action@0.9.0
       with:
         access_token: ${{ github.token }}
-    # template: .action_templates/steps/checkout.yaml
+    # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
+      with:
+        ref: ${{github.event.pull_request.head.ref}}
+        repository: ${{github.event.pull_request.head.repo.full_name}}
     # template: .action_templates/steps/set-run-status.yaml
     - name: Set default run status
       run: echo "::set-output name=last_run_status::pending" > last_run_status
