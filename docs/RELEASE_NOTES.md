@@ -4,6 +4,7 @@
 
 - Changes
   - Members of a Replica Set can be configured as arbiters.
+  - Reduce the number of permissions for operator role.
 
 ## Updated Image Tags
 
