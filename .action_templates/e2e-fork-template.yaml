@@ -1,5 +1,6 @@
 name: Run E2E Fork
 jobs:
+  - template: display-github-context
   - template: setup
     # dependabot gets a read only github token, and so must use pull_request_target instead of pull_request.
     if: github.actor == 'dependabot[bot]' || (github.event.pull_request.head.repo.full_name != github.repository && contains(github.event.pull_request.labels.*.name, 'safe-to-test'))
