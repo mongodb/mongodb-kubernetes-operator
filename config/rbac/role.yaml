@@ -33,12 +33,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
   - mongodbcommunity.mongodb.com
   resources:
   - mongodbcommunity
