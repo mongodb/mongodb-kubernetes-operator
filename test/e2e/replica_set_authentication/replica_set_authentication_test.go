@@ -45,7 +45,6 @@ func TestReplicaSetAuthentication(t *testing.T) {
 
 func testConfigAuthentication(acceptSHA256 bool, acceptSHA1 bool, useLabelForSha256 bool, mdb v1.MongoDBCommunity, user v1.MongoDBUser, pw string, ctx *e2eutil.Context) func(t *testing.T) {
 	return func(t *testing.T) {
-
 		enabledMechanisms := primitive.A{"SCRAM-SHA-256"}
 		var acceptedModes []v1.AuthMode
 		if acceptSHA256 {
@@ -64,7 +63,7 @@ func testConfigAuthentication(acceptSHA256 bool, acceptSHA1 bool, useLabelForSha
 			}
 		}
 
-		t.Logf("Changing auth")
+		t.Logf("Changing authentication mode")
 		err := e2eutil.UpdateMongoDBResource(&mdb, func(db *v1.MongoDBCommunity) {
 			db.Spec.Security.Authentication.Modes = acceptedModes
 		})
