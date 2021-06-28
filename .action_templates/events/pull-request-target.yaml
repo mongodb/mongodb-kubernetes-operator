@@ -1,6 +1,6 @@
 # pull_request_target means that the secrets of this repo will be used.
 pull_request_target:
-  types: [labeled]
+  types: [labeled, opened]
   branches:
     - master
   paths-ignore:

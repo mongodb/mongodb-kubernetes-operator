@@ -1,7 +1,8 @@
 name: Run E2E
 jobs:
   - template: setup
-    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    # run on master, or if a PR is being created from a branch.
+    if: github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     steps:
     - template: cancel-previous
     - template: checkout

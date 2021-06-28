@@ -37,7 +37,8 @@ jobs:
         - pipeline-argument: agent-ubi
         - pipeline-argument: agent-ubuntu
         - pipeline-argument: e2e
-    if: github.event.pull_request.head.repo.full_name == 'mongodb/mongodb-kubernetes-operator'
+    if: github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name
+      == github.repository && github.actor != 'dependabot[bot]')
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs

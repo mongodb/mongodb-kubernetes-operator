@@ -1,7 +1,8 @@
 name: Run E2E Fork
 jobs:
   - template: setup
-    if: github.event.pull_request.head.repo.full_name != 'mongodb/mongodb-kubernetes-operator' && contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    # dependabot gets a read only github token, and so must use pull_request_target instead of pull_request.
+    if: github.actor == 'dependabot[bot]' || (github.event.pull_request.head.repo.full_name != github.repository && contains(github.event.pull_request.labels.*.name, 'safe-to-test'))
     steps:
     - template: cancel-previous
     - template: checkout-fork
@@ -22,4 +23,4 @@ jobs:
   - template: e2e-success
 
 events:
-  - template: labeled-pull-request-target
+  - template: pull-request-target
