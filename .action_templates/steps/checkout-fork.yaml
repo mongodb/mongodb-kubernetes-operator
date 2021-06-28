@@ -1,0 +1,8 @@
+# We checkout the forked repository code.
+# Because we are using pull_request_target the Github Secrets will be passed
+# So code should be reviewed before labeling as "safe-to-test"
+- name: Checkout Code
+  uses: actions/checkout@v2
+  with:
+    ref: ${{github.event.pull_request.head.ref}}
+    repository: ${{github.event.pull_request.head.repo.full_name}}

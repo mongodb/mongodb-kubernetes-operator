@@ -1,0 +1,78 @@
+tests:
+  runs-on: ubuntu-latest
+  needs: [setup]
+  strategy:
+    fail-fast: false
+    matrix:
+      include:
+        - test-name: replica_set
+          distro: ubuntu
+        - test-name: replica_set_recovery
+          distro: ubuntu
+        - test-name: replica_set_recovery
+          distro: ubuntu
+        - test-name: replica_set_mongod_readiness
+          distro: ubuntu
+        - test-name: replica_set_scale
+          distro: ubuntu
+        - test-name: replica_set_scale_down
+          distro: ubuntu
+        - test-name: replica_set_change_version
+          distro: ubuntu
+        - test-name: feature_compatibility_version
+          distro: ubuntu
+        - test-name: feature_compatibility_version_upgrade
+          distro: ubuntu
+        - test-name: replica_set_tls
+          distro: ubuntu
+        - test-name: replica_set_tls_upgrade
+          distro: ubuntu
+        - test-name: statefulset_arbitrary_config
+          distro: ubuntu
+        - test-name: statefulset_arbitrary_config_update
+          distro: ubuntu
+        - test-name: replica_set_mongod_config
+          distro: ubuntu
+        - test-name: replica_set_cross_namespace_deploy
+          distro: ubuntu
+          cluster-wide: true
+        - test-name: replica_set_custom_role
+          distro: ubuntu
+        - test-name: replica_set_arbiter
+          distro: ubuntu
+
+        - test-name: replica_set
+          distro: ubi
+        - test-name: replica_set_recovery
+          distro: ubi
+        - test-name: replica_set_recovery
+          distro: ubi
+        - test-name: replica_set_mongod_readiness
+          distro: ubi
+        - test-name: replica_set_scale
+          distro: ubi
+        - test-name: replica_set_scale_down
+          distro: ubi
+        - test-name: replica_set_change_version
+          distro: ubi
+        - test-name: feature_compatibility_version
+          distro: ubi
+        - test-name: feature_compatibility_version_upgrade
+          distro: ubi
+        - test-name: replica_set_tls
+          distro: ubi
+        - test-name: replica_set_tls_upgrade
+          distro: ubi
+        - test-name: statefulset_arbitrary_config
+          distro: ubi
+        - test-name: statefulset_arbitrary_config_update
+          distro: ubi
+        - test-name: replica_set_mongod_config
+          distro: ubi
+        - test-name: replica_set_cross_namespace_deploy
+          distro: ubi
+          cluster-wide: true
+        - test-name: replica_set_custom_role
+          distro: ubi
+        - test-name: replica_set_arbiter
+          distro: ubi
