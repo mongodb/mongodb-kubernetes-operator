@@ -359,7 +359,7 @@ type Authentication struct {
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA256;SCRAM-SHA1
+// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
 
 // MongoDBCommunityStatus defines the observed state of MongoDB
@@ -417,23 +417,27 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 
 	//Manage the Auth
 	listModes := m.Spec.Security.Authentication.Modes
-	containsDefault := false
+	containsDefaultMode := false
+	AutoAuthMechanism := ""
+
 	modesWithSystemNames := make([]string, len(listModes))
-	for i, node := range listModes {
-		if v, ok := LabelsMap[node]; ok {
 
-			modesWithSystemNames[i] = LabelsMap[node]
-			if v == LabelsMap[DefaultMode] {
-				containsDefault = true
+	if len(listModes) == 0 {
+		modesWithSystemNames = []string{AutoAuthMechanism}
+		containsDefaultMode = true
+	} else {
+		for i, node := range listModes {
+			if v, ok := LabelsMap[node]; ok {
+				modesWithSystemNames[i] = LabelsMap[node]
+				if v == LabelsMap[DefaultMode] {
+					containsDefaultMode = true
+				}
 			}
-
 		}
 	}
 
-	var AutoAuthMechanism string
-	if containsDefault || len(listModes) == 0 {
+	if containsDefaultMode {
 		AutoAuthMechanism = LabelsMap[DefaultMode]
-		modesWithSystemNames = []string{AutoAuthMechanism}
 	} else {
 		AutoAuthMechanism = LabelsMap[listModes[0]]
 	}
