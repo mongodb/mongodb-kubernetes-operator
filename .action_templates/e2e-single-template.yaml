@@ -1,5 +1,6 @@
 name: Run Single E2E
 jobs:
+  - template: display-github-context
   - template: setup
     steps:
     - template: checkout
