@@ -11,7 +11,7 @@ name: Run E2E Fork
 on:
   # template: .action_templates/events/pull-request-target.yaml
   pull_request_target:
-    types: [labeled, synchronize, opened]
+    types: [labeled, opened]
     branches:
     - master
     paths-ignore:
