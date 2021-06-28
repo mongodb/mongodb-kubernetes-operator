@@ -43,15 +43,9 @@ const (
 // SCRAM-SHA-256 and MONGODB-CR(which is SCRAM-SHA-1)
 // SCRAM is an alias for SCRAM
 const (
-	NumberAuthMode          = 2
-	DefaultMode    AuthMode = "SCRAM-SHA-256"
-) //TODO: Review if a mutable map is a good choice to manage labels. Another may be to add a function
-// Map the name of the type defined by the user to the name used by the system
-var LabelsMap = map[AuthMode]string{
-	"SCRAM":         scram.Sha256,
-	"SCRAM-SHA-256": scram.Sha256,
-	"SCRAM-SHA-1":   scram.Sha1,
-}
+	NumberAuthModeSupported          = 2
+	DefaultMode             AuthMode = "SCRAM-SHA-256"
+)
 
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
@@ -362,6 +356,21 @@ type Authentication struct {
 // +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
 
+// ConvertAuthModeLabelToAuthModeSystemName act as a map but is immutable. It allows users to use different labels to describe the
+// same authendication modes.
+func ConvertAuthModeLabelToAuthModeSystemName(authModeLabel AuthMode) (string, bool) {
+	switch authModeLabel {
+	case "SCRAM":
+		return scram.Sha256, true
+	case "SCRAM-SHA-256":
+		return scram.Sha256, true
+	case "SCRAM-SHA-1":
+		return scram.Sha1, true
+	default:
+		return "", false
+	}
+}
+
 // MongoDBCommunityStatus defines the observed state of MongoDB
 type MongoDBCommunityStatus struct {
 	MongoURI string `json:"mongoUri"`
@@ -427,9 +436,9 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		containsDefaultMode = true
 	} else {
 		for i, node := range listModes {
-			if v, ok := LabelsMap[node]; ok {
-				modesWithSystemNames[i] = LabelsMap[node]
-				if v == LabelsMap[DefaultMode] {
+			if v, ok := ConvertAuthModeLabelToAuthModeSystemName(node); ok {
+				modesWithSystemNames[i] = v
+				if defaultName, _ := ConvertAuthModeLabelToAuthModeSystemName(DefaultMode); v == defaultName {
 					containsDefaultMode = true
 				}
 			}
@@ -437,9 +446,9 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 	}
 
 	if containsDefaultMode {
-		AutoAuthMechanism = LabelsMap[DefaultMode]
+		AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(DefaultMode)
 	} else {
-		AutoAuthMechanism = LabelsMap[listModes[0]]
+		AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
 	}
 
 	return scram.Options{
