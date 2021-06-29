@@ -1,0 +1,26 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore: docs/**
+  pull_request:
+    branches: [ master ]
+    paths-ignore: docs/**
+  workflow_dispatch: {}
+jobs:
+
+  build:
+    name: Run Kube-linter check
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Install Kube-linter
+      run: GO111MODULE=on go get golang.stackrox.io/kube-linter/cmd/kube-linter
+      
+    - name: Get the changed files
+      uses: lots0logs/gh-action-get-changed-files@2.1.4
+      with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - run: echo ${HOME}/files_modified.json
