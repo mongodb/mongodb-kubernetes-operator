@@ -86,11 +86,11 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 	return nil
 }
 
-// validateAuthModeSpec checks the list of modes does not contain duplicates.
+// validateAuthModeSpec checks that the list of modes does not contain duplicates.
 func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	allModes := mdb.Spec.Security.Authentication.Modes
 
-	// No Mode specified in the specs is valid
+	// if no mode is specified in the specs, it's valid
 	if len(allModes) == 0 {
 		return nil
 	}
@@ -103,7 +103,6 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 		}
 		mapModes[allModes[i]] = struct{}{}
 	}
-
 	if len(mapModes) != len(allModes) {
 		return fmt.Errorf("some authentications are declared twice or more")
 	}

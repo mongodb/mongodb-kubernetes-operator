@@ -40,8 +40,7 @@ const (
 	defaultPasswordKey = "password"
 )
 
-// SCRAM-SHA-256 and MONGODB-CR(which is SCRAM-SHA-1)
-// SCRAM is an alias for SCRAM
+// SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
 const (
 	NumberAuthModeSupported          = 2
 	DefaultMode             AuthMode = "SCRAM-SHA-256"
@@ -356,8 +355,8 @@ type Authentication struct {
 // +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
 
-// ConvertAuthModeLabelToAuthModeSystemName act as a map but is immutable. It allows users to use different labels to describe the
-// same authendication modes.
+// ConvertAuthModeLabelToAuthModeSystemName acts as a map but is immutable. It allows users to use different labels to describe the
+// same authentication mode.
 func ConvertAuthModeLabelToAuthModeSystemName(authModeLabel AuthMode) (string, bool) {
 	switch authModeLabel {
 	case "SCRAM":
@@ -428,27 +427,27 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 	listModes := m.Spec.Security.Authentication.Modes
 	containsDefaultMode := false
 	AutoAuthMechanism := ""
+	defaultSystemName, _ := ConvertAuthModeLabelToAuthModeSystemName(DefaultMode)
 
 	modesWithSystemNames := make([]string, len(listModes))
 
 	if len(listModes) == 0 {
+		AutoAuthMechanism = defaultSystemName
 		modesWithSystemNames = []string{AutoAuthMechanism}
-		containsDefaultMode = true
 	} else {
 		for i, node := range listModes {
 			if v, ok := ConvertAuthModeLabelToAuthModeSystemName(node); ok {
 				modesWithSystemNames[i] = v
-				if defaultName, _ := ConvertAuthModeLabelToAuthModeSystemName(DefaultMode); v == defaultName {
+				if v == defaultSystemName {
 					containsDefaultMode = true
 				}
 			}
 		}
-	}
-
-	if containsDefaultMode {
-		AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(DefaultMode)
-	} else {
-		AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
+		if containsDefaultMode {
+			AutoAuthMechanism = defaultSystemName
+		} else {
+			AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
+		}
 	}
 
 	return scram.Options{

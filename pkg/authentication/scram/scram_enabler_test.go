@@ -9,7 +9,7 @@ import (
 
 func TestScramAutomationConfig(t *testing.T) {
 
-	// Case 1: Both Sha256 and Sha1
+	// Case 1: Both SHA-256 and SHA-1
 	auth := automationconfig.Auth{}
 	opts := Options{
 		AuthoritativeSet:   false,
@@ -39,7 +39,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, []string{Sha256, Sha1}, auth.DeploymentAuthMechanisms)
 	})
 
-	// Case only sha1
+	// Case 2: only SHA-256
 	auth = automationconfig.Auth{}
 	opts = Options{
 		AuthoritativeSet:   false,
@@ -57,6 +57,8 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Len(t, auth.AutoAuthMechanisms, 1)
 		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
 		assert.Equal(t, []string{Sha256}, auth.AutoAuthMechanisms)
+		assert.Equal(t, AutomationAgentKeyFilePathInContainer, auth.KeyFile)
+		assert.Equal(t, automationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
 		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
@@ -64,7 +66,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, []string{Sha256}, auth.DeploymentAuthMechanisms)
 	})
 
-	// Case only sha256
+	// Case 1: only SHA-1
 	auth = automationconfig.Auth{}
 	opts = Options{
 		AuthoritativeSet:   false,
@@ -82,6 +84,8 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Len(t, auth.AutoAuthMechanisms, 1)
 		assert.Equal(t, []string{Sha1}, auth.DeploymentAuthMechanisms)
 		assert.Equal(t, []string{Sha1}, auth.AutoAuthMechanisms)
+		assert.Equal(t, AutomationAgentKeyFilePathInContainer, auth.KeyFile)
+		assert.Equal(t, automationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
 		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
