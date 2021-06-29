@@ -1,0 +1,13 @@
+name: Remove Label
+on: [ pull_request ]
+jobs:
+  remove-safe-to-test-label:
+    runs-on: ubuntu-latest
+    name: Remove Label
+    steps:
+      - name:
+        uses: buildsville/add-remove-label@v1
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          label: safe-to-test
+          type: remove

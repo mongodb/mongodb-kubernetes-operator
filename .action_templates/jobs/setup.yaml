@@ -1,0 +1,12 @@
+setup:
+  runs-on: ubuntu-latest
+  strategy:
+    fail-fast: false
+    matrix:
+      include:
+        - pipeline-argument: operator-ubi
+        - pipeline-argument: version-post-start-hook-init
+        - pipeline-argument: readiness-probe-init
+        - pipeline-argument: agent-ubi
+        - pipeline-argument: agent-ubuntu
+        - pipeline-argument: e2e
