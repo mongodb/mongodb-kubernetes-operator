@@ -64,7 +64,7 @@ func withSha1() func(*authOptions) {
 	}
 }
 
-// testConfigAuthentication run the tests using the authoptions to update mdb and then check that the resources are correctly configured
+// testConfigAuthentication run the tests using the autho ptions to update mdb and then checks that the resources are correctly configured
 func testConfigAuthentication(mdb v1.MongoDBCommunity, user v1.MongoDBUser, pw string, ctx *e2eutil.Context, allOptions ...func(*authOptions)) func(t *testing.T) {
 	return func(t *testing.T) {
 
@@ -78,19 +78,19 @@ func testConfigAuthentication(mdb v1.MongoDBCommunity, user v1.MongoDBUser, pw s
 
 		enabledMechanisms := primitive.A{"SCRAM-SHA-256"}
 		var acceptedModes []v1.AuthMode
+		if pickedOpts.sha256 {
+			if pickedOpts.useLabelForSha256 {
+				acceptedModes = append(acceptedModes, "SCRAM")
+			} else {
+				acceptedModes = append(acceptedModes, "SCRAM-SHA-256")
+			}
+		}
 		if pickedOpts.sha1 {
 			acceptedModes = append(acceptedModes, "SCRAM-SHA-1")
 			if pickedOpts.sha256 {
 				enabledMechanisms = primitive.A{"SCRAM-SHA-256", "SCRAM-SHA-1"}
 			} else {
 				enabledMechanisms = primitive.A{"SCRAM-SHA-1"}
-			}
-		}
-		if pickedOpts.sha256 {
-			if pickedOpts.useLabelForSha256 {
-				acceptedModes = append(acceptedModes, "SCRAM")
-			} else {
-				acceptedModes = append(acceptedModes, "SCRAM-SHA-256")
 			}
 		}
 
