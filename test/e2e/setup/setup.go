@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
@@ -18,6 +19,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -151,8 +153,8 @@ func deployOperator() error {
 	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
-
 	fmt.Println("Successfully created the operator Role Binding")
+
 	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir(), "manager.yaml"),
 		&appsv1.Deployment{},
 		withNamespace(testConfig.namespace),
@@ -164,6 +166,45 @@ func deployOperator() error {
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
+
+	// TODO: check with timeout for whether the deployment.Status.ReadyReplicas field is 0
+	// use kubernetes client to get deployment object
+	// read status
+	// return error if 0
+	// TODO: check if we could get Name from service account
+	// TODO: check if actualReplicas is getting updated inside the loop
+	dep := appsv1.Deployment{}
+
+	// retrieve required replicas -- they will already be there
+	if err := e2eutil.TestClient.Get(context.TODO(),
+		types.NamespacedName{Name: "mongodb-kubernetes-operator",
+			Namespace: e2eutil.OperatorNamespace},
+		&dep); err != nil {
+		return errors.Errorf("error building operator deployment: %s", err)
+	}
+	requiredReplicas := *dep.Spec.Replicas
+
+	// poll to check whether actual number of replicas matches required number of replicas
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if err := e2eutil.TestClient.Get(context.TODO(),
+			types.NamespacedName{Name: "mongodb-kubernetes-operator",
+				Namespace: e2eutil.OperatorNamespace},
+			&dep); err != nil {
+			return errors.Errorf("error building operator deployment: %s", err)
+		}
+		actualReplicas := dep.Status.ReadyReplicas
+		if actualReplicas == requiredReplicas || time.Now().After(deadline) {
+			break
+		}
+	}
+
+	// check if now the condition is fulfilled
+	actualReplicas := dep.Status.ReadyReplicas
+	if actualReplicas != requiredReplicas {
+		return errors.New("error building operator deployment: actual number of replicas does not match required number of replicas")
+	}
+
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
 }
