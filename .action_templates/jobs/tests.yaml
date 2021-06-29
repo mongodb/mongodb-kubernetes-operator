@@ -40,6 +40,8 @@ tests:
           distro: ubuntu
         - test-name: replica_set_arbiter
           distro: ubuntu
+        - test-name: replica_set_custom_persistent_volume
+          distro: ubuntu
 
         - test-name: replica_set
           distro: ubi
@@ -75,4 +77,6 @@ tests:
         - test-name: replica_set_custom_role
           distro: ubi
         - test-name: replica_set_arbiter
+          distro: ubi
+        - test-name: replica_set_custom_persistent_volume
           distro: ubi
