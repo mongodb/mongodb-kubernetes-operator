@@ -4,7 +4,7 @@
     version: "v0.8.1"
 - name: Create Directories
   run: |
-    docker exec kind-control-plane  mkdir /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
+    docker exec kind-control-plane  mkdir -p /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
 
 - name: Install CRD
   run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
