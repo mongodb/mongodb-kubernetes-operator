@@ -3,10 +3,12 @@ name: Go
 on:
   push:
     branches: [ master ]
-    paths-ignore: docs/**
+    paths-ignore: 
+    - docs/**
   pull_request:
     branches: [ master ]
-    paths-ignore: docs/**
+    paths-ignore:
+    - docs/**
   workflow_dispatch: {}
 jobs:
 
@@ -21,6 +23,6 @@ jobs:
     - name: Get the changed files
       uses: lots0logs/gh-action-get-changed-files@2.1.4
       with:
-      token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - run: echo ${HOME}/files_modified.json
