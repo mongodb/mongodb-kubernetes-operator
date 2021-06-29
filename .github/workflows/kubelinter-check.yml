@@ -30,4 +30,4 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - run: echo ${HOME}/files_modified.json
+    - run: cat ${HOME}/files_modified.json
