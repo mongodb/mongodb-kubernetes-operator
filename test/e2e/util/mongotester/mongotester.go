@@ -126,7 +126,7 @@ func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *tes
 	return m.hasAdminParameter("authenticationMechanisms", primitive.A{"SCRAM-SHA-256"}, tries, opts...)
 }
 
-func (m *Tester) ScramSHAIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) ScramWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("authenticationMechanisms", enabledMechanisms, tries, opts...)
 }
 
@@ -137,10 +137,10 @@ func (m *Tester) EnsureAuthenticationIsConfigured(tries int, opts ...OptionAppli
 	}
 }
 
-func (m *Tester) EnsureAuthenticationSHAIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) EnsureAuthenticationWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
-		t.Run(fmt.Sprintf("%q is configured", enabledMechanisms), m.ScramSHAIsConfigured(tries, enabledMechanisms, opts...))
+		t.Run(fmt.Sprintf("%q is configured", enabledMechanisms), m.ScramWithAuthIsConfigured(tries, enabledMechanisms, opts...))
 	}
 }
 
@@ -409,7 +409,7 @@ func WithScram(username, password string) OptionApplier {
 	}
 }
 
-func WithScramSha(username, password string, authenticationMechanism string) OptionApplier {
+func WithScramWithAuth(username, password string, authenticationMechanism string) OptionApplier {
 	return clientOptionAdder{
 		option: &options.ClientOptions{
 			Auth: &options.Credential{

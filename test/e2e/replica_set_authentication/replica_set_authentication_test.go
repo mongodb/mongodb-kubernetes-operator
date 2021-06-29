@@ -36,34 +36,64 @@ func TestReplicaSetAuthentication(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 
 	// Run all the possible configuration using sha256 or sha1
-	t.Run(fmt.Sprintf("auth sha256: %t (label %t), sha1: %t", true, true, false), testConfigAuthentication(true, false, true, mdb, user, pw, ctx))
-	t.Run(fmt.Sprintf("auth sha256: %t (label %t), sha1: %t", true, false, false), testConfigAuthentication(true, false, false, mdb, user, pw, ctx))
-	t.Run(fmt.Sprintf("auth sha256: %t (label %t), sha1: %t", true, false, true), testConfigAuthentication(true, true, false, mdb, user, pw, ctx))
-	t.Run(fmt.Sprintf("auth sha256: %t (label %t), sha1: %t", true, true, true), testConfigAuthentication(true, true, true, mdb, user, pw, ctx))
-	t.Run(fmt.Sprintf("auth sha256: %t (label %t), sha1: %t", false, false, true), testConfigAuthentication(false, true, false, mdb, user, pw, ctx))
+	t.Run("Authentication test 1", testConfigAuthentication(mdb, user, pw, ctx))
+	t.Run("Authentication test 2", testConfigAuthentication(mdb, user, pw, ctx, withSha1()))
+	t.Run("Authentication test 3", testConfigAuthentication(mdb, user, pw, ctx, withLabeledSha256()))
+	t.Run("Authentication test 4", testConfigAuthentication(mdb, user, pw, ctx, withSha1(), withLabeledSha256()))
+	t.Run("Authentication test 5", testConfigAuthentication(mdb, user, pw, ctx, withSha1(), withoutSha256()))
 }
 
-func testConfigAuthentication(acceptSHA256 bool, acceptSHA1 bool, useLabelForSha256 bool, mdb v1.MongoDBCommunity, user v1.MongoDBUser, pw string, ctx *e2eutil.Context) func(t *testing.T) {
+type authOptions struct {
+	sha256, sha1, useLabelForSha256 bool
+}
+
+func withoutSha256() func(*authOptions) {
+	return func(opts *authOptions) {
+		opts.sha256 = false
+	}
+}
+func withLabeledSha256() func(*authOptions) {
+	return func(opts *authOptions) {
+		opts.sha256 = true
+		opts.useLabelForSha256 = true
+	}
+}
+func withSha1() func(*authOptions) {
+	return func(opts *authOptions) {
+		opts.sha1 = true
+	}
+}
+
+// testConfigAuthentication run the tests using the authoptions to update mdb and then check that the resources are correctly configured
+func testConfigAuthentication(mdb v1.MongoDBCommunity, user v1.MongoDBUser, pw string, ctx *e2eutil.Context, allOptions ...func(*authOptions)) func(t *testing.T) {
 	return func(t *testing.T) {
+
+		pickedOpts := authOptions{
+			sha256: true,
+		}
+		for _, opt := range allOptions {
+			opt(&pickedOpts)
+		}
+		t.Logf("Config: use Sha256: %t (use label: %t), use Sha1: %t", pickedOpts.sha256, pickedOpts.useLabelForSha256, pickedOpts.sha1)
+
 		enabledMechanisms := primitive.A{"SCRAM-SHA-256"}
 		var acceptedModes []v1.AuthMode
-		if acceptSHA256 {
-			if useLabelForSha256 {
-				acceptedModes = append(acceptedModes, "SCRAM")
-			} else {
-				acceptedModes = append(acceptedModes, "SCRAM-SHA-256")
-			}
-		}
-		if acceptSHA1 {
+		if pickedOpts.sha1 {
 			acceptedModes = append(acceptedModes, "SCRAM-SHA-1")
-			if acceptSHA256 {
+			if pickedOpts.sha256 {
 				enabledMechanisms = primitive.A{"SCRAM-SHA-256", "SCRAM-SHA-1"}
 			} else {
 				enabledMechanisms = primitive.A{"SCRAM-SHA-1"}
 			}
 		}
+		if pickedOpts.sha256 {
+			if pickedOpts.useLabelForSha256 {
+				acceptedModes = append(acceptedModes, "SCRAM")
+			} else {
+				acceptedModes = append(acceptedModes, "SCRAM-SHA-256")
+			}
+		}
 
-		t.Logf("Changing authentication mode")
 		err := e2eutil.UpdateMongoDBResource(&mdb, func(db *v1.MongoDBCommunity) {
 			db.Spec.Security.Authentication.Modes = acceptedModes
 		})
@@ -77,25 +107,22 @@ func testConfigAuthentication(acceptSHA256 bool, acceptSHA1 bool, useLabelForSha
 		}
 
 		t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-		if acceptSHA256 {
-			t.Run("Test Basic Connectivity with accepted auth", tester.ConnectivitySucceeds(WithScramSha(user.Name, pw, "SCRAM-SHA-256")))
+		if pickedOpts.sha256 {
+			t.Run("Test Basic Connectivity with accepted auth", tester.ConnectivitySucceeds(WithScramWithAuth(user.Name, pw, "SCRAM-SHA-256")))
 		} else {
-			t.Run("Test Basic Connectivity with unaccepted auth", tester.ConnectivityFails(WithScramSha(user.Name, pw, "SCRAM-SHA-256")))
+			t.Run("Test Basic Connectivity with unaccepted auth", tester.ConnectivityFails(WithScramWithAuth(user.Name, pw, "SCRAM-SHA-256")))
 		}
-		if acceptSHA1 {
-			t.Run("Test Basic Connectivity with accepted auth", tester.ConnectivitySucceeds(WithScramSha(user.Name, pw, "SCRAM-SHA-1")))
+		if pickedOpts.sha1 {
+			t.Run("Test Basic Connectivity with accepted auth", tester.ConnectivitySucceeds(WithScramWithAuth(user.Name, pw, "SCRAM-SHA-1")))
 		} else {
-			t.Run("Test Basic Connectivity with unaccepted auth", tester.ConnectivityFails(WithScramSha(user.Name, pw, "SCRAM-SHA-1")))
+			t.Run("Test Basic Connectivity with unaccepted auth", tester.ConnectivityFails(WithScramWithAuth(user.Name, pw, "SCRAM-SHA-1")))
 		}
 
-		// Check with Cian version 2 meaning
-		//t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-
-		if acceptSHA256 {
-			t.Run("Ensure Authentication", tester.EnsureAuthenticationSHAIsConfigured(3, enabledMechanisms, WithScramSha(user.Name, pw, "SCRAM-SHA-256")))
+		if pickedOpts.sha256 {
+			t.Run("Ensure Authentication", tester.EnsureAuthenticationWithAuthIsConfigured(3, enabledMechanisms, WithScramWithAuth(user.Name, pw, "SCRAM-SHA-256")))
 		}
-		if acceptSHA1 {
-			t.Run("Ensure Authentication", tester.EnsureAuthenticationSHAIsConfigured(3, enabledMechanisms, WithScramSha(user.Name, pw, "SCRAM-SHA-1")))
+		if pickedOpts.sha1 {
+			t.Run("Ensure Authentication", tester.EnsureAuthenticationWithAuthIsConfigured(3, enabledMechanisms, WithScramWithAuth(user.Name, pw, "SCRAM-SHA-1")))
 		}
 	}
 }
