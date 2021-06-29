@@ -1,10 +1,9 @@
-- name: Setup Kind Cluster
-  steps:
-    - name: Create k8s Kind Cluster
-      uses: helm/kind-action@v1.1.0
-    - name: Create Directories
-      run: |
-        docker exec kind-control-plane  mkdir -p /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2   /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
+
+- name: Create k8s Kind Cluster
+  uses: helm/kind-action@v1.1.0
+- name: Create Directories
+  run: |
+    docker exec kind-control-plane  mkdir -p /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2   /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
 
 - name: Install CRD
   run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
