@@ -213,7 +213,7 @@ jobs:
       if: steps.last_run_status.outputs.last_run_status != 'success'
     - name: Create Directories
       run: |
-        docker exec -it kind-control-plane  mkdir /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
+        docker exec kind-control-plane  mkdir /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
 
       if: steps.last_run_status.outputs.last_run_status != 'success'
     - name: Install CRD
