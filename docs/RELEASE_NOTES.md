@@ -4,6 +4,7 @@
 
 - Changes
   - Members of a Replica Set can be configured as arbiters.
+  - SHA-1 is supported as an authentication method.
 
 ## Updated Image Tags
 
