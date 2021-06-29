@@ -2,7 +2,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   name: mongodb-kubernetes-operator
 rules:
 - apiGroups:
@@ -10,10 +9,6 @@ rules:
   resources:
   - pods
   - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
   - configmaps
   - secrets
   verbs:
@@ -27,9 +22,6 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
   - statefulsets
   verbs:
   - create
@@ -40,34 +32,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - servicemonitors
-  verbs:
-  - get
-  - create
-- apiGroups:
-  - apps
-  resourceNames:
-  - mongodb-kubernetes-operator
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  - deployments
-  verbs:
-  - get
-- apiGroups:
   - mongodbcommunity.mongodb.com
   resources:
   - mongodbcommunity
@@ -75,10 +39,8 @@ rules:
   - mongodbcommunity/spec
   - mongodbcommunity/finalizers
   verbs:
-  - create
-  - delete
   - get
-  - list
   - patch
+  - list
   - update
   - watch
