@@ -201,9 +201,11 @@ jobs:
     - name: Install Python Dependencies
       run: pip install -r requirements.txt
     # template: .action_templates/steps/setup-kind-cluster.yaml
-    - name: Start MiniKube
-      id: minikube
-      uses: medyagh/setup-minikube@master
+    - name: Setup Kind Cluster
+      run: |
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        chmod +x ./kind
+        ./kind create cluster
 
       if: steps.last_run_status.outputs.last_run_status != 'success'
     - name: Install CRD
