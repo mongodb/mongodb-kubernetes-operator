@@ -17,6 +17,7 @@ do
             if (( $exit_statut > 0)); then
                 number_errors=$((number_errors+1))
                 echo_with_indent $output
+                echo_with_indent $output_error
             elif [ -n "$output_error" ]; then
                 echo_with_indent $output_error
             else

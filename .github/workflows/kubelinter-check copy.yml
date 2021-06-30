@@ -46,5 +46,4 @@ jobs:
     - name: Scan repo with kube-linter
       uses: stackrox/kube-linter-action@v1.0.2
       with:
-        directory: yamls
-        config: .kube-linter/config.yaml
+        directory: "*"
