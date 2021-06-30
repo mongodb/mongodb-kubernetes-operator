@@ -1,12 +1,29 @@
-name: Go
+---
+###########################
+###########################
+## Linter GitHub Actions ##
+###########################
+###########################
+name: Kubelinter-check
 
+#
+# Documentation:
+# https://help.github.com/en/articles/workflow-syntax-for-github-actions
+#
+
+
+##############################################
+# Start the job on all push and pull requests#
+##############################################
 on:
   push:
-    branches: [ master ]
+    branches:
+    - master
     paths-ignore: 
     - docs/**
   pull_request:
-    branches: [ master ]
+    branches:
+    - master
     paths-ignore:
     - docs/**
   workflow_dispatch: {}
@@ -16,7 +33,6 @@ jobs:
     name: Run Kube-linter check
     runs-on: ubuntu-latest
     steps:
-
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
@@ -30,7 +46,8 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - run: |
-      # make file runnable, might not be necessary
-      chmod +x "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
-      "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
+    - name: Run the kube-linter script
+      run: |
+        # make file runnable, might not be necessary
+        chmod +x "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
+        ${GITHUB_WORKSPACE}/.github/script_kubelinter.sh
