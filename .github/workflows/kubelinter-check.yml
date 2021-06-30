@@ -49,8 +49,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
     
     - run: |
-        ls -R ${GITHUB_WORKSPACE}
-        ls -R ${GITHUB_WORKSPACE}/..
+        ls -R -a ${GITHUB_WORKSPACE}
+        ls -R -a ${GITHUB_WORKSPACE}/..
 
     - name: Run the kube-linter script
       run: |
