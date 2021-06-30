@@ -354,9 +354,9 @@ type Authentication struct {
 // +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
 
-// ConvertAuthModeLabelToAuthModeSystemName acts as a map but is immutable. It allows users to use different labels to describe the
+// ConvertAuthModeToAuthMechanism acts as a map but is immutable. It allows users to use different labels to describe the
 // same authentication mode.
-func ConvertAuthModeLabelToAuthModeSystemName(authModeLabel AuthMode) string {
+func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
 	switch authModeLabel {
 	case "SCRAM", "SCRAM-SHA-256":
 		return scram.Sha256
@@ -420,38 +420,27 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
-	listModes := m.Spec.Security.Authentication.Modes
-	containsDefaultMode := false
-	AutoAuthMechanism := ""
-	defaultSystemName := ConvertAuthModeLabelToAuthModeSystemName(defaultMode)
+	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
+	authModes := m.Spec.Security.Authentication.Modes
+	autoAuthMechanism := ConvertAuthModeToAuthMechanism(authModes[0])
 
-	modesWithSystemNames := make([]string, len(listModes))
+	authMechanisms := make([]string, len(authModes))
 
-	if len(listModes) == 0 {
-		AutoAuthMechanism = defaultSystemName
-		modesWithSystemNames = []string{AutoAuthMechanism}
-	} else {
-		for i, node := range listModes {
-			if v := ConvertAuthModeLabelToAuthModeSystemName(node); v != "" {
-				modesWithSystemNames[i] = v
-				if v == defaultSystemName {
-					containsDefaultMode = true
-				}
+	for i, authMode := range authModes {
+		if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
+			authMechanisms[i] = authMech
+			if authMech == defaultAuthMechanism {
+				autoAuthMechanism = defaultAuthMechanism
 			}
-		}
-		if containsDefaultMode {
-			AutoAuthMechanism = defaultSystemName
-		} else {
-			AutoAuthMechanism = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
 		}
 	}
 
 	return scram.Options{
 		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: modesWithSystemNames,
+		AutoAuthMechanisms: authMechanisms,
 		AgentName:          scram.AgentName,
-		AutoAuthMechanism:  AutoAuthMechanism,
+		AutoAuthMechanism:  autoAuthMechanism,
 	}
 }
 

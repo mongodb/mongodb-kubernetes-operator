@@ -81,15 +81,10 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	allModes := mdb.Spec.Security.Authentication.Modes
 
-	// if no mode is specified in the specs, it's valid
-	if len(allModes) == 0 {
-		return nil
-	}
-
 	// Check that no auth is defined more than once
 	mapModes := make(map[mdbv1.AuthMode]struct{})
 	for i, mode := range allModes {
-		if value := mdbv1.ConvertAuthModeLabelToAuthModeSystemName(mode); value != "" {
+		if value := mdbv1.ConvertAuthModeToAuthMechanism(mode); value != "" {
 			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
 		}
 		mapModes[allModes[i]] = struct{}{}
