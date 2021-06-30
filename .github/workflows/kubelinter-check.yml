@@ -30,4 +30,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - run: cat ${HOME}/files_modified.json
+    - run: |
+      # make file runnable, might not be necessary
+      chmod +x "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
+      "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
