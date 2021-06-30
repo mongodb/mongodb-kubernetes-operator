@@ -104,7 +104,7 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 		mapModes[allModes[i]] = struct{}{}
 	}
 	if len(mapModes) != len(allModes) {
-		return fmt.Errorf("some authentications are declared twice or more")
+		return fmt.Errorf("some authentication modes are declared twice or more")
 	}
 
 	return nil
