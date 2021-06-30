@@ -46,9 +46,10 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
+    - run: ls -R ${GITHUB_WORKSPACE}
+
     - name: Run the kube-linter script
       run: |
         # make file runnable, might not be necessary
-        ls -R ${GITHUB_WORKSPACE}
         chmod +x "${GITHUB_WORKSPACE}/.github/script_kubelinter.sh"
         ${GITHUB_WORKSPACE}/.github/script_kubelinter.sh
