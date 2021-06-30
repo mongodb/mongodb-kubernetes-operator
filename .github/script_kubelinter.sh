@@ -1,8 +1,8 @@
 list_json_parent_files=( ${HOME}/files_modified.json ${HOME}/files_added.json ${HOME}/files_renamed.json)
 number_errors=0
-echo_with_indent () {echo $1 | sed 's/^/   /'}
-get_files_from_json () {cat $1 | jq -r '.[]'}
-file_exits () {[[ -f "$1" ]]}
+echo_with_indent () { echo $1 | sed 's/^/   /';}
+get_files_from_json () { cat $1 | jq -r '.[]';}
+file_exits () { [[ -f "$1" ]];}
 
 for parent_file in "${list_json_parent_files[@]}"
 do
