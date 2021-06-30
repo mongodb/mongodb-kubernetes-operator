@@ -28,7 +28,15 @@ on:
     - docs/**
   workflow_dispatch: {}
 jobs:
-
+  # template: .action_templates/jobs/display-github-context.yaml
+  action-context:
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJSON(github) }}
+      run: echo "$GITHUB_CONTEXT"
   build:
     name: Run Kube-linter check
     runs-on: ubuntu-latest
