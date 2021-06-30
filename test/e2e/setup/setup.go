@@ -179,7 +179,7 @@ func deployOperator() error {
 }
 
 // hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
-// currently has the required amount of replicas
+// currently has the required amount of replicas in the ready state as specified in spec.replicas
 func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 	return func() (bool, error) {
 		err := e2eutil.TestClient.Get(context.TODO(),
