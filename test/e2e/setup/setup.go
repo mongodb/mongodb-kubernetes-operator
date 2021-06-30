@@ -156,8 +156,10 @@ func deployOperator() error {
 	}
 	fmt.Println("Successfully created the operator Role Binding")
 
+	dep := &appsv1.Deployment{}
+
 	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir(), "manager.yaml"),
-		&appsv1.Deployment{},
+		dep,
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withEnvVar("WATCH_NAMESPACE", watchNamespace),
@@ -168,13 +170,8 @@ func deployOperator() error {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
 
-	// TODO: check if we could get Name from service account
-
-	// Note: PollImmediate tries a condition func until it returns true, an error, or the timeout is reached.
-	// PollImmediate always checks 'condition' before waiting for the interval. 'condition' will always be invoked at least once.
-	// Some intervals may be missed if the condition takes too long or the time window is too short.
-	if err := wait.PollImmediate(time.Second, time.Duration(30)*time.Second, hasDeploymentRequiredReplicas(&appsv1.Deployment{})); err != nil {
-		return errors.New("error building operator deployment: the deployment does not have the required replicas (possibly because the image is not correct)")
+	if err := wait.PollImmediate(time.Second, time.Duration(30)*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
+		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 
 	fmt.Println("Successfully created the operator Deployment")
@@ -184,31 +181,19 @@ func deployOperator() error {
 // hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
 // currently has the required amount of replicas
 func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
-	// Note: ConditionFunc returns true if the condition is satisfied, or an error if the loop should be aborted.
 	return func() (bool, error) {
-		if err := getDeployment(dep); err != nil {
-			fmt.Printf("returning error\n")
-			return false, errors.Errorf("error getting operator deployment: %s\n", err)
+		err := e2eutil.TestClient.Get(context.TODO(),
+			types.NamespacedName{Name: dep.Name,
+				Namespace: e2eutil.OperatorNamespace},
+			dep)
+		if err != nil {
+			return false, errors.Errorf("error getting operator deployment: %s", err)
 		}
-		fmt.Printf("actual replicas %d\n", dep.Status.ReadyReplicas)
-		fmt.Printf("required replicas %d\n", *dep.Spec.Replicas)
-		switch dep.Status.ReadyReplicas {
-		case *dep.Spec.Replicas:
-			fmt.Printf("returning true\n")
+		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
 			return true, nil
-		default:
-			fmt.Printf("returning false\n")
-			return false, nil
 		}
+		return false, nil
 	}
-}
-
-// getDeployment fills the empty deployment object with fields from the resource and returns an error if it cannot get it
-func getDeployment(dep *appsv1.Deployment) error {
-	return e2eutil.TestClient.Get(context.TODO(),
-		types.NamespacedName{Name: "mongodb-kubernetes-operator",
-			Namespace: e2eutil.OperatorNamespace},
-		dep)
 }
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
