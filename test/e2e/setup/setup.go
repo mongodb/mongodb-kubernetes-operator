@@ -170,7 +170,7 @@ func deployOperator() error {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
 
-	if err := wait.PollImmediate(time.Second, time.Duration(30)*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
+	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 
