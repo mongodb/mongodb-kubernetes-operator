@@ -28,68 +28,7 @@ on:
     - docs/**
   workflow_dispatch: {}
 jobs:
-  # template: .action_templates/jobs/display-github-context.yaml
-  action-context:
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJSON(github) }}
-      run: echo "$GITHUB_CONTEXT"
-
-  # template: .action_templates/jobs/setup.yaml
-  setup:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - pipeline-argument: operator-ubi
-        - pipeline-argument: version-post-start-hook-init
-        - pipeline-argument: readiness-probe-init
-        - pipeline-argument: agent-ubi
-        - pipeline-argument: agent-ubuntu
-        - pipeline-argument: e2e
-    if: github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name
-      == github.repository && github.actor != 'dependabot[bot]')
-    steps:
-    # template: .action_templates/steps/cancel-previous.yaml
-    - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.0
-      with:
-        access_token: ${{ github.token }}
-    # template: .action_templates/steps/checkout.yaml
-    - name: Checkout Code
-      uses: actions/checkout@v2
-    # template: .action_templates/steps/setup-and-install-python.yaml
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-    - name: Cache Dependencies
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ hashFiles('requirements.txt') }}
-    - name: Install Python Dependencies
-      run: pip install -r requirements.txt
-    # template: .action_templates/steps/quay-login.yaml
-    - name: Login to Quay.io
-      uses: docker/login-action@v1
-      with:
-        registry: quay.io
-        username: ${{ secrets.QUAY_USERNAME }}
-        password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-    # template: .action_templates/steps/build-and-push-development-images.yaml
-    - name: Build and Push Images
-      run: |
-        python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
-      env:
-        MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
-        version_id: ${{ github.run_id }}
-
-  build:
+  Kubelinter:
     name: Run Kube-linter check
     runs-on: ubuntu-latest
     steps:
@@ -100,6 +39,9 @@ jobs:
     
     - name: Install Kube-linter
       run: GO111MODULE=on go get golang.stackrox.io/kube-linter/cmd/kube-linter
+
+    - name: Checkout Code
+      uses: actions/checkout@v2
       
     - name: Get the changed files
       uses: lots0logs/gh-action-get-changed-files@2.1.4
