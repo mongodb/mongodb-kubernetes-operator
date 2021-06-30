@@ -187,6 +187,9 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 				Namespace: e2eutil.OperatorNamespace},
 			dep)
 		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, errors.Errorf("error getting operator deployment: %s", err)
 		}
 		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
