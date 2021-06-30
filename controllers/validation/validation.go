@@ -5,26 +5,13 @@ import (
 	"strings"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/pkg/errors"
 )
 
 // ValidateInitalSpec checks if the resource initial Spec is valid
 func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
-	if err := validateUsers(mdb); err != nil {
-		return err
-	}
-
-	if err := validateArbiterSpec(mdb); err != nil {
-		return err
-	}
-
-	if err := validateAuthModeSpec(mdb); err != nil {
-		return err
-	}
-
-	return nil
+	return validateSpec(mdb)
 }
 
 // ValidateUpdate validates that the new Spec, corresponding to the existing one is still valid
@@ -32,7 +19,11 @@ func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySp
 	if oldSpec.Security.TLS.Enabled && !mdb.Spec.Security.TLS.Enabled {
 		return errors.New("TLS can't be set to disabled after it has been enabled")
 	}
+	return validateSpec(mdb)
+}
 
+// validateSpec validates the specs of the given resource definition.
+func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	if err := validateUsers(mdb); err != nil {
 		return err
 	}
@@ -96,9 +87,9 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 
 	// Check that no auth is defined more than once
-	mapModes := make(map[v1.AuthMode]struct{})
+	mapModes := make(map[mdbv1.AuthMode]struct{})
 	for i, mode := range allModes {
-		if value, ok := v1.ConvertAuthModeLabelToAuthModeSystemName(mode); !ok {
+		if value := mdbv1.ConvertAuthModeLabelToAuthModeSystemName(mode); value != "" {
 			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
 		}
 		mapModes[allModes[i]] = struct{}{}

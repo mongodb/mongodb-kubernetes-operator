@@ -42,8 +42,7 @@ const (
 
 // SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
 const (
-	NumberAuthModeSupported          = 2
-	DefaultMode             AuthMode = "SCRAM-SHA-256"
+	defaultMode AuthMode = "SCRAM-SHA-256"
 )
 
 // MongoDBCommunitySpec defines the desired state of MongoDB
@@ -357,16 +356,14 @@ type AuthMode string
 
 // ConvertAuthModeLabelToAuthModeSystemName acts as a map but is immutable. It allows users to use different labels to describe the
 // same authentication mode.
-func ConvertAuthModeLabelToAuthModeSystemName(authModeLabel AuthMode) (string, bool) {
+func ConvertAuthModeLabelToAuthModeSystemName(authModeLabel AuthMode) string {
 	switch authModeLabel {
-	case "SCRAM":
-		return scram.Sha256, true
-	case "SCRAM-SHA-256":
-		return scram.Sha256, true
+	case "SCRAM", "SCRAM-SHA-256":
+		return scram.Sha256
 	case "SCRAM-SHA-1":
-		return scram.Sha1, true
+		return scram.Sha1
 	default:
-		return "", false
+		return ""
 	}
 }
 
@@ -423,11 +420,10 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
-	//Manage the Auth
 	listModes := m.Spec.Security.Authentication.Modes
 	containsDefaultMode := false
 	AutoAuthMechanism := ""
-	defaultSystemName, _ := ConvertAuthModeLabelToAuthModeSystemName(DefaultMode)
+	defaultSystemName := ConvertAuthModeLabelToAuthModeSystemName(defaultMode)
 
 	modesWithSystemNames := make([]string, len(listModes))
 
@@ -436,7 +432,7 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		modesWithSystemNames = []string{AutoAuthMechanism}
 	} else {
 		for i, node := range listModes {
-			if v, ok := ConvertAuthModeLabelToAuthModeSystemName(node); ok {
+			if v := ConvertAuthModeLabelToAuthModeSystemName(node); v != "" {
 				modesWithSystemNames[i] = v
 				if v == defaultSystemName {
 					containsDefaultMode = true
@@ -446,7 +442,7 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		if containsDefaultMode {
 			AutoAuthMechanism = defaultSystemName
 		} else {
-			AutoAuthMechanism, _ = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
+			AutoAuthMechanism = ConvertAuthModeLabelToAuthModeSystemName(listModes[0])
 		}
 	}
 

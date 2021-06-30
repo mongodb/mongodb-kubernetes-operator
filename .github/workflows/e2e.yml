@@ -126,8 +126,6 @@ jobs:
           distro: ubuntu
         - test-name: replica_set_arbiter
           distro: ubuntu
-        - test-name: replica_set_authentication
-          distro: ubuntu
 
         - test-name: replica_set
           distro: ubi
@@ -164,8 +162,6 @@ jobs:
           distro: ubi
         - test-name: replica_set_arbiter
           distro: ubi
-        - test-name: replica_set_authentication
-          distro: ubuntu
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
