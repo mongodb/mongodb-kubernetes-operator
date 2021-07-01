@@ -420,8 +420,8 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
-	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
 	authModes := m.Spec.Security.Authentication.Modes
+	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
 	autoAuthMechanism := ConvertAuthModeToAuthMechanism(authModes[0])
 
 	authMechanisms := make([]string, len(authModes))
