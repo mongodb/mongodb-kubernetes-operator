@@ -84,7 +84,7 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	// Check that no auth is defined more than once
 	mapModes := make(map[mdbv1.AuthMode]struct{})
 	for i, mode := range allModes {
-		if value := mdbv1.ConvertAuthModeToAuthMechanism(mode); value != "" {
+		if value := mdbv1.ConvertAuthModeToAuthMechanism(mode); value == "" {
 			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
 		}
 		mapModes[allModes[i]] = struct{}{}
