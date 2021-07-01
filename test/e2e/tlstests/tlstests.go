@@ -8,15 +8,15 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
-	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 )
 
 // EnableTLS will upgrade an existing TLS cluster to use TLS.
-func EnableTLS(mdb *v1.MongoDBCommunity, optional bool) func(*testing.T) {
+func EnableTLS(mdb *mdbv1.MongoDBCommunity, optional bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *v1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Security.TLS = e2eutil.NewTestTLSConfig(optional)
 		})
 		if err != nil {
@@ -25,7 +25,7 @@ func EnableTLS(mdb *v1.MongoDBCommunity, optional bool) func(*testing.T) {
 	}
 }
 
-func RotateCertificate(mdb *v1.MongoDBCommunity) func(*testing.T) {
+func RotateCertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		// Load new certificate and key
 		testDataDir := e2eutil.TlsTestDataDir()
