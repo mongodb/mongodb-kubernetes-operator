@@ -93,3 +93,27 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 	dest.Spec.ExternalTrafficPolicy = source.Spec.ExternalTrafficPolicy
 	return dest
 }
+
+// CreateOrUpdateService will create or update a service in Kubernetes.
+func CreateOrUpdateService(getUpdateCreator GetUpdateCreator, desiredService corev1.Service) error {
+	namespacedName := types.NamespacedName{Namespace: desiredService.ObjectMeta.Namespace, Name: desiredService.ObjectMeta.Name}
+	existingService, err := getUpdateCreator.GetService(namespacedName)
+
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			err = getUpdateCreator.CreateService(desiredService)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		mergedService := Merge(existingService, desiredService)
+		err = getUpdateCreator.UpdateService(mergedService)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
