@@ -4,11 +4,11 @@ metadata:
   name: mongodb-kubernetes-operator
   namespace: mongodb
   labels:
-    owner: killian.kaempf@mongodb.com
+    owner: support@mongodb.com
   annotations:
-    email: killian.kaempf@mongodb.com
+    email: support@mongodb.com
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       name: mongodb-kubernetes-operator

@@ -7,12 +7,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods
   - serviceaccounts
   - services
   - services/finalizers
   - endpoints
   - persistentvolumeclaims
   - events
+  - secrets
   - configmaps
   - namespaces
   verbs:
@@ -23,17 +25,6 @@ rules:
   - patch
   - update
   - watch 
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - apps
   resources:
@@ -63,12 +54,6 @@ rules:
   - deployments/finalizers
   verbs:
   - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
 - apiGroups:
   - ""
   resources:

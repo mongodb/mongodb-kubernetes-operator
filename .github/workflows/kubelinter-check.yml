@@ -35,10 +35,16 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v2
       
-    - name: Scan repo ./deploy/ with kube-linter
+    - name: Scan repo ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
-        directory: "deploy/"
+        directory: "deploy/clusterwide"
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
+
+    - name: Scan repo ./deploy/openshift/ with kube-linter
+      uses: stackrox/kube-linter-action@v1
+      with:
+        directory: "deploy/openshift"
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
     - name: Scan repo ./config/samples/ with kube-linter
