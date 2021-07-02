@@ -5,6 +5,7 @@
 - Changes
   - Members of a Replica Set can be configured as arbiters.
   - Reduce the number of permissions for operator role.
+  - Support SHA-1 as an authentication method.
 
 ## Updated Image Tags
 

@@ -11,15 +11,7 @@ import (
 
 // ValidateInitalSpec checks if the resource initial Spec is valid
 func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
-	if err := validateUsers(mdb); err != nil {
-		return err
-	}
-
-	if err := validateArbiterSpec(mdb); err != nil {
-		return err
-	}
-
-	return nil
+	return validateSpec(mdb)
 }
 
 // ValidateUpdate validates that the new Spec, corresponding to the existing one is still valid
@@ -27,12 +19,20 @@ func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySp
 	if oldSpec.Security.TLS.Enabled && !mdb.Spec.Security.TLS.Enabled {
 		return errors.New("TLS can't be set to disabled after it has been enabled")
 	}
+	return validateSpec(mdb)
+}
 
+// validateSpec validates the specs of the given resource definition.
+func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	if err := validateUsers(mdb); err != nil {
 		return err
 	}
 
 	if err := validateArbiterSpec(mdb); err != nil {
+		return err
+	}
+
+	if err := validateAuthModeSpec(mdb); err != nil {
 		return err
 	}
 
@@ -72,6 +72,25 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 	if mdb.Spec.Arbiters >= mdb.Spec.Members {
 		return fmt.Errorf("number of arbiters specified (%v) is greater or equal than the number of members in the replicaset (%v). At least one member must not be an arbiter", mdb.Spec.Arbiters, mdb.Spec.Members)
+	}
+
+	return nil
+}
+
+// validateAuthModeSpec checks that the list of modes does not contain duplicates.
+func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
+	allModes := mdb.Spec.Security.Authentication.Modes
+
+	// Check that no auth is defined more than once
+	mapModes := make(map[mdbv1.AuthMode]struct{})
+	for i, mode := range allModes {
+		if value := mdbv1.ConvertAuthModeToAuthMechanism(mode); value == "" {
+			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
+		}
+		mapModes[allModes[i]] = struct{}{}
+	}
+	if len(mapModes) != len(allModes) {
+		return fmt.Errorf("some authentication modes are declared twice or more")
 	}
 
 	return nil
