@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mongodb-kubernetes-operator
+  namespace: mongodb
 spec:
   replicas: 1
   selector:

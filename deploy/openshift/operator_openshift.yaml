@@ -4,9 +4,9 @@ metadata:
   name: mongodb-kubernetes-operator
   namespace: mongodb
   labels:
-    owner: support@mongodb.com
+    owner: mongodb
   annotations:
-    email: support@mongodb.com
+    email: "support@mongodb.com"
 spec:
   replicas: 1
   selector:

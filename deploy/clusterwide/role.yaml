@@ -55,4 +55,4 @@ rules:
   - ""
   resources:
   - secrets
-  verbs: []
+  verbs: [""]
