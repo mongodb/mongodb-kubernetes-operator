@@ -7,7 +7,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
   - serviceaccounts
   - services
   - services/finalizers
@@ -15,10 +14,20 @@ rules:
   - persistentvolumeclaims
   - events
   - configmaps
-  - secrets
   - namespaces
   verbs:
   - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch 
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
   - delete
   - get
   - list
@@ -33,7 +42,6 @@ rules:
   - replicasets
   - statefulsets
   verbs:
-  - create
   - delete
   - get
   - list

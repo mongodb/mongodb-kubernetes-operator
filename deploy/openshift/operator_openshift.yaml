@@ -2,16 +2,35 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mongodb-kubernetes-operator
+  namespace: mongodb
+  labels:
+    owner: killian.kaempf@mongodb.com
+  annotations:
+    email: killian.kaempf@mongodb.com
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       name: mongodb-kubernetes-operator
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       labels:
         name: mongodb-kubernetes-operator
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - mongodb-kubernetes-operator
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - name: mongodb-kubernetes-operator
         command:
@@ -52,4 +71,19 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2000
           runAsNonRoot: true
+        livenessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/healthy
+          initialDelaySeconds: 5
+          periodSeconds: 5
       serviceAccountName: mongodb-kubernetes-operator
+  
