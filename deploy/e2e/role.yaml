@@ -14,8 +14,8 @@ rules:
   - endpoints
   - persistentvolumeclaims
   - events
-  - secrets
   - configmaps
+  - secrets
   - namespaces
   verbs:
   - create
@@ -24,7 +24,7 @@ rules:
   - list
   - patch
   - update
-  - watch 
+  - watch
 - apiGroups:
   - apps
   resources:
@@ -33,6 +33,7 @@ rules:
   - replicasets
   - statefulsets
   verbs:
+  - create
   - delete
   - get
   - list
@@ -54,6 +55,12 @@ rules:
   - deployments/finalizers
   verbs:
   - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
 - apiGroups:
   - ""
   resources:
