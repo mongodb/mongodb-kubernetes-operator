@@ -289,6 +289,13 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	}
 }
 
+// ServiceHasCorrectName asserts whether the actual service name equals the expected service name
+func ServiceHasCorrectName(mdb *mdbv1.MongoDBCommunity, expectedName string) func(t *testing.T) {
+	return func(t *testing.T) {
+		assert.Equal(t, expectedName, mdb.ServiceName())
+	}
+}
+
 // DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
 func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
