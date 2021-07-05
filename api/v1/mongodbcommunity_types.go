@@ -528,11 +528,10 @@ func (m MongoDBCommunity) Hosts() []string {
 // this resource which is either the default name resourcename-svc or the user defined name
 func (m MongoDBCommunity) ServiceName() string {
 	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
-	if serviceName == "" {
-		return m.Name + "-svc"
-	} else {
+	if serviceName != "" {
 		return serviceName
 	}
+	return m.Name + "-svc"
 }
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {

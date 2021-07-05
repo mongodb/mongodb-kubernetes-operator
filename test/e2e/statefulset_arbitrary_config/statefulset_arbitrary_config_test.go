@@ -22,11 +22,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestStatefulSetArbitraryConfig(t *testing.T) {
-	// creates operator/deployment from the yaml files
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	// creates basic mongodb resource/custom resource
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
@@ -36,7 +34,8 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
 
-	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName = "database"
+	serviceName := "database"
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName = serviceName
 
 	tester, err := mongotester.FromResource(t, mdb)
 	if err != nil {
@@ -45,7 +44,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test setting Service Name", mongodbtests.ServiceHasCorrectName(&mdb, "database"))
+	t.Run("Test setting Service Name", mongodbtests.ServiceHasCorrectName(&mdb, serviceName))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {

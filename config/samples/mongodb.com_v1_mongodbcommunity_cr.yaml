@@ -23,9 +23,6 @@ spec:
       scramCredentialsSecretName: my-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
-  statefulSet:
-    spec:
-      serviceName: newdatabasename
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
