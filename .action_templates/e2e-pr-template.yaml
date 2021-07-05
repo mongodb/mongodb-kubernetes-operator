@@ -2,8 +2,8 @@ name: Run E2E
 jobs:
   - template: display-github-context
   - template: setup
-    # run on master, or if a PR is being created from a branch.
-    if: github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    # run on master, or if a PR is being created from a branch, or if it has been manually triggered.
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     steps:
     - template: cancel-previous
     - template: checkout
