@@ -50,7 +50,7 @@ jobs:
     - name: Scan repo ./config/manager/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
-        directory: config/managermanager.yaml
+        directory: config/manager/manager.yaml
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_operator.yaml
 
     - name: Scan repo ./config/samples/ with kube-linter
