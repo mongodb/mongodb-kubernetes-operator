@@ -21,6 +21,16 @@ spec:
       labels:
         name: mongodb-kubernetes-operator
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - mongodb-kubernetes-operator
+            topologyKey: "kubernetes.io/hostname"
       containers:
       - command:
         - /usr/local/bin/entrypoint
@@ -59,34 +69,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2000
           runAsNonRoot: true
-        # ReadinessProbe: indicates whether the container is ready to service requests.
-        # If the ReadinessProbe fails, the endpoints controller will remove the
-        # pod’s IP address from the endpoints of all services that match the pod.
-        # The default state of Readiness before the initial delay is Failure.
-        #
-        # Checks every w seconds, after 2 second initial wait
-        # Fails after 2 probes => failureThreshold * periodSeconds = 4s
-        # It means that after 4s the Service doesn't send more traffic to the pod
         
-        # LivenessProbe: indicates whether the container is live, i.e. running.
-        # If the LivenessProbe fails, the kubelet will kill the container and
-        # the container will be subjected to its RestartPolicy.
-        # The default state of Liveness before the initial delay is Success
-        #
-        # Checks every 10 seconds, after 5 second initial wait
-        # Fails after 3 probes => failureThreshold * periodSeconds = 30s
-        # Timeout is 1s (1000ms), that's why we use promise timeout with 900ms
-        ports:
-        - containerPort: 8080
-        readinessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 15
-          periodSeconds: 20
+        
       serviceAccountName: mongodb-kubernetes-operator
 

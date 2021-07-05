@@ -2,4 +2,3 @@ checks:
   addAllBuiltIn: true
 
   exclude:
-  - "non-existent-service-account"

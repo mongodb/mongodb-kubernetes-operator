@@ -1,0 +1,13 @@
+checks:
+  addAllBuiltIn: true
+  
+  #Reasons to exclude
+  # non-existent-service-account --> the service account is created in another file
+  # minimum-three-replicas --> the deployment contains only 1 operator
+  # no-readiness-probe & no-liveness-probe --> For now it brings nothing to add theses probes
+  # because they will not check whether the operator is actually ready/leaving
+  exclude:
+  - "non-existent-service-account"
+  - "minimum-three-replicas"
+  - "no-liveness-probe"
+  - "no-readiness-probe"
