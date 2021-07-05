@@ -11,3 +11,5 @@ checks:
   - "minimum-three-replicas"
   - "no-liveness-probe"
   - "no-readiness-probe"
+  - "run-as-non-root"
+  - "no-read-only-root-fs"
