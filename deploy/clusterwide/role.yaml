@@ -8,6 +8,8 @@ rules:
   resources:
   - services
   - configmaps
+
+  - statefulsets
   verbs:
   - create
   - delete
@@ -20,17 +22,6 @@ rules:
   - ""
   resources:
   - pods
-  verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
   verbs:
   - delete
   - get
