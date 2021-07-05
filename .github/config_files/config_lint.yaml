@@ -1,4 +1,2 @@
 checks:
   addAllBuiltIn: true
-
-  exclude:
