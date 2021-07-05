@@ -289,15 +289,16 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	}
 }
 
-// ServiceHasCorrectName asserts whether service with the expected name exists
-func ServiceHasCorrectName(mdb *mdbv1.MongoDBCommunity, expectedName string) func(t *testing.T) {
+// ServiceWithNameExists checks whether a service with the name serviceName exists
+func ServiceWithNameExists(mdb *mdbv1.MongoDBCommunity, serviceName string) func(t *testing.T) {
 	return func(t *testing.T) {
-		serviceNamespacedName := types.NamespacedName{Name: expectedName, Namespace: mdb.Namespace}
+		serviceNamespacedName := types.NamespacedName{Name: serviceName, Namespace: mdb.Namespace}
 		srv := corev1.Service{}
 		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &srv)
 		if err != nil {
 			t.Fatal(err)
 		}
+		t.Logf("Service with name %s exists", serviceName)
 	}
 }
 

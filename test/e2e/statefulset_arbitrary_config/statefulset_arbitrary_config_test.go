@@ -44,7 +44,7 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test setting Service Name", mongodbtests.ServiceHasCorrectName(&mdb, serviceName))
+	t.Run("Test setting Service Name", mongodbtests.ServiceWithNameExists(&mdb, serviceName))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
