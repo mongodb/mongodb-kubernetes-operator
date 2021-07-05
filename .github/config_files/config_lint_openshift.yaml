@@ -1,0 +1,6 @@
+checks:
+  addAllBuiltIn: true
+
+  exclude:
+  - "non-existent-service-account"
+  - "run-as-non-root"

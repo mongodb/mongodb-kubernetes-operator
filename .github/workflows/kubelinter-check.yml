@@ -38,14 +38,20 @@ jobs:
     - name: Scan repo ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
-        directory: "deploy/clusterwide"
+        directory: deploy/clusterwide
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
     - name: Scan repo ./deploy/openshift/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
-        directory: "deploy/openshift"
-        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
+        directory: deploy/openshift
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_operator.yaml
+
+    - name: Scan repo ./config/manager/ with kube-linter
+      uses: stackrox/kube-linter-action@v1
+      with:
+        directory: config/manager
+        config: ${GITHUB_WORKSPACE}/config/manager/manager.yaml
 
     - name: Scan repo ./config/samples/ with kube-linter
       uses: stackrox/kube-linter-action@v1
