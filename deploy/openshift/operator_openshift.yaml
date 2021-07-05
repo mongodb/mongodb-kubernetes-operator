@@ -71,19 +71,17 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2000
           runAsNonRoot: true
-        livenessProbe:
-          exec:
-            command:
-            - cat
-            - /tmp/healthy
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        ports:
+        - containerPort: 8080
         readinessProbe:
-          exec:
-            command:
-            - cat
-            - /tmp/healthy
+          tcpSocket:
+            port: 8080
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
       serviceAccountName: mongodb-kubernetes-operator
   
