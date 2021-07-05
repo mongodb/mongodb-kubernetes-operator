@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mongodb-kubernetes-operator
-  namespace: mongodb
+  namespace: default
   labels:
     owner: mongodb
   annotations:
@@ -67,4 +67,3 @@ spec:
             memory: 200Mi
         
       serviceAccountName: mongodb-kubernetes-operator
-

@@ -13,3 +13,4 @@ checks:
   - "no-readiness-probe"
   - "run-as-non-root"
   - "no-read-only-root-fs"
+  
