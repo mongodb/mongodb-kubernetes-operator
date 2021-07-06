@@ -23,6 +23,7 @@ spec:
 
   statefulSet:
     spec:
+        # Name for the service object created by the operator
       serviceName: example-openshift-mongodb-svc
       selector: {}
         # Specifies a size for the data volume different from the default 10Gi
