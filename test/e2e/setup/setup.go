@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -166,6 +167,7 @@ func deployOperator() error {
 		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
 		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
+		withCPURequest("180m"),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
@@ -236,6 +238,25 @@ func createOrUpdate(obj client.Object) error {
 		return errors.Errorf("error creating %s in kubernetes: %s", obj.GetObjectKind(), err)
 	}
 	return nil
+}
+
+// withCPURequest assumes that the underlying type is an appsv1.Deployment.
+// it returns a function which will change the amount
+// requested for the CPUresource. There will be
+// no effect when used with a non-deployment type
+func withCPURequest(cpuRequest string) func(runtime.Object) {
+	return func(obj runtime.Object) {
+		if dep, ok := obj.(*appsv1.Deployment); ok {
+			if quantityCPU, okCPU := resource.ParseQuantity(cpuRequest); okCPU == nil {
+				for _, cont := range dep.Spec.Template.Spec.Containers {
+					cont.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
+						"cpu":    quantityCPU,
+						"memory": cont.Resources.Requests["memory"],
+					}
+				}
+			}
+		}
+	}
 }
 
 // withNamespace returns a function which will assign the namespace
