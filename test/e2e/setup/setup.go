@@ -167,7 +167,7 @@ func deployOperator() error {
 		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
 		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
-		withCPURequest("180m"),
+		withCPURequest("100m"),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
