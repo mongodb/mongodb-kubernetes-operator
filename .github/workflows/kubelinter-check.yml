@@ -1,20 +1,9 @@
 ---
-###########################
-###########################
-## Linter GitHub Actions ##
-###########################
-###########################
+#
+# Docs: https://github.com/marketplace/actions/close-stale-issues
+#
 name: Kubelinter-check
 
-#
-# Documentation:
-# https://help.github.com/en/articles/workflow-syntax-for-github-actions
-#
-
-
-##############################################
-# Start the job on all push and pull requests#
-##############################################
 on:
   push:
     branches:
@@ -27,6 +16,7 @@ on:
     paths-ignore:
     - docs/**
   workflow_dispatch: {}
+
 jobs:
   Kubelinter-check:
     name: Run Kube-linter check
@@ -35,25 +25,25 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v2
       
-    - name: Scan repo ./deploy/clusterwide/ with kube-linter
+    - name: Scan directory ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: deploy/clusterwide
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
-    - name: Scan repo ./deploy/openshift/ with kube-linter
+    - name: Scan directory ./deploy/openshift/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: deploy/openshift
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_openshift.yaml
 
-    - name: Scan repo ./config/manager/ with kube-linter
+    - name: Scan directory ./config/manager/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: config/manager/manager.yaml
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
-    - name: Scan repo ./config/samples/ with kube-linter
+    - name: Scan directory ./config/samples/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: config/samples
