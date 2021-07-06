@@ -192,6 +192,7 @@ type AuthenticationRestriction struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
 }
 
