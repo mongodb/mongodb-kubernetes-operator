@@ -172,6 +172,8 @@ func deployOperator() error {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
 
+	fmt.Println("Deployment cpu: ", dep.Spec.Template.Spec.Containers[0].Resources.Requests)
+
 	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
@@ -249,10 +251,7 @@ func withCPURequest(cpuRequest string) func(runtime.Object) {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			if quantityCPU, okCPU := resource.ParseQuantity(cpuRequest); okCPU == nil {
 				for _, cont := range dep.Spec.Template.Spec.Containers {
-					cont.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
-						"cpu":    quantityCPU,
-						"memory": cont.Resources.Requests["memory"],
-					}
+					cont.Resources.Requests["cpu"] = quantityCPU
 				}
 			}
 		}
