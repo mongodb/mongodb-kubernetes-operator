@@ -524,8 +524,7 @@ func (m MongoDBCommunity) Hosts() []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for
-// this resource which is either the default name resourcename-svc or the user defined name
+// ServiceName returns the name of the Service that should be created for this resource
 func (m MongoDBCommunity) ServiceName() string {
 	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
 	if serviceName != "" {
