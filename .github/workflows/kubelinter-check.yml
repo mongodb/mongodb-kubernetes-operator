@@ -28,7 +28,7 @@ on:
     - docs/**
   workflow_dispatch: {}
 jobs:
-  Kubelinter:
+  Kubelinter-check:
     name: Run Kube-linter check
     runs-on: ubuntu-latest
     steps:
@@ -45,13 +45,13 @@ jobs:
       uses: stackrox/kube-linter-action@v1
       with:
         directory: deploy/openshift
-        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_operator.yaml
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_openshift.yaml
 
     - name: Scan repo ./config/manager/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: config/manager/manager.yaml
-        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_operator.yaml
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
     - name: Scan repo ./config/samples/ with kube-linter
       uses: stackrox/kube-linter-action@v1

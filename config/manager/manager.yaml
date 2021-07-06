@@ -65,5 +65,9 @@ spec:
           requests:
             cpu: 500m
             memory: 200Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsUser: 2000
+
         
       serviceAccountName: mongodb-kubernetes-operator
