@@ -208,6 +208,10 @@ jobs:
         ./kind create cluster
 
       if: steps.last_run_status.outputs.last_run_status != 'success'
+    - name: Create mongodb namespace
+      run: kubectl create ns mongodb
+
+      if: steps.last_run_status.outputs.last_run_status != 'success'
     - name: Install CRD
       run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
       if: steps.last_run_status.outputs.last_run_status != 'success'
@@ -231,7 +235,7 @@ jobs:
       id: dump_diagnostics
       if: always() && steps.e2e_test.outcome == 'failure'
       continue-on-error: true
-      run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
+      run: scripts/ci/dump_diagnostics.sh mongodb # mongodb since kind is running in the mongodb namespace
 
     - name: Upload Diagnostics
       if: always() && steps.dump_diagnostics.outcome == 'success'

@@ -4,5 +4,8 @@
     chmod +x ./kind
     ./kind create cluster
 
+- name: Create mongodb namespace
+  run: kubectl create ns mongodb
+
 - name: Install CRD
   run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml

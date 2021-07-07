@@ -24,7 +24,7 @@ type testConfig struct {
 
 func loadTestConfigFromEnv() testConfig {
 	return testConfig{
-		namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "default"),
+		namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "mongodb"),
 		operatorImage:           envvar.GetEnvOrDefault(operatorImageEnvName, "quay.io/mongodb/community-operator-dev:latest"),
 		versionUpgradeHookImage: envvar.GetEnvOrDefault(construct.VersionUpgradeHookImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2"),
 		agentImage:              envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent:10.29.0.6830-1"), // TODO: better way to decide default agent image.

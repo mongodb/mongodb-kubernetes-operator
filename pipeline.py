@@ -20,7 +20,7 @@ VALID_IMAGE_NAMES = frozenset(
 
 GOLANG_TAG = "1.16"
 DEFAULT_IMAGE_TYPE = "ubuntu"
-DEFAULT_NAMESPACE = "default"
+DEFAULT_NAMESPACE = "mongodb"
 
 
 def _load_release() -> Dict:

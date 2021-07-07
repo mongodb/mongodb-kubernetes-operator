@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: mongodb-kubernetes-operator
-  namespace: default
+  namespace: mongodb
 roleRef:
   kind: ClusterRole
   name: mongodb-kubernetes-operator

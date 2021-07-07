@@ -1,5 +1,5 @@
 {
-  "namespace": "default",
+  "namespace": "mongodb",
   "repo_url": "quay.io/mongodb",
   "operator_image": "mongodb-kubernetes-operator",
   "operator_image_dev": "community-operator-dev",

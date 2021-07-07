@@ -22,7 +22,7 @@ import (
 const (
 	agentStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
 
-	defaultNamespace = "default"
+	defaultNamespace = "mongodb"
 
 	pollingInterval time.Duration = 1 * time.Second
 	pollingDuration time.Duration = 60 * time.Second
