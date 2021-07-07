@@ -53,7 +53,7 @@ func notFoundError() error {
 }
 
 func TestReadExistingCredentials(t *testing.T) {
-	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "mongodb"}
+	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "default"}
 	user := buildMongoDBUser("mdbuser-0")
 	t.Run("credentials are successfully generated when all fields are present", func(t *testing.T) {
 		scramCredsSecret := validScramCredentialsSecret(mdbObjectKey, user.ScramCredentialsSecretName)
@@ -260,7 +260,7 @@ func buildConfigurable(name string, users ...User) Configurable {
 		users: users,
 		nsName: types.NamespacedName{
 			Name:      name,
-			Namespace: "mongodb",
+			Namespace: "default",
 		},
 	}
 }

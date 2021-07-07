@@ -68,16 +68,16 @@ func TestAddingDataField_ModifiesExistingObject(t *testing.T) {
 func TestDeleteConfigMap(t *testing.T) {
 	cm := configmap.Builder().
 		SetName("config-map").
-		SetNamespace("mongodb").
+		SetNamespace("default").
 		Build()
 
 	client := NewClient(NewMockedClient())
 	err := client.CreateConfigMap(cm)
 	assert.NoError(t, err)
 
-	err = client.DeleteConfigMap(types.NamespacedName{Name: "config-map", Namespace: "mongodb"})
+	err = client.DeleteConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
 	assert.NoError(t, err)
 
-	_, err = client.GetConfigMap(types.NamespacedName{Name: "config-map", Namespace: "mongodb"})
+	_, err = client.GetConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
 	assert.Equal(t, err, notFoundError())
 }
