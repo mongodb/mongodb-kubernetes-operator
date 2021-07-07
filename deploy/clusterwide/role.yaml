@@ -8,7 +8,6 @@ rules:
   resources:
   - services
   - configmaps
-
   - statefulsets
   verbs:
   - create
@@ -42,8 +41,3 @@ rules:
   - list
   - update
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs: []
