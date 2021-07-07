@@ -129,7 +129,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
 	if err := r.validateSpec(mdb); err != nil {
@@ -240,11 +240,11 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+		r.log.Info("Requeuing reconciliation")
 		return res, nil
 	}
 
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+	r.log.Infof("Successfully finished reconciliation, MongoDB.Spec: %+v, MongoDB.Status: %+v", mdb.Spec, mdb.Status)
 	return res, err
 }
 
@@ -297,15 +297,6 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
-
-	if isReady {
-		r.log.Infow("StatefulSet is ready",
-			"replicas", currentSts.Spec.Replicas,
-			"generation", currentSts.Generation,
-			"observedGeneration", currentSts.Status.ObservedGeneration,
-			"updateStrategy", currentSts.Spec.UpdateStrategy.Type,
-		)
-	}
 
 	return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 }

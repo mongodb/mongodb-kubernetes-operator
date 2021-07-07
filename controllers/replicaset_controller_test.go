@@ -53,6 +53,11 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
 			Version: "4.2.2",
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
 		},
 	}
 }
@@ -88,6 +93,9 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDBCommunity {
 			Members: 3,
 			Version: "4.2.2",
 			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
 				TLS: mdbv1.TLS{
 					Enabled: true,
 					CaConfigMap: mdbv1.LocalObjectReference{

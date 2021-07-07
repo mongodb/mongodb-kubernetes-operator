@@ -40,6 +40,11 @@ const (
 	defaultPasswordKey = "password"
 )
 
+// SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
+const (
+	defaultMode AuthMode = "SCRAM-SHA-256"
+)
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -85,6 +90,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
@@ -186,6 +192,7 @@ type AuthenticationRestriction struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
 }
 
@@ -346,8 +353,21 @@ type Authentication struct {
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=SCRAM
+// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
+
+// ConvertAuthModeToAuthMechanism acts as a map but is immutable. It allows users to use different labels to describe the
+// same authentication mode.
+func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
+	switch authModeLabel {
+	case "SCRAM", "SCRAM-SHA-256":
+		return scram.Sha256
+	case "SCRAM-SHA-1":
+		return scram.Sha1
+	default:
+		return ""
+	}
+}
 
 // MongoDBCommunityStatus defines the observed state of MongoDB
 type MongoDBCommunityStatus struct {
@@ -402,12 +422,27 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
+	authModes := m.Spec.Security.Authentication.Modes
+	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
+	autoAuthMechanism := ConvertAuthModeToAuthMechanism(authModes[0])
+
+	authMechanisms := make([]string, len(authModes))
+
+	for i, authMode := range authModes {
+		if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
+			authMechanisms[i] = authMech
+			if authMech == defaultAuthMechanism {
+				autoAuthMechanism = defaultAuthMechanism
+			}
+		}
+	}
+
 	return scram.Options{
 		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: []string{scram.Sha256},
+		AutoAuthMechanisms: authMechanisms,
 		AgentName:          scram.AgentName,
-		AutoAuthMechanism:  scram.Sha256,
+		AutoAuthMechanism:  autoAuthMechanism,
 	}
 }
 
@@ -489,9 +524,12 @@ func (m MongoDBCommunity) Hosts() []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for
-// this resource
+// ServiceName returns the name of the Service that should be created for this resource
 func (m MongoDBCommunity) ServiceName() string {
+	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
+	if serviceName != "" {
+		return serviceName
+	}
 	return m.Name + "-svc"
 }
 

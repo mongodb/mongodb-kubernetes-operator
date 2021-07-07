@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
@@ -18,6 +19,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -151,10 +154,12 @@ func deployOperator() error {
 	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
-
 	fmt.Println("Successfully created the operator Role Binding")
+
+	dep := &appsv1.Deployment{}
+
 	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir(), "manager.yaml"),
-		&appsv1.Deployment{},
+		dep,
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withEnvVar("WATCH_NAMESPACE", watchNamespace),
@@ -164,8 +169,34 @@ func deployOperator() error {
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
+
+	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
+		return errors.New("error building operator deployment: the deployment does not have the required replicas")
+	}
+
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
+}
+
+// hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
+// currently has the required amount of replicas in the ready state as specified in spec.replicas
+func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
+	return func() (bool, error) {
+		err := e2eutil.TestClient.Get(context.TODO(),
+			types.NamespacedName{Name: dep.Name,
+				Namespace: e2eutil.OperatorNamespace},
+			dep)
+		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, errors.Errorf("error getting operator deployment: %s", err)
+		}
+		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
+			return true, nil
+		}
+		return false, nil
+	}
 }
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options

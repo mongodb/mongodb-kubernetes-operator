@@ -46,8 +46,9 @@ jobs:
         - pipeline-argument: agent-ubi
         - pipeline-argument: agent-ubuntu
         - pipeline-argument: e2e
-    if: github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name
-      == github.repository && github.actor != 'dependabot[bot]')
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
+      || (github.event.pull_request.head.repo.full_name == github.repository && github.actor
+      != 'dependabot[bot]')
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
