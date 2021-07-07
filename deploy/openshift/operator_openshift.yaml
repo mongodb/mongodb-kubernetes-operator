@@ -68,4 +68,3 @@ spec:
             cpu: 500m
             memory: 200Mi
       serviceAccountName: mongodb-kubernetes-operator
-      
