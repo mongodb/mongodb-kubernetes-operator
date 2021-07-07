@@ -8,9 +8,19 @@ rules:
   resources:
   - services
   - configmaps
-  - statefulsets
   verbs:
   - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs: 
   - delete
   - get
   - list
