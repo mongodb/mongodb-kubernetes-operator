@@ -5,25 +5,25 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"go.uber.org/zap"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 // ensureUserResources will check that the configured user password secrets can be found
 // and will start monitor them so that the reconcile process is triggered every time these secrets are updated
-func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) error {
 	for _, user := range mdb.GetScramUsers() {
 		secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
 		if _, err := secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName); err != nil {
 			if apiErrors.IsNotFound(err) {
 				// check for SCRAM secret as well
-				scramSecretName := mdb.GetAgentScramCredentialsNamespacedName()
+
+				scramSecretName := types.NamespacedName{Name: user.ScramCredentialsSecretName, Namespace: mdb.Namespace}
 				_, err = r.client.GetSecret(scramSecretName)
 				if apiErrors.IsNotFound(err) {
 					return fmt.Errorf(`user password secret: %s and scram secret: %s not found`, secretNamespacedName, scramSecretName)
 				}
-				log.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
+				r.log.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
 				continue
 			}
 			return err
