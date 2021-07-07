@@ -45,7 +45,6 @@ def _prepare_test_environment(config_file: str) -> None:
             client.V1Namespace(metadata=dict(name=dev_config.namespace))
         )
     )
-    _delete_test_pod(config_file)
 
     print("Creating Role")
     k8s_conditions.ignore_if_already_exists(
@@ -71,7 +70,7 @@ def _prepare_test_environment(config_file: str) -> None:
 
 def _delete_test_pod(config_file: str) -> None:
     """
-    _delete_testrunner_pod deletes the test runner pod
+    _delete_test_pod deletes the test runner pod
     if it already exists.
     """
     dev_config = load_config(config_file)
@@ -246,6 +245,7 @@ def main() -> int:
         exceptions_to_ignore=ApiException,
     ):
         return 1
+    _delete_test_pod(args.config_file)
     return 0
 
 

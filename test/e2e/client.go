@@ -38,8 +38,8 @@ func (*CleanupOptions) ApplyToCreate(*client.CreateOptions) {}
 
 // Context tracks cleanup functions to be called at the end of a test.
 type Context struct {
-	// shouldPerformCleanup indicates whether or not cleanup should happen after this test
-	shouldPerformCleanup bool
+	// ShouldPerformCleanup indicates whether or not cleanup should happen after this test
+	ShouldPerformCleanup bool
 
 	// ExecutionId is a unique identifier for this test run.
 	ExecutionId string
@@ -59,12 +59,12 @@ func NewContext(t *testing.T, performCleanup bool) (*Context, error) {
 		return nil, err
 	}
 
-	return &Context{t: t, ExecutionId: testId, shouldPerformCleanup: performCleanup}, nil
+	return &Context{t: t, ExecutionId: testId, ShouldPerformCleanup: performCleanup}, nil
 }
 
 // Teardown is called at the end of a test.
 func (ctx *Context) Teardown() {
-	if !ctx.shouldPerformCleanup {
+	if !ctx.ShouldPerformCleanup {
 		return
 	}
 	for _, fn := range ctx.cleanupFuncs {
