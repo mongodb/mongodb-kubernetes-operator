@@ -174,7 +174,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	if err := r.ensureUserResources(mdb); err != nil {
+	if err := r.ensureUserResources(mdb, r.log); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
