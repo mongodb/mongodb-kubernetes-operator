@@ -11,9 +11,9 @@ import sys
 import yaml
 
 TEST_POD_NAME = "e2e-test"
-TEST_CLUSTER_ROLE_NAME= "e2e-test"
-TEST_CLUSTER_ROLE_BINDING_NAME="e2e-test"
-TEST_SERVICE_ACCOUNT_NAME="e2e-test"
+TEST_CLUSTER_ROLE_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_BINDING_NAME = "e2e-test"
+TEST_SERVICE_ACCOUNT_NAME = "e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
@@ -186,7 +186,9 @@ def _delete_test_environment(config_file: str) -> None:
     )
 
     k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_service_account(TEST_SERVICE_ACCOUNT_NAME, dev_config.namespace)
+        lambda: corev1.delete_namespaced_service_account(
+            TEST_SERVICE_ACCOUNT_NAME, dev_config.namespace
+        )
     )
 
 
