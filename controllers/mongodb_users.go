@@ -16,7 +16,15 @@ func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) er
 		secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
 		if _, err := secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName); err != nil {
 			if apiErrors.IsNotFound(err) {
-				return fmt.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
+				// check for SCRAM secret as well
+
+				scramSecretName := types.NamespacedName{Name: user.ScramCredentialsSecretName, Namespace: mdb.Namespace}
+				_, err = r.client.GetSecret(scramSecretName)
+				if apiErrors.IsNotFound(err) {
+					return fmt.Errorf(`user password secret: %s and scram secret: %s not found`, secretNamespacedName, scramSecretName)
+				}
+				r.log.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
+				continue
 			}
 			return err
 		}
