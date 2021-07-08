@@ -11,6 +11,9 @@ import sys
 import yaml
 
 TEST_POD_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_NAME= "e2e-test"
+TEST_CLUSTER_ROLE_BINDING_NAME="e2e-test"
+TEST_SERVICE_ACCOUNT_NAME="e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
@@ -65,18 +68,6 @@ def _prepare_test_environment(config_file: str) -> None:
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_test_service_account()
         )
-    )
-
-
-def _delete_test_pod(config_file: str) -> None:
-    """
-    _delete_test_pod deletes the test runner pod
-    if it already exists.
-    """
-    dev_config = load_config(config_file)
-    corev1 = client.CoreV1Api()
-    k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
     )
 
 
@@ -177,6 +168,39 @@ def wait_for_pod_to_be_running(
     print("Pod is running")
 
 
+def _delete_test_environment(config_file: str) -> None:
+    """
+    _delete_test_environment deletes the cluster role, cluster role binding and service account
+    for the test pod.
+    """
+    rbacv1 = client.RbacAuthorizationV1Api()
+    corev1 = client.CoreV1Api()
+    dev_config = load_config(config_file)
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role(TEST_CLUSTER_ROLE_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role_binding(TEST_CLUSTER_ROLE_BINDING_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_service_account(TEST_SERVICE_ACCOUNT_NAME, dev_config.namespace)
+    )
+
+
+def _delete_test_pod(config_file: str) -> None:
+    """
+    _delete_test_pod deletes the test pod.
+    """
+    dev_config = load_config(config_file)
+    corev1 = client.CoreV1Api()
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Name of the test to run")
@@ -229,6 +253,15 @@ def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> Non
         print(line.decode("utf-8").rstrip())
 
 
+def delete_test_resources(config_file: str) -> None:
+    """
+    delete_test_resources ensures the resources that are created
+    for the test are deleted.
+    """
+    _delete_test_environment(config_file)
+    _delete_test_pod(config_file)
+
+
 def main() -> int:
     args = parse_args()
     config.load_kube_config()
@@ -245,7 +278,7 @@ def main() -> int:
         exceptions_to_ignore=ApiException,
     ):
         return 1
-    _delete_test_pod(args.config_file)
+    delete_test_resources(args.config_file)
     return 0
 
 
