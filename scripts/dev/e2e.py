@@ -35,8 +35,8 @@ def _load_test_role_binding() -> Dict:
 
 def _prepare_test_environment(config_file: str) -> None:
     """
-    _prepare_testrunner_environment ensures the ServiceAccount,
-    Role and ClusterRole and bindings are created for the test runner.
+    _prepare_testrunner_environment ensures that the namespace, cluster role,
+    cluster role binding and service account are created for the test pod.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
@@ -49,12 +49,12 @@ def _prepare_test_environment(config_file: str) -> None:
         )
     )
 
-    print("Creating Role")
+    print("Creating Cluster Role")
     k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_cluster_role(_load_test_role())
     )
 
-    print("Creating Role Binding")
+    print("Creating Cluster Role Binding")
     role_binding = _load_test_role_binding()
     # set namespace specified in config.json
     role_binding["subjects"][0]["namespace"] = dev_config.namespace
@@ -63,7 +63,7 @@ def _prepare_test_environment(config_file: str) -> None:
         lambda: rbacv1.create_cluster_role_binding(role_binding)
     )
 
-    print("Creating ServiceAccount")
+    print("Creating Service Account")
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_test_service_account()
@@ -170,8 +170,8 @@ def wait_for_pod_to_be_running(
 
 def _delete_test_environment(config_file: str) -> None:
     """
-    _delete_test_environment deletes the cluster role, cluster role binding and service account
-    for the test pod.
+    _delete_test_environment ensures that the cluster role, cluster role binding and service account
+    for the test pod are deleted.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
@@ -257,8 +257,7 @@ def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> Non
 
 def delete_test_resources(config_file: str) -> None:
     """
-    delete_test_resources ensures the resources that are created
-    for the test are deleted.
+    delete_test_resources ensures that the test environment and test pod are deleted.
     """
     _delete_test_environment(config_file)
     _delete_test_pod(config_file)
