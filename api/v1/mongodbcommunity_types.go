@@ -558,10 +558,6 @@ func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
-}
-
 func (m MongoDBCommunity) DesiredReplicas() int {
 	return m.Spec.Members
 }
