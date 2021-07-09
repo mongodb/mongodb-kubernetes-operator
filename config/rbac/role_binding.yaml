@@ -9,3 +9,15 @@ roleRef:
   kind: Role
   name: mongodb-kubernetes-operator
   apiGroup: rbac.authorization.k8s.io
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: mongodb-operator-appdb
+subjects:
+- kind: ServiceAccount
+  name: mongodb-operator-appdb
+roleRef:
+  kind: Role
+  name: mongodb-operator-appdb
+  apiGroup: rbac.authorization.k8s.io
