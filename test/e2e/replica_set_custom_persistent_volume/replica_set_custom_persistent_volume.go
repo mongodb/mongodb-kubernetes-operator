@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// getPersistentVolumeLocal returns a persistentVolume of type localPath and a "type" label.
 func getPersistentVolumeLocal(name string, localPath string, label string) corev1.PersistentVolume {
 	return corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -61,6 +62,8 @@ func getPersistentVolumeLocal(name string, localPath string, label string) corev
 	}
 }
 
+// getVolumes returns two persistentVolumes for each of the `members` pod.
+// one volume will be for the `data` claim and the other will be for the `logs` claim
 func getVolumes(ctx *e2eutil.Context, volumeType string, members int) []corev1.PersistentVolume {
 	volumes := make([]corev1.PersistentVolume, members)
 	for i := 0; i < members; i++ {
@@ -80,7 +83,7 @@ func getPvc(pvcType string, mdb v1.MongoDBCommunity) corev1.PersistentVolumeClai
 	} else {
 		name = mdb.DataVolumeName()
 	}
-	defaultString := "default"
+	defaultStorageClass := "default"
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -93,7 +96,7 @@ func getPvc(pvcType string, mdb v1.MongoDBCommunity) corev1.PersistentVolumeClai
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{"storage": *resource.NewScaledQuantity(int64(8), resource.Giga)},
 			},
-			StorageClassName: &defaultString,
+			StorageClassName: &defaultStorageClass,
 		},
 	}
 }
