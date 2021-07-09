@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -167,6 +168,7 @@ func deployOperator(ctx *e2eutil.Context) error {
 		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
 		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
+		withCPURequest("50m"),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
@@ -202,7 +204,7 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
 // provided will be applied before creation.
-func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath string, obj client.Object, options ...func(obj runtime.Object)) error {
+func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath string, obj client.Object, options ...func(obj runtime.Object) error) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return errors.Errorf("error reading file: %s", err)
@@ -213,7 +215,9 @@ func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath stri
 	}
 
 	for _, opt := range options {
-		opt(obj)
+		if err := opt(obj); err != nil {
+			return err
+		}
 	}
 
 	return createOrUpdate(ctx, obj)
@@ -239,11 +243,33 @@ func createOrUpdate(ctx *e2eutil.Context, obj client.Object) error {
 	return nil
 }
 
+// withCPURequest assumes that the underlying type is an appsv1.Deployment.
+// it returns a function which will change the amount
+// requested for the CPUresource. There will be
+// no effect when used with a non-deployment type
+func withCPURequest(cpuRequest string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
+		dep, ok := obj.(*appsv1.Deployment)
+		if !ok {
+			return errors.Errorf("withCPURequest() called on a non-deployment object")
+		}
+		quantityCPU, okCPU := resource.ParseQuantity(cpuRequest)
+		if okCPU != nil {
+			return okCPU
+		}
+		for _, cont := range dep.Spec.Template.Spec.Containers {
+			cont.Resources.Requests["cpu"] = quantityCPU
+		}
+
+		return nil
+	}
+}
+
 // withNamespace returns a function which will assign the namespace
 // of the underlying type to the value specified. We can
 // add new types here as required.
-func withNamespace(ns string) func(runtime.Object) {
-	return func(obj runtime.Object) {
+func withNamespace(ns string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
 		switch v := obj.(type) {
 		case *rbacv1.Role:
 			v.Namespace = ns
@@ -255,18 +281,24 @@ func withNamespace(ns string) func(runtime.Object) {
 			v.Namespace = ns
 		case *appsv1.Deployment:
 			v.Namespace = ns
+		default:
+			return errors.Errorf("withNamespace() called on a non supported object")
 		}
+
+		return nil
 	}
 }
 
-func withEnvVar(key, val string) func(obj runtime.Object) {
-	return func(obj runtime.Object) {
+func withEnvVar(key, val string) func(obj runtime.Object) error {
+	return func(obj runtime.Object) error {
 		if testPod, ok := obj.(*corev1.Pod); ok {
 			testPod.Spec.Containers[0].Env = updateEnvVarList(testPod.Spec.Containers[0].Env, key, val)
 		}
 		if testDeployment, ok := obj.(*appsv1.Deployment); ok {
 			testDeployment.Spec.Template.Spec.Containers[0].Env = updateEnvVarList(testDeployment.Spec.Template.Spec.Containers[0].Env, key, val)
 		}
+
+		return nil
 	}
 }
 
@@ -282,11 +314,14 @@ func updateEnvVarList(envVarList []corev1.EnvVar, key, val string) []corev1.EnvV
 
 // withOperatorImage assumes that the underlying type is an appsv1.Deployment
 // which has the operator container as the first container. There will be
-// no effect when used with a non-deployment type
-func withOperatorImage(image string) func(runtime.Object) {
-	return func(obj runtime.Object) {
+// an error return when used with a non-deployment type
+func withOperatorImage(image string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			dep.Spec.Template.Spec.Containers[0].Image = image
+			return nil
 		}
+
+		return fmt.Errorf("withOperatorImage() called on a non-deployment object")
 	}
 }

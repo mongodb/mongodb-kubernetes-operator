@@ -6,10 +6,8 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
   - services
   - configmaps
-  - secrets
   verbs:
   - create
   - delete
@@ -22,8 +20,18 @@ rules:
   - apps
   resources:
   - statefulsets
+  verbs: 
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
   verbs:
-  - create
   - delete
   - get
   - list

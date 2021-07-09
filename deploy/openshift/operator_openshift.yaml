@@ -2,18 +2,38 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mongodb-kubernetes-operator
+  namespace: mongodb
+  labels:
+    owner: mongodb
+  annotations:
+    email: "support@mongodb.com"
 spec:
   replicas: 1
   selector:
     matchLabels:
       name: mongodb-kubernetes-operator
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       labels:
         name: mongodb-kubernetes-operator
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - mongodb-kubernetes-operator
+            topologyKey: "kubernetes.io/hostname"
       containers:
-      - command:
+      - name: mongodb-kubernetes-operator
+        command:
         - mongodb-kubernetes-operator
         env:
         - name: WATCH_NAMESPACE
@@ -40,5 +60,11 @@ spec:
           value: docker.io
         image: quay.io/mongodb/mongodb-kubernetes-operator:0.6.2
         imagePullPolicy: Always
-        name: mongodb-kubernetes-operator
+        resources:
+          limits:
+            cpu: 1100m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 200Mi
       serviceAccountName: mongodb-kubernetes-operator
