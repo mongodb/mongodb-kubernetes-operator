@@ -13,12 +13,12 @@ require (
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/xdg/stringprep v1.0.3
-	go.mongodb.org/mongo-driver v1.5.3
-	go.uber.org/zap v1.17.0
-	k8s.io/api v0.21.1
+	go.mongodb.org/mongo-driver v1.5.4
+	go.uber.org/zap v1.18.1
+	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
-	k8s.io/client-go v0.21.1
-	sigs.k8s.io/controller-runtime v0.9.0
+	k8s.io/client-go v0.21.2
+	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/yaml v1.2.0
 )
 

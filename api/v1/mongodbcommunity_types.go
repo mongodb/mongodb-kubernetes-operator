@@ -90,6 +90,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
@@ -191,6 +192,7 @@ type AuthenticationRestriction struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
 }
 
@@ -522,9 +524,12 @@ func (m MongoDBCommunity) Hosts() []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for
-// this resource
+// ServiceName returns the name of the Service that should be created for this resource
 func (m MongoDBCommunity) ServiceName() string {
+	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
+	if serviceName != "" {
+		return serviceName
+	}
 	return m.Name + "-svc"
 }
 
@@ -551,10 +556,6 @@ func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName
 
 func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
-}
-
-func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 func (m MongoDBCommunity) DesiredReplicas() int {

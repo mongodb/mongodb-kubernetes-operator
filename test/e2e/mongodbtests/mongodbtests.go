@@ -289,6 +289,19 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	}
 }
 
+// ServiceWithNameExists checks whether a service with the name serviceName exists
+func ServiceWithNameExists(serviceName string, namespace string) func(t *testing.T) {
+	return func(t *testing.T) {
+		serviceNamespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
+		srv := corev1.Service{}
+		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &srv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Service with name %s exists", serviceName)
+	}
+}
+
 // DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
 func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
