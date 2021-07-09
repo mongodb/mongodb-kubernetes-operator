@@ -37,12 +37,15 @@ def _load_test_role_binding() -> Dict:
 
 def _prepare_test_environment(config_file: str) -> None:
     """
-    _prepare_test_environment ensures that the namespace, cluster role,
-    cluster role binding and service account are created for the test pod.
+    _prepare_test_environment ensures that the old test pod is deleted
+    and that namespace, cluster role, cluster role binding and service account
+    are created for the test pod.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
     dev_config = load_config(config_file)
+
+    _delete_test_pod(config_file)
 
     print("Creating Namespace")
     k8s_conditions.ignore_if_already_exists(
@@ -257,14 +260,6 @@ def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> Non
         print(line.decode("utf-8").rstrip())
 
 
-def delete_test_resources(config_file: str) -> None:
-    """
-    delete_test_resources ensures that the test environment and test pod are deleted.
-    """
-    _delete_test_environment(config_file)
-    _delete_test_pod(config_file)
-
-
 def main() -> int:
     args = parse_args()
     config.load_kube_config()
@@ -281,7 +276,7 @@ def main() -> int:
         exceptions_to_ignore=ApiException,
     ):
         return 1
-    delete_test_resources(args.config_file)
+    _delete_test_environment(args.config_file)
     return 0
 
 
