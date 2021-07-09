@@ -64,7 +64,7 @@ jobs:
           ATLAS_DATABASE: "${{ secrets.ATLAS_DATABASE }}"
           ATLAS_CONNECTION_STRING: "${{ secrets.ATLAS_CONNECTION_STRING }}"
 
-  merge-release-pr-and-draft-github-release:
+  create-draft-release:
     runs-on: ubuntu-latest
     needs: [release-images]
     steps:
@@ -75,14 +75,6 @@ jobs:
       run: |
         OUTPUT=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json)
         echo "::set-output name=OUTPUT::$OUTPUT"
-    - name: Merge Release PR
-      uses: pascalgn/automerge-action@v0.14.2
-      env:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        MERGE_LABELS: ""
-        MERGE_DELETE_BRANCH: true
-        MERGE_METHOD: squash
-        MERGE_COMMIT_MESSAGE: "Release MongoDB Kubernetes Operator v${{ steps.release_tag.outputs.OUTPUT }}"
     - name: Create Github Release
       uses: ncipollo/release-action@v1
       with:
@@ -91,25 +83,3 @@ jobs:
         bodyFile: "${{ github.workspace }}/docs/RELEASE_NOTES.md"
         draft: true
         token: ${{ secrets.GITHUB_TOKEN }}
-
-  comment:
-    runs-on: ubuntu-latest
-    needs: [merge-release-pr-and-draft-github-release]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-      - name: Determine Release Version
-        id: release_version
-        run: |
-          VERSION=$(jq -r '."mongodb-kubernetes-operator"' < $GITHUB_WORKSPACE/release.json)
-          echo "::set-output name=version::${VERSION}"
-      - uses: actions/github-script@v3
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Review and publish the release here: https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v${{ steps.release_version.outputs.version }}'
-            })
