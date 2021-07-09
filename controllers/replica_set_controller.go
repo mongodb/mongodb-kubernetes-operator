@@ -255,6 +255,9 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 		return err
 	}
 
+	// TODO: if field is already set, check if I need to do a POST request
+	// work with r.logs and print statements.
+	// seems like it does update the Version field but not the annotaion lastSuccesful.. field
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
 		// the last version will be duplicated in two annotations.
