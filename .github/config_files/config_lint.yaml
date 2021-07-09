@@ -4,7 +4,7 @@ checks:
 #Reasons to exclude:
   # non-existent-service-account because the service account is created in another file
   # minimum-three-replicas because the deployment contains only 1 replica of the operator
-  # no-readiness-probe & no-liveness-probe because for now, it brings nothing to add theses probes
+  # no-readiness-probe & no-liveness-probe because for now, it brings nothing to add these probes
   # because they will not check whether the operator is actually ready/living
   exclude:
   - "non-existent-service-account"
