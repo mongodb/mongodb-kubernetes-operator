@@ -10,10 +10,12 @@ import argparse
 import sys
 import yaml
 
-TEST_POD_NAME = "e2e-test"
-TEST_CLUSTER_ROLE_NAME = "e2e-test"
-TEST_CLUSTER_ROLE_BINDING_NAME = "e2e-test"
-TEST_SERVICE_ACCOUNT_NAME = "e2e-test"
+(
+    TEST_POD_NAME,
+    TEST_CLUSTER_ROLE_NAME,
+    TEST_CLUSTER_ROLE_BINDING_NAME,
+    TEST_SERVICE_ACCOUNT_NAME,
+) = "e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
@@ -35,7 +37,7 @@ def _load_test_role_binding() -> Dict:
 
 def _prepare_test_environment(config_file: str) -> None:
     """
-    _prepare_testrunner_environment ensures that the namespace, cluster role,
+    _prepare_test_environment ensures that the namespace, cluster role,
     cluster role binding and service account are created for the test pod.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
@@ -148,7 +150,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         timeout=60,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Could not create test_runner pod!")
+        raise Exception("Could not create test pod!")
 
 
 def wait_for_pod_to_be_running(

@@ -216,7 +216,7 @@ func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath stri
 		opt(obj)
 	}
 
-	return createOrUpdate(obj, ctx)
+	return createOrUpdate(ctx, obj)
 }
 
 // marshalRuntimeObjectFromYAMLBytes accepts the bytes of a yaml resource
@@ -229,7 +229,7 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	return json.Unmarshal(jsonBytes, &obj)
 }
 
-func createOrUpdate(obj client.Object, ctx *e2eutil.Context) error {
+func createOrUpdate(ctx *e2eutil.Context, obj client.Object) error {
 	if err := e2eutil.TestClient.Create(context.TODO(), obj, &e2eutil.CleanupOptions{TestContext: ctx}); err != nil {
 		if apiErrors.IsAlreadyExists(err) {
 			return e2eutil.TestClient.Update(context.TODO(), obj)
