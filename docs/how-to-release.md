@@ -1,17 +1,15 @@
 
 ## How to Release
 
-* Ensure the versions specified in [release.json](../release.json) are correct. 
-    * Prepare a PR to bump and versions as required. 
-
-* Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
-    * Review the [tickets for this release](https://jira.mongodb.org/issues?jql=project%20%3D%20CLOUDP%20AND%20component%20%20%3D%20"Kubernetes%20Community"%20%20AND%20status%20in%20(Resolved%2C%20Closed)%20AND%20fixVersion%20%3D%20kube-community-0.6.0%20) (ensure relevant fix version is in the jql query)
-
-* Run the `Create Release PR` GitHub Action
-    * In the GitHub UI:
-        * `Actions` > `Create Release PR` > `Run Workflow` (on master)
-        
-* Review and Approve the release PR that is created by this action.
+* Prepare release PR:
+    * Update any changing versions in [release.json](../release.json).
+    * Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
+    * Run `python scripts/ci/update_release.py` to update the relevant yaml manifests.
+    * Commit all changes.
+    * Create a PR with the title `Release MongoDB Kubernetes Operator v<operator-version>` (the title must match this pattern)
+    
+* Have this PR Reviewed and Approved.
     * Upon approval, all new images for this release will be built and released, and a Github release draft will be created.
+    * No need to merge this PR, when all images are successfully released, the PR will be merged.
 
 * Review and publish the new GitHub release draft.
