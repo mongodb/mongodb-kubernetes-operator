@@ -9,8 +9,6 @@ on:
   pull_request:
     branches:
     - master
-    paths-ignore:
-    - docs/**
   workflow_dispatch: {}
 
 jobs:
