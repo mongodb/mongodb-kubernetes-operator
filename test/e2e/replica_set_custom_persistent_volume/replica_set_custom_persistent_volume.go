@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,7 @@ import (
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	corev1 "k8s.io/api/core/v1"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -71,11 +73,40 @@ func getVolumes(ctx *e2eutil.Context, volumeType string, members int) []corev1.P
 	return volumes
 }
 
+func getPvc(pvcType string, mdb v1.MongoDBCommunity) corev1.PersistentVolumeClaim {
+	name := ""
+	if pvcType == "logs" {
+		name = mdb.LogsVolumeName()
+	} else {
+		name = mdb.DataVolumeName()
+	}
+	defaultString := "default"
+	return corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"type": pvcType},
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{"storage": *resource.NewScaledQuantity(int64(8), resource.Giga)},
+			},
+			StorageClassName: &defaultString,
+		},
+	}
+}
+
 func TestReplicaSetCustomPersistentVolumes(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+		getPvc("data", mdb),
+		getPvc("logs", mdb),
+	}
 	volumesToCreate := getVolumes(ctx, "data", mdb.Spec.Members)
 	volumesToCreate = append(volumesToCreate, getVolumes(ctx, "logs", mdb.Spec.Members)...)
 
