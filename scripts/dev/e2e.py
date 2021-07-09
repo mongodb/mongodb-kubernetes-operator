@@ -10,12 +10,10 @@ import argparse
 import sys
 import yaml
 
-(
-    TEST_POD_NAME,
-    TEST_CLUSTER_ROLE_NAME,
-    TEST_CLUSTER_ROLE_BINDING_NAME,
-    TEST_SERVICE_ACCOUNT_NAME,
-) = "e2e-test"
+TEST_POD_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_BINDING_NAME = "e2e-test"
+TEST_SERVICE_ACCOUNT_NAME = "e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
