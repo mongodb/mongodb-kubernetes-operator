@@ -11,6 +11,9 @@ import sys
 import yaml
 
 TEST_POD_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_BINDING_NAME = "e2e-test"
+TEST_SERVICE_ACCOUNT_NAME = "e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
@@ -32,12 +35,15 @@ def _load_test_role_binding() -> Dict:
 
 def _prepare_test_environment(config_file: str) -> None:
     """
-    _prepare_testrunner_environment ensures the ServiceAccount,
-    Role and ClusterRole and bindings are created for the test runner.
+    _prepare_test_environment ensures that the old test pod is deleted
+    and that namespace, cluster role, cluster role binding and service account
+    are created for the test pod.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
     dev_config = load_config(config_file)
+
+    _delete_test_pod(config_file)
 
     print("Creating Namespace")
     k8s_conditions.ignore_if_already_exists(
@@ -45,14 +51,13 @@ def _prepare_test_environment(config_file: str) -> None:
             client.V1Namespace(metadata=dict(name=dev_config.namespace))
         )
     )
-    _delete_test_pod(config_file)
 
-    print("Creating Role")
+    print("Creating Cluster Role")
     k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_cluster_role(_load_test_role())
     )
 
-    print("Creating Role Binding")
+    print("Creating Cluster Role Binding")
     role_binding = _load_test_role_binding()
     # set namespace specified in config.json
     role_binding["subjects"][0]["namespace"] = dev_config.namespace
@@ -61,23 +66,11 @@ def _prepare_test_environment(config_file: str) -> None:
         lambda: rbacv1.create_cluster_role_binding(role_binding)
     )
 
-    print("Creating ServiceAccount")
+    print("Creating Service Account")
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_test_service_account()
         )
-    )
-
-
-def _delete_test_pod(config_file: str) -> None:
-    """
-    _delete_testrunner_pod deletes the test runner pod
-    if it already exists.
-    """
-    dev_config = load_config(config_file)
-    corev1 = client.CoreV1Api()
-    k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
     )
 
 
@@ -158,7 +151,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         timeout=60,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Could not create test_runner pod!")
+        raise Exception("Could not create test pod!")
 
 
 def wait_for_pod_to_be_running(
@@ -176,6 +169,41 @@ def wait_for_pod_to_be_running(
         pod = corev1.read_namespaced_pod(name, namespace)
         raise Exception("Pod never got into Running state: {}".format(pod))
     print("Pod is running")
+
+
+def _delete_test_environment(config_file: str) -> None:
+    """
+    _delete_test_environment ensures that the cluster role, cluster role binding and service account
+    for the test pod are deleted.
+    """
+    rbacv1 = client.RbacAuthorizationV1Api()
+    corev1 = client.CoreV1Api()
+    dev_config = load_config(config_file)
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role(TEST_CLUSTER_ROLE_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role_binding(TEST_CLUSTER_ROLE_BINDING_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_service_account(
+            TEST_SERVICE_ACCOUNT_NAME, dev_config.namespace
+        )
+    )
+
+
+def _delete_test_pod(config_file: str) -> None:
+    """
+    _delete_test_pod deletes the test pod.
+    """
+    dev_config = load_config(config_file)
+    corev1 = client.CoreV1Api()
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -246,6 +274,7 @@ def main() -> int:
         exceptions_to_ignore=ApiException,
     ):
         return 1
+    _delete_test_environment(args.config_file)
     return 0
 
 
