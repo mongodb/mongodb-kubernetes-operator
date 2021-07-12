@@ -33,6 +33,18 @@ def _load_test_role_binding() -> Dict:
     return load_yaml_from_file("deploy/e2e/role_binding.yaml")
 
 
+def _load_appdb_role_binding() -> Dict:
+    return load_yaml_from_file("deploy/e2e/appdb/role_binding.yaml")
+
+
+def _load_appdb_service_account() -> Dict:
+    return load_yaml_from_file("deploy/e2e/appdb/service_account.yaml")
+
+
+def _load_appdb_role() -> Dict:
+    return load_yaml_from_file("deploy/e2e/appdb/role.yaml")
+
+
 def _prepare_test_environment(config_file: str) -> None:
     """
     _prepare_test_environment ensures that the old test pod is deleted
@@ -72,6 +84,22 @@ def _prepare_test_environment(config_file: str) -> None:
             dev_config.namespace, _load_test_service_account()
         )
     )
+    """
+    print("ns: ", dev_config.namespace)
+    print("create objects for appdb")
+    k8s_conditions.ignore_if_already_exists(
+        lambda: rbacv1.dev_config.namespace(
+            dev_config.namespace, _load_appdb_role())
+    )
+    role_binding_appdb = _load_appdb_role_binding()
+    k8s_conditions.ignore_if_already_exists(
+        lambda: rbacv1.create_cluster_role_binding(role_binding_appdb)
+    )
+    k8s_conditions.ignore_if_already_exists(
+        lambda: corev1.create_namespaced_service_account(
+            dev_config.namespace, _load_appdb_service_account()
+        )
+    )"""
 
 
 def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:

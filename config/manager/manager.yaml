@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mongodb-kubernetes-operator
-  namespace: mongodb
+  annotations:
+    email: support@mongodb.com
   labels:
     owner: mongodb
-  annotations:
-    email: "support@mongodb.com"
+  name: mongodb-kubernetes-operator
+  namespace: mongodb
 spec:
   replicas: 1
   selector:
     matchLabels:
       name: mongodb-kubernetes-operator
   strategy:
-    type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -30,7 +30,7 @@ spec:
                 operator: In
                 values:
                 - mongodb-kubernetes-operator
-            topologyKey: "kubernetes.io/hostname"
+            topologyKey: kubernetes.io/hostname
       containers:
       - command:
         - /usr/local/bin/entrypoint
@@ -46,7 +46,7 @@ spec:
         - name: OPERATOR_NAME
           value: mongodb-kubernetes-operator
         - name: AGENT_IMAGE
-          value: quay.io/mongodb/mongodb-agent:10.29.0.6830-1
+          value: quay.io/mongodb/mongodb-agent:11.0.5.6963-1
         - name: VERSION_UPGRADE_HOOK_IMAGE
           value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2
         - name: READINESS_PROBE_IMAGE
@@ -55,7 +55,7 @@ spec:
           value: mongo
         - name: MONGODB_REPO_URL
           value: docker.io
-        image: quay.io/mongodb/mongodb-kubernetes-operator:0.6.2
+        image: quay.io/mongodb/mongodb-kubernetes-operator:0.7.0
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
         resources:
@@ -68,5 +68,5 @@ spec:
         securityContext:
           readOnlyRootFilesystem: true
           runAsUser: 2000
-        
       serviceAccountName: mongodb-kubernetes-operator
+      
