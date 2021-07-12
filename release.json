@@ -1,5 +1,5 @@
 {
-  "mongodb-kubernetes-operator": "0.6.2",
+  "mongodb-kubernetes-operator": "0.7.0",
   "version-upgrade-hook": "1.0.2",
   "readiness-probe": "1.0.4",
   "mongodb-agent": {

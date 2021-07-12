@@ -1,0 +1,21 @@
+name: Link Github Releases
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  comment:
+    # only link releases on release PRs
+    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Review and publish the release here: https://github.com/mongodb/mongodb-kubernetes-operator/releases
+            })

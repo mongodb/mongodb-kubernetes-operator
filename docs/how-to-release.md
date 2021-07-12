@@ -10,6 +10,6 @@
     
 * Have this PR Reviewed and Approved.
     * Upon approval, all new images for this release will be built and released, and a Github release draft will be created.
-    * No need to merge this PR, when all images are successfully released, the PR will be merged.
+    * Once tests have passed, merge the release PR.
 
 * Review and publish the new GitHub release draft.
