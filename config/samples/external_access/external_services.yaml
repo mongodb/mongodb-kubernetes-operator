@@ -13,6 +13,8 @@ spec:
       nodePort: 31181
       port: 31181
       targetPort: 27017
+annotations:
+  kube-linter.io/ignore-all: "used for sample"
 
 
 ---
@@ -29,6 +31,8 @@ spec:
     - nodePort: 31182
       port: 31182
       targetPort: 27017
+annotations:
+  kube-linter.io/ignore-all: "used for sample"
 
 
 ---
@@ -45,3 +49,5 @@ spec:
     - nodePort: 31183
       port: 31183
       targetPort: 27017
+annotations:
+  kube-linter.io/ignore-all: "used for sample"
