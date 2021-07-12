@@ -69,4 +69,3 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2000
       serviceAccountName: mongodb-kubernetes-operator
-      
