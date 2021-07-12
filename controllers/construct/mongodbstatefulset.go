@@ -24,13 +24,13 @@ const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
 
-	versionUpgradeHookName       = "mongod-posthook"
-	ReadinessProbeContainerName  = "mongodb-agent-readinessprobe"
-	readinessProbePath           = "/opt/scripts/readinessprobe"
-	agentHealthStatusFilePathEnv = "AGENT_STATUS_FILEPATH"
-	clusterFilePath              = "/var/lib/automation/config/cluster-config.json"
-	operatorServiceAccountName   = "mongodb-kubernetes-operator"
-	//appDbServiceAccountName        = "mongodb-database"
+	versionUpgradeHookName         = "mongod-posthook"
+	ReadinessProbeContainerName    = "mongodb-agent-readinessprobe"
+	readinessProbePath             = "/opt/scripts/readinessprobe"
+	agentHealthStatusFilePathEnv   = "AGENT_STATUS_FILEPATH"
+	clusterFilePath                = "/var/lib/automation/config/cluster-config.json"
+	operatorServiceAccountName     = "mongodb-kubernetes-operator"
+	appDbServiceAccountName        = "mongodb-database"
 	agentHealthStatusFilePathValue = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
 	MongodbRepoUrl = "MONGODB_REPO_URL"
@@ -164,7 +164,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(automationConfigVolume),
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
-				podtemplatespec.WithServiceAccount(operatorServiceAccountName),
+				podtemplatespec.WithServiceAccount(appDbServiceAccountName),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts)),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
