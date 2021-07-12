@@ -1,0 +1,46 @@
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: <mongodb-name>
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  replicaSetHorizons:
+  - horizon: <domain-rs-1>:31181
+  - horizon: <domain-rs-2>:31182
+  - horizon: <domain-rs-3>:31183
+  security:
+    tls:
+      enabled: true
+      certificateKeySecretRef:
+        name: mongodb-tls
+      caConfigMapRef:
+        name: ca-config-map
+    authentication:
+      modes: ["SCRAM"]
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+      scramCredentialsSecretName: my-scram
+
+
+# the user credentials will be generated from this secret
+# once the credentials are generated, this secret is no longer required
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+type: Opaque
+stringData:
+  password: <your-admin-password>
+
