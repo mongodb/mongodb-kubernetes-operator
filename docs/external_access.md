@@ -49,7 +49,7 @@ kubectl apply -f config/samples/external_access/cert-manager-certificate.yaml
 
 ### Create the MongoDB deployment
 
-Edit ```config/samples/external_access/mongodb.com_v1_mongodbcommunity_cr.yaml```. Replace <mongodb-name> with the desired MongoDB deployment name -- this should be the same as in the previous step. Replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you should have the same number of entries in this section as the number of your replicaset members. You can also edit the ports for external access to your preferred numbers in this section -- you will remmeber to change them in the next step too. Change ```<your-admin-password>``` to your desired admin password for MongoDB.
+Edit ```config/samples/external_access/mongodb.com_v1_mongodbcommunity_cr.yaml```. Replace <mongodb-name> with the desired MongoDB deployment name -- this should be the same as in the previous step. Replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you should have the same number of entries in this section as the number of your replicaset members. You can also edit the ports for external access to your preferred numbers in this section -- you will have to remember to change them in the next step too. Change ```<your-admin-password>``` to your desired admin password for MongoDB.
 
 Apply the manifest.
 
