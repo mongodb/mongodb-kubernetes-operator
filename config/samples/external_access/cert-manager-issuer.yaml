@@ -3,7 +3,6 @@ apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
   name: ca-issuer
-  namespace: <your-namespace>
 spec:
   ca:
     secretName: ca-key-pair

@@ -11,7 +11,6 @@ helm repo update
 helm install \
   cert-manager jetstack/cert-manager \
   --namespace cert-manager \
-  --create-namespace \
   --version v1.3.1 \
   --set installCRDs=true
 ```
@@ -38,13 +37,13 @@ kubectl create secret tls ca-key-pair  --cert=ca.crt  --key=ca.key --namespace <
 
 ### Create the Cert Manager issuer and secret
 
-Edit the files in ```config/samples/external_access``` -- ```cert-manager-issuer.yaml``` and ```cert-manager-certificate.yaml``` to replace ```<your-namespace>``` with the namespace you are using for the deployment. In ```cert-manager-certificate.yaml``` replace ```<mongodb-name>``` with your MongoDB deployment name. Also replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you will have to add an equal number of entries for each member of the replicaset.
+Edit the file ```cert-manager-certificate.yaml``` to replace ```<mongodb-name>``` with your MongoDB deployment name. Also replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you will have to add an equal number of entries for each member of the replicaset.
 
-Apply the manifests.
+Apply the manifests. Replace ```<your-namespace>``` with the namespace you are using for the deployment.
 
 ```sh
-kubectl apply -f config/samples/external_access/cert-manager-issuer.yaml
-kubectl apply -f config/samples/external_access/cert-manager-certificate.yaml
+kubectl apply -f config/samples/external_access/cert-manager-issuer.yaml --namespace <your-namespace>
+kubectl apply -f config/samples/external_access/cert-manager-certificate.yaml --namespace <your-namespace>
 ```
 
 ### Create the MongoDB deployment
@@ -75,11 +74,11 @@ kubectl apply -f config/samples/external_access/external_services.yaml
 kubectl exec --namespace mcommunity -it <mongodb-name>-0 -c mongod -- bash
 ```
 
-Once inside the container ```cat``` and copy the contents of ```/var/lib/tls/ca/ca.crt``` into a file on your local system. Also copy the contents of the ```.pem``` file in ```/var/lib/tls/server``` into a file on your local system.
+Once inside the container ```cat``` and copy the contents of the ```.pem``` file in ```/var/lib/tls/server``` into a file on your local system.
 
 ### Connect to the MongoDB deployment from outside the Kubernetes cluster
 
-This is an example to connect to the MongoDB cluster with Mongo shell. Use the certificates from the previous step. Replace the values in the command from the preceeding steps.
+This is an example to connect to the MongoDB cluster with Mongo shell. Use the CA from ```mkcert``` and the certificate from the previous step. Replace the values in the command from the preceeding steps.
 
 ```sh
 mongosh --tls --tlsCAfile ca.crt --tlsCertificateKeyFile key.pem --username my-user --password <your-admin-password> mongodb://<domain-rs-1>:31181,<domain-rs-2>:31182,<domain-rs-3>:31183
