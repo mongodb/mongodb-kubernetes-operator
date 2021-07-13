@@ -127,6 +127,8 @@ jobs:
           distro: ubuntu
         - test-name: replica_set_arbiter
           distro: ubuntu
+        - test-name: replica_set_custom_persistent_volume
+          distro: ubuntu
 
         - test-name: replica_set
           distro: ubi
@@ -162,6 +164,8 @@ jobs:
         - test-name: replica_set_custom_role
           distro: ubi
         - test-name: replica_set_arbiter
+          distro: ubi
+        - test-name: replica_set_custom_persistent_volume
           distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
@@ -208,6 +212,10 @@ jobs:
         curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
         chmod +x ./kind
         ./kind create cluster
+      if: steps.last_run_status.outputs.last_run_status != 'success'
+    - name: Create Directories
+      run: |
+        docker exec kind-control-plane  mkdir -p /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
 
       if: steps.last_run_status.outputs.last_run_status != 'success'
     - name: Install CRD

@@ -156,6 +156,33 @@ func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.S
 	}
 }
 
+// GetPersistentVolumes returns all persistent volumes on the cluster
+func getPersistentVolumesList() (*corev1.PersistentVolumeList, error) {
+	return e2eutil.TestClient.CoreV1Client.PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+}
+
+func containsVolume(volumes []corev1.PersistentVolume, volumeName string) bool {
+	for _, v := range volumes {
+		if v.Name == volumeName {
+			return true
+		}
+	}
+	return false
+}
+func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *testing.T) {
+	return func(t *testing.T) {
+		volumeList, err := getPersistentVolumesList()
+		actualVolumes := volumeList.Items
+		assert.NoError(t, err)
+		assert.Len(t, actualVolumes, len(volumes),
+			"The number of persistent volumes should be equal to the amount of volumes we created. Expected: %d, actual: %d",
+			len(volumes), len(actualVolumes))
+		for _, v := range volumes {
+			assert.True(t, containsVolume(actualVolumes, v.Name))
+		}
+	}
+}
+
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
