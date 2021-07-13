@@ -56,6 +56,7 @@ import (
 const (
 	clusterDNSName = "CLUSTER_DNS_NAME"
 
+	// TODO Flo: possible candidate for having to make change backward compatible
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 	lastAppliedMongoDBVersion   = "mongodb.com/v1.lastAppliedMongoDBVersion"
 )
@@ -248,6 +249,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	return res, err
 }
 
+// TODO Flo: change func name and comment
 // updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
 func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
 	currentSpec, err := json.Marshal(mdb.Spec)
@@ -257,6 +259,7 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 	fmt.Printf("lastSuccessfulConfiguration %v\n", string(currentSpec))
 	fmt.Printf("lastAppliedMongoDBVersion %v\n", string(mdb.Spec.Version))
 
+	// TODO Flo: change to "latest" instead of "last", edit the comment as well.
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
 		// the last version will be duplicated in two annotations.
@@ -470,10 +473,11 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 }
 
 // validateSpec checks if MongoDB resource Spec is valid.
-// If there is no a previous Spec, then the function assumes this is the first version
+// If there is no previous Spec, then the function assumes this is the first version
 // and runs the initial spec validations otherwise it validates that the new Spec,
 // corresponding to the existing one is still valid
 func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
+	// TODO Flo: add backward compatibility for "lastSuccessfulConfiguration"
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
