@@ -545,7 +545,7 @@ func TestAnnotationsAreAppliedToResource(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NotNil(t, mdb.Annotations)
-	// TODO Flo: check if we need to ensure backward compatibility in the test
+	// TODO Flo: check if we need to ensure backward compatibility in this test
 	assert.NotEmpty(t, mdb.Annotations[lastSuccessfulConfiguration], "last successful spec should have been saved as annotation but was not")
 	assert.Equal(t, mdb.Annotations[lastAppliedMongoDBVersion], mdb.Spec.Version, "last version should have been saved as an annotation but was not")
 }

@@ -593,14 +593,15 @@ func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrate
 // IsChangingVersion returns true if an attempted version change is occurring.
 func (m MongoDBCommunity) IsChangingVersion() bool {
 	prevVersion := m.getPreviousVersion()
-	fmt.Printf("Previous version of MongoDB is %v \n", string(prevVersion))
-	fmt.Printf("Attempted version of MongoDB is %v \n", string(m.Spec.Version))
+	fmt.Printf("annotations.LastAppliedMongoDBVersion aka previous version is %v \n", string(prevVersion))
+	fmt.Printf("Attempted version of MongoDB aka m.Spec.Version is %v \n", string(m.Spec.Version))
 
 	return prevVersion != "" && prevVersion != m.Spec.Version
 }
 
 // GetPreviousVersion returns the last MDB version the statefulset was configured with.
 func (m MongoDBCommunity) getPreviousVersion() string {
+	// TODO Flo: candidate for backward compatibility issue
 	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
 }
 

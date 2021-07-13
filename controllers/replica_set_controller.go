@@ -256,8 +256,10 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 	if err != nil {
 		return err
 	}
-	fmt.Printf("lastSuccessfulConfiguration %v\n", string(currentSpec))
-	fmt.Printf("lastAppliedMongoDBVersion %v\n", string(mdb.Spec.Version))
+	fmt.Printf("lastSuccessfulConfiguration is %v \n", string(mdb.Annotations[lastSuccessfulConfiguration]))
+	fmt.Printf("lastAppliedMongoDBVersion is %v \n", string(mdb.Annotations[lastAppliedMongoDBVersion]))
+	fmt.Printf("setting lastSuccessfulConfiguration to %v\n", string(currentSpec))
+	fmt.Printf("setting lastAppliedMongoDBVersion %v\n", string(mdb.Spec.Version))
 
 	// TODO Flo: change to "latest" instead of "last", edit the comment as well.
 	specAnnotations := map[string]string{
@@ -266,7 +268,16 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 		// This is needed to reuse the update strategy logic in enterprise
 		lastAppliedMongoDBVersion: mdb.Spec.Version,
 	}
-	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
+
+	// TODO Flo: change this back to return annotations.SetAnnotations...
+	newerr := annotations.SetAnnotations(&mdb, specAnnotations, r.client)
+	fmt.Printf("lastSuccessfulConfiguration should now be set to %v \n", string(mdb.Annotations[lastSuccessfulConfiguration]))
+	fmt.Printf("lastAppliedMongoDBVersion should now be set to %v \n", string(mdb.Annotations[lastAppliedMongoDBVersion]))
+
+	if newerr != nil {
+		return newerr
+	}
+	return nil
 }
 
 // ensureTLSResources creates any required TLS resources that the MongoDBCommunity
@@ -481,6 +492,7 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
+		fmt.Print("There is no last (or latest) configuration saved \n")
 		return validation.ValidateInitalSpec(mdb)
 	}
 
