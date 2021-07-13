@@ -146,7 +146,6 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Println("namespace:", namespace)
 	err = e2eutil.EnsureServiceAccount(ctx, namespace, "mongodb-database")
 	if err != nil {
 		t.Fatal(err)
@@ -192,8 +191,6 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	fmt.Println("mdb namespace: ", mdb.Namespace)
-	fmt.Println("mdb.AutomationConfigSecretName(): ", mdb.AutomationConfigSecretName())
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
