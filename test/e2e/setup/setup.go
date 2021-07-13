@@ -159,15 +159,15 @@ func deployOperator(ctx *e2eutil.Context) error {
 	fmt.Println("Successfully created the operator Role Binding")
 
 	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_database.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator role: %s", err)
+		return errors.Errorf("error building mongodb database role: %s", err)
 	}
 	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account_database.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator service account: %s", err)
+		return errors.Errorf("error building mongodb database service account: %s", err)
 	}
 	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding_database.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
-		return errors.Errorf("error building operator role binding: %s", err)
+		return errors.Errorf("error building mongodb database role binding: %s", err)
 	}
-	fmt.Println("Successfully created the role, service account and Role Binding for the database")
+	fmt.Println("Successfully created the role, service account and role binding for the database")
 
 	dep := &appsv1.Deployment{}
 
