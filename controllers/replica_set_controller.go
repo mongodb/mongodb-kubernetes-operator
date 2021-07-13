@@ -254,10 +254,9 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 	if err != nil {
 		return err
 	}
+	fmt.Printf("lastSuccessfulConfiguration %v\n", string(currentSpec))
+	fmt.Printf("lastAppliedMongoDBVersion %v\n", string(mdb.Spec.Version))
 
-	// TODO: if field is already set, check if I need to do a POST request
-	// work with r.logs and print statements.
-	// seems like it does update the Version field but not the annotaion lastSuccesful.. field
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
 		// the last version will be duplicated in two annotations.
@@ -376,11 +375,14 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
 func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
+	fmt.Print("Checking if replicaset is ready \n")
 	return functions.RunSequentially(r.shouldRunInOrder(mdb),
 		func() (bool, error) {
+			fmt.Print("Checking on automation config\n")
 			return r.deployAutomationConfig(mdb)
 		},
 		func() (bool, error) {
+			fmt.Print("Deploying stateful set\n")
 			return r.deployStatefulSet(mdb)
 		})
 }
