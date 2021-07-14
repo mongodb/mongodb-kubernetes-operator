@@ -78,7 +78,6 @@ func isPodReady(conf config.Config) (bool, error) {
 
 	// Failback logic: the agent is not in goal state and got stuck in some steps
 	if !inGoalState && hasDeadlockedSteps(healthStatus) {
-		fmt.Print("main.go: agent is in deadlocked steps")
 		return true, nil
 	}
 
