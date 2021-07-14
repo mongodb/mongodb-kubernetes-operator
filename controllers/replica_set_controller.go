@@ -261,7 +261,6 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 		// This is needed to reuse the update strategy logic in enterprise
 		lastAppliedMongoDBVersion: mdb.Spec.Version,
 	}
-
 	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
 }
 

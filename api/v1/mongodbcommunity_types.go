@@ -593,7 +593,6 @@ func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrate
 // IsChangingVersion returns true if an attempted version change is occurring.
 func (m MongoDBCommunity) IsChangingVersion() bool {
 	lastVersion := m.getLastVersion()
-
 	return lastVersion != "" && lastVersion != m.Spec.Version
 }
 
