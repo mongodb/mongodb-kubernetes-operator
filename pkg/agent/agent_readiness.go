@@ -33,7 +33,6 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 			return false, err
 		}
 
-		fmt.Printf("Checking if pod %v reached goal state\n", p.GetName())
 		if reachedGoalState := ReachedGoalState(p, targetConfigVersion, log); !reachedGoalState {
 			return false, nil
 		}
@@ -57,9 +56,7 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 // ReachedGoalState checks if a single Agent has reached the goal state. To do this it reads the Pod annotation
 // to find out the current version the Agent is on.
 func ReachedGoalState(pod corev1.Pod, targetConfigVersion int, log *zap.SugaredLogger) bool {
-	fmt.Printf("Target/config version of agent is %v \n", targetConfigVersion)
 	currentAgentVersion, ok := pod.Annotations[podAnnotationAgentVersion]
-	fmt.Printf("Current version of agent is %v \n", currentAgentVersion)
 	if !ok {
 		log.Debugf("The Pod '%s' doesn't have annotation '%s' yet", pod.Name, podAnnotationAgentVersion)
 		return false
