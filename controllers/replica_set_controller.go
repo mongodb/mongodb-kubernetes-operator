@@ -248,8 +248,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	return res, err
 }
 
-// updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the configuration
-// that was used to create the resource
+// updateLastSuccessfulConfiguration annotates the MongoDBCommunity resource with the latest configuration
 func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.MongoDBCommunity) error {
 	currentSpec, err := json.Marshal(mdb.Spec)
 	if err != nil {
