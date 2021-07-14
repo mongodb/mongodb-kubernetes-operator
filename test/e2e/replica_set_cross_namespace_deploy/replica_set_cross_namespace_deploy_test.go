@@ -146,6 +146,38 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = e2eutil.EnsureServiceAccount(ctx, namespace, "mongodb-database")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e2eutil.EnsureRole(ctx, namespace, "mongodb-database", []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     []string{"get"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"pods"},
+			Verbs:     []string{"delete", "get", "patch"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e2eutil.EnsureRoleBinding(ctx, namespace, "mongodb-database",
+		[]rbacv1.Subject{{
+			Kind: "ServiceAccount",
+			Name: "mongodb-database",
+		}}, rbacv1.RoleRef{
+			Kind:     "Role",
+			APIGroup: "rbac.authorization.k8s.io",
+			Name:     "mongodb-database",
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", namespace)
 
 	_, err = setup.GeneratePasswordForUser(ctx, user, namespace)
