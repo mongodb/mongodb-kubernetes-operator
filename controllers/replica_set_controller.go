@@ -464,10 +464,9 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		Build()
 }
 
-// validateSpec checks if MongoDB resource Spec is valid.
-// If there is no a previous Spec, then the function assumes this is the first version
-// and runs the initial spec validations otherwise it validates that the new Spec,
-// corresponding to the existing one is still valid
+// validateSpec checks if the MongoDB resource Spec is valid.
+// If there has not yet been a successful configuration, the function runs the intial Spec validations. Otherwise
+// it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
 func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
@@ -475,13 +474,13 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return validation.ValidateInitalSpec(mdb)
 	}
 
-	prevSpec := mdbv1.MongoDBCommunitySpec{}
-	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &prevSpec)
+	lastSpec := mdbv1.MongoDBCommunitySpec{}
+	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
 		return err
 	}
 
-	return validation.ValidateUpdate(mdb, prevSpec)
+	return validation.ValidateUpdate(mdb, lastSpec)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
