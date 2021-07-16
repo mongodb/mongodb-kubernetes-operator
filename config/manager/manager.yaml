@@ -6,7 +6,6 @@ metadata:
   labels:
     owner: mongodb
   name: mongodb-kubernetes-operator
-  namespace: mongodb
 spec:
   replicas: 1
   selector:
