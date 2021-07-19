@@ -34,10 +34,15 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
 
+type tlsSecretType string
+
 const (
 	performCleanupEnv = "PERFORM_CLEANUP"
 	deployDirEnv      = "DEPLOY_DIR"
 	roleDirEnv        = "ROLE_DIR"
+
+	CertKeyPair tlsSecretType = "CERTKEYPAIR"
+	Pem         tlsSecretType = "PEM"
 )
 
 func Setup(t *testing.T) *e2eutil.Context {
@@ -56,7 +61,7 @@ func Setup(t *testing.T) *e2eutil.Context {
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
+func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSecretType) error { //nolint
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap
@@ -77,22 +82,29 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context) error { //nolint
 		return err
 	}
 
-	// Create server key and certificate secret
-	cert, err := ioutil.ReadFile(path.Join(testDataDir, "server.crt"))
-	if err != nil {
-		return err
-	}
-	key, err := ioutil.ReadFile(path.Join(testDataDir, "server.key"))
-	if err != nil {
-		return err
-	}
-
-	certKeySecret := secret.Builder().
+	certKeySecretBuilder := secret.Builder().
 		SetName(tlsConfig.CertificateKeySecret.Name).
-		SetNamespace(namespace).
-		SetField("tls.crt", string(cert)).
-		SetField("tls.key", string(key)).
-		Build()
+		SetNamespace(namespace)
+
+	if secretType == CertKeyPair {
+		// Create server key and certificate secret
+		cert, err := ioutil.ReadFile(path.Join(testDataDir, "server.crt"))
+		if err != nil {
+			return err
+		}
+		key, err := ioutil.ReadFile(path.Join(testDataDir, "server.key"))
+		if err != nil {
+			return err
+		}
+		certKeySecretBuilder.SetField("tls.crt", string(cert)).SetField("tls.key", string(key))
+	} else if secretType == Pem {
+		pem, err := ioutil.ReadFile(path.Join(testDataDir, "server.pem"))
+		if err != nil {
+			return err
+		}
+		certKeySecretBuilder.SetField("tls.pem", string(pem))
+	}
+	certKeySecret := certKeySecretBuilder.Build()
 
 	return e2eutil.TestClient.Create(context.TODO(), &certKeySecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }

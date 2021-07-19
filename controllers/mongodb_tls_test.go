@@ -23,7 +23,10 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := client.NewManager(&mdb)
 
-	err := createTLSSecretAndConfigMap(mgr.GetClient(), mdb)
+	client := mdbClient.NewClient(mgr.GetClient())
+	err := createTLSSecret(client, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createTLSConfigMap(client, mdb)
 	assert.NoError(t, err)
 
 	r := NewReconciler(mgr)
@@ -82,7 +85,9 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(client, mdb)
+		err := createTLSSecret(client, mdb, "CERT", "KEY", "")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(client, mdb)
 		assert.NoError(t, err)
 
 		tlsModification, err := getTLSConfigModification(client, mdb)
@@ -151,7 +156,9 @@ func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(c, mdb)
+		err := createTLSSecret(c, mdb, "CERT", "KEY", "")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(c, mdb)
 		assert.NoError(t, err)
 
 		r := NewReconciler(client.NewManagerWithClient(c))
@@ -170,7 +177,9 @@ func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		k8sclient := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
-		err := createTLSSecretAndConfigMap(k8sclient, mdb)
+		err := createTLSSecret(k8sclient, mdb, "CERT", "KEY", "")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(k8sclient, mdb)
 		assert.NoError(t, err)
 
 		// Create operator-managed secret
@@ -215,29 +224,89 @@ func TestCombineCertificateAndKey(t *testing.T) {
 	}
 }
 
-func createTLSSecretAndConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
-	s := secret.Builder().
-		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
-		SetNamespace(mdb.Namespace).
-		SetField("tls.crt", "CERT").
-		SetField("tls.key", "KEY").
-		Build()
+func TestPemSupport(t *testing.T) {
+	t.Run("Success if only pem is provided", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecret(c, mdb, "", "", "CERT\nKEY")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(c, mdb)
+		assert.NoError(t, err)
 
-	err := c.Create(context.TODO(), &s)
-	if err != nil {
-		return err
-	}
+		r := NewReconciler(client.NewManagerWithClient(c))
 
+		err = r.ensureTLSResources(mdb)
+		assert.NoError(t, err)
+
+		// Operator-managed secret should have been created and contain the
+		// concatenated certificate and key.
+		expectedCertificateKey := "CERT\nKEY"
+		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCertificateKey, certificateKey)
+	})
+	t.Run("Success if pem is equal to cert+key", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecret(c, mdb, "CERT", "KEY", "CERT\nKEY")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(c, mdb)
+		assert.NoError(t, err)
+
+		r := NewReconciler(client.NewManagerWithClient(c))
+
+		err = r.ensureTLSResources(mdb)
+		assert.NoError(t, err)
+
+		// Operator-managed secret should have been created and contain the
+		// concatenated certificate and key.
+		expectedCertificateKey := "CERT\nKEY"
+		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCertificateKey, certificateKey)
+	})
+	t.Run("Failure if pem is different from cert+key", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecret(c, mdb, "CERT1", "KEY1", "CERT\nKEY")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(c, mdb)
+		assert.NoError(t, err)
+
+		r := NewReconciler(client.NewManagerWithClient(c))
+
+		err = r.ensureTLSResources(mdb)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "If both the tls.crt/tls.key pair and tls.pem are present in the secret, the entry for tls.pem must be equal to the concatenation of tls.crt with tls.key")
+
+	})
+}
+
+func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
 		SetNamespace(mdb.Namespace).
 		SetField("ca.crt", "CERT").
 		Build()
 
-	err = c.Create(context.TODO(), &configMap)
-	if err != nil {
-		return err
+	return c.Create(context.TODO(), &configMap)
+}
+
+func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	sBuilder := secret.Builder().
+		SetName(mdb.Spec.Security.TLS.CertificateKeySecret.Name).
+		SetNamespace(mdb.Namespace)
+
+	if crt != "" {
+		sBuilder.SetField(tlsSecretCertName, crt)
+	}
+	if key != "" {
+		sBuilder.SetField(tlsSecretKeyName, key)
+	}
+	if pem != "" {
+		sBuilder.SetField(tlsPemName, pem)
 	}
 
-	return nil
+	s := sBuilder.Build()
+	return c.Create(context.TODO(), &s)
 }

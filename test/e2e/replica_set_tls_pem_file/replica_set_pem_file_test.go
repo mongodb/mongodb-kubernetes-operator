@@ -33,7 +33,7 @@ func TestReplicaSetTLS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.CertKeyPair); err != nil {
+	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.Pem); err != nil {
 		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
