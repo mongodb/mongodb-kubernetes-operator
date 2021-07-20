@@ -616,6 +616,9 @@ func (m MongoDBCommunity) DataVolumeName() string {
 func (m MongoDBCommunity) LogsVolumeName() string {
 	return "logs-volume"
 }
+func (m MongoDBCommunity) IsTLSEnabled() bool {
+	return m.Spec.Security.TLS.Enabled
+}
 
 type automationConfigReplicasScaler struct {
 	current, desired int
