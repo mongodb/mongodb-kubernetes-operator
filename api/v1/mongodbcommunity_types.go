@@ -322,7 +322,7 @@ type TLS struct {
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt".
 	// This is the same format used for the standard "kubernetes.io/tls" Secret type, but no specific type is required.
 	// Alternatively, an entry tls.pem, containing the concatenation of cert and key, can be provided.
-	// If all three entries are provided, the tls.pem one needs to be equal to the concatenation fo tls.crt and tls.key
+	// If all three entries are provided, the tls.pem one needs to be equal to the concatenation of tls.crt and tls.key
 	// +optional
 	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
 
