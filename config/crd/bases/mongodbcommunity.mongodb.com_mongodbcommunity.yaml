@@ -209,8 +209,9 @@ spec:
                           for the standard "kubernetes.io/tls" Secret type, but no
                           specific type is required. Alternatively, an entry tls.pem,
                           containing the concatenation of cert and key, can be provided.
-                          If all three entries are provided, the tls.pem one needs
-                          to be equal to the concatenation of tls.crt and tls.key
+                          If all of tls.pem, tls.crt and tls.key are present, the
+                          tls.pem one needs to be equal to the concatenation of tls.crt
+                          and tls.key
                         properties:
                           name:
                             type: string
