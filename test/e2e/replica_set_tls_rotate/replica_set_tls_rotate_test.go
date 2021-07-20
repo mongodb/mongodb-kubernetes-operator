@@ -34,7 +34,7 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx); err != nil {
+	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.CertKeyPair); err != nil {
 		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 	tester, err := FromResource(t, mdb)
