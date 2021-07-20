@@ -55,7 +55,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	}
 
 	// Ensure Secret exists
-	secretData, err := secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
+	_, err = secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
@@ -65,13 +65,11 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 		return false, err
 	}
 
-	// Ensure Secret has "tls.crt" and "tls.key" fields
-	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
-		r.log.Warnf(`Secret "%s" should have a key in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return false, nil
-	}
-	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
-		r.log.Warnf(`Secret "%s" should have a certificate in field "%s"`, mdb.TLSSecretNamespacedName(), tlsSecretKeyName)
+	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
+	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
+	_, err = getFinalPem(r.client, mdb)
+	if err != nil {
+		r.log.Warnf(err.Error())
 		return false, nil
 	}
 
