@@ -61,7 +61,7 @@ func Setup(t *testing.T) *e2eutil.Context {
 
 // CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
 // The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSecretType) error { //nolint
+func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSecretType) error {
 	tlsConfig := e2eutil.NewTestTLSConfig(false)
 
 	// Create CA ConfigMap
@@ -97,13 +97,15 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSe
 			return err
 		}
 		certKeySecretBuilder.SetField("tls.crt", string(cert)).SetField("tls.key", string(key))
-	} else if secretType == Pem {
+	}
+	if secretType == Pem {
 		pem, err := ioutil.ReadFile(path.Join(testDataDir, "server.pem"))
 		if err != nil {
 			return err
 		}
 		certKeySecretBuilder.SetField("tls.pem", string(pem))
 	}
+
 	certKeySecret := certKeySecretBuilder.Build()
 
 	return e2eutil.TestClient.Create(context.TODO(), &certKeySecret, &e2eutil.CleanupOptions{TestContext: ctx})

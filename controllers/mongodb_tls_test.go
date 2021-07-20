@@ -166,7 +166,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
-		// Operator-managed secret should have been created and contain the
+		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
 		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
@@ -238,7 +238,7 @@ func TestPemSupport(t *testing.T) {
 		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
-		// Operator-managed secret should have been created and contain the
+		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
 		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
@@ -258,7 +258,7 @@ func TestPemSupport(t *testing.T) {
 		err = r.ensureTLSResources(mdb)
 		assert.NoError(t, err)
 
-		// Operator-managed secret should have been created and contain the
+		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
 		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())

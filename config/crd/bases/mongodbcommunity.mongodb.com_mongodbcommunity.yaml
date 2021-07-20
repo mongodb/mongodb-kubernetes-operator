@@ -210,7 +210,7 @@ spec:
                           specific type is required. Alternatively, an entry tls.pem,
                           containing the concatenation of cert and key, can be provided.
                           If all three entries are provided, the tls.pem one needs
-                          to be equal to the concatenation fo tls.crt and tls.key
+                          to be equal to the concatenation of tls.crt and tls.key
                         properties:
                           name:
                             type: string
