@@ -26,7 +26,7 @@ const (
 	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
 	tlsSecretCertName          = "tls.crt"              //nolint
 	tlsSecretKeyName           = "tls.key"
-	tlsPemName                 = "tls.pem"
+	tlsSecretPemName           = "tls.pem"
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
@@ -112,7 +112,7 @@ func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
 
 // getPem will getch the pem from the user-provided secret
 func getPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
-	pem, err := secret.ReadKey(getter, tlsPemName, mdb.TLSSecretNamespacedName())
+	pem, err := secret.ReadKey(getter, tlsSecretPemName, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return ""
 	}
@@ -129,7 +129,7 @@ func getFinalPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, erro
 	certKey := getCertAndKey(getter, mdb)
 	pem := getPem(getter, mdb)
 	if certKey == "" && pem == "" {
-		return "", fmt.Errorf("Neither %s nor the pair %s/%s were present in the TLS secret", tlsPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf("Neither %s nor the pair %s/%s were present in the TLS secret", tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	if certKey == "" {
 		return pem, nil
@@ -138,7 +138,7 @@ func getFinalPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, erro
 		return certKey, nil
 	}
 	if certKey != pem {
-		return "", fmt.Errorf("If both the %s/%s pair and %s are present in the secret, the entry for %s must be equal to the concatenation of %s with %s", tlsSecretCertName, tlsSecretKeyName, tlsPemName, tlsPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf("If both the %s/%s pair and %s are present in the secret, the entry for %s must be equal to the concatenation of %s with %s", tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	return certKey, nil
 }

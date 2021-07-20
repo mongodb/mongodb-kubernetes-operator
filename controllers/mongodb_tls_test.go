@@ -304,7 +304,7 @@ func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string,
 		sBuilder.SetField(tlsSecretKeyName, key)
 	}
 	if pem != "" {
-		sBuilder.SetField(tlsPemName, pem)
+		sBuilder.SetField(tlsSecretPemName, pem)
 	}
 
 	s := sBuilder.Build()
