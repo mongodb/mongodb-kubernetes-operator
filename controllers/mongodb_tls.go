@@ -67,7 +67,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = getFinalPem(r.client, mdb)
+	_, err = getPemOrConcatCrtAndKey(r.client, mdb)
 	if err != nil {
 		r.log.Warnf(err.Error())
 		return false, nil
@@ -87,7 +87,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := getFinalPem(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -110,7 +110,7 @@ func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
 	return combineCertificateAndKey(cert, key)
 }
 
-// getPem will getch the pem from the user-provided secret
+// getPem will fetch the pem from the user-provided secret
 func getPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
 	pem, err := secret.ReadKey(getter, tlsSecretPemName, mdb.TLSSecretNamespacedName())
 	if err != nil {
@@ -125,7 +125,11 @@ func combineCertificateAndKey(cert, key string) string {
 	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
 }
 
-func getFinalPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
+// getPemOrConcatCrtAndKey will get the final PEM to write to the secret.
+// This is either the tls.pem entry in the given secret, or the concatenation
+// of tls.crt and tls.key
+// It performs a basic validation on the entries.
+func getPemOrConcatCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
 	certKey := getCertAndKey(getter, mdb)
 	pem := getPem(getter, mdb)
 	if certKey == "" && pem == "" {
@@ -146,7 +150,7 @@ func getFinalPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, erro
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	certKey, err := getFinalPem(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return err
 	}
