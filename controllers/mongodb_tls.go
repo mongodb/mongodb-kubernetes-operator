@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
@@ -29,6 +27,7 @@ const (
 	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
 	tlsSecretCertName          = "tls.crt"              //nolint
 	tlsSecretKeyName           = "tls.key"
+	tlsSecretPemName           = "tls.pem"
 )
 
 type TLSResource interface {
@@ -64,7 +63,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(tlsResource TLSResource) (bool,
 	}
 
 	// Ensure Secret exists
-	secretData, err := secret.ReadStringData(r.client, tlsResource.TLSSecretNamespacedName())
+	_, err = secret.ReadStringData(r.client, tlsResource.TLSSecretNamespacedName())
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`Secret "%s" not found`, tlsResource.TLSSecretNamespacedName())
@@ -74,13 +73,11 @@ func (r *ReplicaSetReconciler) validateTLSConfig(tlsResource TLSResource) (bool,
 		return false, err
 	}
 
-	// Ensure Secret has "tls.crt" and "tls.key" fields
-	if key, ok := secretData[tlsSecretKeyName]; !ok || key == "" {
-		r.log.Warnf(`Secret "%s" should have a key in field "%s"`, tlsResource.TLSSecretNamespacedName(), tlsSecretKeyName)
-		return false, nil
-	}
-	if cert, ok := secretData[tlsSecretCertName]; !ok || cert == "" {
-		r.log.Warnf(`Secret "%s" should have a certificate in field "%s"`, tlsResource.TLSSecretNamespacedName(), tlsSecretKeyName)
+	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
+	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
+	_, err = getPemOrConcatenatedCrtAndKey(r.client, tlsResource)
+	if err != nil {
+		r.log.Warnf(err.Error())
 		return false, nil
 	}
 
@@ -98,7 +95,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := getCertAndKey(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -107,18 +104,27 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
-	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
+func getCertAndKey(getter secret.Getter, tlsResource TLSResource) string {
+	cert, err := secret.ReadKey(getter, tlsSecretCertName, tlsResource.TLSSecretNamespacedName())
 	if err != nil {
-		return "", err
+		return ""
 	}
 
-	key, err := secret.ReadKey(getter, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	key, err := secret.ReadKey(getter, tlsSecretKeyName, tlsResource.TLSSecretNamespacedName())
 	if err != nil {
-		return "", err
+		return ""
 	}
 
-	return combineCertificateAndKey(cert, key), nil
+	return combineCertificateAndKey(cert, key)
+}
+
+// getPem will fetch the pem from the user-provided secret
+func getPem(getter secret.Getter, tlsResource TLSResource) string {
+	pem, err := secret.ReadKey(getter, tlsSecretPemName, tlsResource.TLSSecretNamespacedName())
+	if err != nil {
+		return ""
+	}
+	return pem
 }
 
 func combineCertificateAndKey(cert, key string) string {
@@ -127,12 +133,34 @@ func combineCertificateAndKey(cert, key string) string {
 	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
 }
 
+// getPemOrConcatenatedCrtAndKey will get the final PEM to write to the secret.
+// This is either the tls.pem entry in the given secret, or the concatenation
+// of tls.crt and tls.key
+// It performs a basic validation on the entries.
+func getPemOrConcatenatedCrtAndKey(getter secret.Getter, tlsResource TLSResource) (string, error) {
+	certKey := getCertAndKey(getter, tlsResource)
+	pem := getPem(getter, tlsResource)
+	if certKey == "" && pem == "" {
+		return "", fmt.Errorf(`Neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+	}
+	if certKey == "" {
+		return pem, nil
+	}
+	if pem == "" {
+		return certKey, nil
+	}
+	if certKey != pem {
+		return "", fmt.Errorf(`If all of "%s", "%s" and "%s" are present in the secret, the entry for "%s" must be equal to the concatenation of "%s" with "%s"`, tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+	}
+	return certKey, nil
+}
+
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	certKey, err := getCertAndKey(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
-		return errors.Errorf("could not get cert and key: %s", err)
+		return err
 	}
 	// Calculate file name from certificate and key
 	fileName := tlsOperatorSecretFileName(certKey)
