@@ -21,6 +21,13 @@ import (
 
 const testDataDirEnv = "TEST_DATA_DIR"
 
+// TestLabels should be applied to all resources created by tests.
+func TestLabels() map[string]string {
+	return map[string]string{
+		"e2e-test": "true",
+	}
+}
+
 func TestDataDir() string {
 	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata")
 }
@@ -51,6 +58,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: mongodbNamespace,
+			Labels:    TestLabels(),
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members:  3,
@@ -154,6 +162,7 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 
 func ensureObject(ctx *Context, obj k8sClient.Object) error {
 	key := k8sClient.ObjectKeyFromObject(obj)
+	obj.SetLabels(TestLabels())
 
 	err := TestClient.Get(context.TODO(), key, obj)
 	if err != nil {
@@ -178,7 +187,8 @@ func ensureObject(ctx *Context, obj k8sClient.Object) error {
 func EnsureNamespace(ctx *Context, namespace string) error {
 	return ensureObject(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
+			Name:   namespace,
+			Labels: TestLabels(),
 		},
 	})
 }

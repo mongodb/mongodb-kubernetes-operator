@@ -67,7 +67,7 @@ vet:
 
 # Run e2e tests locally using go build while also setting up a proxy in the shell to allow
 # the test to run as if it were inside the cluster. This enables mongodb connectivity while running locally.
-e2e-telepresence: install
+e2e-telepresence: cleanup-e2e install
 	telepresence connect; \
 	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
@@ -75,18 +75,21 @@ e2e-telepresence: install
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
-e2e-k8s: install e2e-image
+e2e-k8s: cleanup-e2e install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Run e2e test locally.
 # e.g. make e2e test=replica_set cleanup=true
-e2e: install
+e2e: cleanup-e2e install
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
 
 # Trigger a Github Action of the given test
 e2e-gh:
 	scripts/dev/run_e2e_gh.sh $(test)
+
+cleanup-e2e:
+	kubectl delete mdbc,all -l e2e-test=true
 
 # Generate code
 generate: controller-gen
