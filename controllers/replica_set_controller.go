@@ -218,13 +218,18 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
+	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
+		r.log.Errorf("Could not save current spec as an annotation: %s", err)
+	}
+
 	res, err := status.Update(r.client.Status(), &mdb,
 		statusOptions().
 			withMongoURI(mdb.MongoURI()).
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 			withMessage(None, "").
-			withRunningPhase(),
+			withRunningPhase().
+			withVersion(),
 	)
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
@@ -233,10 +238,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	if err := r.updateConnectionStringSecrets(mdb); err != nil {
 		r.log.Errorf("Could not update connection string secrets: %s", err)
-	}
-
-	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
-		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {

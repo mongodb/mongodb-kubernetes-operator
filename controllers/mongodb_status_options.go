@@ -22,7 +22,7 @@ const (
 	None  severity = "NONE"
 )
 
-// optionBuilder is in charge of constructing a slice of options that
+// OptionBuilder is in charge of constructing a slice of options that
 // will be applied on top of the MongoDB resource that has been provided
 type optionBuilder struct {
 	options []status.Option
@@ -33,7 +33,7 @@ func (o *optionBuilder) GetOptions() []status.Option {
 	return o.options
 }
 
-// options returns an initialized optionBuilder
+// StatusOptions returns an initialized optionBuilder
 func statusOptions() *optionBuilder {
 	return &optionBuilder{
 		options: []status.Option{},
@@ -57,6 +57,27 @@ func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
+}
+
+func (o *optionBuilder) withVersion() *optionBuilder {
+	version := getVersion()
+	o.options = append(o.options,
+		versionOption{
+			version: version,
+		})
+	return o
+}
+
+type versionOption struct {
+	version string
+}
+
+func (v versionOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
+	mdb.Status.Version = v.version
+}
+
+func (v versionOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
