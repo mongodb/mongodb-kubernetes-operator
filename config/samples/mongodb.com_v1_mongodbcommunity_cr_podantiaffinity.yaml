@@ -30,12 +30,14 @@ spec:
           app: mongodb
       template:
         metadata:
+          # label the pod which is used by the "labelSelector" in podAntiAffinty
+          # you can label it witch some other labels as well -- make sure it change the podAntiAffinity labelselector accordingly
           labels:
             app: mongodb
         spec:
           affinity:
             podAntiAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
+              preferredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchExpressions:
                       - key: app
