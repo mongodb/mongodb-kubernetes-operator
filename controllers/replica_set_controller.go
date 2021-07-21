@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/tls"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -149,7 +150,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	isTLSValid, err := r.validateTLSConfig(mdb)
+	isTLSValid, err := tls.ValidateTLSConfig(mdb, r.client, r.log, r.secretWatcher)
 	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
@@ -274,7 +275,7 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 	// require the contents.
 	if mdb.Spec.Security.TLS.Enabled {
 		r.log.Infof("TLS is enabled, creating/updating TLS secret")
-		if err := ensureTLSSecret(r.client, mdb); err != nil {
+		if err := tls.EnsureTLSSecret(r.client, mdb); err != nil {
 			return errors.Errorf("could not ensure TLS secret: %s", err)
 		}
 	}
@@ -495,7 +496,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
-	tlsModification, err := getTLSConfigModification(r.client, mdb)
+	tlsModification, err := tls.GetTLSConfigModification(r.client, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}
@@ -551,7 +552,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
-				buildTLSPodSpecModification(mdb),
+				tls.BuildTLSPodSpecModification(mdb),
 			),
 		),
 

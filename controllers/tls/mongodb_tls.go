@@ -1,4 +1,4 @@
-package controllers
+package tls
 
 import (
 	"crypto/sha256"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -15,6 +16,8 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 
+	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	"go.uber.org/zap"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -22,9 +25,9 @@ import (
 )
 
 const (
-	tlsCAMountPath             = "/var/lib/tls/ca/"
-	tlsCACertName              = "ca.crt"
-	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
+	TLSCAMountPath             = "/var/lib/tls/ca/"
+	TLSCACertName              = "ca.crt"
+	TLSOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
 )
 
 type TLSResource interface {
@@ -42,37 +45,37 @@ type TLSResource interface {
 }
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-func (r *ReplicaSetReconciler) validateTLSConfig(mdb TLSResource) (bool, error) {
+func ValidateTLSConfig(mdb TLSResource, client kubernetesClient.Client, log *zap.SugaredLogger, secretWatcher *watch.ResourceWatcher) (bool, error) {
 	if !mdb.IsTLSEnabled() {
 		return true, nil
 	}
 
-	r.log.Info("Ensuring TLS is correctly configured")
+	log.Info("Ensuring TLS is correctly configured")
 
 	// Ensure CA ConfigMap exists
-	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
+	caData, err := configmap.ReadData(client, mdb.TLSConfigMapNamespacedName())
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
+			log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
 			return false, nil
 		}
 
 		return false, err
 	}
 
-	// Ensure ConfigMap has a "ca.crt" field
+	// Ensure ConfigMap has all the required fields
 	for _, key := range mdb.TLSConfigMapRequiredEntries() {
 		if cert, ok := caData[key]; !ok || cert == "" {
-			r.log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
+			log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), TLSCACertName)
 			return false, nil
 		}
 	}
 
 	// Ensure Secret exists
-	_, err = secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
+	_, err = secret.ReadStringData(client, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
+			log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
 			return false, nil
 		}
 
@@ -81,22 +84,22 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb TLSResource) (bool, error) 
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = getPemOrConcatenatedCrtAndKey(r.client, mdb)
+	_, err = getPemOrConcatenatedCrtAndKey(client, mdb)
 	if err != nil {
-		r.log.Warnf(err.Error())
+		log.Warnf(err.Error())
 		return false, nil
 	}
 
 	// Watch certificate-key secret to handle rotations
-	r.secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
+	secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
 
-	r.log.Infof("Successfully validated TLS config")
+	log.Infof("Successfully validated TLS config")
 	return true, nil
 }
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
 // It will also ensure that the combined cert-key secret is created.
-func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) (automationconfig.Modification, error) {
+func GetTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) (automationconfig.Modification, error) {
 	if !mdb.IsTLSEnabled() {
 		return automationconfig.NOOP(), nil
 	}
@@ -121,7 +124,7 @@ func getCertAndKey(getter secret.Getter, mdb TLSResource) string {
 		return ""
 	}
 
-	return combineCertificateAndKey(cert, key)
+	return CombineCertificateAndKey(cert, key)
 }
 
 // getPem will fetch the pem from the user-provided secret
@@ -133,7 +136,7 @@ func getPem(getter secret.Getter, mdb TLSResource) string {
 	return pem
 }
 
-func combineCertificateAndKey(cert, key string) string {
+func CombineCertificateAndKey(cert, key string) string {
 	trimmedCert := strings.TrimRight(cert, "\n")
 	trimmedKey := strings.TrimRight(key, "\n")
 	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
@@ -163,13 +166,13 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (strin
 
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
-func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) error {
+func EnsureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) error {
 	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return err
 	}
 	// Calculate file name from certificate and key
-	fileName := tlsOperatorSecretFileName(certKey)
+	fileName := TLSOperatorSecretFileName(certKey)
 
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
@@ -181,21 +184,21 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) 
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
 }
 
-// tlsOperatorSecretFileName calculates the file name to use for the mounted
+// TLSOperatorSecretFileName calculates the file name to use for the mounted
 // certificate-key file. The name is based on the hash of the combined cert and key.
 // If the certificate or key changes, the file path changes as well which will trigger
 // the agent to perform a restart.
 // The user-provided secret is being watched and will trigger a reconciliation
 // on changes. This enables the operator to automatically handle cert rotations.
-func tlsOperatorSecretFileName(certKey string) string {
+func TLSOperatorSecretFileName(certKey string) string {
 	hash := sha256.Sum256([]byte(certKey))
 	return fmt.Sprintf("%x.pem", hash)
 }
 
 // tlsConfigModification will enable TLS in the automation config.
 func tlsConfigModification(mdb TLSResource, certKey string) automationconfig.Modification {
-	caCertificatePath := tlsCAMountPath + tlsCACertName
-	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName(certKey)
+	caCertificatePath := TLSCAMountPath + TLSCACertName
+	certificateKeyPath := TLSOperatorSecretMountPath + TLSOperatorSecretFileName(certKey)
 
 	mode := automationconfig.TLSModeRequired
 	if mdb.IsTLSOptional() {
@@ -219,7 +222,7 @@ func tlsConfigModification(mdb TLSResource, certKey string) automationconfig.Mod
 }
 
 // buildTLSPodSpecModification will add the TLS init container and volumes to the pod template if TLS is enabled.
-func buildTLSPodSpecModification(mdb TLSResource) podtemplatespec.Modification {
+func BuildTLSPodSpecModification(mdb TLSResource) podtemplatespec.Modification {
 	if !mdb.IsTLSEnabled() {
 		return podtemplatespec.NOOP()
 	}
@@ -227,12 +230,12 @@ func buildTLSPodSpecModification(mdb TLSResource) podtemplatespec.Modification {
 	// Configure a volume which mounts the CA certificate from a ConfigMap
 	// The certificate is used by both mongod and the agent
 	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.TLSConfigMapNamespacedName().Name)
-	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
+	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, TLSCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
 	// The same key-certificate pair is used for all servers
 	tlsSecretVolume := statefulset.CreateVolumeFromSecret("tls-secret", mdb.TLSOperatorSecretNamespacedName().Name)
-	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, TLSOperatorSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
 	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
