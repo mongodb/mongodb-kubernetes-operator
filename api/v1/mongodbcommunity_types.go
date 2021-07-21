@@ -619,6 +619,30 @@ func (m MongoDBCommunity) LogsVolumeName() string {
 	return "logs-volume"
 }
 
+func (m MongoDBCommunity) IsTLSEnabled() bool {
+	return m.Spec.Security.TLS.Enabled
+}
+
+func (m MongoDBCommunity) IsTLSOptional() bool {
+	return m.Spec.Security.TLS.Optional
+}
+
+func (m MongoDBCommunity) TLSSecretKeyName() string {
+	return "tls.key"
+}
+
+func (m MongoDBCommunity) TLSSecretCertName() string {
+	return "tls.crt"
+}
+
+func (m MongoDBCommunity) TLSSecretPEMName() string {
+	return "tls.pem"
+}
+
+func (m MongoDBCommunity) TLSConfigMapRequiredEntries() []string {
+	return []string{"ca.crt"}
+}
+
 type automationConfigReplicasScaler struct {
 	current, desired int
 }
