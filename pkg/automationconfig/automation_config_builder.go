@@ -270,7 +270,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		Options:            b.options,
 		Auth:               *b.auth,
 		TLSConfig: &TLS{
-			ClientCertificateMode: ClientCertificateModeOptional,
+			ClientCertificateMode: ClientCertificateModeRequired, // By default it's optional
 			CAFilePath:            b.cafilePath,
 		},
 	}

@@ -158,7 +158,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 		assert.Equal(t, &automationconfig.TLS{
 			CAFilePath:            tlsCAMountPath + tlsCACertName,
-			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+			ClientCertificateMode: automationconfig.ClientCertificateModeRequired,
 		}, ac.TLSConfig)
 
 		for _, process := range ac.Processes {

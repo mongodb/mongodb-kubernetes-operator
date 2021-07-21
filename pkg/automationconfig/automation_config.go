@@ -240,7 +240,7 @@ type ClientCertificateMode string
 
 const (
 	ClientCertificateModeOptional ClientCertificateMode = "OPTIONAL"
-	ClientCertificateModeRequired ClientCertificateMode = "REQUIRED"
+	ClientCertificateModeRequired ClientCertificateMode = "REQUIRE"
 )
 
 type TLS struct {
