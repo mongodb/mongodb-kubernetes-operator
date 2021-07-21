@@ -25,6 +25,7 @@ func TestReplicaSetTLS(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
+	scramUser := mdb.GetScramUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
@@ -43,10 +44,17 @@ func TestReplicaSetTLS(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	mongodbtests.SkipTestIfLocal(t, "Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls()))
-	mongodbtests.SkipTestIfLocal(t, "Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
-	mongodbtests.SkipTestIfLocal(t, "Test TLS required", tester.ConnectivityFails(WithoutTls()))
-	mongodbtests.SkipTestIfLocal(t, "Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
+	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
+		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls()))
+		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls()))
+		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI()), WithTls()))
+		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser)), WithTls()))
+		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)), WithTls()))
+		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
+		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
+	})
 	t.Run("TLS is disabled", mongodbtests.DisableTLS(&mdb))
 	t.Run("MongoDB Reaches Failed Phase", mongodbtests.MongoDBReachesFailedPhase(&mdb))
 	t.Run("TLS is enabled", mongodbtests.EnableTLS(&mdb))

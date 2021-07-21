@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
@@ -39,6 +40,11 @@ const (
 	defaultPasswordKey = "password"
 )
 
+// SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
+const (
+	defaultMode AuthMode = "SCRAM-SHA-256"
+)
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -49,6 +55,10 @@ type MongoDBCommunitySpec struct {
 	Type Type `json:"type"`
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version"`
+
+	// Arbiters is the number of arbiters (each counted as a member) in the replica set
+	// +optional
+	Arbiters int `json:"arbiters"`
 
 	// FeatureCompatibilityVersion configures the feature compatibility version that will
 	// be set for the deployment
@@ -80,6 +90,7 @@ type MongoDBCommunitySpec struct {
 	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 }
@@ -181,6 +192,7 @@ type AuthenticationRestriction struct {
 // StatefulSetConfiguration holds the optional custom StatefulSet
 // that should be merged into the operator created one.
 type StatefulSetConfiguration struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
 }
 
@@ -338,11 +350,24 @@ type Authentication struct {
 	// +optional
 	// +kubebuilder:default:=true
 	// +nullable
-	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers"`
+	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=SCRAM
+// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
 type AuthMode string
+
+// ConvertAuthModeToAuthMechanism acts as a map but is immutable. It allows users to use different labels to describe the
+// same authentication mode.
+func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
+	switch authModeLabel {
+	case "SCRAM", "SCRAM-SHA-256":
+		return scram.Sha256
+	case "SCRAM-SHA-1":
+		return scram.Sha1
+	default:
+		return ""
+	}
+}
 
 // MongoDBCommunityStatus defines the observed state of MongoDB
 type MongoDBCommunityStatus struct {
@@ -397,12 +422,27 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
 	}
 
+	authModes := m.Spec.Security.Authentication.Modes
+	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
+	autoAuthMechanism := ConvertAuthModeToAuthMechanism(authModes[0])
+
+	authMechanisms := make([]string, len(authModes))
+
+	for i, authMode := range authModes {
+		if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
+			authMechanisms[i] = authMech
+			if authMech == defaultAuthMechanism {
+				autoAuthMechanism = defaultAuthMechanism
+			}
+		}
+	}
+
 	return scram.Options{
 		AuthoritativeSet:   !ignoreUnknownUsers,
 		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: []string{scram.Sha256},
+		AutoAuthMechanisms: authMechanisms,
 		AgentName:          scram.AgentName,
-		AutoAuthMechanism:  scram.Sha256,
+		AutoAuthMechanism:  autoAuthMechanism,
 	}
 }
 
@@ -441,12 +481,38 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDBCommunity) MongoURI() string {
-	members := make([]string, m.Spec.Members)
+	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
+}
+
+// MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
+func (m MongoDBCommunity) MongoSRVURI() string {
 	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	for i := 0; i < m.Spec.Members; i++ {
-		members[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
-	}
-	return fmt.Sprintf("mongodb://%s", strings.Join(members, ","))
+	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
+}
+
+// MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
+// and includes the authentication data for the user
+func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t",
+		url.QueryEscape(user.Username),
+		url.QueryEscape(password),
+		strings.Join(m.Hosts(), ","),
+		user.Database,
+		m.Spec.Security.TLS.Enabled)
+}
+
+// MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
+// and includes the authentication data for the user
+func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) string {
+	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.%s/%s?ssl=%t",
+		url.QueryEscape(user.Username),
+		url.QueryEscape(password),
+		m.ServiceName(),
+		m.Namespace,
+		clusterDomain,
+		user.Database,
+		m.Spec.Security.TLS.Enabled)
 }
 
 func (m MongoDBCommunity) Hosts() []string {
@@ -458,9 +524,12 @@ func (m MongoDBCommunity) Hosts() []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for
-// this resource
+// ServiceName returns the name of the Service that should be created for this resource
 func (m MongoDBCommunity) ServiceName() string {
+	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
+	if serviceName != "" {
+		return serviceName
+	}
 	return m.Name + "-svc"
 }
 
@@ -487,10 +556,6 @@ func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName
 
 func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
-}
-
-func (m MongoDBCommunity) GetAgentScramCredentialsNamespacedName() types.NamespacedName {
-	return types.NamespacedName{Name: fmt.Sprintf("%s-agent-scram-credentials", m.Name), Namespace: m.Namespace}
 }
 
 func (m MongoDBCommunity) DesiredReplicas() int {
@@ -527,12 +592,12 @@ func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrate
 
 // IsChangingVersion returns true if an attempted version change is occurring.
 func (m MongoDBCommunity) IsChangingVersion() bool {
-	prevVersion := m.getPreviousVersion()
-	return prevVersion != "" && prevVersion != m.Spec.Version
+	lastVersion := m.getLastVersion()
+	return lastVersion != "" && lastVersion != m.Spec.Version
 }
 
-// GetPreviousVersion returns the last MDB version the statefulset was configured with.
-func (m MongoDBCommunity) getPreviousVersion() string {
+// GetLastVersion returns the MDB version the statefulset was configured with.
+func (m MongoDBCommunity) getLastVersion() string {
 	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
 }
 

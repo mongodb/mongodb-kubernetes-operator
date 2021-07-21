@@ -53,6 +53,11 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
 			Version: "4.2.2",
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
 		},
 	}
 }
@@ -88,6 +93,9 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDBCommunity {
 			Members: 3,
 			Version: "4.2.2",
 			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
 				TLS: mdbv1.TLS{
 					Enabled: true,
 					CaConfigMap: mdbv1.LocalObjectReference{
@@ -256,7 +264,7 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
 	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
 	assert.Len(t, svc.Spec.Ports, 1)
-	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017})
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017, Name: "mongodb"})
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -523,7 +531,22 @@ func TestIgnoreUnknownUsers(t *testing.T) {
 		mdb.Spec.Security.Authentication.IgnoreUnknownUsers = &ignoreUnknownUsers
 		assertAuthoritativeSet(t, mdb, true)
 	})
+}
 
+func TestAnnotationsAreAppliedToResource(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &mdb)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, mdb.Annotations)
+	assert.NotEmpty(t, mdb.Annotations[lastSuccessfulConfiguration], "last successful spec should have been saved as annotation but was not")
+	assert.Equal(t, mdb.Annotations[lastAppliedMongoDBVersion], mdb.Spec.Version, "last version should have been saved as an annotation but was not")
 }
 
 // assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource

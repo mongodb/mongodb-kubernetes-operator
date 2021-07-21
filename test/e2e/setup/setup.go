@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
@@ -17,7 +18,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -43,7 +47,7 @@ func Setup(t *testing.T) *e2eutil.Context {
 		t.Fatal(err)
 	}
 
-	if err := deployOperator(); err != nil {
+	if err := deployOperator(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +131,8 @@ func deployDir() string {
 	return envvar.GetEnvOrDefault(deployDirEnv, "/workspace/config/manager")
 }
 
-func deployOperator() error {
+func deployOperator(ctx *e2eutil.Context) error {
+
 	testConfig := loadTestConfigFromEnv()
 
 	e2eutil.OperatorNamespace = testConfig.namespace
@@ -138,39 +143,79 @@ func deployOperator() error {
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role: %s", err)
 	}
 	fmt.Println("Successfully created the operator Role")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator service account: %s", err)
 	}
 	fmt.Println("Successfully created the operator Service Account")
 
-	if err := buildKubernetesResourceFromYamlFile(path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
 		return errors.Errorf("error building operator role binding: %s", err)
 	}
-
 	fmt.Println("Successfully created the operator Role Binding")
-	if err := buildKubernetesResourceFromYamlFile(path.Join(deployDir(), "manager.yaml"),
-		&appsv1.Deployment{},
+
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_database.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building mongodb database role: %s", err)
+	}
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account_database.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building mongodb database service account: %s", err)
+	}
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding_database.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+		return errors.Errorf("error building mongodb database role binding: %s", err)
+	}
+	fmt.Println("Successfully created the role, service account and role binding for the database")
+
+	dep := &appsv1.Deployment{}
+
+	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(deployDir(), "manager.yaml"),
+		dep,
 		withNamespace(testConfig.namespace),
 		withOperatorImage(testConfig.operatorImage),
 		withEnvVar("WATCH_NAMESPACE", watchNamespace),
 		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
 		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
 		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
+		withCPURequest("50m"),
 	); err != nil {
 		return errors.Errorf("error building operator deployment: %s", err)
 	}
+
+	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
+		return errors.New("error building operator deployment: the deployment does not have the required replicas")
+	}
+
 	fmt.Println("Successfully created the operator Deployment")
 	return nil
 }
 
+// hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
+// currently has the required amount of replicas in the ready state as specified in spec.replicas
+func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
+	return func() (bool, error) {
+		err := e2eutil.TestClient.Get(context.TODO(),
+			types.NamespacedName{Name: dep.Name,
+				Namespace: e2eutil.OperatorNamespace},
+			dep)
+		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, errors.Errorf("error getting operator deployment: %s", err)
+		}
+		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
+			return true, nil
+		}
+		return false, nil
+	}
+}
+
 // buildKubernetesResourceFromYamlFile will create the kubernetes resource defined in yamlFilePath. All of the functional options
 // provided will be applied before creation.
-func buildKubernetesResourceFromYamlFile(yamlFilePath string, obj client.Object, options ...func(obj runtime.Object)) error {
+func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath string, obj client.Object, options ...func(obj runtime.Object) error) error {
 	data, err := ioutil.ReadFile(yamlFilePath)
 	if err != nil {
 		return errors.Errorf("error reading file: %s", err)
@@ -181,10 +226,12 @@ func buildKubernetesResourceFromYamlFile(yamlFilePath string, obj client.Object,
 	}
 
 	for _, opt := range options {
-		opt(obj)
+		if err := opt(obj); err != nil {
+			return err
+		}
 	}
 
-	return createOrUpdate(obj)
+	return createOrUpdate(ctx, obj)
 }
 
 // marshalRuntimeObjectFromYAMLBytes accepts the bytes of a yaml resource
@@ -197,8 +244,8 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 	return json.Unmarshal(jsonBytes, &obj)
 }
 
-func createOrUpdate(obj client.Object) error {
-	if err := e2eutil.TestClient.Create(context.TODO(), obj, &e2eutil.CleanupOptions{}); err != nil {
+func createOrUpdate(ctx *e2eutil.Context, obj client.Object) error {
+	if err := e2eutil.TestClient.Create(context.TODO(), obj, &e2eutil.CleanupOptions{TestContext: ctx}); err != nil {
 		if apiErrors.IsAlreadyExists(err) {
 			return e2eutil.TestClient.Update(context.TODO(), obj)
 		}
@@ -207,11 +254,33 @@ func createOrUpdate(obj client.Object) error {
 	return nil
 }
 
+// withCPURequest assumes that the underlying type is an appsv1.Deployment.
+// it returns a function which will change the amount
+// requested for the CPUresource. There will be
+// no effect when used with a non-deployment type
+func withCPURequest(cpuRequest string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
+		dep, ok := obj.(*appsv1.Deployment)
+		if !ok {
+			return errors.Errorf("withCPURequest() called on a non-deployment object")
+		}
+		quantityCPU, okCPU := resource.ParseQuantity(cpuRequest)
+		if okCPU != nil {
+			return okCPU
+		}
+		for _, cont := range dep.Spec.Template.Spec.Containers {
+			cont.Resources.Requests["cpu"] = quantityCPU
+		}
+
+		return nil
+	}
+}
+
 // withNamespace returns a function which will assign the namespace
 // of the underlying type to the value specified. We can
 // add new types here as required.
-func withNamespace(ns string) func(runtime.Object) {
-	return func(obj runtime.Object) {
+func withNamespace(ns string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
 		switch v := obj.(type) {
 		case *rbacv1.Role:
 			v.Namespace = ns
@@ -223,18 +292,24 @@ func withNamespace(ns string) func(runtime.Object) {
 			v.Namespace = ns
 		case *appsv1.Deployment:
 			v.Namespace = ns
+		default:
+			return errors.Errorf("withNamespace() called on a non supported object")
 		}
+
+		return nil
 	}
 }
 
-func withEnvVar(key, val string) func(obj runtime.Object) {
-	return func(obj runtime.Object) {
+func withEnvVar(key, val string) func(obj runtime.Object) error {
+	return func(obj runtime.Object) error {
 		if testPod, ok := obj.(*corev1.Pod); ok {
 			testPod.Spec.Containers[0].Env = updateEnvVarList(testPod.Spec.Containers[0].Env, key, val)
 		}
 		if testDeployment, ok := obj.(*appsv1.Deployment); ok {
 			testDeployment.Spec.Template.Spec.Containers[0].Env = updateEnvVarList(testDeployment.Spec.Template.Spec.Containers[0].Env, key, val)
 		}
+
+		return nil
 	}
 }
 
@@ -250,11 +325,14 @@ func updateEnvVarList(envVarList []corev1.EnvVar, key, val string) []corev1.EnvV
 
 // withOperatorImage assumes that the underlying type is an appsv1.Deployment
 // which has the operator container as the first container. There will be
-// no effect when used with a non-deployment type
-func withOperatorImage(image string) func(runtime.Object) {
-	return func(obj runtime.Object) {
+// an error return when used with a non-deployment type
+func withOperatorImage(image string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			dep.Spec.Template.Spec.Containers[0].Image = image
+			return nil
 		}
+
+		return fmt.Errorf("withOperatorImage() called on a non-deployment object")
 	}
 }

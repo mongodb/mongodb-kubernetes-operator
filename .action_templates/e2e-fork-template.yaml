@@ -1,0 +1,27 @@
+name: Run E2E Fork
+jobs:
+  - template: display-github-context
+  - template: setup
+    # dependabot gets a read only github token, and so must use pull_request_target instead of pull_request.
+    if: contains(github.event.pull_request.labels.*.name, 'dependencies') || contains(github.event.pull_request.labels.*.name, 'safe-to-test')
+    steps:
+    - template: cancel-previous
+    - template: checkout-fork
+    - template: setup-and-install-python
+    - template: quay-login
+    - template: build-and-push-development-images
+  - template: tests
+    steps:
+    - template: cancel-previous
+    - template: checkout-fork
+    - template: set-run-status
+    - template: setup-and-install-python
+    - template: setup-kind-cluster
+      if: steps.last_run_status.outputs.last_run_status != 'success'
+    - template: run-test-matrix
+    - template: save-run-status
+    - template: dump-and-upload-diagnostics
+  - template: e2e-success
+
+events:
+  - template: pull-request-target

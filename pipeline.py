@@ -18,7 +18,7 @@ VALID_IMAGE_NAMES = frozenset(
     ]
 )
 
-GOLANG_TAG = "1.15"
+GOLANG_TAG = "1.16"
 DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
@@ -51,6 +51,8 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "agent_version": release["mongodb-agent"]["version"],
         "release_version": release["mongodb-agent"]["version"],
         "tools_version": release["mongodb-agent"]["tools_version"],
+        "agent_image": config.agent_image,
+        "agent_image_dev": config.agent_dev_image,
         "registry": config.repo_url,
         "s3_bucket": config.s3_bucket,
     }
@@ -128,6 +130,7 @@ def build_operator_ubi_image(config: DevConfig, tags: PipelineTags) -> None:
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "operator_image": config.operator_image,
             "operator_image_dev": config.operator_image_dev,
+            "release_version": release["mongodb-kubernetes-operator"],
         },
         inventory="inventories/operator-inventory.yaml",
     )

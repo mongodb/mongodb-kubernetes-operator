@@ -26,6 +26,9 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
         "TEST_NAMESPACE": dev_config.namespace,
         "READINESS_PROBE_IMAGE": f"{dev_config.repo_url}/{dev_config.readiness_probe_image}",
         "PERFORM_CLEANUP": "true" if cleanup else "false",
+        "WATCH_NAMESPACE": dev_config.namespace,
+        "MONGODB_IMAGE": "mongo",
+        "MONGODB_REPO_URL": "docker.io",
     }
 
 

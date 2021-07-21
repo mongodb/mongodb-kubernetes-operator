@@ -1,0 +1,29 @@
+name: Run E2E
+jobs:
+  - template: display-github-context
+  - template: setup
+    # run on master, or if a PR is being created from a branch, or if it has been manually triggered.
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    steps:
+    - template: cancel-previous
+    - template: checkout
+    - template: setup-and-install-python
+    - template: quay-login
+    - template: build-and-push-development-images
+  - template: tests
+    steps:
+    - template: cancel-previous
+    - template: checkout
+    - template: set-run-status
+    - template: setup-and-install-python
+    - template: setup-kind-cluster
+      if: steps.last_run_status.outputs.last_run_status != 'success'
+    - template: run-test-matrix
+    - template: save-run-status
+    - template: dump-and-upload-diagnostics
+  - template: e2e-success
+
+events:
+  - template: on-pull-request-master
+  - template: on-push-master
+  - template: workflow-dispatch

@@ -3,16 +3,17 @@
 from kubernetes.client.rest import ApiException
 
 import k8s_conditions
-import dump_diagnostic
 from typing import Dict
 from dev_config import load_config, DevConfig, Distro
 from kubernetes import client, config
 import argparse
-import os
 import sys
 import yaml
 
 TEST_POD_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_NAME = "e2e-test"
+TEST_CLUSTER_ROLE_BINDING_NAME = "e2e-test"
+TEST_SERVICE_ACCOUNT_NAME = "e2e-test"
 
 
 def load_yaml_from_file(path: str) -> Dict:
@@ -34,8 +35,9 @@ def _load_test_role_binding() -> Dict:
 
 def _prepare_test_environment(config_file: str) -> None:
     """
-    _prepare_testrunner_environment ensures the ServiceAccount,
-    Role and ClusterRole and bindings are created for the test runner.
+    _prepare_test_environment ensures that the old test pod is deleted
+    and that namespace, cluster role, cluster role binding and service account
+    are created for the test pod.
     """
     rbacv1 = client.RbacAuthorizationV1Api()
     corev1 = client.CoreV1Api()
@@ -43,64 +45,32 @@ def _prepare_test_environment(config_file: str) -> None:
 
     _delete_test_pod(config_file)
 
-    print("Creating Role")
+    print("Creating Namespace")
+    k8s_conditions.ignore_if_already_exists(
+        lambda: corev1.create_namespace(
+            client.V1Namespace(metadata=dict(name=dev_config.namespace))
+        )
+    )
+
+    print("Creating Cluster Role")
     k8s_conditions.ignore_if_already_exists(
         lambda: rbacv1.create_cluster_role(_load_test_role())
     )
 
-    print("Creating Role Binding")
+    print("Creating Cluster Role Binding")
+    role_binding = _load_test_role_binding()
+    # set namespace specified in config.json
+    role_binding["subjects"][0]["namespace"] = dev_config.namespace
+
     k8s_conditions.ignore_if_already_exists(
-        lambda: rbacv1.create_cluster_role_binding(_load_test_role_binding())
+        lambda: rbacv1.create_cluster_role_binding(role_binding)
     )
 
-    print("Creating ServiceAccount")
+    print("Creating Service Account")
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
             dev_config.namespace, _load_test_service_account()
         )
-    )
-
-
-def create_kube_config(config_file: str) -> None:
-    """Replicates the local kubeconfig file (pointed at by KUBECONFIG),
-    as a ConfigMap."""
-    corev1 = client.CoreV1Api()
-    print("Creating kube-config ConfigMap")
-    dev_config = load_config(config_file)
-
-    svc = corev1.read_namespaced_service("kubernetes", "default")
-
-    kube_config_path = os.getenv("KUBECONFIG")
-    if kube_config_path is None:
-        raise ValueError("kube_config_path must not be None")
-
-    with open(kube_config_path) as fd:
-        kube_config = yaml.safe_load(fd.read())
-
-    if kube_config is None:
-        raise ValueError("kube_config_path must not be None")
-
-    kube_config["clusters"][0]["cluster"]["server"] = "https://" + svc.spec.cluster_ip
-    kube_config = yaml.safe_dump(kube_config)
-    data = {"kubeconfig": kube_config}
-    config_map = client.V1ConfigMap(
-        metadata=client.V1ObjectMeta(name="kube-config"), data=data
-    )
-
-    k8s_conditions.ignore_if_already_exists(
-        lambda: corev1.create_namespaced_config_map(dev_config.namespace, config_map)
-    )
-
-
-def _delete_test_pod(config_file: str) -> None:
-    """
-    _delete_testrunner_pod deletes the test runner pod
-    if it already exists.
-    """
-    dev_config = load_config(config_file)
-    corev1 = client.CoreV1Api()
-    k8s_conditions.ignore_if_doesnt_exist(
-        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
     )
 
 
@@ -120,9 +90,6 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                     "name": TEST_POD_NAME,
                     "image": f"{dev_config.repo_url}/{dev_config.e2e_image}:{args.tag}",
                     "imagePullPolicy": "Always",
-                    "volumeMounts": [
-                        {"mountPath": "/etc/config", "name": "kube-config-volume"}
-                    ],
                     "env": [
                         {
                             "name": "CLUSTER_WIDE",
@@ -134,7 +101,11 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                         },
                         {
                             "name": "AGENT_IMAGE",
+<<<<<<< HEAD
                             "value": f"{dev_config.repo_url}/{dev_config.agent_image(args.distro)}:{args.tag}",
+=======
+                            "value": f"{dev_config.repo_url}/{dev_config.agent_dev_image}:{args.tag}",
+>>>>>>> master
                         },
                         {
                             "name": "TEST_NAMESPACE",
@@ -163,14 +134,6 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                     ],
                 }
             ],
-            "volumes": [
-                {
-                    "name": "kube-config-volume",
-                    "configMap": {
-                        "name": "kube-config",
-                    },
-                }
-            ],
         },
     }
     if not k8s_conditions.wait(
@@ -192,7 +155,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         timeout=60,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Could not create test_runner pod!")
+        raise Exception("Could not create test pod!")
 
 
 def wait_for_pod_to_be_running(
@@ -203,11 +166,48 @@ def wait_for_pod_to_be_running(
         lambda: corev1.read_namespaced_pod(name, namespace),
         lambda pod: pod.status.phase == "Running",
         sleep_time=5,
-        timeout=180,
+        timeout=240,
         exceptions_to_ignore=ApiException,
     ):
-        raise Exception("Pod never got into Running state!")
+
+        pod = corev1.read_namespaced_pod(name, namespace)
+        raise Exception("Pod never got into Running state: {}".format(pod))
     print("Pod is running")
+
+
+def _delete_test_environment(config_file: str) -> None:
+    """
+    _delete_test_environment ensures that the cluster role, cluster role binding and service account
+    for the test pod are deleted.
+    """
+    rbacv1 = client.RbacAuthorizationV1Api()
+    corev1 = client.CoreV1Api()
+    dev_config = load_config(config_file)
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role(TEST_CLUSTER_ROLE_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: rbacv1.delete_cluster_role_binding(TEST_CLUSTER_ROLE_BINDING_NAME)
+    )
+
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_service_account(
+            TEST_SERVICE_ACCOUNT_NAME, dev_config.namespace
+        )
+    )
+
+
+def _delete_test_pod(config_file: str) -> None:
+    """
+    _delete_test_pod deletes the test pod.
+    """
+    dev_config = load_config(config_file)
+    corev1 = client.CoreV1Api()
+    k8s_conditions.ignore_if_doesnt_exist(
+        lambda: corev1.delete_namespaced_pod(TEST_POD_NAME, dev_config.namespace)
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -232,7 +232,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cluster-wide",
         help="Watch all namespaces",
-        action="store_true",
+        type=lambda x: x.lower() == "true",
     )
     parser.add_argument(
         "--distro",
@@ -268,12 +268,7 @@ def main() -> int:
 
     dev_config = load_config(args.config_file)
     create_kube_config(args.config_file)
-
-    try:
-        prepare_and_run_test(args, dev_config)
-    finally:
-        if not args.skip_dump_diagnostic:
-            dump_diagnostic.dump_all(dev_config.namespace)
+    prepare_and_run_test(args, dev_config)
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
@@ -284,6 +279,8 @@ def main() -> int:
         exceptions_to_ignore=ApiException,
     ):
         return 1
+
+    _delete_test_environment(args.config_file)
     return 0
 
 

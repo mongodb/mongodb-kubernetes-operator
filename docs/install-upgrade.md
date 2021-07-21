@@ -59,7 +59,7 @@ To configure the Operator to watch resources in other namespaces:
              imagePullPolicy: Always
              env:
                - name: WATCH_NAMESPACE
-                 value: *
+                 value: "*"
    ```
 
 2. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
@@ -87,8 +87,8 @@ for MongoDB Docker images:
 
    | Environment Variable | Description | Default |
    |----|----|----|
-   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"library/mongo"` |
-   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"registry.hub.docker.com"` |
+   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongo"` |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io"` |
 
    ```yaml
        spec:
@@ -155,12 +155,47 @@ To install the MongoDB Community Kubernetes Operator:
 
 ## Upgrade the Operator
 
-To upgrade the MongoDB Community Kubernetes Operator to a specific version:
+The release v0.6.0 had some breaking changes (see https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0) requiring special steps to upgrade from a pre-0.6.0 Version.
+As always, have backups.
+Make sure you run commands in the correct namespace.
 
-1. Change the version in the Operator [resource definition](../config/manager/manager.yaml)
-2. Change to the directory in which you cloned the repository.
-3. Checkout the specific tag matching the operator version (e.g. `v0.5.1`)
-4. Invoke the following `kubectl` command to upgrade the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
-   ```
-   kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
-   ```
+1. Prepare for the upgrade.
+
+   a. Migrate your cr by updating apiVersion and kind to
+      ```
+      apiVersion: mongodbcommunity.mongodb.com/v1
+      kind: MongoDBCommunity
+      ```
+      If you upgrade from pre-0.3.0 you need to also add the field spec.users[n].scramCredentialsSecretName for each resource. This will be used to determine the name of the generated secret which stores MongoDB user credentials. This field must comply with DNS-1123 rules (see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/).
+   b. Plan a downtime.
+2. Out with the old
+
+   a. Delete the old operator.
+      ```
+      kubectl delete deployments.apps mongodb-kubernetes-operator
+      ```
+   b. Delete the old statefulset.
+      ```
+      kubectl delete statefulsets.apps mongodb
+      ```
+   c. Delete the old customResourceDefinition. Not strictly needed but no need to keep it around anymore (unless you got more installations of operator in your cluster)
+      ```
+      kubectl delete crd mongodb.mongodb.com
+      ```
+3. In with the new
+
+   Follow the normal installation procedure above.
+4. Start up your Replica Set again
+   a. Re-create your cr using the new Version from Step 1.a
+   b. Patch your statefulset to have it update the permissions
+      ```
+      kubectl patch statefulset <sts-name> --type='json' --patch '[ {"op":"add","path":"/spec/template/spec/initContainers/-", "value": { "name": "change-data-dir-permissions", "image": "busybox", "command": [ "chown", "-R", "2000", "/data" ], "securityContext": { "runAsNonRoot": false, "runAsUser": 0, "runAsGroup":0 }, "volumeMounts": [ { "mountPath": "/data", "name" : "data-volume" } ] } } ]'
+      ```
+   c. Delete your pod manually
+      Since you added your cr in step a. kubernetes will immediately try to get your cluster up and running.
+      You will now have one pod that isn't working since it got created before you patched your statefulset with the additional migration container.
+      Delete that pod.
+      ```
+      kubectl delete pod <sts-name>-0
+      ```
+   d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.   

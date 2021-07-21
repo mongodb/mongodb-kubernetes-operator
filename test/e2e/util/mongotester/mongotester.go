@@ -126,10 +126,21 @@ func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *tes
 	return m.hasAdminParameter("authenticationMechanisms", primitive.A{"SCRAM-SHA-256"}, tries, opts...)
 }
 
+func (m *Tester) ScramWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+	return m.hasAdminParameter("authenticationMechanisms", enabledMechanisms, tries, opts...)
+}
+
 func (m *Tester) EnsureAuthenticationIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
 		t.Run("SCRAM-SHA-256 is configured", m.ScramIsConfigured(tries, opts...))
+	}
+}
+
+func (m *Tester) EnsureAuthenticationWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
+		t.Run(fmt.Sprintf("%q is configured", enabledMechanisms), m.ScramWithAuthIsConfigured(tries, enabledMechanisms, opts...))
 	}
 }
 
@@ -398,6 +409,19 @@ func WithScram(username, password string) OptionApplier {
 	}
 }
 
+func WithScramWithAuth(username, password string, authenticationMechanism string) OptionApplier {
+	return clientOptionAdder{
+		option: &options.ClientOptions{
+			Auth: &options.Credential{
+				AuthMechanism: authenticationMechanism,
+				AuthSource:    "admin",
+				Username:      username,
+				Password:      password,
+			},
+		},
+	}
+}
+
 // WithHosts configures the hosts of the deployment
 func WithHosts(hosts []string) OptionApplier {
 	return clientOptionAdder{
@@ -425,6 +449,22 @@ func WithoutTls() OptionApplier {
 	return clientOptionRemover{
 		removalPredicate: func(opt *options.ClientOptions) bool {
 			return opt.TLSConfig != nil
+		},
+	}
+}
+
+// WithURI will add URI connection string
+func WithURI(uri string) OptionApplier {
+	opt := &options.ClientOptions{}
+	opt.ApplyURI(uri)
+	return clientOptionAdder{option: opt}
+}
+
+// WithReplicaSet will explicitly add a replicaset name
+func WithReplicaSet(rsname string) OptionApplier {
+	return clientOptionAdder{
+		option: &options.ClientOptions{
+			ReplicaSet: &rsname,
 		},
 	}
 }

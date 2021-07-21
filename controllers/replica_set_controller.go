@@ -8,6 +8,8 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
@@ -55,6 +57,7 @@ const (
 	clusterDNSName = "CLUSTER_DNS_NAME"
 
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
+	lastAppliedMongoDBVersion   = "mongodb.com/v1.lastAppliedMongoDBVersion"
 )
 
 func init() {
@@ -80,7 +83,9 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 // SetupWithManager sets up the controller with the Manager and configures the necessary watches.
 func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
 		Complete(r)
 }
 
@@ -124,10 +129,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log = zap.S().With("ReplicaSet", request.NamespacedName)
-	r.log.Infow("Reconciling MongoDB", "MongoDB.Spec", mdb.Spec, "MongoDB.Status", mdb.Status)
+	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
-	if err := r.validateUpdate(mdb); err != nil {
+	if err := r.validateSpec(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -165,6 +170,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	if err := r.ensureUserResources(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -218,21 +231,20 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return res, err
 	}
 
-	// the last version will be duplicated in two annotations.
-	// This is needed to reuse the update strategy logic in enterprise
-	if err := annotations.UpdateLastAppliedMongoDBVersion(&mdb, r.client); err != nil {
-		r.log.Errorf("Could not save current version as an annotation: %s", err)
+	if err := r.updateConnectionStringSecrets(mdb); err != nil {
+		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
+
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
 		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
 
 	if res.RequeueAfter > 0 || res.Requeue {
-		r.log.Infow("Requeuing reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+		r.log.Info("Requeuing reconciliation")
 		return res, nil
 	}
 
-	r.log.Infow("Successfully finished reconciliation", "MongoDB.Spec:", mdb.Spec, "MongoDB.Status:", mdb.Status)
+	r.log.Infof("Successfully finished reconciliation, MongoDB.Spec: %+v, MongoDB.Status: %+v", mdb.Spec, mdb.Status)
 	return res, err
 }
 
@@ -245,6 +257,9 @@ func (r *ReplicaSetReconciler) updateLastSuccessfulConfiguration(mdb mdbv1.Mongo
 
 	specAnnotations := map[string]string{
 		lastSuccessfulConfiguration: string(currentSpec),
+		// the last version will be duplicated in two annotations.
+		// This is needed to reuse the update strategy logic in enterprise
+		lastAppliedMongoDBVersion: mdb.Spec.Version,
 	}
 	return annotations.SetAnnotations(&mdb, specAnnotations, r.client)
 }
@@ -282,15 +297,6 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
 
 	isReady := statefulset.IsReady(currentSts, mdb.StatefulSetReplicasThisReconciliation())
-
-	if isReady {
-		r.log.Infow("StatefulSet is ready",
-			"replicas", currentSts.Spec.Replicas,
-			"generation", currentSts.Generation,
-			"observedGeneration", currentSts.Status.ObservedGeneration,
-			"updateStrategy", currentSts.Spec.UpdateStrategy.Type,
-		)
-	}
 
 	return isReady || currentSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType, nil
 }
@@ -426,6 +432,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
+		SetArbiters(mdb.Spec.Arbiters).
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
@@ -451,28 +458,29 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPort(27017).
+		SetPortName("mongodb").
 		SetPublishNotReadyAddresses(true).
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 }
 
-// validateUpdate validates that the new Spec, corresponding to the existing one
-// is still valid. If there is no a previous Spec, then the function assumes this is
-// the first version of the MongoDB resource and skips.
-func (r ReplicaSetReconciler) validateUpdate(mdb mdbv1.MongoDBCommunity) error {
+// validateSpec checks if the MongoDB resource Spec is valid.
+// If there has not yet been a successful configuration, the function runs the intial Spec validations. Otherwise
+// it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
-		// First version of Spec, no need to validate
-		return nil
+		// First version of Spec
+		return validation.ValidateInitalSpec(mdb)
 	}
 
-	prevSpec := mdbv1.MongoDBCommunitySpec{}
-	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &prevSpec)
+	lastSpec := mdbv1.MongoDBCommunitySpec{}
+	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
 		return err
 	}
 
-	return validation.Validate(prevSpec, mdb.Spec)
+	return validation.ValidateUpdate(mdb, lastSpec)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {

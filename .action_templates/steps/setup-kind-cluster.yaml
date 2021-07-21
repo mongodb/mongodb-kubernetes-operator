@@ -1,0 +1,11 @@
+- name: Setup Kind Cluster
+  run: |
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+    chmod +x ./kind
+    ./kind create cluster
+- name: Create Directories
+  run: |
+    docker exec kind-control-plane  mkdir -p /opt/data/mongo-data-0 /opt/data/mongo-data-1 /opt/data/mongo-data-2 /opt/data/mongo-logs-0 /opt/data/mongo-logs-1 /opt/data/mongo-logs-2
+
+- name: Install CRD
+  run: kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml

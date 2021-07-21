@@ -23,9 +23,21 @@ spec:
 
   statefulSet:
     spec:
+        # Name for the service object created by the operator
       serviceName: example-openshift-mongodb-svc
       selector: {}
+        # Specifies a size for the data volume different from the default 10Gi
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes: [ "ReadWriteOnce", "ReadWriteMany" ]
+            resources:
+              requests:
+                storage: 50Gi
+
       template:
+        # Adds a custom volume to the pods
         spec:
           volumes:
             - name: custom-volume

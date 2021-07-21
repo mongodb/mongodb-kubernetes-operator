@@ -24,12 +24,58 @@ To deploy your first replica set:
    ```
    kubectl get mongodbcommunity --namespace <my-namespace>
    ```
-4. Connect clients to the MongoDB replica set:
+
+4. The Community Kubernetes Operator creates secrets that contains users' connection strings and credentials.
+
+   The secrets follow this naming convention: `<metadata.name>-<auth-db>-<username>`, where:
+
+   | Variable | Description | Value in Sample |
+   |----|----|----|
+   | `<metadata.name>` | Name of the MongoDB database resource. | `example-mongodb` |
+   | `<auth-db>` | [Authentication database](https://docs.mongodb.com/manual/core/security-users/#std-label-user-authentication-database) where you defined the database user. | `admin` |
+   | `<username>` | Username of the database user. | `my-user` |
+
+   Update the variables in the following command, then run it to retrieve a user's connection strings to the replica set from the secret:
+
+   **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
+
+   ```sh
+   kubectl get secret <metadata.name>-<auth-db>-<username> -n mongodb -o json | \ 
+   jq -r '.data | with_entries(.value |= @base64d)'
    ```
-   mongo "mongodb://<service-object-name>.<namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>"
+
+   The command returns the replica set's standard and DNS seed list [connection strings](https://docs.mongodb.com/manual/reference/connection-string/#connection-string-formats) in addition to the user's name and password:
+
+   ```json
+   {
+     "connectionString.standard": "mongodb://<username>:<password>@example-mongodb-0.example-mongodb-svc.mongodb.svc.cluster.local:27017,example-mongodb-1.example-mongodb-svc.mongodb.svc.cluster.local:27017,example-mongodb-2.example-mongodb-svc.mongodb.svc.cluster.local:27017/admin?ssl=true",
+     "connectionString.standardSrv": "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true",
+     "password": "<password>",
+     "username": "<username>"
+   }
    ```
-**NOTE**: You can access each `mongod` process in the replica set only from within a pod
-running in the cluster.
+
+   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDB Resource Connections using TLS](secure.md#secure-mongodb-resource-connections-using-tls).</br></br>
+
+   You can use the connection strings in this secret in your application:
+
+   ```yaml
+   containers:
+    - name: test-app
+      env:
+       - name: "CONNECTION_STRING"
+         valueFrom:
+           secretKeyRef:
+             name: <metadata.name>-<auth-db>-<username>
+             key: connectionString.standardSrv
+
+5. Use one of the connection strings returned in the previous step to connect to the replica set:
+   ```
+   mongo "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true"
+   ```
+
+   **NOTE**: You can access each `mongod` process in the replica set only from within a pod running in the cluster.
+
 
 ## Scale a Replica Set
 
@@ -39,7 +85,7 @@ members in a replica set.
 Consider the following example MongoDB resource definition:
 
 ```yaml
-apiVersion: mongodb.com/v1
+apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
   name: example-mongodb
@@ -56,7 +102,7 @@ To scale a replica set:
    Update `members` to the number of members that you want the replica set to have.
 
    ```yaml
-   apiVersion: mongodb.com/v1
+   apiVersion: mongodbcommunity.mongodb.com/v1
    kind: MongoDBCommunity
    metadata:
      name: example-mongodb
@@ -90,7 +136,7 @@ If you update `spec.version` to a later version, consider setting `spec.featureC
 Consider the following example MongoDB resource definition:
 
 ```yaml
-apiVersion: mongodb.com/v1
+apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
   name: example-mongodb
@@ -108,7 +154,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
    b. Update `spec.featureCompatibilityVersion` to `4.0`.
 
    ```yaml
-   apiVersion: mongodb.com/v1
+   apiVersion: mongodbcommunity.mongodb.com/v1
    kind: MongoDBCommunity
    metadata:
      name: example-mongodb
@@ -148,6 +194,7 @@ To define a custom role:
 
    | Key | Type | Description | Required? |
    |----|----|----|----|
+   | `spec.security.authentication.ignoreUnknownUsers` | boolean | Flag that indicates whether you can add users that don't exist in the `MongoDBCommunity` resource. If omitted, defaults to `true`. | No | 
    | `spec.security.roles` | array | Array that defines [custom roles](https://docs.mongodb.com/manual/core/security-user-defined-roles/) roles that give you fine-grained access control over your MongoDB deployment. | Yes |
    | `spec.security.roles.role` | string | Name of the custom role. | Yes |
    | `spec.security.roles.db` | string | Database in which you want to store the user-defined role. | Yes |
@@ -165,7 +212,7 @@ To define a custom role:
 
    ```yaml
    ---
-   apiVersion: mongodb.com/v1
+   apiVersion: mongodbcommunity.mongodb.com/v1
    kind: MongoDBCommunity
    metadata:
      name: custom-role-mongodb

@@ -1,0 +1,12 @@
+- name: Dump Diagnostics
+  if: always()
+  continue-on-error: true
+  run: scripts/ci/dump_diagnostics.sh default # default since kind is running in the default namespace
+
+- name: Upload Diagnostics
+  if: always()
+  uses: actions/upload-artifact@v2
+  continue-on-error: true
+  with:
+    name: "${{ github.event.inputs.test-name }}-${{ github.event.inputs.distro }}-diagnostics"
+    path: "${{ github.workspace }}/diagnostics"

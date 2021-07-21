@@ -1,0 +1,20 @@
+±apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-kubernetes-operator
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - env:
+        - name: AGENT_IMAGE
+          value: 268558157000.dkr.ecr.us-east-1.amazonaws.com/chatton/ubuntu/mongodb-agent-dev:latest
+        - name: VERSION_UPGRADE_HOOK_IMAGE
+          value: 268558157000.dkr.ecr.us-east-1.amazonaws.com/chatton/ubuntu/community-operator-version-upgrade-post-start-hook:latest
+        - name: READINESS_PROBE_IMAGE
+          value: 268558157000.dkr.ecr.us-east-1.amazonaws.com/chatton/ubuntu/mongodb-kubernetes-readiness:latest
+        - name: WATCH_NAMESPACE
+          value: default
+          valueFrom: null
+        name: mongodb-kubernetes-operator

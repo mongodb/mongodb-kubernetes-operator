@@ -14,7 +14,7 @@ import (
 
 const (
 	// podAnnotationAgentVersion is the Pod Annotation key which contains the current version of the Automation Config
-	// the Agent on the Pod is on now
+	// the Agent on the Pod is on now.
 	podAnnotationAgentVersion = "agent.mongodb.com/version"
 )
 
@@ -53,7 +53,7 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 	return true, nil
 }
 
-// ReachedGoalState checks if a single  Agent has reached the goal state. To do this it reads the Pod annotation
+// ReachedGoalState checks if a single Agent has reached the goal state. To do this it reads the Pod annotation
 // to find out the current version the Agent is on.
 func ReachedGoalState(pod corev1.Pod, targetConfigVersion int, log *zap.SugaredLogger) bool {
 	currentAgentVersion, ok := pod.Annotations[podAnnotationAgentVersion]

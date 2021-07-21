@@ -1,0 +1,19 @@
+name: Run Single E2E
+jobs:
+  - template: display-github-context
+  - template: setup
+    steps:
+    - template: checkout
+    - template: setup-and-install-python
+    - template: quay-login
+    - template: build-and-push-development-images
+  - template: single-test
+    steps:
+    - template: checkout
+    - template: setup-and-install-python
+    - template: setup-kind-cluster
+    - template: run-test-single
+    - template: dump-and-upload-diagnostics-always
+
+events:
+  - template: single-e2e-workflow-dispatch
