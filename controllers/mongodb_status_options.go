@@ -60,8 +60,8 @@ func (m mongoUriOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
-func (o *optionBuilder) withVersion() *optionBuilder {
-	version := getVersion()
+func (o *optionBuilder) withVersion(mdb *mdbv1.MongoDBCommunity) *optionBuilder {
+	version := mdb.GetMongoDBVersion()
 	o.options = append(o.options,
 		versionOption{
 			version: version,
