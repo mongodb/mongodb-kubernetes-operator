@@ -93,6 +93,9 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 	if mdb.Spec.Security.TLS.Enabled {
 		clientOpts = WithTls().ApplyOption(clientOpts...)
 	}
+	//if !mdb.Spec.Security.TLS.AllowConnectionsWithoutCertificates {
+	//clientOpts = withoutTLSVerif().ApplyOption(clientOpts...)
+	//}
 
 	// add any additional options
 	for _, opt := range opts {
@@ -101,6 +104,13 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 
 	return newTester(clientOpts...)
 }
+
+/*func withoutTLSVerif() OptionApplier {
+	opt := &options.ClientOptions{}
+	//opt.SetTLSConfig(&tls.Config{ClientAuth: tls.VerifyClientCertIfGiven})
+	opt.SetTLSConfig(&tls.Config{ClientAuth: tls.RequireAndVerifyClientCert})
+	return clientOptionAdder{option: opt}
+}*/
 
 // ConnectivitySucceeds performs a basic check that ensures that it is possible
 // to connect to the MongoDB resource
@@ -436,6 +446,15 @@ func WithTls() OptionApplier {
 	return withTls(tlsConfig)
 }
 
+/*func WithoutCertificates() OptionApplier {
+	tlsModified := tlsConfig
+	return clientOptionAdder{
+		option: &options.ClientOptions{
+			TLSConfig: tlsModified,
+		},
+	}
+}*/
+
 func withTls(tls *tls.Config) OptionApplier {
 	return clientOptionAdder{
 		option: &options.ClientOptions{
@@ -483,6 +502,7 @@ func getClientTLSConfig() (*tls.Config, error) {
 
 	return &tls.Config{ //nolint
 		RootCAs: caPool,
+		//ClientAuth:         tls.RequireAndVerifyClientCert, //tls.RequestClientCert,
 	}, nil
 }
 
