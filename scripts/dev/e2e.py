@@ -66,6 +66,7 @@ def _prepare_test_environment(config_file: str) -> None:
         lambda: rbacv1.create_cluster_role_binding(role_binding)
     )
 
+    print("dev_config.namespace is ", dev_config.namespace)
     print("Creating Service Account")
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
@@ -242,6 +243,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> None:
+    print("args.config_file")
+    print(args.config_file)
     _prepare_test_environment(args.config_file)
     create_test_pod(args, dev_config)
     corev1 = client.CoreV1Api()
@@ -264,6 +267,10 @@ def main() -> int:
     config.load_kube_config()
 
     dev_config = load_config(args.config_file, Distro.from_string(args.distro))
+    print("dev_config")
+    print(dev_config)
+    print("args")
+    print(args)
     prepare_and_run_test(args, dev_config)
 
     corev1 = client.CoreV1Api()
