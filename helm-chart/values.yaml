@@ -15,13 +15,7 @@ operator:
   # Version of mongodb-kubernetes-operator
   version: 0.7.0
 
-  # The Custom Resources that will be watched by the Operator. Needs to be changed if only some of the CRDs are installed
-  # TODO: Verify it's necessary
-  watchedResources:
-    - mongodb
-
-  metadata:
-    email: support@mongodb.com
+## Operator's database
 database:
   name: mongodb-database
 
@@ -38,49 +32,9 @@ mongodb:
   name: mongo
   repo: docker.io
 
-
 registry:
   agent: quay.io/mongodb
   version_upgrade_hook: quay.io/mongodb
   readiness_probe: quay.io/mongodb
   operator: quay.io/mongodb
   pullPolicy: Always
-
-
-config:
-  repo_url: localhost:5000
-  operator_image: mongodb-kubernetes-operator
-  e2e_image: community-e2e
-  version_upgrade_hook_image: community-operator-version-upgrade-post-start-hook
-  agent_image_ubuntu: mongodb-agent-dev
-  agent_image_ubi: mongodb-agent-ubi-dev
-  readiness_probe_image: mongodb-kubernetes-readiness
-  s3_bucket: ""
-
-resources:
-  {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}

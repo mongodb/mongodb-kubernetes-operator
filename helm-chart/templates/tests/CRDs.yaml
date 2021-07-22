@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,6 +76,3 @@ spec:
             readOnlyRootFilesystem: true
             runAsUser: 2000
       serviceAccountName: {{ .Values.operator.name }}
-
----
-
