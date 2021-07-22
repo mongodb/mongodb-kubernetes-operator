@@ -78,7 +78,7 @@ To deploy your first replica set:
    kubectl -n <my-namespace> exec --stdin --tty <your-application-pod> -- /bin/bash
    ```
 
-   When you connect to your application pod, you see a shell prompt for your application's container:
+   When you connect to your application pod, a shell prompt appears for your application's container:
 
    ```
    user@app:~$
@@ -136,14 +136,16 @@ To scale a replica set:
 
 ## Add Arbiters to a Replica Set
 
-You can add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set by adding the `spec.arbiters` field to your MongoDB resource definition. 
+To add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDB resource definition. 
 
 The value of the `spec.arbiters` field must be:
 
 - a positive integer, and
-- less than the value of the `spec.members` field. At least one replica set member must not be an arbiter.
+- less than the value of the `spec.members` field. 
 
-Consider the following example MongoDB resource definition:
+**NOTE**: At least one replica set member must not be an arbiter.
+
+Consider the following MongoDB resource definition example:
 
 ```yaml
 apiVersion: mongodbcommunity.mongodb.com/v1
