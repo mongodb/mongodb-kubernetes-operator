@@ -35,7 +35,7 @@ readiness_probe:
   name: mongodb-kubernetes-readinessprobe
   version: 1.0.4
 mongodb:
-  name: mongodb
+  name: mongo
   repo: docker.io
 
 
