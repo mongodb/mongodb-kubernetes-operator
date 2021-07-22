@@ -84,7 +84,7 @@ func ValidateTLSConfig(mdb TLSResource, client kubernetesClient.Client, log *zap
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = getPemOrConcatenatedCrtAndKey(client, mdb)
+	_, err = GetPemOrConcatenatedCrtAndKey(client, mdb)
 	if err != nil {
 		log.Warnf(err.Error())
 		return false, nil
@@ -104,7 +104,7 @@ func GetTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb TLSR
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -142,11 +142,11 @@ func CombineCertificateAndKey(cert, key string) string {
 	return fmt.Sprintf("%s\n%s", trimmedCert, trimmedKey)
 }
 
-// getPemOrConcatenatedCrtAndKey will get the final PEM to write to the secret.
+// GetPemOrConcatenatedCrtAndKey will get the final PEM to write to the secret.
 // This is either the tls.pem entry in the given secret, or the concatenation
 // of tls.crt and tls.key
 // It performs a basic validation on the entries.
-func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (string, error) {
+func GetPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (string, error) {
 	certKey := getCertAndKey(getter, mdb)
 	pem := getPem(getter, mdb)
 	if certKey == "" && pem == "" {
@@ -167,7 +167,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (strin
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func EnsureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) error {
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
 	if err != nil {
 		return err
 	}
