@@ -1,0 +1,14 @@
+apiVersion: "v2"
+name: mongodb-kubernetes-operator
+description: MongoDB Kubernetes Community Operator
+version: 0.7.0
+type: application
+appVersion: "0.7.0"
+kubeVersion: '>=1.16-0'
+keywords:
+- mongodb
+- database
+- nosql
+home: https://github.com/mongodb/mongodb-kubernetes-operator/
+maintainers:
+- name: Cloud Team
