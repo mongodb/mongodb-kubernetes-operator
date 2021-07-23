@@ -310,6 +310,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
+				Version:                    "4.4.0",
 				CurrentMongoDBMembers:      mdb.Spec.Members,
 				CurrentStatefulSetReplicas: mdb.Spec.Members,
 			}))
