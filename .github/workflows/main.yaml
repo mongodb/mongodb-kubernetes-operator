@@ -68,5 +68,6 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_PYTHON: true
           VALIDATE_BASH: true
+          FILTER_REGEX_INCLUDE: "/helm-chart/templates/*"
           # VALIDATE_GO: true  This is currently broken: https://github.com/github/super-linter/issues/143
 ...
