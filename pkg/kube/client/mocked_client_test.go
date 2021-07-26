@@ -17,7 +17,7 @@ func TestMockedClient(t *testing.T) {
 	cm := configmap.Builder().
 		SetName("cm-name").
 		SetNamespace("cm-namespace").
-		SetField("field-1", "value-1").
+		SetDataField("field-1", "value-1").
 		SetData(map[string]string{"key-2": "field-2"}).
 		Build()
 

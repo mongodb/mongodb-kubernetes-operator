@@ -23,7 +23,7 @@ func (b *builder) SetNamespace(namespace string) *builder {
 	return b
 }
 
-func (b *builder) SetField(key, value string) *builder {
+func (b *builder) SetDataField(key, value string) *builder {
 	b.data[key] = value
 	return b
 }
