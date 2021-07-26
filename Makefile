@@ -163,12 +163,15 @@ kustomize:
 #	$(call cd,bin/helm/helm)
 #	$(call make)
 #	brew install helm
-	if [ ! -d $(HELM_INSTALL) ]; then \
-		mkdir -p $(HELM_INSTALL); \
-		git clone https://github.com/helm/helm.git $(HELM_INSTALL); \
+#	if [ ! -d $(HELM_INSTALL) ]; then \
+#		mkdir -p $(HELM_INSTALL); \
+#		git clone https://github.com/helm/helm.git $(HELM_INSTALL); \
 		cd $(HELM_INSTALL) && $(MAKE); \
-	fi
-
+#	fi
+	curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+	chmod 700 get_helm.sh
+	./get_helm.sh
+	rm get_helm.sh
 
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
