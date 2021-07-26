@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testVersion string = "4.2.6"
+
 func TestMongoUriOption_ApplyOption(t *testing.T) {
 
-	mdb := newReplicaSet(3, "4.2.6", "my-rs", "my-ns")
+	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
 	opt := mongoUriOption{
 		mongoUri: "my-uri",
@@ -23,7 +25,7 @@ func TestMongoUriOption_ApplyOption(t *testing.T) {
 }
 
 func TestOptionBuilder_RunningPhase(t *testing.T) {
-	mdb := newReplicaSet(3, "4.2.6", "my-rs", "my-ns")
+	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
 	statusOptions().withRunningPhase().GetOptions()[0].ApplyOption(&mdb)
 
@@ -31,7 +33,7 @@ func TestOptionBuilder_RunningPhase(t *testing.T) {
 }
 
 func TestOptionBuilder_PendingPhase(t *testing.T) {
-	mdb := newReplicaSet(3, "4.2.6", "my-rs", "my-ns")
+	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
 	statusOptions().withPendingPhase(10).GetOptions()[0].ApplyOption(&mdb)
 
@@ -39,7 +41,7 @@ func TestOptionBuilder_PendingPhase(t *testing.T) {
 }
 
 func TestOptionBuilder_FailedPhase(t *testing.T) {
-	mdb := newReplicaSet(3, "4.2.6", "my-rs", "my-ns")
+	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
 	statusOptions().withFailedPhase().GetOptions()[0].ApplyOption(&mdb)
 
@@ -47,15 +49,14 @@ func TestOptionBuilder_FailedPhase(t *testing.T) {
 }
 
 func TestVersion_ApplyOption(t *testing.T) {
-	mdb := newReplicaSet(3, "4.2.6", "my-rs", "my-ns")
+	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
 	opt := versionOption{
-		version: "4.2.6",
+		version: testVersion,
 	}
-
 	opt.ApplyOption(&mdb)
 
-	assert.Equal(t, "4.2.6", mdb.Status.Version, "Status should be updated")
+	assert.Equal(t, testVersion, mdb.Status.Version, "Status should be updated")
 }
 
 func newReplicaSet(members int, version string, name, namespace string) mdbv1.MongoDBCommunity {

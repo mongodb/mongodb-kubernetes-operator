@@ -58,7 +58,7 @@ func TestReplicaSetRecovery(t *testing.T) {
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
-				Version:                    mdb.Spec.Version,
+				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      3,
 				CurrentStatefulSetReplicas: 3,
 			}))

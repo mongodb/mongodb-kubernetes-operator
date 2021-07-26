@@ -22,7 +22,7 @@ const (
 	None  severity = "NONE"
 )
 
-// OptionBuilder is in charge of constructing a slice of options that
+// optionBuilder is in charge of constructing a slice of options that
 // will be applied on top of the MongoDB resource that has been provided
 type optionBuilder struct {
 	options []status.Option
