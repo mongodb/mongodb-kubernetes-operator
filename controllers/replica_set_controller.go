@@ -225,7 +225,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase().
-			withVersion(&mdb),
+			withVersion(mdb.GetMongoDBVersion()),
 	)
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
