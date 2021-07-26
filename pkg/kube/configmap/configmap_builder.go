@@ -42,6 +42,13 @@ func (b *builder) SetLabels(labels map[string]string) *builder {
 	return b
 }
 
+func (b *builder) SetData(data map[string]string) *builder {
+	for k, v := range data {
+		b.data[k] = v
+	}
+	return b
+}
+
 func (b builder) Build() corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

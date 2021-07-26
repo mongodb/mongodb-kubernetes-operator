@@ -18,6 +18,7 @@ func TestMockedClient(t *testing.T) {
 		SetName("cm-name").
 		SetNamespace("cm-namespace").
 		SetField("field-1", "value-1").
+		SetData(map[string]string{"key-2": "field-2"}).
 		Build()
 
 	err := mockedClient.Create(context.TODO(), &cm)
@@ -28,6 +29,7 @@ func TestMockedClient(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "cm-namespace", newCm.Namespace)
 	assert.Equal(t, "cm-name", newCm.Name)
+	assert.Equal(t, newCm.Data, map[string]string{"field-1": "value-1", "key-2": "field-2"})
 
 	svc := service.Builder().
 		SetName("svc-name").
