@@ -33,7 +33,7 @@ func (o *optionBuilder) GetOptions() []status.Option {
 	return o.options
 }
 
-// StatusOptions returns an initialized optionBuilder
+// statusOptions returns an initialized optionBuilder
 func statusOptions() *optionBuilder {
 	return &optionBuilder{
 		options: []status.Option{},
