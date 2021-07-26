@@ -44,7 +44,7 @@ func (b *builder) SetLabels(labels map[string]string) *builder {
 
 func (b *builder) SetData(data map[string]string) *builder {
 	for k, v := range data {
-		b.data[k] = v
+		b.SetDataField(k, v)
 	}
 	return b
 }
