@@ -53,6 +53,7 @@ func TestReplicaSetScaleUp(t *testing.T) {
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
+				Version:                    mdb.Spec.Version,
 				CurrentMongoDBMembers:      5,
 				CurrentStatefulSetReplicas: 5,
 			}))
@@ -66,6 +67,7 @@ func TestReplicaSetScaleUp(t *testing.T) {
 		//	mdbv1.MongoDBStatus{
 		//		MongoURI:                   mdb.MongoURI(),
 		//		Phase:                      mdbv1.Running,
+		//		Version:                    mdb.Spec.Version,
 		//		CurrentMongoDBMembers:   3,
 		//		CurrentStatefulSetReplicas: 3,
 		//	}))
