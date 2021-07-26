@@ -32,26 +32,54 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: install
-	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
+#	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
+# install crd and rbac but rbac already installed during install:
+	install_crd
+	install_rbac
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
-install: manifests kustomize
+install: manifests kustomize install_crd
+#	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	
+
+install_crd:
+#	kubectl apply -n $(NAMESPACE) -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
+install_rbac:
+	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl  -n $(NAMESPACE) apply -f -
+	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl  -n $(NAMESPACE) apply -f -
+
+install_manager:
+	kubectl apply -f -n $(NAMESPACE) config/manager/manager.yaml
+
+uninstall_crd:
+	kubectl delete -n $(NAMESPACE) -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+
+uninstall_rbac: 
+	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl delete -f -
+	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl delete -f -
+
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+uninstall: manifests kustomize delete_rbac
+#	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+#	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+	install_crd
+	install_rbac
+	install_manager
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+#	$(KUSTOMIZE) build config/default | kubectl delete -f -
+	uninstall_crd
+	uninstall_rbac
+	uninstall_manager
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -126,8 +154,16 @@ controller-gen:
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
+HELM = $(shell)/usr/local/bin/helm#$(shell pwd)/bin/helm
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.2.0)
+#	$(call git,clone,https://github.com/helm/helm.git, $(HELM))
+#	$(call cd,bin/helm/helm)
+#	$(call make)
+	brew install helm
+
+
+
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
