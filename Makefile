@@ -154,14 +154,20 @@ controller-gen:
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
-HELM = $(shell)/usr/local/bin/helm#$(shell pwd)/bin/helm
+#HELM = $(shell)/usr/local/bin/helm#$(shell pwd)/bin/helm
+HELM = ./helm_install/bin/helm
+HELM_INSTALL = ./helm_install/
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.2.0)
 #	$(call git,clone,https://github.com/helm/helm.git, $(HELM))
 #	$(call cd,bin/helm/helm)
 #	$(call make)
-	brew install helm
-
+#	brew install helm
+	if [ ! -d $(HELM_INSTALL) ]; then \
+		mkdir -p $(HELM_INSTALL); \
+		git clone https://github.com/helm/helm.git $(HELM_INSTALL); \
+		cd $(HELM_INSTALL) && $(MAKE); \
+	fi
 
 
 
