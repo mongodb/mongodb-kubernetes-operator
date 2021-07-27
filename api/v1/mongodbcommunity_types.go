@@ -375,6 +375,7 @@ func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
 type MongoDBCommunityStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
+	Version  string `json:"version"`
 
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
 	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
