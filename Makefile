@@ -91,7 +91,7 @@ e2e-telepresence: cleanup-e2e install
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
-e2e-k8s: cleanup-e2e install e2e-image
+e2e-k8s: install_crd cleanup-e2e install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Run e2e test locally.
