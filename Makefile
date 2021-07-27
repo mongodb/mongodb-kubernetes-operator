@@ -31,21 +31,15 @@ manager: generate fmt vet
 	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: install
-#	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
-# install crd and rbac but rbac already installed during install:
-	install_crd
-	install_rbac
+run: install install_crd install_rbac
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
 install: manifests kustomize helm install_crd
-#	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 	
 
 install_crd:
-#	kubectl apply -n $(NAMESPACE) -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 install_rbac:
@@ -56,15 +50,14 @@ install_manager:
 	kubectl apply -f -n $(NAMESPACE) config/manager/manager.yaml
 
 uninstall_crd:
-	kubectl delete -n $(NAMESPACE) -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 uninstall_rbac: 
 	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl delete -f -
 	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl delete -f -
 
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize delete_rbac
-#	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+uninstall: manifests kustomize uninstall_rbac uninstall_crd
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
@@ -76,7 +69,6 @@ deploy: manifests kustomize
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
-#	$(KUSTOMIZE) build config/default | kubectl delete -f -
 	uninstall_crd
 	uninstall_rbac
 	uninstall_manager
@@ -154,17 +146,26 @@ controller-gen:
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
-#HELM = $(shell)/usr/local/bin/helm#$(shell pwd)/bin/helm
-HELM = $(shell pwd)/bin/helm
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.2.0)
 
+# Download helm locally if necessary
+HELM = $(shell pwd)/bin/helm
+
 helm:
-	$(eval TMP_DIR := $(shell mktemp -d))
-	curl -fsSL -o $(TMP_DIR)/get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-	chmod 700 $(TMP_DIR)/get_helm.sh
-	$(TMP_DIR)/get_helm.sh
-	rm -rf $(TMP_DIR)
+	$(call install_helm)
+
+define install_helm
+@[ -f $(HELM) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 ;\
+chmod 700 get_helm.sh ;\
+./get_helm.sh ;\
+rm -rf $(TMP_DIR) ;\
+}
+endef
 
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
