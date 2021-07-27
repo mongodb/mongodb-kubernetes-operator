@@ -99,7 +99,7 @@ e2e-telepresence: cleanup-e2e install
 	telepresence connect; \
 	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-    go test -v -timeout=30m -failfast ./test/e2e/$(test); \
+	go test -v -timeout=30m -failfast ./test/e2e/$(test); \
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
@@ -168,10 +168,11 @@ kustomize:
 #		git clone https://github.com/helm/helm.git $(HELM_INSTALL); \
 		cd $(HELM_INSTALL) && $(MAKE); \
 #	fi
-	curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-	chmod 700 get_helm.sh
-	./get_helm.sh
-	rm get_helm.sh
+	$(eval TMP_DIR := $(shell mktemp -d))
+	curl -fsSL -o $(TMP_DIR)/get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+	chmod 700 $(TMP_DIR)/get_helm.sh
+	$(TMP_DIR)/get_helm.sh
+	rm -rf $(TMP_DIR)
 
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
