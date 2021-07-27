@@ -23,7 +23,7 @@ func (b *builder) SetNamespace(namespace string) *builder {
 	return b
 }
 
-func (b *builder) SetField(key, value string) *builder {
+func (b *builder) SetDataField(key, value string) *builder {
 	b.data[key] = value
 	return b
 }
@@ -39,6 +39,13 @@ func (b *builder) SetLabels(labels map[string]string) *builder {
 		newLabels[k] = v
 	}
 	b.labels = newLabels
+	return b
+}
+
+func (b *builder) SetData(data map[string]string) *builder {
+	for k, v := range data {
+		b.SetDataField(k, v)
+	}
 	return b
 }
 

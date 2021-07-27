@@ -74,7 +74,7 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSe
 	caConfigMap := configmap.Builder().
 		SetName(tlsConfig.CaConfigMap.Name).
 		SetNamespace(namespace).
-		SetField("ca.crt", string(ca)).
+		SetDataField("ca.crt", string(ca)).
 		SetLabels(e2eutil.TestLabels()).
 		Build()
 
