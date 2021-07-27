@@ -36,11 +36,11 @@ run: install install_crd install_rbac
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
-install: manifests kustomize helm install_crd
+install: manifests helm install_crd
 	
 
 install_crd:
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
 install_rbac:
 	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl  -n $(NAMESPACE) apply -f -
@@ -50,27 +50,23 @@ install_manager:
 	kubectl apply -f -n $(NAMESPACE) config/manager/manager.yaml
 
 uninstall_crd:
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	k delete crd mongodbcommunity.mongodbcommunity.mongodb.com
 
 uninstall_rbac: 
 	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl delete -f -
 	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl delete -f -
 
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize uninstall_rbac uninstall_crd
+uninstall: manifests helm uninstall_rbac uninstall_crd
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-#	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+deploy: manifests helm
 	install_crd
 	install_rbac
 	install_manager
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
-	uninstall_crd
-	uninstall_rbac
 	uninstall_manager
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -144,16 +140,11 @@ CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
-# Download kustomize locally if necessary
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize:
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.2.0)
-
 # Download helm locally if necessary
 HELM = $(shell pwd)/bin/helm
-
 helm:
 	$(call install_helm)
+
 
 define install_helm
 @[ -f $(HELM) ] || { \
@@ -166,7 +157,6 @@ chmod 700 get_helm.sh ;\
 rm -rf $(TMP_DIR) ;\
 }
 endef
-
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
