@@ -84,7 +84,7 @@ func ValidateTLSConfig(mdb TLSResource, client kubernetesClient.Client, log *zap
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = GetPemOrConcatenatedCrtAndKey(client, mdb)
+	_, err = GetPemOrConcatenatedCrtAndKey(client, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		log.Warnf(err.Error())
 		return false, nil
@@ -104,7 +104,7 @@ func GetTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb TLSR
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -113,13 +113,13 @@ func GetTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb TLSR
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb TLSResource) string {
-	cert, err := secret.ReadKey(getter, mdb.TLSSecretCertName(), mdb.TLSSecretNamespacedName())
+func getCertAndKey(getter secret.Getter, mdb TLSResource, secretName types.NamespacedName) string {
+	cert, err := secret.ReadKey(getter, mdb.TLSSecretCertName(), secretName)
 	if err != nil {
 		return ""
 	}
 
-	key, err := secret.ReadKey(getter, mdb.TLSSecretKeyName(), mdb.TLSSecretNamespacedName())
+	key, err := secret.ReadKey(getter, mdb.TLSSecretKeyName(), secretName)
 	if err != nil {
 		return ""
 	}
@@ -128,8 +128,8 @@ func getCertAndKey(getter secret.Getter, mdb TLSResource) string {
 }
 
 // getPem will fetch the pem from the user-provided secret
-func getPem(getter secret.Getter, mdb TLSResource) string {
-	pem, err := secret.ReadKey(getter, mdb.TLSSecretPEMName(), mdb.TLSSecretNamespacedName())
+func getPem(getter secret.Getter, mdb TLSResource, secretName types.NamespacedName) string {
+	pem, err := secret.ReadKey(getter, mdb.TLSSecretPEMName(), secretName)
 	if err != nil {
 		return ""
 	}
@@ -146,9 +146,9 @@ func CombineCertificateAndKey(cert, key string) string {
 // This is either the tls.pem entry in the given secret, or the concatenation
 // of tls.crt and tls.key
 // It performs a basic validation on the entries.
-func GetPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (string, error) {
-	certKey := getCertAndKey(getter, mdb)
-	pem := getPem(getter, mdb)
+func GetPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource, secretName types.NamespacedName) (string, error) {
+	certKey := getCertAndKey(getter, mdb, secretName)
+	pem := getPem(getter, mdb, secretName)
 	if certKey == "" && pem == "" {
 		return "", fmt.Errorf(`Neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, mdb.TLSSecretPEMName(), mdb.TLSSecretCertName(), mdb.TLSSecretKeyName())
 	}
@@ -167,7 +167,7 @@ func GetPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb TLSResource) (strin
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func EnsureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb TLSResource) error {
-	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := GetPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return err
 	}
