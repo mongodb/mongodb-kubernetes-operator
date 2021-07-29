@@ -66,7 +66,7 @@ func ValidateTLSConfig(mdb TLSResource, client kubernetesClient.Client, log *zap
 	// Ensure ConfigMap has all the required fields
 	for _, key := range mdb.TLSConfigMapRequiredEntries() {
 		if cert, ok := caData[key]; !ok || cert == "" {
-			log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), TLSCACertName)
+			log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), key)
 			return false, nil
 		}
 	}
