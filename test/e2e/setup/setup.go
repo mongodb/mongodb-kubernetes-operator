@@ -74,7 +74,8 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSe
 	caConfigMap := configmap.Builder().
 		SetName(tlsConfig.CaConfigMap.Name).
 		SetNamespace(namespace).
-		SetField("ca.crt", string(ca)).
+		SetDataField("ca.crt", string(ca)).
+		SetLabels(e2eutil.TestLabels()).
 		Build()
 
 	err = e2eutil.TestClient.Create(context.TODO(), &caConfigMap, &e2eutil.CleanupOptions{TestContext: ctx})
@@ -84,6 +85,7 @@ func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSe
 
 	certKeySecretBuilder := secret.Builder().
 		SetName(tlsConfig.CertificateKeySecret.Name).
+		SetLabels(e2eutil.TestLabels()).
 		SetNamespace(namespace)
 
 	if secretType == CertKeyPair {
@@ -132,6 +134,7 @@ func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, names
 		SetName(mdbu.PasswordSecretRef.Name).
 		SetNamespace(nsp).
 		SetField(passwordKey, password).
+		SetLabels(e2eutil.TestLabels()).
 		Build()
 
 	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
@@ -245,6 +248,7 @@ func buildKubernetesResourceFromYamlFile(ctx *e2eutil.Context, yamlFilePath stri
 		}
 	}
 
+	obj.SetLabels(e2eutil.TestLabels())
 	return createOrUpdate(ctx, obj)
 }
 

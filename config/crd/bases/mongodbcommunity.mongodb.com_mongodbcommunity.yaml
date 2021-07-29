@@ -322,11 +322,14 @@ spec:
                 type: string
               phase:
                 type: string
+              version:
+                type: string
             required:
             - currentMongoDBMembers
             - currentStatefulSetReplicas
             - mongoUri
             - phase
+            - version
             type: object
         type: object
     served: true

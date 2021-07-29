@@ -287,7 +287,7 @@ func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
 		SetNamespace(mdb.Namespace).
-		SetField("ca.crt", "CERT").
+		SetDataField("ca.crt", "CERT").
 		Build()
 
 	return c.Create(context.TODO(), &configMap)

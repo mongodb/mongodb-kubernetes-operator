@@ -6,6 +6,7 @@ The [`/config/samples`](../config/samples) directory contains example MongoDB re
 
 - [Deploy a Replica Set](#deploy-a-replica-set)
 - [Scale a Replica Set](#scale-a-replica-set)
+- [Add Arbiters to a Replica Set](#add-arbiters-to-a-replica-set)
 - [Upgrade your MongoDB Resource Version and Feature Compatibility Version](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
   - [Example](#example)
 - [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
@@ -40,8 +41,8 @@ To deploy your first replica set:
    **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
 
    ```sh
-   kubectl get secret <metadata.name>-<auth-db>-<username> -n mongodb -o json | \ 
-   jq -r '.data | with_entries(.value |= @base64d)'
+   kubectl get secret <metadata.name>-<auth-db>-<username> -n <my-namespace> \ 
+   -o json | jq -r '.data | with_entries(.value |= @base64d)'
    ```
 
    The command returns the replica set's standard and DNS seed list [connection strings](https://docs.mongodb.com/manual/reference/connection-string/#connection-string-formats) in addition to the user's name and password:
@@ -69,13 +70,25 @@ To deploy your first replica set:
              name: <metadata.name>-<auth-db>-<username>
              key: connectionString.standardSrv
 
-5. Use one of the connection strings returned in the previous step to connect to the replica set:
+5. Connect to one of your application's pods in the Kubernetes cluster:
+
+   **NOTE**: You can access your replica set only from a pod in the same Kubernetes cluster. You can't access your replica set from outside of the Kubernetes cluster.
+
    ```
-   mongo "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true"
+   kubectl -n <my-namespace> exec --stdin --tty <your-application-pod> -- /bin/bash
    ```
 
-   **NOTE**: You can access each `mongod` process in the replica set only from within a pod running in the cluster.
+   When you connect to your application pod, a shell prompt appears for your application's container:
 
+   ```
+   user@app:~$
+   ```
+
+6. Use one of the connection strings returned in step 4 to connect to the replica set. The following example uses [`mongosh`](https://docs.mongodb.com/mongodb-shell/) to connect to a replica set:
+
+   ```
+   mongosh "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true"
+   ```
 
 ## Scale a Replica Set
 
@@ -120,6 +133,67 @@ To scale a replica set:
    **NOTE**: When you scale down a MongoDB resource, the Community Operator
    might take several minutes to remove the StatefulSet replicas for the
    members that you remove from the replica set.
+
+## Add Arbiters to a Replica Set
+
+To add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDB resource definition. 
+
+The value of the `spec.arbiters` field must be:
+
+- a positive integer, and
+- less than the value of the `spec.members` field. 
+
+**NOTE**: At least one replica set member must not be an arbiter.
+
+Consider the following MongoDB resource definition example:
+
+```yaml
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: example-mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.7"
+```
+
+To add arbiters:
+
+1. Edit the resource definition.
+
+   Add the `spec.arbiters` field and assign its value to the number of arbiters that you want the replica set to have.
+
+   ```yaml
+   apiVersion: mongodbcommunity.mongodb.com/v1
+   kind: MongoDBCommunity
+   metadata:
+     name: example-mongodb
+   spec:
+     members: 3
+     type: ReplicaSet
+     arbiters: 3
+     version: "4.2.7"
+   ```
+
+   If necessary, update the value of the `spec.members` field to ensure that you have at least one member that is not an arbiter:
+
+   ```yaml
+   apiVersion: mongodbcommunity.mongodb.com/v1
+   kind: MongoDBCommunity
+   metadata:
+     name: example-mongodb
+   spec:
+     members: 5
+     type: ReplicaSet
+     arbiters: 3
+     version: "4.2.7"
+   ```
+
+2. Reapply the configuration to Kubernetes:
+   ```
+   kubectl apply -f <example>.yaml --namespace <my-namespace>
+   ```
 
 ## Upgrade your MongoDB Resource Version and Feature Compatibility Version
 

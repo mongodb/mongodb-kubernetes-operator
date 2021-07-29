@@ -81,6 +81,7 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         "metadata": {
             "name": TEST_POD_NAME,
             "namespace": dev_config.namespace,
+            "labels": {"e2e-test": "true"},
         },
         "spec": {
             "restartPolicy": "Never",

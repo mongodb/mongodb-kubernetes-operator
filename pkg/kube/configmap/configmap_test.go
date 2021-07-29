@@ -33,8 +33,8 @@ func TestReadKey(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("key1", "value1").
-			SetField("key2", "value2").
+			SetDataField("key1", "value1").
+			SetDataField("key2", "value2").
 			Build(),
 	)
 
@@ -55,8 +55,8 @@ func TestReadData(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("key1", "value1").
-			SetField("key2", "value2").
+			SetDataField("key1", "value1").
+			SetDataField("key2", "value2").
 			Build(),
 	)
 
@@ -75,7 +75,7 @@ func TestReadFileLikeField(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("key1", "value1=1\nvalue2=2").
+			SetDataField("key1", "value1=1\nvalue2=2").
 			Build(),
 	)
 
@@ -90,7 +90,7 @@ func TestReadFileLikeField_InvalidExternalKey(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("key1", "value1=1\nvalue2=2").
+			SetDataField("key1", "value1=1\nvalue2=2").
 			Build(),
 	)
 
@@ -104,7 +104,7 @@ func TestReadFileLikeField_InvalidInternalKey(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("key1", "value1=1\nvalue2=2").
+			SetDataField("key1", "value1=1\nvalue2=2").
 			Build(),
 	)
 
@@ -140,8 +140,8 @@ func TestUpdateField(t *testing.T) {
 		Builder().
 			SetName("name").
 			SetNamespace("namespace").
-			SetField("field1", "value1").
-			SetField("field2", "value2").
+			SetDataField("field1", "value1").
+			SetDataField("field2", "value2").
 			Build(),
 	)
 	err := UpdateField(getUpdater, nsName("namespace", "name"), "field1", "newValue")
