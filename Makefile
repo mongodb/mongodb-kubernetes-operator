@@ -4,10 +4,13 @@ SHELL := /bin/bash
 REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
 OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
 NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
-IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
+UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < ~/.community-operator-dev/config.json)
+READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-operator-dev/config.json)
+
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
+RELEASE_NAME_HELM ?= "example"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -31,43 +34,36 @@ manager: generate fmt vet
 	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: install install_crd install_rbac
+run: install install-chart
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
-install: manifests helm install_crd
+install: manifests helm install-crd
 	
 
-install_crd:
+install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
-install_rbac:
-	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl  -n $(NAMESPACE) apply -f -
-	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl  -n $(NAMESPACE) apply -f -
+install-chart:
+#	$(HELM) template --set namespace=$(NAMESPACE) helm-chart  | kubectl  --namespace=$(NAMESPACE) apply -f -
+	helm upgrade --install --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE) $(RELEASE_NAME_HELM) helm-chart
 
-install_manager:
-	kubectl apply -f -n $(NAMESPACE) config/manager/manager.yaml
 
-uninstall_crd:
-	k delete crd mongodbcommunity.mongodbcommunity.mongodb.com
+uninstall-crd:
+	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
 
-uninstall_rbac: 
-	$(HELM) template -s templates/tests/operator_roles.yaml helm-chart | kubectl delete -f -
-	$(HELM) template -s templates/tests/database_roles.yaml helm-chart | kubectl delete -f -
+uninstall-chart: 
+	$(HELM) uninstall $(RELEASE_NAME_HELM) -n $(NAMESPACE)
 
 # Uninstall CRDs from a cluster
-uninstall: manifests helm uninstall_rbac uninstall_crd
+uninstall: manifests helm uninstall-chart uninstall-crd
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests helm
-	install_crd
-	install_rbac
-	install_manager
+deploy: manifests helm install-chart install-crd
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
-undeploy:
-	uninstall_manager
+undeploy: uninstall-chart
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -91,7 +87,7 @@ e2e-telepresence: cleanup-e2e install
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
-e2e-k8s: install_crd cleanup-e2e install e2e-image
+e2e-k8s: install-crd cleanup-e2e install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Run e2e test locally.
@@ -141,12 +137,12 @@ controller-gen:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
 # Download helm locally if necessary
-HELM = $(shell pwd)/bin/helm
+HELM = /usr/local/bin/helm
 helm:
-	$(call install_helm)
+	$(call install-helm)
 
 
-define install_helm
+define install-helm
 @[ -f $(HELM) ] || { \
 set -e ;\
 TMP_DIR=$$(mktemp -d) ;\
