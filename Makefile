@@ -10,7 +10,7 @@ READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-opera
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
-RELEASE_NAME_HELM ?= "community_operator_chart"
+RELEASE_NAME_HELM ?= community-operator-chart
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
