@@ -44,20 +44,20 @@ func TestReplicaSetTLSRecreateMdbc(t *testing.T) {
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
 	// Deleting the first mdbc
-	err4 := e2eutil.TestClient.Delete(context.TODO(), &mdb1)
-	if err4 != nil {
-		t.Fatalf("Failed to delete first test MongoDB: %s", err4)
+	err3 := e2eutil.TestClient.Delete(context.TODO(), &mdb1)
+	if err3 != nil {
+		t.Fatalf("Failed to delete first test MongoDB: %s", err3)
 	}
 
 	// Creating new mdbc spec, TLS Config and tester
 	mdb2, _ := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
 	mdb2.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
-	tester1, err8 := FromResource(t, mdb2)
-	if err8 != nil {
-		t.Fatal(err8)
+	tester1, err4 := FromResource(t, mdb2)
+	if err4 != nil {
+		t.Fatal(err4)
 	}
 
-	// Create new mdbc and run tests on it
+	// Running tests on new mdbc
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb2, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb2))
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
