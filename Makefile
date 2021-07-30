@@ -46,7 +46,6 @@ install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
 install-chart:
-#	$(HELM) template --set namespace=$(NAMESPACE) helm-chart  | kubectl  --namespace=$(NAMESPACE) apply -f -
 	helm upgrade --install --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest $(RELEASE_NAME_HELM) helm-chart 
 
 
