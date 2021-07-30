@@ -4,10 +4,13 @@ SHELL := /bin/bash
 REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
 OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
 NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
-IMG := $(REPO_URL)/$(OPERATOR_IMAGE)
+UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < ~/.community-operator-dev/config.json)
+READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-operator-dev/config.json)
+
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
+RELEASE_NAME_HELM ?= community-operator-chart
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -31,27 +34,35 @@ manager: generate fmt vet
 	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: install
-	$(KUSTOMIZE) build config/local_run | kubectl apply -n $(NAMESPACE) -f -
+run: install install-chart
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
 # Install CRDs into a cluster
-install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+install: manifests helm install-crd
+	
+
+install-crd:
+	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+
+install-chart:
+	helm upgrade --install --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest $(RELEASE_NAME_HELM) helm-chart 
+
+
+uninstall-crd:
+	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
+
+uninstall-chart: 
+	$(HELM) uninstall $(RELEASE_NAME_HELM) -n $(NAMESPACE)
 
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+uninstall: manifests helm uninstall-chart uninstall-crd
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/mongodb/mongodb-kubernetes-operator=$(IMG):latest
-	$(KUSTOMIZE) build config/default | kubectl apply -n $(NAMESPACE) -f -
+deploy: manifests helm install-chart install-crd
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
-undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+undeploy: uninstall-chart uninstall-crd
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -71,11 +82,11 @@ e2e-telepresence: cleanup-e2e install
 	telepresence connect; \
 	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-    go test -v -timeout=30m -failfast ./test/e2e/$(test); \
+	go test -v -timeout=30m -failfast ./test/e2e/$(test); \
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
-e2e-k8s: cleanup-e2e install e2e-image
+e2e-k8s: install-crd cleanup-e2e install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Run e2e test locally.
@@ -124,10 +135,23 @@ CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
-# Download kustomize locally if necessary
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize:
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.2.0)
+# Download helm locally if necessary
+HELM = /usr/local/bin/helm
+helm:
+	$(call install-helm)
+
+
+define install-helm
+@[ -f $(HELM) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 ;\
+chmod 700 get_helm.sh ;\
+./get_helm.sh ;\
+rm -rf $(TMP_DIR) ;\
+}
+endef
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
