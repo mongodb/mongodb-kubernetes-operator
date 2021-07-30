@@ -62,7 +62,7 @@ spec:
               value: {{ .Values.mongodb.name }}
             - name: MONGODB_REPO_URL
               value: {{ .Values.mongodb.repo }}
-          image: {{ .Values.registry.operator }}/{{ .Values.operator.operator_image_name }}:{{ .Values.operator.version }}{{ .Values.build }}
+          image: {{ .Values.registry.operator }}/{{ .Values.operator.operator_image_name }}:{{ .Values.operator.version }}
           imagePullPolicy: {{ .Values.registry.pullPolicy}}
           name: {{ .Values.operator.deployment_name }}
           resources:
