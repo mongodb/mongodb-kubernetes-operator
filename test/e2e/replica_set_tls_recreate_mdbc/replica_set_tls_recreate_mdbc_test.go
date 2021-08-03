@@ -25,39 +25,34 @@ func TestReplicaSetTLSRecreateMdbc(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	// Creating first mdbc spec, scramUser and TLS Config
 	mdb1, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
 	scramUser := mdb1.GetScramUsers()[0]
 	mdb1.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
-	_, err1 := setup.GeneratePasswordForUser(ctx, user, "")
-	if err1 != nil {
-		t.Fatal(err1)
+
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if err2 := setup.CreateTLSResources(mdb1.Namespace, ctx, setup.CertKeyPair); err2 != nil {
-		t.Fatalf("Failed to set up TLS resources: %s", err2)
+	if err := setup.CreateTLSResources(mdb1.Namespace, ctx, setup.CertKeyPair); err != nil {
+		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
-	// Creating first mdbc
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb1, ctx))
-	fmt.Print("Ensuring first mdbc is running\n")
+
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
-	// Deleting the first mdbc
-	err3 := e2eutil.TestClient.Delete(context.TODO(), &mdb1)
-	if err3 != nil {
-		t.Fatalf("Failed to delete first test MongoDB: %s", err3)
+	if err := e2eutil.TestClient.Delete(context.TODO(), &mdb1); err != nil {
+		t.Fatalf("Failed to delete first test MongoDB: %s", err)
 	}
 
-	// Creating new mdbc spec, TLS Config and tester
 	mdb2, _ := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
 	mdb2.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
-	tester1, err4 := FromResource(t, mdb2)
-	if err4 != nil {
-		t.Fatal(err4)
+	tester1, err := FromResource(t, mdb2)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// Running tests on new mdbc
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb2, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb2))
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
