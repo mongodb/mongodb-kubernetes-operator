@@ -39,7 +39,6 @@ func TestReplicaSetTLSRecreateMdbc(t *testing.T) {
 	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb1, ctx))
-
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb1))
 
 	if err := e2eutil.TestClient.Delete(context.TODO(), &mdb1); err != nil {
