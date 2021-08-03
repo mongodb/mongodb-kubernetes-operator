@@ -33,7 +33,7 @@ func (o *optionBuilder) GetOptions() []status.Option {
 	return o.options
 }
 
-// options returns an initialized optionBuilder
+// statusOptions returns an initialized optionBuilder
 func statusOptions() *optionBuilder {
 	return &optionBuilder{
 		options: []status.Option{},
@@ -57,6 +57,26 @@ func (m mongoUriOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 }
 
 func (m mongoUriOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
+}
+
+func (o *optionBuilder) withVersion(version string) *optionBuilder {
+	o.options = append(o.options,
+		versionOption{
+			version: version,
+		})
+	return o
+}
+
+type versionOption struct {
+	version string
+}
+
+func (v versionOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
+	mdb.Status.Version = v.version
+}
+
+func (v versionOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }
 
