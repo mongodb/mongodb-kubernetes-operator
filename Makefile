@@ -7,6 +7,8 @@ NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
 UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < ~/.community-operator-dev/config.json)
 READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-operator-dev/config.json)
 
+STRING_SET_VALUES := --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest
+
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
@@ -34,7 +36,7 @@ manager: generate fmt vet
 	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: install install-chart
+run: install install-rbac
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
@@ -46,8 +48,11 @@ install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
 install-chart:
-	helm upgrade --install --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest $(RELEASE_NAME_HELM) helm-chart 
+	helm upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart 
 
+install-rbac:
+	$(HELM) template $(STRING_SET_VALUES) -s  templates/tests/database_roles.yaml helm-chart | kubectl apply -f -
+	$(HELM) template $(STRING_SET_VALUES) -s  templates/tests/operator_roles.yaml helm-chart | kubectl apply -f -
 
 uninstall-crd:
 	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
@@ -86,7 +91,7 @@ e2e-telepresence: cleanup-e2e install
 	telepresence quit
 
 # Run e2e test by deploying test image in kubernetes.
-e2e-k8s: install-crd cleanup-e2e install e2e-image
+e2e-k8s: cleanup-e2e install e2e-image
 	python scripts/dev/e2e.py --perform-cleanup --test $(test)
 
 # Run e2e test locally.
@@ -100,7 +105,7 @@ e2e-gh:
 	scripts/dev/run_e2e_gh.sh $(test)
 
 cleanup-e2e:
-	kubectl delete mdbc,all -l e2e-test=true
+	kubectl delete mdbc,all -l e2e-test=true | true
 
 # Generate code
 generate: controller-gen
