@@ -1,78 +1,78 @@
-# ---
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   annotations:
-#     email: support@mongodb.com
-#   labels:
-#     owner: mongodb
-#   name: {{ .Values.operator.name }}
-#   {{- if .Values.namespace }}
-#   namespace: {{ .Values.namespace }}
-#   {{- end }}
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       name: {{ .Values.operator.name }}
-#   strategy:
-#     rollingUpdate:
-#       maxUnavailable: 1
-#     type: RollingUpdate
-#   template:
-#     metadata:
-#       labels:
-#         name: {{ .Values.operator.name }}
-#     spec:
-#       affinity:
-#         podAntiAffinity:
-#           requiredDuringSchedulingIgnoredDuringExecution:
-#             - labelSelector:
-#                 matchExpressions:
-#                   - key: name
-#                     operator: In
-#                     values:
-#                       - {{ .Values.operator.name }}
-#               topologyKey: kubernetes.io/hostname
-#       containers:
-#         - command:
-#             - /usr/local/bin/entrypoint
-#           env:
-#             - name: WATCH_NAMESPACE
-# {{- if .Values.operator.watchNamespace}}
-#               value: "{{ .Values.operator.watchNamespace }}"
-# {{- else }}
-#               valueFrom:
-#                 fieldRef:
-#                   fieldPath: metadata.namespace
-# {{- end }}
-#             - name: POD_NAME
-#               valueFrom:
-#                 fieldRef:
-#                   fieldPath: metadata.name
-#             - name: OPERATOR_NAME
-#               value: {{ .Values.operator.name }}
-#             - name: AGENT_IMAGE
-#               value: "{{ .Values.registry.agent }}/{{ .Values.agent.name }}:{{ .Values.agent.version }}"
-#             - name: VERSION_UPGRADE_HOOK_IMAGE
-#               value: "{{ .Values.registry.version_upgrade_hook }}/{{ .Values.version_upgrade_hook.name }}:{{ .Values.version_upgrade_hook.version }}"
-#             - name: READINESS_PROBE_IMAGE
-#               value: "{{ .Values.registry.readiness_probe }}/{{ .Values.readiness_probe.name }}:{{ .Values.readiness_probe.version }}"
-#             - name: MONGODB_IMAGE
-#               value: {{ .Values.mongodb.name }}
-#             - name: MONGODB_REPO_URL
-#               value: {{ .Values.mongodb.repo }}
-#           image: {{ .Values.registry.operator }}/{{ .Values.operator.operator_image_name }}:{{ .Values.operator.version }}
-#           imagePullPolicy: {{ .Values.registry.pullPolicy}}
-#           name: {{ .Values.operator.deployment_name }}
-#           resources:
-#             limits:
-#               cpu: 1100m
-#               memory: 1Gi
-#             requests:
-#               cpu: 500m
-#               memory: 200Mi
-#           securityContext:
-#             readOnlyRootFilesystem: true
-#             runAsUser: 2000
-#       serviceAccountName: {{ .Values.operator.name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    email: support@mongodb.com
+  labels:
+    owner: mongodb
+  name: {{ .Values.operator.name }}
+  {{- if .Values.namespace }}
+  namespace: {{ .Values.namespace }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: {{ .Values.operator.name }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.operator.name }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: name
+                    operator: In
+                    values:
+                      - {{ .Values.operator.name }}
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - command:
+            - /usr/local/bin/entrypoint
+          env:
+            - name: WATCH_NAMESPACE
+{{- if .Values.operator.watchNamespace}}
+              value: "{{ .Values.operator.watchNamespace }}"
+{{- else }}
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+{{- end }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: {{ .Values.operator.name }}
+            - name: AGENT_IMAGE
+              value: "{{ .Values.registry.agent }}/{{ .Values.agent.name }}:{{ .Values.agent.version }}"
+            - name: VERSION_UPGRADE_HOOK_IMAGE
+              value: "{{ .Values.registry.version_upgrade_hook }}/{{ .Values.version_upgrade_hook.name }}:{{ .Values.version_upgrade_hook.version }}"
+            - name: READINESS_PROBE_IMAGE
+              value: "{{ .Values.registry.readiness_probe }}/{{ .Values.readiness_probe.name }}:{{ .Values.readiness_probe.version }}"
+            - name: MONGODB_IMAGE
+              value: {{ .Values.mongodb.name }}
+            - name: MONGODB_REPO_URL
+              value: {{ .Values.mongodb.repo }}
+          image: {{ .Values.registry.operator }}/{{ .Values.operator.operator_image_name }}:{{ .Values.operator.version }}
+          imagePullPolicy: {{ .Values.registry.pullPolicy}}
+          name: {{ .Values.operator.deployment_name }}
+          resources:
+            limits:
+              cpu: 1100m
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 200Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsUser: 2000
+      serviceAccountName: {{ .Values.operator.name }}
