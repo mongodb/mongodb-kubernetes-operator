@@ -342,6 +342,36 @@ func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	}
 }
 
+// DeleteStatefulSet provides a wrapper to delete appsv1.StatefulSet types
+func DeleteStatefulSet(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return func(t *testing.T) {
+		sts := appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mdb.Name,
+				Namespace: mdb.Namespace,
+			},
+		}
+		if err := e2eutil.TestClient.Delete(context.TODO(), &sts); err != nil {
+			t.Fatal(err)
+		}
+
+		t.Logf("StatefulSet %s/%s deleted", sts.ObjectMeta.Namespace, sts.ObjectMeta.Name)
+	}
+}
+
+/* 	return func(t *testing.T) {
+	stsNamespacedName := types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}
+	sts := appsv1.StatefulSet{}
+	if err := e2eutil.TestClient.Get(context.TODO(), stsNamespacedName, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if err := e2eutil.TestClient.Delete(context.TODO(), &sts); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("StatefulSet %s/%s deleted", sts.ObjectMeta.Namespace, sts.ObjectMeta.Name)
+} */
+
 // Status compares the given status to the actual status of the MongoDB resource
 func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunityStatus) func(t *testing.T) {
 	return func(t *testing.T) {
