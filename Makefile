@@ -48,7 +48,7 @@ install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
 install-chart:
-	helm upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart 
+	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart 
 
 install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml helm-chart | kubectl apply -f -
