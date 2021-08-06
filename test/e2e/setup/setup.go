@@ -2,28 +2,16 @@ package setup
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
-	"github.com/pkg/errors"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -32,16 +20,14 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-
-	helm "github.com/mittwald/go-helm-client"
 )
 
 type tlsSecretType string
 
 const (
 	performCleanupEnv = "PERFORM_CLEANUP"
-	deployDirEnv      = "DEPLOY_DIR"
-	roleDirEnv        = "ROLE_DIR"
+	//deployDirEnv      = "DEPLOY_DIR"
+	//roleDirEnv        = "ROLE_DIR"
 
 	CertKeyPair tlsSecretType = "CERTKEYPAIR"
 	Pem         tlsSecretType = "PEM"
@@ -142,104 +128,136 @@ func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, names
 	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
-func roleDir() string {
+/*func roleDir() string {
 	return envvar.GetEnvOrDefault(roleDirEnv, "/workspace/config/rbac")
 }
 
 func deployDir() string {
 	return envvar.GetEnvOrDefault(deployDirEnv, "/workspace/config/manager")
+}*/
+
+func splitStrToRegNameVersion(fullStr string) (string, string, string) {
+	s := strings.Split(fullStr, "/")
+	reg := s[0]
+	s = strings.Split(s[1], ":")
+	name := s[0]
+	version := s[1]
+	return reg, name, version
+}
+
+func mapToStringArgument(m map[string]string) string {
+	s := ""
+
+	for k, v := range m {
+		s = s + k + "=" + v + ","
+	}
+
+	return s[:len(s)-1]
 }
 
 func deployOperator(ctx *e2eutil.Context) error {
 	testConfig := loadTestConfigFromEnv()
 	e2eutil.OperatorNamespace = testConfig.namespace
-
-	opt := &helm.Options{
-		RepositoryCache:  "/tmp/.helmcache",
-		RepositoryConfig: "/tmp/.helmrepo",
-		Debug:            true,
-		Linting:          true,
-	}
-
-	helmClient, err := helm.New(opt)
-	if err != nil {
-		panic(err)
-	}
-	// Define the chart to be installed
-	chartSpec := helm.ChartSpec{
-		ReleaseName: "community-operator",
-		ChartName:   "helm-chart",
-		Namespace:   e2eutil.OperatorNamespace,
-		UpgradeCRDs: true,
-		Wait:        true,
-		/*ValuesYaml: "namespace=" + e2eutil.OperatorNamespace + ",version_upgrade_hook.name=" +
-		testConfig.versionUpgradeHookImage + ",readiness_probe.name=" + testConfig.readinessProbeImage +
-		",operator.operator_image_name=" + testConfig.operatorImage + ",operator.version=latest",*/
-	}
-
-	if rel, err := helmClient.InstallOrUpgradeChart(context.TODO(), &chartSpec); err != nil {
-		panic(err)
-	} else {
-		fmt.Printf("relasename: %s\n", rel.Name)
-	}
-
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
 	watchNamespace := testConfig.namespace
 	if testConfig.clusterWide {
 		watchNamespace = "*"
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
+
+	reg_agent, name_agent, version_agent := splitStrToRegNameVersion(testConfig.agentImage)
+	reg_hook, name_hook, version_hook := splitStrToRegNameVersion(testConfig.versionUpgradeHookImage)
+	reg_probe, name_probe, version_probe := splitStrToRegNameVersion(testConfig.readinessProbeImage)
+	reg_ope, name_ope, version_ope := splitStrToRegNameVersion(testConfig.operatorImage)
+
+	m := make(map[string]string)
+	m["namespace"] = testConfig.namespace
+	m["perator.watchNamespace"] = watchNamespace
+	m["registry.version_upgrade_hook"] = reg_hook
+	m["version_upgrade_hook.name"] = name_hook
+	m["version_upgrade_hook.version"] = version_hook
+	m["registry.readiness_probe"] = reg_probe
+	m["readiness_probe.name"] = name_probe
+	m["readiness_probe.version"] = version_probe
+	m["registry.operator"] = reg_ope
+	m["operator.operator_image_name"] = name_ope
+	m["registry.operator"] = version_ope
+	m["registry.agent"] = reg_agent
+	m["registry.name"] = name_agent
+	m["registry.version"] = version_agent
+	m["operator.version"] = "latest"
+
+	command_to_run := "/usr/local/bin/helm upgrade --install "
+
+	arg_set := "--set " + mapToStringArgument(m)
+	release_name := "community-operator-chart "
+	helm_chart_name := "helm-chart "
+	full_command := command_to_run + arg_set + release_name + helm_chart_name
+	_ = full_command
+	// Used to debug to see if the command is okay
+	fmt.Println(full_command)
+
+	// TODO: modify the docker files so that it install helm
+	out, err := exec.Command(full_command).Output()
+	if err != nil {
+		return err
+	}
+	//TODO: remove this
+	fmt.Println("OUTPUT HELM: ")
+	fmt.Println(string(out))
+
 	/*
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building operator role: %s", err)
-		}
-		fmt.Println("Successfully created the operator Role")
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building operator role: %s", err)
+			}
+			fmt.Println("Successfully created the operator Role")
 
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building operator service account: %s", err)
-		}
-		fmt.Println("Successfully created the operator Service Account")
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building operator service account: %s", err)
+			}
+			fmt.Println("Successfully created the operator Service Account")
 
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building operator role binding: %s", err)
-		}
-		fmt.Println("Successfully created the operator Role Binding")
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building operator role binding: %s", err)
+			}
+			fmt.Println("Successfully created the operator Role Binding")
 
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_database.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building mongodb database role: %s", err)
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_database.yaml"), &rbacv1.Role{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building mongodb database role: %s", err)
+			}
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account_database.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building mongodb database service account: %s", err)
+			}
+			if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding_database.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
+				return errors.Errorf("error building mongodb database role binding: %s", err)
+			}
+		_ = roleDir()
+		fmt.Println("Successfully created the role, service account and role binding for the database")
+
+		dep := &appsv1.Deployment{}
+
+		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(deployDir(), "manager.yaml"),
+			dep,
+			withNamespace(testConfig.namespace),
+			withOperatorImage(testConfig.operatorImage),
+			withEnvVar("WATCH_NAMESPACE", watchNamespace),
+			withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
+			withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
+			withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
+			withCPURequest("50m"),
+		); err != nil {
+			return errors.Errorf("error building operator deployment: %s", err)
 		}
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "service_account_database.yaml"), &corev1.ServiceAccount{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building mongodb database service account: %s", err)
-		}
-		if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(roleDir(), "role_binding_database.yaml"), &rbacv1.RoleBinding{}, withNamespace(testConfig.namespace)); err != nil {
-			return errors.Errorf("error building mongodb database role binding: %s", err)
+
+		if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
+			return errors.New("error building operator deployment: the deployment does not have the required replicas")
 		}*/
-	_ = roleDir()
-	fmt.Println("Successfully created the role, service account and role binding for the database")
 
-	dep := &appsv1.Deployment{}
-
-	if err := buildKubernetesResourceFromYamlFile(ctx, path.Join(deployDir(), "manager.yaml"),
-		dep,
-		withNamespace(testConfig.namespace),
-		withOperatorImage(testConfig.operatorImage),
-		withEnvVar("WATCH_NAMESPACE", watchNamespace),
-		withEnvVar(construct.AgentImageEnv, testConfig.agentImage),
-		withEnvVar(construct.ReadinessProbeImageEnv, testConfig.readinessProbeImage),
-		withEnvVar(construct.VersionUpgradeHookImageEnv, testConfig.versionUpgradeHookImage),
-		withCPURequest("50m"),
-	); err != nil {
-		return errors.Errorf("error building operator deployment: %s", err)
-	}
-
-	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(dep)); err != nil {
-		return errors.New("error building operator deployment: the deployment does not have the required replicas")
-	}
-
-	fmt.Println("Successfully created the operator Deployment")
+	fmt.Println("Successfully created the operator Deployment with a helm chart")
 	return nil
 }
 
+/*
 // hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
 // currently has the required amount of replicas in the ready state as specified in spec.replicas
 func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
@@ -385,4 +403,4 @@ func withOperatorImage(image string) func(runtime.Object) error {
 
 		return fmt.Errorf("withOperatorImage() called on a non-deployment object")
 	}
-}
+}*/
