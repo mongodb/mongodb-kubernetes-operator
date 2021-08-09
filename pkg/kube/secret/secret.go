@@ -145,6 +145,7 @@ func CopySecret(fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName
 		SetName(destNsName.Name).
 		SetNamespace(destNsName.Namespace).
 		SetByteData(s.Data).
+		SetDataType(s.Type).
 		Build()
 
 	return CreateOrUpdate(toClient, secretCopy)

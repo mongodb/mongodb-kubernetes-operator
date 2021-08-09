@@ -7,6 +7,7 @@ import (
 
 type builder struct {
 	data            map[string][]byte
+	dataType        corev1.SecretType
 	labels          map[string]string
 	name            string
 	namespace       string
@@ -59,6 +60,11 @@ func (b *builder) SetStringData(stringData map[string]string) *builder {
 	return b
 }
 
+func (b *builder) SetDataType(dataType corev1.SecretType) *builder {
+	b.dataType = dataType
+	return b
+}
+
 func (b builder) Build() corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -68,6 +74,7 @@ func (b builder) Build() corev1.Secret {
 			Labels:          b.labels,
 		},
 		Data: b.data,
+		Type: b.dataType,
 	}
 }
 
