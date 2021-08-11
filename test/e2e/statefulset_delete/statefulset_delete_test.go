@@ -42,9 +42,8 @@ func TestStatefulSetDelete(t *testing.T) {
 				MongoURI:                   mdb.MongoURI(),
 				Phase:                      mdbv1.Running,
 				Version:                    mdb.GetMongoDBVersion(),
-				CurrentMongoDBMembers:      3,
-				CurrentStatefulSetReplicas: 3,
+				CurrentMongoDBMembers:      mdb.DesiredReplicas(),
+				CurrentStatefulSetReplicas: mdb.DesiredReplicas(),
 			}))
-
 	})
 }
