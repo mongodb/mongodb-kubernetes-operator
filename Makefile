@@ -42,23 +42,28 @@ run: install install-rbac
 
 # Install CRDs into a cluster
 install: manifests helm install-crd
-	
+
 
 install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
 install-chart:
-	helm upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart 
+	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart
 
 install-rbac:
-	$(HELM) template $(STRING_SET_VALUES) -s  templates/tests/database_roles.yaml helm-chart | kubectl apply -f -
-	$(HELM) template $(STRING_SET_VALUES) -s  templates/tests/operator_roles.yaml helm-chart | kubectl apply -f -
+	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml helm-chart | kubectl apply -f -
+	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml helm-chart | kubectl apply -f -
 
 uninstall-crd:
 	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
 
-uninstall-chart: 
+uninstall-chart:
 	$(HELM) uninstall $(RELEASE_NAME_HELM) -n $(NAMESPACE)
+
+uninstall-rbac:
+	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml helm-chart | kubectl delete -f -
+	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml helm-chart | kubectl delete -f -
+
 
 # Uninstall CRDs from a cluster
 uninstall: manifests helm uninstall-chart uninstall-crd

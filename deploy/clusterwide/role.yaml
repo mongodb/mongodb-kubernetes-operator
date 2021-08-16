@@ -8,6 +8,7 @@ rules:
   resources:
   - services
   - configmaps
+  - secrets
   verbs:
   - create
   - delete
@@ -20,7 +21,8 @@ rules:
   - apps
   resources:
   - statefulsets
-  verbs: 
+  verbs:
+  - create
   - delete
   - get
   - list

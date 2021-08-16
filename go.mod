@@ -8,18 +8,18 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.12
 	github.com/klauspost/compress v1.9.8 // indirect
-	github.com/mittwald/go-helm-client v0.8.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.4.0
 	github.com/stretchr/objx v0.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/xdg/stringprep v1.0.3
-	go.mongodb.org/mongo-driver v1.7.0
-	go.uber.org/zap v1.18.1
+	go.mongodb.org/mongo-driver v1.7.1
+	go.uber.org/zap v1.19.0
+	golang.org/x/tools v0.1.1 // indirect
 	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
-	sigs.k8s.io/controller-runtime v0.9.3
+	sigs.k8s.io/controller-runtime v0.9.5
 	sigs.k8s.io/yaml v1.2.0
 )
 

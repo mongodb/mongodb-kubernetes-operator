@@ -54,7 +54,7 @@ type MongoDBCommunitySpec struct {
 	// +kubebuilder:validation:Enum=ReplicaSet
 	Type Type `json:"type"`
 	// Version defines which version of MongoDB will be used
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
 
 	// Arbiters is the number of arbiters (each counted as a member) in the replica set
 	// +optional

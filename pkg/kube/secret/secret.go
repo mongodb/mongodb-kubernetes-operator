@@ -133,3 +133,20 @@ func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, ns
 	}
 	return string(existingSecret.Data[key]), nil
 }
+
+// CopySecret copies secret object(data) from one cluster client to another, the from and to cluster-client can belong to the same or different clusters
+func CopySecret(fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName, destNsName types.NamespacedName) error {
+	s, err := fromClient.GetSecret(sourceSecretNsName)
+	if err != nil {
+		return err
+	}
+
+	secretCopy := Builder().
+		SetName(destNsName.Name).
+		SetNamespace(destNsName.Namespace).
+		SetByteData(s.Data).
+		SetDataType(s.Type).
+		Build()
+
+	return CreateOrUpdate(toClient, secretCopy)
+}

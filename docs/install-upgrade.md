@@ -62,19 +62,21 @@ To configure the Operator to watch resources in other namespaces:
                  value: "*"
    ```
 
-2. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
+2. Modify the [clusterRoleBinding](../deploy/clusterwide/role_binding.yaml) namespace value for the serviceAccount `mongodb-kubernetes-operator` to the namespace in which the operator is deployed.
+
+3. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
 
    ```sh
    kubectl apply -f deploy/clusterwide
    ```
-3. For each namespace that you want the Operator to watch, run the following
+4. For each namespace that you want the Operator to watch, run the following
    commands to deploy a Role, RoleBinding and ServiceAccount in that namespace:
 
    ```sh
    kubectl apply -k config/rbac --namespace <my-namespace>
    ```
 
-4. [Install the operator](#procedure).
+5. [Install the operator](#procedure).
 
 ### Configure the MongoDB Docker Image or Container Registry
 
