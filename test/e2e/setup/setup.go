@@ -132,6 +132,7 @@ func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, names
 	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
 }
 
+// extractRegistryNameAndVersion splits a full image string and returns the individual components.
 func extractRegistryNameAndVersion(fullStr string) (string, string, string) {
 	splitString := strings.Split(fullStr, "/")
 	registry := strings.Join(splitString[:len(splitString)-1], "/")
@@ -145,6 +146,7 @@ func extractRegistryNameAndVersion(fullStr string) (string, string, string) {
 	return registry, name, version
 }
 
+// getHelmArgs returns a map of helm arguments that are required to install the operator.
 func getHelmArgs(testConfig testConfig, watchNamespace string) map[string]string {
 	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.agentImage)
 	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.versionUpgradeHookImage)
@@ -176,6 +178,7 @@ func getHelmArgs(testConfig testConfig, watchNamespace string) map[string]string
 	return helmArgs
 }
 
+// deployOperator installs all resources required by the operator using helm.
 func deployOperator() error {
 	testConfig := loadTestConfigFromEnv()
 	e2eutil.OperatorNamespace = testConfig.namespace
@@ -191,11 +194,9 @@ func deployOperator() error {
 		return err
 	}
 
-
 	helmChartPath := envvar.GetEnvOrDefault(helmChartPathEnv, "/workspace/helm-chart")
 	helmArgs := getHelmArgs(testConfig, watchNamespace)
 	if err := helm.Install(helmChartPath, chartName, helmArgs); err != nil {
-		//if err := helm.Install("/Users/cian.hatton/checkouts/mongodb-kubernetes-operator/helm-chart", chartName, helmArgs); err != nil {
 		return err
 	}
 
@@ -210,7 +211,7 @@ func deployOperator() error {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 
-	fmt.Println("Successfully deployed the operator deployment")
+	fmt.Println("Successfully created the operator deployment")
 	return nil
 }
 
