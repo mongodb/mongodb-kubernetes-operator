@@ -6,8 +6,10 @@ OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/conf
 NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
 UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < ~/.community-operator-dev/config.json)
 READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-operator-dev/config.json)
+REGISTRY := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
+AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < ~/.community-operator-dev/config.json)
 
-STRING_SET_VALUES := --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest
+STRING_SET_VALUES := --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.version_upgrade_hook=$(REGISTRY),registry.readiness_probe=$(REGISTRY),registry.operator=$(REGISTRY),version_upgrade_hook.version=latest,readiness_probe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -42,7 +44,6 @@ run: install install-rbac
 
 # Install CRDs into a cluster
 install: manifests helm install-crd
-
 
 install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml

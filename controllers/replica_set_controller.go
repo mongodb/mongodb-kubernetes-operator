@@ -86,6 +86,7 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
+		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
 
