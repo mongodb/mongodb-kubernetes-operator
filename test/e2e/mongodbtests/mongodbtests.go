@@ -36,7 +36,7 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
-		wait.Timeout(time.Minute * 15),
+		wait.Timeout(time.Minute * 20),
 	}
 	defaultOpts = append(defaultOpts, opts...)
 	return statefulSetIsReady(mdb, defaultOpts...)
