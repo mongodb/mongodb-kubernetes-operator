@@ -50,6 +50,7 @@ install-crd:
 
 install-chart:
 	helm upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart
+	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart 
 
 install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml helm-chart | kubectl apply -f -
