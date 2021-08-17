@@ -7,10 +7,10 @@ operator:
   name: mongodb-kubernetes-operator
 
   # Name of the operator image
-  operator_image_name: mongodb-kubernetes-operator
+  operatorImageName: mongodb-kubernetes-operator
 
   # Name of the deployment of the operator pod
-  deployment_name: mongodb-kubernetes-operator
+  deploymentName: mongodb-kubernetes-operator
 
   # Version of mongodb-kubernetes-operator
   version: 0.7.0
@@ -22,10 +22,10 @@ database:
 agent:
   name: mongodb-agent
   version: 11.0.5.6963-1
-version_upgrade_hook:
+versionUpgradeHook:
   name: mongodb-kubernetes-operator-version-upgrade-post-start-hook
   version: 1.0.2
-readiness_probe:
+readinessProbe:
   name: mongodb-kubernetes-readinessprobe
   version: 1.0.4
 mongodb:
@@ -34,7 +34,7 @@ mongodb:
 
 registry:
   agent: quay.io/mongodb
-  version_upgrade_hook: quay.io/mongodb
-  readiness_probe: quay.io/mongodb
+  versionUpgradeHook: quay.io/mongodb
+  readinessProbe: quay.io/mongodb
   operator: quay.io/mongodb
   pullPolicy: Always

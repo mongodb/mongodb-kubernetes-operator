@@ -55,16 +55,16 @@ spec:
             - name: AGENT_IMAGE
               value: "{{ .Values.registry.agent }}/{{ .Values.agent.name }}:{{ .Values.agent.version }}"
             - name: VERSION_UPGRADE_HOOK_IMAGE
-              value: "{{ .Values.registry.version_upgrade_hook }}/{{ .Values.version_upgrade_hook.name }}:{{ .Values.version_upgrade_hook.version }}"
+              value: "{{ .Values.registry.versionUpgradeHook }}/{{ .Values.versionUpgradeHook.name }}:{{ .Values.versionUpgradeHook.version }}"
             - name: READINESS_PROBE_IMAGE
-              value: "{{ .Values.registry.readiness_probe }}/{{ .Values.readiness_probe.name }}:{{ .Values.readiness_probe.version }}"
+              value: "{{ .Values.registry.readinessProbe }}/{{ .Values.readinessProbe.name }}:{{ .Values.readinessProbe.version }}"
             - name: MONGODB_IMAGE
               value: {{ .Values.mongodb.name }}
             - name: MONGODB_REPO_URL
               value: {{ .Values.mongodb.repo }}
-          image: {{ .Values.registry.operator }}/{{ .Values.operator.operator_image_name }}:{{ .Values.operator.version }}
+          image: {{ .Values.registry.operator }}/{{ .Values.operator.operatorImageName }}:{{ .Values.operator.version }}
           imagePullPolicy: {{ .Values.registry.pullPolicy}}
-          name: {{ .Values.operator.deployment_name }}
+          name: {{ .Values.operator.deploymentName }}
           resources:
             limits:
               cpu: 1100m

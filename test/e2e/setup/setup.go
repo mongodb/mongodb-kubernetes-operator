@@ -158,22 +158,22 @@ func getHelmArgs(testConfig testConfig, watchNamespace string) map[string]string
 	helmArgs["namespace"] = testConfig.namespace
 
 	helmArgs["operator.watchNamespace"] = watchNamespace
-	helmArgs["operator.operator_image_name"] = operatorName
+	helmArgs["operator.operatorImageName"] = operatorName
 	helmArgs["operator.version"] = operatorVersion
 
-	helmArgs["version_upgrade_hook.name"] = versionUpgradeHookName
-	helmArgs["version_upgrade_hook.version"] = versionUpgradeHookVersion
+	helmArgs["versionUpgradeHook.name"] = versionUpgradeHookName
+	helmArgs["versionUpgradeHook.version"] = versionUpgradeHookVersion
 
-	helmArgs["readiness_probe.name"] = readinessProbeName
-	helmArgs["readiness_probe.version"] = readinessProbeVersion
+	helmArgs["readinessProbe.name"] = readinessProbeName
+	helmArgs["readinessProbe.version"] = readinessProbeVersion
 
 	helmArgs["agent.version"] = agentVersion
 	helmArgs["agent.name"] = agentName
 
-	helmArgs["registry.version_upgrade_hook"] = versionUpgradeHookRegistry
+	helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
 	helmArgs["registry.operator"] = operatorRegistry
 	helmArgs["registry.agent"] = agentRegistry
-	helmArgs["registry.readiness_probe"] = readinessProbeRegistry
+	helmArgs["registry.readinessProbe"] = readinessProbeRegistry
 
 	return helmArgs
 }

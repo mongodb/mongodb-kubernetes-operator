@@ -9,7 +9,7 @@ READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-opera
 REGISTRY := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
 AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < ~/.community-operator-dev/config.json)
 
-STRING_SET_VALUES := --set namespace=$(NAMESPACE),version_upgrade_hook.name=$(UPGRADE_HOOK_IMG),readiness_probe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operator_image_name=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.version_upgrade_hook=$(REGISTRY),registry.readiness_probe=$(REGISTRY),registry.operator=$(REGISTRY),version_upgrade_hook.version=latest,readiness_probe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
+STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=latest,readinessProbe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
