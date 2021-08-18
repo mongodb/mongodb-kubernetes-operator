@@ -11,7 +11,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
@@ -247,27 +246,5 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 			return true, nil
 		}
 		return false, nil
-	}
-}
-
-// withCPURequest assumes that the underlying type is an appsv1.Deployment.
-// it returns a function which will change the amount
-// requested for the CPUresource. There will be
-// no effect when used with a non-deployment type
-func withCPURequest(cpuRequest string) func(runtime.Object) error {
-	return func(obj runtime.Object) error {
-		dep, ok := obj.(*appsv1.Deployment)
-		if !ok {
-			return errors.Errorf("withCPURequest() called on a non-deployment object")
-		}
-		quantityCPU, okCPU := resource.ParseQuantity(cpuRequest)
-		if okCPU != nil {
-			return okCPU
-		}
-		for _, cont := range dep.Spec.Template.Spec.Containers {
-			cont.Resources.Requests["cpu"] = quantityCPU
-		}
-
-		return nil
 	}
 }
