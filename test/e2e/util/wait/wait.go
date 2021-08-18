@@ -59,6 +59,15 @@ func waitForMongoDBCondition(mdb *mdbv1.MongoDBCommunity, retryInterval, timeout
 	})
 }
 
+
+// ForDeploymentToExist waits until a Deployment of the given name exists
+// using the provided retryInterval and timeout
+func ForDeploymentToExist(deployName string, retryInterval, timeout time.Duration, namespace string) (appsv1.Deployment, error) {
+	deploy := appsv1.Deployment{}
+	return deploy, waitForRuntimeObjectToExist(deployName, retryInterval, timeout, &deploy, namespace)
+}
+
+
 // ForStatefulSetToExist waits until a StatefulSet of the given name exists
 // using the provided retryInterval and timeout
 func ForStatefulSetToExist(stsName string, retryInterval, timeout time.Duration, namespace string) (appsv1.StatefulSet, error) {

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/helm"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+	waite2e "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
@@ -200,11 +202,23 @@ func deployOperator() error {
 		return err
 	}
 
-	dep := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mongodb-kubernetes-operator",
-			Namespace: e2eutil.OperatorNamespace,
-		},
+	dep, err := waite2e.ForDeploymentToExist("mongodb-kubernetes-operator", time.Second*10, time.Minute*1, e2eutil.OperatorNamespace)
+	if err != nil {
+		return err
+	}
+
+	quantityCPU, err := resource.ParseQuantity("50m")
+	if err != nil {
+		return err
+	}
+
+	for _, cont := range dep.Spec.Template.Spec.Containers {
+		cont.Resources.Requests["cpu"] = quantityCPU
+	}
+
+	err = e2eutil.TestClient.Update(context.TODO(), &dep)
+	if err != nil {
+		return err
 	}
 
 	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(&dep)); err != nil {
@@ -233,5 +247,27 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 			return true, nil
 		}
 		return false, nil
+	}
+}
+
+// withCPURequest assumes that the underlying type is an appsv1.Deployment.
+// it returns a function which will change the amount
+// requested for the CPUresource. There will be
+// no effect when used with a non-deployment type
+func withCPURequest(cpuRequest string) func(runtime.Object) error {
+	return func(obj runtime.Object) error {
+		dep, ok := obj.(*appsv1.Deployment)
+		if !ok {
+			return errors.Errorf("withCPURequest() called on a non-deployment object")
+		}
+		quantityCPU, okCPU := resource.ParseQuantity(cpuRequest)
+		if okCPU != nil {
+			return okCPU
+		}
+		for _, cont := range dep.Spec.Template.Spec.Containers {
+			cont.Resources.Requests["cpu"] = quantityCPU
+		}
+
+		return nil
 	}
 }
