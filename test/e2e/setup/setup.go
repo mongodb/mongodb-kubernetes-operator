@@ -134,8 +134,9 @@ func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, names
 }
 
 // extractRegistryNameAndVersion splits a full image string and returns the individual components.
-func extractRegistryNameAndVersion(fullStr string) (string, string, string) {
-	splitString := strings.Split(fullStr, "/")
+// this function expects the input to be in the form of some/registry/imagename:tag.
+func extractRegistryNameAndVersion(fullImage string) (string, string, string) {
+	splitString := strings.Split(fullImage, "/")
 	registry := strings.Join(splitString[:len(splitString)-1], "/")
 
 	splitString = strings.Split(splitString[len(splitString)-1], ":")

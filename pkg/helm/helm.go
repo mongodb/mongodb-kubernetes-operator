@@ -10,15 +10,7 @@ import (
 // of the helm chart not existing.
 func Uninstall(chartName string) error {
 	helmArgs := []string{"uninstall", chartName}
-	cmd := exec.Command("helm", helmArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		if strings.Contains(string(output), "not found") {
-			return nil
-		}
-		return fmt.Errorf("error executing command: %s %s", err, output)
-	}
-	return nil
+	return executeHelmCommand(helmArgs, isNotFoundMessage)
 }
 
 // Install a helm chert at the given path with the given name and the provided set arguments.
@@ -26,12 +18,25 @@ func Install(chartPath, chartName string, args map[string]string) error {
 	helmArgs := []string{"install"}
 	helmArgs = append(helmArgs, mapToHelmArgs(args)...)
 	helmArgs = append(helmArgs, chartName, chartPath)
-	cmd := exec.Command("helm", helmArgs...)
+	return executeHelmCommand(helmArgs, nil)
+}
+
+func isNotFoundMessage(s string) bool {
+	return strings.Contains(s, "not found")
+}
+
+// executeHelmCommand accepts a list of arguments that should be passed to the helm command
+// and a predicate that when returning true, indicates that the error message should be ignored.
+func executeHelmCommand(args []string, messagePredicate func(string) bool) error {
+	cmd := exec.Command("helm", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if messagePredicate != nil && messagePredicate(string(output)){
+			return nil
+		}
 		return fmt.Errorf("error executing command: %s %s", err, output)
 	}
-	return err
+	return nil
 }
 
 // mapToHelmArgs accepts a map of string to string and returns a list of arguments
