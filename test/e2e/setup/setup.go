@@ -223,8 +223,7 @@ func deployOperator() error {
 	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(&dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
-
-	fmt.Println("Successfully created the operator deployment")
+	fmt.Println("Successfully installed the operator deployment")
 	return nil
 }
 

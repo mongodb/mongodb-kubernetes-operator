@@ -1,7 +1,6 @@
 package helm
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -11,26 +10,14 @@ import (
 // of the helm chart not existing.
 func Uninstall(chartName string) error {
 	helmArgs := []string{"uninstall", chartName}
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
 	cmd := exec.Command("helm", helmArgs...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if strings.Contains(stderr.String(), "not found") {
-			fmt.Printf("%s was not found, nothing to uninstall.\n", chartName)
+		if strings.Contains(string(output), "not found") {
 			return nil
 		}
-		fmt.Println(stderr.String())
-		fmt.Println(stdout.String())
+		return fmt.Errorf("error executing command: %s %s", err, output)
 	}
-
-	fmt.Printf("uninstalling chart %s.\n", chartName)
 	return nil
 }
 
@@ -39,21 +26,11 @@ func Install(chartPath, chartName string, args map[string]string) error {
 	helmArgs := []string{"install"}
 	helmArgs = append(helmArgs, mapToHelmArgs(args)...)
 	helmArgs = append(helmArgs, chartName, chartPath)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
 	cmd := exec.Command("helm", helmArgs...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(stderr.String())
-		fmt.Println(stdout.String())
+		return fmt.Errorf("error executing command: %s %s", err, output)
 	}
-
 	return err
 }
 
