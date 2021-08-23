@@ -198,33 +198,29 @@ func parseHealthStatus(reader io.Reader) (health.Status, error) {
 	return health, err
 }
 
-func initLogger() {
+func initLogger(l *lumberjack.Logger) {
 	log := zap.New(zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		zapcore.AddSync(
-			&lumberjack.Logger{
-				Filename:   config.ReadinessProbeLogFilePath(),
-				MaxBackups: 5,
-			}),
+		zapcore.AddSync(l),
 		zap.DebugLevel,
 	), zap.Development())
 	logger = log.Sugar()
 }
 
 func main() {
-	initLogger()
-
 	clientSet, err := kubernetesClientset()
 	if err != nil {
 		panic(err)
 	}
 
-	config, err := config.BuildFromEnvVariables(clientSet, isHeadlessMode())
+	cfg, err := config.BuildFromEnvVariables(clientSet, isHeadlessMode())
 	if err != nil {
 		panic(err)
 	}
 
-	ready, err := isPodReady(config)
+	initLogger(cfg.Logger)
+
+	ready, err := isPodReady(cfg)
 	if err != nil {
 		panic(err)
 	}
