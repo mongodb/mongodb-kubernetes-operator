@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"io/ioutil"
 	"os"
@@ -196,7 +198,23 @@ func parseHealthStatus(reader io.Reader) (health.Status, error) {
 	return health, err
 }
 
+func initLogger() {
+	log := zap.New(zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(
+			&lumberjack.Logger{
+				Filename:   config.ReadinessProbeLogFilePath(),
+				MaxBackups: 5,
+				MaxSize:    1,
+			}),
+		zap.DebugLevel,
+	), zap.Development())
+	logger = log.Sugar()
+}
+
 func main() {
+	initLogger()
+
 	clientSet, err := kubernetesClientset()
 	if err != nil {
 		panic(err)
@@ -206,16 +224,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cfg := zap.NewDevelopmentConfig()
-	// In production we log to the file
-	cfg.OutputPaths = []string{
-		config.LogFilePath,
-	}
-	log, err := cfg.Build()
-	if err != nil {
-		panic(err)
-	}
-	logger = log.Sugar()
 
 	ready, err := isPodReady(config)
 	if err != nil {

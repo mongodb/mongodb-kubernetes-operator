@@ -64,6 +64,10 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 	}, nil
 }
 
+func ReadinessProbeLogFilePath() string {
+	return getEnvOrDefault(logPathEnv, defaultLogPath)
+}
+
 func getEnvOrDefault(envVar, defaultValue string) string {
 	value := strings.TrimSpace(os.Getenv(envVar))
 	if value == "" {
