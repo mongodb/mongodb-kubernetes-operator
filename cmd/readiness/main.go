@@ -205,7 +205,6 @@ func initLogger() {
 			&lumberjack.Logger{
 				Filename:   config.ReadinessProbeLogFilePath(),
 				MaxBackups: 5,
-				MaxSize:    1,
 			}),
 		zap.DebugLevel,
 	), zap.Development())
