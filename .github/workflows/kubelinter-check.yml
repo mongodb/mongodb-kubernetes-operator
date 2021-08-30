@@ -21,28 +21,24 @@ jobs:
 
     - name: Scan directory ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1
-      continue-on-error: true
       with:
         directory: deploy/clusterwide
-        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_clusterwide.yaml
 
     - name: Scan directory ./deploy/openshift/ with kube-linter
       uses: stackrox/kube-linter-action@v1
-      continue-on-error: true
       with:
         directory: deploy/openshift
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_openshift.yaml
 
     - name: Scan directory ./config/manager/ with kube-linter
       uses: stackrox/kube-linter-action@v1
-      continue-on-error: true
       with:
         directory: config/manager/manager.yaml
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
 
     - name: Scan directory ./config/samples/ with kube-linter
       uses: stackrox/kube-linter-action@v1
-      continue-on-error: true
       with:
         directory: config/samples
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
