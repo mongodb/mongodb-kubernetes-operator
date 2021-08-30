@@ -11,3 +11,4 @@ checks:
   - "minimum-three-replicas"
   - "no-liveness-probe"
   - "no-readiness-probe"
+  - "access-to-secrets"
