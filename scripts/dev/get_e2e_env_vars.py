@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys
 from typing import Dict
+import os.path
+
 
 from dev_config import load_config, DevConfig
 
@@ -29,6 +31,7 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
         "WATCH_NAMESPACE": dev_config.namespace,
         "MONGODB_IMAGE": "mongo",
         "MONGODB_REPO_URL": "docker.io",
+        "HELM_CHART_PATH": os.path.abspath("./helm-chart"),
     }
 
 

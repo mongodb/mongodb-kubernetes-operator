@@ -4,7 +4,7 @@ on:
   push:
     branches:
     - master
-    paths-ignore: 
+    paths-ignore:
     - docs/**
   pull_request:
     branches:
@@ -18,12 +18,12 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v2
-      
+
     - name: Scan directory ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1
       with:
         directory: deploy/clusterwide
-        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
+        config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_clusterwide.yaml
 
     - name: Scan directory ./deploy/openshift/ with kube-linter
       uses: stackrox/kube-linter-action@v1
