@@ -328,3 +328,30 @@ To define a custom role:
    ```
    kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
    ```
+
+
+## Specify Non-Default Values for Readiness Probe
+
+Under some circumstances it might be necessary to set your own custom values for
+the `ReadinessProbe` used by the MongoDB Community Operator. To do so, you
+should use the `statefulSet` attribute in `resource.spec`, as in the following
+provided example [yaml
+file](../config/samples/mongodb.com_v1_mongodbcommunity_readiness_probe_values.yaml).
+Only those attributes passed will be set, for instance, given the following structure:
+
+```yaml
+spec:
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb-agent
+              readinessProbe:
+                failureThreshold: 50
+                initialDelaySeconds: 10
+```
+
+*Only* the values of `failureThreshold` and `initialDelaySeconds` will be set to
+their custom, specified values. The rest of the attributes will be set to their
+default values.
