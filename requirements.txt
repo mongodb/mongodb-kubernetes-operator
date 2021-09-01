@@ -11,8 +11,6 @@ boto3==1.16.21
 pymongo==3.11.4
 dnspython==2.0.0
 requests==2.25.1
-types-requests==2.25.1
 pyyaml==5.4.1
-types-PyYAML==5.4.1
 ruamel.yaml==0.17.9
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
