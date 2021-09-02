@@ -14,7 +14,8 @@ operator:
 
   # Version of mongodb-kubernetes-operator
   version: 0.7.0
-
+  resources: {}
+  
 ## Operator's database
 database:
   name: mongodb-database
