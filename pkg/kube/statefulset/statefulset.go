@@ -287,6 +287,14 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 	}
 }
 
+func WithVolumeClaimTemplates(pv []corev1.PersistentVolumeClaim) Modification {
+	pvCopy := make([]corev1.PersistentVolumeClaim, len(pv))
+	copy(pvCopy, pv)
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.VolumeClaimTemplates = pvCopy
+	}
+}
+
 func WithCustomSpecs(spec appsv1.StatefulSetSpec) Modification {
 	return func(set *appsv1.StatefulSet) {
 		set.Spec = merge.StatefulSetSpecs(set.Spec, spec)
