@@ -211,6 +211,13 @@ func WithLabels(labels map[string]string) Modification {
 		set.Labels = copyMap(labels)
 	}
 }
+
+func WithAnnotations(annotations map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Annotations = copyMap(annotations)
+	}
+}
+
 func WithMatchLabels(matchLabels map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
 		if set.Spec.Selector == nil {
@@ -277,6 +284,14 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 		}
 		pvc := &set.Spec.VolumeClaimTemplates[idx]
 		f(pvc)
+	}
+}
+
+func WithVolumeClaimTemplates(pv []corev1.PersistentVolumeClaim) Modification {
+	pvCopy := make([]corev1.PersistentVolumeClaim, len(pv))
+	copy(pvCopy, pv)
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.VolumeClaimTemplates = pvCopy
 	}
 }
 
