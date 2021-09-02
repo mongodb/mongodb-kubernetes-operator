@@ -211,6 +211,13 @@ func WithLabels(labels map[string]string) Modification {
 		set.Labels = copyMap(labels)
 	}
 }
+
+func WithAnnotations(annotations map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Annotations = copyMap(annotations)
+	}
+}
+
 func WithMatchLabels(matchLabels map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
 		if set.Spec.Selector == nil {
