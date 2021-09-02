@@ -38,3 +38,14 @@ registry:
   readinessProbe: quay.io/mongodb
   operator: quay.io/mongodb
   pullPolicy: Always
+
+createResource: false
+resource:
+  name: mongodb-replica-set
+  version: 4.4.0
+  members: 3
+  tls:
+    enabled: true
+    useCertManager: true
+    certificateKeySecretRef: tls-certificate
+    caCertificateSecretRef: tls-ca-key-pair

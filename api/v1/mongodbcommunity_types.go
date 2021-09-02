@@ -326,10 +326,16 @@ type TLS struct {
 	// +optional
 	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
 
-	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
+	// CaCertificateSecret is a reference to a Secret containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaConfigMap LocalObjectReference `json:"caConfigMapRef"`
+	CaCertificateSecret *LocalObjectReference `json:"caCertificateSecretRef"`
+
+	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
+	// The certificate is expected to be available under the key "ca.crt"
+	// This field is ignored when CaCertificateSecretRef is configured
+	// +optional
+	CaConfigMap *LocalObjectReference `json:"caConfigMapRef"`
 }
 
 // LocalObjectReference is a reference to another Kubernetes object by name.
@@ -538,6 +544,12 @@ func (m MongoDBCommunity) ServiceName() string {
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
+}
+
+// TLSCaCertificateSecretNamespacedName will get the namespaced name of the Secret containing the CA certificate
+// As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
+func (m MongoDBCommunity) TLSCaCertificateSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: m.Namespace}
 }
 
 // TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate

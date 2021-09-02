@@ -98,7 +98,7 @@ func newTestReplicaSetWithTLS() mdbv1.MongoDBCommunity {
 				},
 				TLS: mdbv1.TLS{
 					Enabled: true,
-					CaConfigMap: mdbv1.LocalObjectReference{
+					CaConfigMap: &mdbv1.LocalObjectReference{
 						Name: "caConfigMap",
 					},
 					CertificateKeySecret: mdbv1.LocalObjectReference{

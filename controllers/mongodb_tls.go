@@ -15,7 +15,9 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 
+	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 )
@@ -37,11 +39,20 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 	r.log.Info("Ensuring TLS is correctly configured")
 
-	// Ensure CA ConfigMap exists
-	caData, err := configmap.ReadData(r.client, mdb.TLSConfigMapNamespacedName())
+	// Ensure CA cert is configured
+	var caResourceName types.NamespacedName
+	var caResourceType string
+	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
+		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
+		caResourceType = "Secret"
+	} else {
+		caResourceName = mdb.TLSConfigMapNamespacedName()
+		caResourceType = "ConfigMap"
+	}
+	caData, err := configmap.ReadData(r.client, caResourceName)
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`CA ConfigMap "%s" not found`, mdb.TLSConfigMapNamespacedName())
+			r.log.Warnf(`CA %s "%s" not found`, caResourceType, caResourceName)
 			return false, nil
 		}
 
@@ -210,9 +221,14 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Mod
 		return podtemplatespec.NOOP()
 	}
 
-	// Configure a volume which mounts the CA certificate from a ConfigMap
+	// Configure a volume which mounts the CA certificate from either a Secret or a ConfigMap
 	// The certificate is used by both mongod and the agent
-	caVolume := statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
+	var caVolume v1.Volume
+	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
+		caVolume = statefulset.CreateVolumeFromSecret("tls-ca", mdb.Spec.Security.TLS.CaCertificateSecret.Name)
+	} else {
+		caVolume = statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
+	}
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate
