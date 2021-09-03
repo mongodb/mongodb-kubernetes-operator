@@ -15,7 +15,7 @@ func Uninstall(chartName string) error {
 
 // Install a helm chert at the given path with the given name and the provided set arguments.
 func Install(chartPath, chartName string, args map[string]string) error {
-	helmArgs := []string{"install"}
+	helmArgs := []string{"install", "--skip-crds"}
 	helmArgs = append(helmArgs, mapToHelmArgs(args)...)
 	helmArgs = append(helmArgs, chartName, chartPath)
 	return executeHelmCommand(helmArgs, nil)
