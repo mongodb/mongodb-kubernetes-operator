@@ -51,6 +51,9 @@ install-crd:
 install-chart:
 	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart
 
+install-chart-with-tls-enabled:
+	$(HELM) upgrade --install --set createResource=true $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) helm-chart
+
 install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml helm-chart | kubectl apply -f -
 	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml helm-chart | kubectl apply -f -
@@ -78,6 +81,7 @@ undeploy: uninstall-chart uninstall-crd
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crd/bases
+	cp config/crd/bases/* helm-chart/crds
 
 # Run go fmt against code
 fmt:

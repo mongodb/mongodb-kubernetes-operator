@@ -283,6 +283,10 @@ func TestPemSupport(t *testing.T) {
 }
 
 func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
+	if !mdb.Spec.Security.TLS.Enabled {
+		return nil
+	}
+
 	configMap := configmap.Builder().
 		SetName(mdb.Spec.Security.TLS.CaConfigMap.Name).
 		SetNamespace(mdb.Namespace).

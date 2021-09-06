@@ -1,0 +1,79 @@
+{{- if and .Values.createResource .Values.resource.tls.enabled .Values.resource.tls.useCertManager }}
+# cert-manager resources
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: tls-selfsigned-issuer
+  namespace: {{ .Values.namespace }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-selfsigned-ca
+  namespace: {{ .Values.namespace }}
+spec:
+  isCA: true
+  commonName: "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+  dnsNames:
+    - "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+  secretName: {{ .Values.resource.tls.caCertificateSecretRef }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: tls-selfsigned-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: tls-ca-issuer
+  namespace: {{ .Values.namespace }}
+spec:
+  ca:
+    secretName: {{ .Values.resource.tls.caCertificateSecretRef }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cert-manager-tls-certificate
+  namespace: {{ .Values.namespace }}
+spec:
+  secretName: {{ .Values.resource.tls.certificateKeySecretRef }}
+  issuerRef:
+    name: tls-ca-issuer
+    kind: Issuer
+  duration: 8760h   # 365 days
+  renewBefore: 720h # 30 days
+  commonName: "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+  dnsNames:
+    - "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+{{- end }}
+
+# mongodb resources
+{{- if .Values.createResource }}
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: {{ .Values.resource.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  members: {{ .Values.resource.members }}
+  type: ReplicaSet
+  version: {{ .Values.resource.version }}
+  security:
+    tls:
+      enabled: {{ .Values.resource.tls.enabled }}
+      {{- if .Values.resource.tls.enabled }}
+      certificateKeySecretRef:
+        name: {{ .Values.resource.tls.certificateKeySecretRef }}
+      caCertificateSecretRef:
+        name: {{ .Values.resource.tls.caCertificateSecretRef }}
+      {{- end }}
+    authentication:
+      modes: ["SCRAM"]
+  users: []
+{{- end }}
