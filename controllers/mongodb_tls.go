@@ -42,14 +42,18 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	// Ensure CA cert is configured
 	var caResourceName types.NamespacedName
 	var caResourceType string
+	var caData map[string]string
+	var err error
 	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
 		caResourceType = "Secret"
+		caData, err = secret.ReadStringData(r.client, caResourceName)
 	} else {
 		caResourceName = mdb.TLSConfigMapNamespacedName()
 		caResourceType = "ConfigMap"
+		caData, err = configmap.ReadData(r.client, caResourceName)
 	}
-	caData, err := configmap.ReadData(r.client, caResourceName)
+
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`CA %s "%s" not found`, caResourceType, caResourceName)
@@ -59,9 +63,9 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 		return false, err
 	}
 
-	// Ensure ConfigMap has a "ca.crt" field
+	// Ensure Secret or ConfigMap has a "ca.crt" field
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		r.log.Warnf(`ConfigMap "%s" should have a CA certificate in field "%s"`, mdb.TLSConfigMapNamespacedName(), tlsCACertName)
+		r.log.Warnf(`%s "%s" should have a CA certificate in field "%s"`, caResourceType, caResourceName, tlsCACertName)
 		return false, nil
 	}
 
