@@ -465,10 +465,6 @@ func WithReplicaSet(rsname string) OptionApplier {
 
 // getClientTLSConfig reads in the tls fixtures
 func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
-	if tlsConfig != nil {
-		return tlsConfig, nil
-	}
-
 	caSecret := corev1.Secret{}
 	caSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: mdb.Namespace}
 	err := e2eutil.TestClient.Get(context.TODO(), caSecretName, &caSecret)
@@ -478,10 +474,9 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 		caPEM := caSecret.Data["ca.crt"]
 		caPool := x509.NewCertPool()
 		caPool.AppendCertsFromPEM(caPEM)
-		tlsConfig = &tls.Config{ //nolint
+		return &tls.Config{ //nolint
 			RootCAs: caPool,
-		}
-		return tlsConfig, nil
+		}, nil
 	}
 }
 

@@ -45,7 +45,10 @@ resource:
   version: 4.4.0
   members: 3
   tls:
-    enabled: false
-    useCertManager: false
+    enabled: true
+    useCertManager: true
     certificateKeySecretRef: tls-certificate
     caCertificateSecretRef: tls-ca-key-pair
+    certManager:
+      certDuration: 8760h   # 365 days
+      renewCertBefore: 720h # 30 days

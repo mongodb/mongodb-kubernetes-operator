@@ -329,13 +329,13 @@ type TLS struct {
 	// CaCertificateSecret is a reference to a Secret containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaCertificateSecret *LocalObjectReference `json:"caCertificateSecretRef"`
+	CaCertificateSecret *LocalObjectReference `json:"caCertificateSecretRef,omitempty"`
 
 	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// This field is ignored when CaCertificateSecretRef is configured
 	// +optional
-	CaConfigMap *LocalObjectReference `json:"caConfigMapRef"`
+	CaConfigMap *LocalObjectReference `json:"caConfigMapRef,omitempty"`
 }
 
 // LocalObjectReference is a reference to another Kubernetes object by name.

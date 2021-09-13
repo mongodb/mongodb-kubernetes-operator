@@ -8,8 +8,8 @@ import (
 
 // Uninstall uninstalls a helm chart of the given name. There is no error in the case
 // of the helm chart not existing.
-func Uninstall(chartName string) error {
-	helmArgs := []string{"uninstall", chartName}
+func Uninstall(chartName string, namespace string) error {
+	helmArgs := []string{"uninstall", chartName, "-n", namespace}
 	return executeHelmCommand(helmArgs, isNotFoundMessage)
 }
 

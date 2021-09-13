@@ -159,7 +159,7 @@ func deployOperator(config TestConfig, resourceName string, withTLS bool) error 
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
 	helmChartName := "mongodb-kubernetes-operator"
-	if err := helm.Uninstall(helmChartName); err != nil {
+	if err := helm.Uninstall(helmChartName, config.Namespace); err != nil {
 		return err
 	}
 
@@ -200,13 +200,19 @@ func deployOperator(config TestConfig, resourceName string, withTLS bool) error 
 }
 
 func deployCertManager(config TestConfig) error {
+	const helmChartName = "cert-manager"
+	if err := helm.Uninstall(helmChartName, config.CertManagerNamespace); err != nil {
+		return err
+	}
+
+	charlUrl := fmt.Sprintf("https://charts.jetstack.io/charts/cert-manager-%s.tgz", config.CertManagerVersion)
 	flags := map[string]string{
-		"version":          "v1.5.3",
+		"version":          config.CertManagerVersion,
 		"namespace":        config.CertManagerNamespace,
 		"create-namespace": "",
 	}
 	values := map[string]string{"installCRDs": "true"}
-	if err := helm.Install("https://charts.jetstack.io/charts/cert-manager-v1.5.3.tgz", "cert-manager", flags, values); err != nil {
+	if err := helm.Install(charlUrl, helmChartName, flags, values); err != nil {
 		return err
 	}
 	return nil
