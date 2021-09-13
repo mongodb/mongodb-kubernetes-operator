@@ -104,3 +104,185 @@ rules:
   - patch
   - update
   - watch
+# needed for cert-manager integration  
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - acme.cert-manager.io
+  resources:
+  - challenges
+  - challenges/finalizers
+  - challenges/status
+  - orders
+  - orders/finalizers
+  - orders/status
+  verbs:
+  - create
+  - delete
+  - update
+  - get
+  - list
+  - watch
+  - patch
+  - deletecollection
+- apiGroups:
+  - cert-manager.io
+  resources: 
+  - clusterissuers
+  - clusterissuers/status
+  - issuers
+  - issuers/status
+  - certificates
+  - certificaterequests
+  - certificaterequests/finalizers
+  - certificaterequests/status
+  - certificates/finalizers
+  - certificates/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - patch
+  - deletecollection
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - signers
+  resourceNames:
+  - clusterissuers.cert-manager.io/*
+  - issuers.cert-manager.io/*
+  verbs:
+  - approve
+- apiGroups:
+  - networking.k8s.io
+  resources: 
+  - ingresses
+  - ingresses/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - networking.x-k8s.io
+  resources: 
+  - httproutes
+  - gateways
+  - gateways/finalizers
+  - httproutes/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - route.openshift.io
+  resources: 
+  - routes/custom-host
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources: 
+  - subjectaccessreviews
+  verbs:
+  - create
+- apiGroups:
+  - apiregistration.k8s.io
+  resources: 
+  - apiservices
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - auditregistration.k8s.io
+  resources: 
+  - auditsinks
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - certificates.k8s.io
+  resources: 
+  - certificatesigningrequests
+  - certificatesigningrequests/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+- apiGroups:
+  - certificates.k8s.io
+  resources: 
+  - signers
+  resourceNames:
+  - clusterissuers.cert-manager.io/*
+  - issuers.cert-manager.io/*
+  verbs:
+  - sign
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - cert-manager-controller
+  - cert-manager-cainjector-leader-election
+  - cert-manager-cainjector-leader-election-core
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update

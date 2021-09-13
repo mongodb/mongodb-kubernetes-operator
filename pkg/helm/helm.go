@@ -14,10 +14,16 @@ func Uninstall(chartName string) error {
 }
 
 // Install a helm chert at the given path with the given name and the provided set arguments.
-func Install(chartPath, chartName string, args map[string]string) error {
-	helmArgs := []string{"install", "--skip-crds"}
-	helmArgs = append(helmArgs, mapToHelmArgs(args)...)
+func Install(chartPath, chartName string, flags map[string]string, values map[string]string) error {
+	helmArgs := []string{"install"}
 	helmArgs = append(helmArgs, chartName, chartPath)
+	for flagKey, flagValue := range flags {
+		helmArgs = append(helmArgs, fmt.Sprintf("--%s", flagKey))
+		if flagValue != "" {
+			helmArgs = append(helmArgs, flagValue)
+		}
+	}
+	helmArgs = append(helmArgs, mapToHelmValuesArg(values)...)
 	return executeHelmCommand(helmArgs, nil)
 }
 
@@ -31,7 +37,7 @@ func executeHelmCommand(args []string, messagePredicate func(string) bool) error
 	cmd := exec.Command("helm", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if messagePredicate != nil && messagePredicate(string(output)){
+		if messagePredicate != nil && messagePredicate(string(output)) {
 			return nil
 		}
 		return fmt.Errorf("error executing command: %s %s", err, output)
@@ -39,9 +45,9 @@ func executeHelmCommand(args []string, messagePredicate func(string) bool) error
 	return nil
 }
 
-// mapToHelmArgs accepts a map of string to string and returns a list of arguments
+// mapToHelmValuesArg accepts a map of string to string and returns a list of arguments
 // that can be passed to a shell helm command.
-func mapToHelmArgs(m map[string]string) []string {
+func mapToHelmValuesArg(m map[string]string) []string {
 	var args []string
 	for k, v := range m {
 		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))

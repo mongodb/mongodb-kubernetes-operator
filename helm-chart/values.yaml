@@ -45,7 +45,7 @@ resource:
   version: 4.4.0
   members: 3
   tls:
-    enabled: true
-    useCertManager: true
+    enabled: false
+    useCertManager: false
     certificateKeySecretRef: tls-certificate
     caCertificateSecretRef: tls-ca-key-pair

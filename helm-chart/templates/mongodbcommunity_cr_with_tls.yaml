@@ -1,4 +1,4 @@
-{{- if and .Values.createResource .Values.resource.tls.enabled .Values.resource.tls.useCertManager }}
+{{- if and .Values.resource.tls.enabled .Values.resource.tls.useCertManager }}
 # cert-manager resources
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -47,9 +47,9 @@ spec:
     kind: Issuer
   duration: 8760h   # 365 days
   renewBefore: 720h # 30 days
-  commonName: "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+  commonName: "*.{{ .Values.resource.name }}-svc.{{ .Values.namespace }}.svc.cluster.local"
   dnsNames:
-    - "*.{{ .Values.resource.name }}-svc.mongodb.svc.cluster.local"
+    - "*.{{ .Values.resource.name }}-svc.{{ .Values.namespace }}.svc.cluster.local"
 {{- end }}
 
 # mongodb resources

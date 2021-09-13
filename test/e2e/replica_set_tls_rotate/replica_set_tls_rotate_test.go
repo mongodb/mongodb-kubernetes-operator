@@ -23,20 +23,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetTLSRotate(t *testing.T) {
-	ctx := setup.Setup(t)
+	resourceName := "mdb-tls"
+
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.CertKeyPair); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %s", err)
-	}
 	tester, err := FromResource(t, mdb)
 
 	if err != nil {
@@ -53,6 +52,6 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls())()
 		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
-		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate())
+		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb))
 	})
 }

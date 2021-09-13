@@ -21,20 +21,18 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetTLS(t *testing.T) {
-	ctx := setup.Setup(t)
+	resourceName := "mdb-tls"
+
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	scramUser := mdb.GetScramUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.CertKeyPair); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
 	tester, err := FromResource(t, mdb)

@@ -3,26 +3,24 @@ package setup
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/helm"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	waite2e "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"path"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 
@@ -33,7 +31,6 @@ type tlsSecretType string
 
 const (
 	performCleanupEnv               = "PERFORM_CLEANUP"
-	helmChartPathEnv                = "HELM_CHART_PATH"
 	CertKeyPair       tlsSecretType = "CERTKEYPAIR"
 	Pem               tlsSecretType = "PEM"
 )
@@ -45,65 +42,31 @@ func Setup(t *testing.T) *e2eutil.Context {
 		t.Fatal(err)
 	}
 
-	if err := deployOperator(); err != nil {
+	config := loadTestConfigFromEnv()
+	if err := deployOperator(config, "mdb", false); err != nil {
 		t.Fatal(err)
 	}
 
 	return ctx
 }
 
-// CreateTLSResources will setup the CA ConfigMap and cert-key Secret necessary for TLS
-// The certificates and keys are stored in testdata/tls
-func CreateTLSResources(namespace string, ctx *e2eutil.Context, secretType tlsSecretType) error {
-	tlsConfig := e2eutil.NewTestTLSConfig(false)
+func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConfig) {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
-	// Create CA ConfigMap
-	testDataDir := e2eutil.TlsTestDataDir()
-	ca, err := ioutil.ReadFile(path.Join(testDataDir, "ca.crt"))
 	if err != nil {
-		return nil
+		t.Fatal(err)
 	}
 
-	caConfigMap := configmap.Builder().
-		SetName(tlsConfig.CaConfigMap.Name).
-		SetNamespace(namespace).
-		SetDataField("ca.crt", string(ca)).
-		SetLabels(e2eutil.TestLabels()).
-		Build()
-
-	err = e2eutil.TestClient.Create(context.TODO(), &caConfigMap, &e2eutil.CleanupOptions{TestContext: ctx})
-	if err != nil {
-		return err
+	config := loadTestConfigFromEnv()
+	if err := deployCertManager(config); err != nil {
+		t.Fatal(err)
 	}
 
-	certKeySecretBuilder := secret.Builder().
-		SetName(tlsConfig.CertificateKeySecret.Name).
-		SetLabels(e2eutil.TestLabels()).
-		SetNamespace(namespace)
-
-	if secretType == CertKeyPair {
-		// Create server key and certificate secret
-		cert, err := ioutil.ReadFile(path.Join(testDataDir, "server.crt"))
-		if err != nil {
-			return err
-		}
-		key, err := ioutil.ReadFile(path.Join(testDataDir, "server.key"))
-		if err != nil {
-			return err
-		}
-		certKeySecretBuilder.SetField("tls.crt", string(cert)).SetField("tls.key", string(key))
-	}
-	if secretType == Pem {
-		pem, err := ioutil.ReadFile(path.Join(testDataDir, "server.pem"))
-		if err != nil {
-			return err
-		}
-		certKeySecretBuilder.SetField("tls.pem", string(pem))
+	if err := deployOperator(config, resourceName, true); err != nil {
+		t.Fatal(err)
 	}
 
-	certKeySecret := certKeySecretBuilder.Build()
-
-	return e2eutil.TestClient.Create(context.TODO(), &certKeySecret, &e2eutil.CleanupOptions{TestContext: ctx})
+	return ctx, config
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
@@ -149,15 +112,15 @@ func extractRegistryNameAndVersion(fullImage string) (string, string, string) {
 }
 
 // getHelmArgs returns a map of helm arguments that are required to install the operator.
-func getHelmArgs(testConfig testConfig, watchNamespace string) map[string]string {
-	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.agentImage)
-	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.versionUpgradeHookImage)
-	readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.readinessProbeImage)
-	operatorRegistry, operatorName, operatorVersion := extractRegistryNameAndVersion(testConfig.operatorImage)
+func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName string, withTLS bool) map[string]string {
+	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.AgentImage)
+	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.VersionUpgradeHookImage)
+	readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.ReadinessProbeImage)
+	operatorRegistry, operatorName, operatorVersion := extractRegistryNameAndVersion(testConfig.OperatorImage)
 
 	helmArgs := make(map[string]string)
 
-	helmArgs["namespace"] = testConfig.namespace
+	helmArgs["namespace"] = testConfig.Namespace
 
 	helmArgs["operator.watchNamespace"] = watchNamespace
 	helmArgs["operator.operatorImageName"] = operatorName
@@ -177,28 +140,36 @@ func getHelmArgs(testConfig testConfig, watchNamespace string) map[string]string
 	helmArgs["registry.agent"] = agentRegistry
 	helmArgs["registry.readinessProbe"] = readinessProbeRegistry
 
+	helmArgs["createResource"] = strconv.FormatBool(false)
+	helmArgs["resource.name"] = resourceName
+	helmArgs["resource.tls.enabled"] = strconv.FormatBool(withTLS)
+	helmArgs["resource.tls.useCertManager"] = strconv.FormatBool(withTLS)
+
 	return helmArgs
 }
 
 // deployOperator installs all resources required by the operator using helm.
-func deployOperator() error {
-	testConfig := loadTestConfigFromEnv()
-	e2eutil.OperatorNamespace = testConfig.namespace
+func deployOperator(config TestConfig, resourceName string, withTLS bool) error {
+	e2eutil.OperatorNamespace = config.Namespace
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
-	watchNamespace := testConfig.namespace
-	if testConfig.clusterWide {
+	watchNamespace := config.Namespace
+	if config.ClusterWide {
 		watchNamespace = "*"
 	}
 	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
 
-	chartName := "mongodb-kubernetes-operator"
-	if err := helm.Uninstall(chartName); err != nil {
+	helmChartName := "mongodb-kubernetes-operator"
+	if err := helm.Uninstall(helmChartName); err != nil {
 		return err
 	}
 
-	helmChartPath := envvar.GetEnvOrDefault(helmChartPathEnv, "/workspace/helm-chart")
-	helmArgs := getHelmArgs(testConfig, watchNamespace)
-	if err := helm.Install(helmChartPath, chartName, helmArgs); err != nil {
+	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS)
+	helmFlags := map[string]string{
+		"skip-crds":        "",
+		"namespace":        config.Namespace,
+		"create-namespace": "",
+	}
+	if err := helm.Install(config.HelmChartPath, helmChartName, helmFlags, helmArgs); err != nil {
 		return err
 	}
 
@@ -225,6 +196,19 @@ func deployOperator() error {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
+	return nil
+}
+
+func deployCertManager(config TestConfig) error {
+	flags := map[string]string{
+		"version":          "v1.5.3",
+		"namespace":        config.CertManagerNamespace,
+		"create-namespace": "",
+	}
+	values := map[string]string{"installCRDs": "true"}
+	if err := helm.Install("https://charts.jetstack.io/charts/cert-manager-v1.5.3.tgz", "cert-manager", flags, values); err != nil {
+		return err
+	}
 	return nil
 }
 
