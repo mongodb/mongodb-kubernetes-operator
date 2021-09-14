@@ -4,19 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/objx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/pkg/errors"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -31,6 +31,7 @@ import (
 // tlsConfig is the test tls fixture that we use for testing
 // tls.
 var tlsConfig *tls.Config = nil
+var initialCertSerialNumber *big.Int = nil
 
 // initTls loads in the tls configuration fixture
 func initTls(mdb mdbv1.MongoDBCommunity) error {
@@ -42,6 +43,13 @@ func initTls(mdb mdbv1.MongoDBCommunity) error {
 	if err != nil {
 		return err
 	}
+
+	if clientCert, err := getClientCert(mdb); err != nil {
+		return err
+	} else {
+		initialCertSerialNumber = clientCert.SerialNumber
+	}
+
 	return nil
 }
 
@@ -250,19 +258,17 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 
 func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
-		// The rotated certificate has serial number 2
-		expectedSerial := big.NewInt(2)
-
 		tls, err := getClientTLSConfig(mdb)
 		assert.NoError(t, err)
 
 		// Reject all server certificates that don't have the expected serial number
 		tls.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			cert := verifiedChains[0][0]
-			if expectedSerial.Cmp(cert.SerialNumber) != 0 {
-				return errors.Errorf("expected certificate serial number %s, got %s", expectedSerial, cert.SerialNumber)
+			if initialCertSerialNumber.Cmp(cert.SerialNumber) == 0 {
+				return errors.Errorf("certificate serial number has not changed: %s", cert.SerialNumber)
+			} else {
+				return nil
 			}
-			return nil
 		}
 
 		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tls}); err != nil {
@@ -477,6 +483,22 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 		return &tls.Config{ //nolint
 			RootCAs: caPool,
 		}, nil
+	}
+}
+
+// getClientCert reads the client key certificate
+func getClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+	certSecret := corev1.Secret{}
+	certSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: mdb.Namespace}
+	err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret)
+	if err != nil {
+		return nil, err
+	} else {
+		block, _ := pem.Decode(certSecret.Data["tls.crt"])
+		if block == nil {
+			return nil, errors.Errorf("error decoding client cert key")
+		}
+		return x509.ParseCertificate(block.Bytes)
 	}
 }
 
