@@ -340,7 +340,6 @@ spec:
             - currentStatefulSetReplicas
             - mongoUri
             - phase
-            - version
             type: object
         type: object
     served: true
