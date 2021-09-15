@@ -28,44 +28,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// tlsConfig is the test tls fixture that we use for testing
-// tls.
-var tlsConfig *tls.Config = nil
-var initialCertSerialNumber *big.Int = nil
-
-// initTls loads in the tls configuration fixture
-func initTls(mdb mdbv1.MongoDBCommunity) error {
-	if !mdb.Spec.Security.TLS.Enabled || tlsConfig != nil {
-		return nil
-	}
-	var err error
-	tlsConfig, err = getClientTLSConfig(mdb)
-	if err != nil {
-		return err
-	}
-
-	if clientCert, err := getClientCert(mdb); err != nil {
-		return err
-	} else {
-		initialCertSerialNumber = clientCert.SerialNumber
-	}
-
-	return nil
-}
-
 type Tester struct {
 	mongoClient *mongo.Client
 	clientOpts  []*options.ClientOptions
 }
 
-func newTester(mdb mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) (*Tester, error) {
-	if err := initTls(mdb); err != nil {
-		return nil, err
-	}
-
+func newTester(mdb mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
 	t := &Tester{}
 	t.clientOpts = append(t.clientOpts, opts...)
-	return t, nil
+	return t
 }
 
 // OptionApplier is an interface which is able to accept a list
@@ -101,7 +72,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
-	return newTester(mdb, clientOpts...)
+	return newTester(mdb, clientOpts...), nil
 }
 
 // ConnectivitySucceeds performs a basic check that ensures that it is possible
@@ -256,7 +227,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 	}
 }
 
-func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity) func(*testing.T) {
+func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCertSerialNumber *big.Int) func(*testing.T) {
 	return func(t *testing.T) {
 		tls, err := getClientTLSConfig(mdb)
 		assert.NoError(t, err)
@@ -432,7 +403,16 @@ func WithHosts(hosts []string) OptionApplier {
 }
 
 // WithTls configures the client to use tls
-func WithTls() OptionApplier {
+func WithTls(mdb mdbv1.MongoDBCommunity) OptionApplier {
+	if !mdb.Spec.Security.TLS.Enabled {
+		panic(errors.Errorf("TLS is not enabled"))
+	}
+
+	tlsConfig, err := getClientTLSConfig(mdb)
+	if err != nil {
+		panic(errors.Errorf("could not retrieve TLS config: %s", err))
+	}
+
 	return withTls(tlsConfig)
 }
 
@@ -486,8 +466,8 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 	}
 }
 
-// getClientCert reads the client key certificate
-func getClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+// GetClientCert reads the client key certificate
+func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: mdb.Namespace}
 	err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret)

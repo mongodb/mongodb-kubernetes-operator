@@ -37,21 +37,26 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 	}
 
 	tester, err := FromResource(t, mdb)
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	clientCert, err := GetClientCert(mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialCertSerialNumber := clientCert.SerialNumber
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls()))
-	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
-	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls()))
+	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls(mdb)))
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 
 	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls())()
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls(mdb))()
 		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
-		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb))
+		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb, initialCertSerialNumber))
 	})
 }
