@@ -42,6 +42,7 @@ func TestReplicaSetTLSRecreateMdbc(t *testing.T) {
 	if err := e2eutil.TestClient.Delete(context.TODO(), &mdb1); err != nil {
 		t.Fatalf("Failed to delete first test MongoDB: %s", err)
 	}
+	t.Run("Stateful Set Is Deleted", mongodbtests.StatefulSetIsDeleted(&mdb1))
 
 	mdb2, _ := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	mdb2.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
