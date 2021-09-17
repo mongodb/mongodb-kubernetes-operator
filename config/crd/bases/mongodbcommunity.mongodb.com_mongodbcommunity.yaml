@@ -190,23 +190,11 @@ spec:
                     description: TLS configuration for both client-server and server-server
                       communication
                     properties:
-                      caCertificateSecretRef:
-                        description: CaCertificateSecret is a reference to a Secret
-                          containing the certificate for the CA which signed the server
-                          certificates The certificate is expected to be available
-                          under the key "ca.crt"
-                        properties:
-                          name:
-                            type: string
-                        required:
-                        - name
-                        type: object
                       caConfigMapRef:
                         description: CaConfigMap is a reference to a ConfigMap containing
                           the certificate for the CA which signed the server certificates
                           The certificate is expected to be available under the key
-                          "ca.crt" This field is ignored when CaCertificateSecretRef
-                          is configured
+                          "ca.crt"
                         properties:
                           name:
                             type: string
@@ -340,6 +328,7 @@ spec:
             - currentStatefulSetReplicas
             - mongoUri
             - phase
+            - version
             type: object
         type: object
     served: true
