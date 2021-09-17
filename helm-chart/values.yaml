@@ -14,7 +14,14 @@ operator:
 
   # Version of mongodb-kubernetes-operator
   version: 0.7.0
-  resources: {}
+  resources: 
+    limits:
+      cpu: 1100m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 200Mi
+
   
 ## Operator's database
 database:
