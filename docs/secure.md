@@ -3,16 +3,42 @@
 ## Table of Contents
 
 - [Secure MongoDB Resource Connections using TLS](#secure-mongodb-resource-connections-using-tls)
+- [Installing with Helm and cert-manager](#installing-with-helm-and-cert-manager)
   - [Prerequisites](#prerequisites)
   - [Procedure](#procedure)
+- [Bring your own certificate](#bring-your-own-certificate)
+  - [Prerequisites](#prerequisites-1)
+  - [Procedure](#procedure-1)
 
 ## Secure MongoDB Resource Connections using TLS
 
 You can configure the MongoDB Community Kubernetes Operator to use TLS certificates to encrypt traffic between:
-
 - MongoDB hosts in a replica set, and
 - Client applications and MongoDB deployments.
 
+There are two methods currently supported:
+- using [Helm](https://helm.sh/) and [cert-manager](https://cert-manager.io/): allows installing the MongoDB resource and configuring TLS in one step, using Helm, MongoDB Helm chart and an already installed cert-manager instance. With this setup, cert-manager is used to generate the Certificate Authority (CA) and the TLS certificate that will secure the MongoDB connections. Certificate rotation is then handled automatically by cert-manager.
+- bring your own certificate: if you have your own Certificate Authority (CA), it can be used to generate and use a TLS certificate to secure MongoDB connections.
+
+## Installing with Helm and cert-manager
+### Prerequisites
+Before you install MongoDB Helm chart with a set of values that will create the MongoDB resource with TLS configured, you must:
+  - [install Helm](https://helm.sh/docs/intro/install/)
+  - [install cert-manager](https://cert-manager.io/docs/installation/helm/#4-install-cert-manager)
+### Procedure
+1. Clone this repository:
+   ```
+   git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
+   ```
+2. Optional: update _resource_ section from [Helm values](../helm-chart/values.yaml) with desired MongoDB resource configuration
+3. Install MongoDB Helm chart:
+   ```
+   helm upgrade --install <helm deploy name> ./helm-chart \
+    --namespace <mongodb namespace> --create-namespace \
+    --set namespace=<mongodb namespace>,createResource=true,resource.tls.enabled=true,resource.tls.useCertManager=true
+   ```
+
+## Bring your own certificate
 ### Prerequisites
 
 Before you secure MongoDB resource connections using TLS, you must:
