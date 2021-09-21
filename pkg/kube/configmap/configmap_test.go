@@ -124,13 +124,13 @@ func (c configMapGetUpdater) GetConfigMap(objectKey client.ObjectKey) (corev1.Co
 	return corev1.ConfigMap{}, notFoundError()
 }
 
-func (c configMapGetUpdater) UpdateConfigMap(cm corev1.ConfigMap) error {
+func (c *configMapGetUpdater) UpdateConfigMap(cm corev1.ConfigMap) error {
 	c.cm = cm
 	return nil
 }
 
 func newGetUpdater(cm corev1.ConfigMap) GetUpdater {
-	return configMapGetUpdater{
+	return &configMapGetUpdater{
 		cm: cm,
 	}
 }

@@ -150,3 +150,16 @@ func CopySecret(fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName
 
 	return CreateOrUpdate(toClient, secretCopy)
 }
+
+// Exists return whether a secret with the given namespaced name exists
+func Exists(secretGetter Getter, nsName types.NamespacedName) (bool, error) {
+	_, err := secretGetter.GetSecret(nsName)
+
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}

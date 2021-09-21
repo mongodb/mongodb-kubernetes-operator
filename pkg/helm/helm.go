@@ -31,7 +31,7 @@ func executeHelmCommand(args []string, messagePredicate func(string) bool) error
 	cmd := exec.Command("helm", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if messagePredicate != nil && messagePredicate(string(output)){
+		if messagePredicate != nil && messagePredicate(string(output)) {
 			return nil
 		}
 		return fmt.Errorf("error executing command: %s %s", err, output)

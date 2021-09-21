@@ -3,11 +3,12 @@ package replica_set_cross_namespace_deploy
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
-	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
@@ -64,7 +65,6 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 }
 
-
 // createDatabaseServiceAccountRoleAndRoleBinding creates the ServiceAccount, Role and RoleBinding required
 // for the database StatefulSet in the other namespace.
 func createDatabaseServiceAccountRoleAndRoleBinding(t *testing.T, namespace string) error {
@@ -111,4 +111,3 @@ func createDatabaseServiceAccountRoleAndRoleBinding(t *testing.T, namespace stri
 	}
 	return nil
 }
-

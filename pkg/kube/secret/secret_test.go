@@ -102,13 +102,13 @@ func (c secretGetUpdater) GetSecret(objectKey client.ObjectKey) (corev1.Secret, 
 	return corev1.Secret{}, notFoundError()
 }
 
-func (c secretGetUpdater) UpdateSecret(s corev1.Secret) error {
+func (c *secretGetUpdater) UpdateSecret(s corev1.Secret) error {
 	c.secret = s
 	return nil
 }
 
 func newGetUpdater(s corev1.Secret) GetUpdater {
-	return secretGetUpdater{
+	return &secretGetUpdater{
 		secret: s,
 	}
 }
