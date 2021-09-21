@@ -130,7 +130,7 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	return value, nil
 }
 
-// Exists return whether a secret with the given namespaced name exists
+// Exists return whether a configmap with the given namespaced name exists
 func Exists(cmGetter Getter, nsName types.NamespacedName) (bool, error) {
 	_, err := cmGetter.GetConfigMap(nsName)
 
