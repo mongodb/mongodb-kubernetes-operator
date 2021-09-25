@@ -16,4 +16,3 @@ checks:
   - "use-namespace"
   - "access-to-secrets"
   - "access-to-create-pods"
-  - "non-isolated-pod"
