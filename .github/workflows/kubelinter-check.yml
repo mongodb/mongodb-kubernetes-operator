@@ -24,25 +24,25 @@ jobs:
       with:
         directory: deploy/clusterwide
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_clusterwide.yaml
-        version: "v0.2.3"
+        version: "48442350" # Note: This is the id for release 0.2.3 returned from api.github.com/repos/stackrox/kube-linter/releases
 
     - name: Scan directory ./deploy/openshift/ with kube-linter
       uses: stackrox/kube-linter-action@v1.0.3
       with:
         directory: deploy/openshift
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint_openshift.yaml
-        version: "v0.2.3"
+        version: "48442350"
 
     - name: Scan directory ./config/manager/ with kube-linter
       uses: stackrox/kube-linter-action@v1.0.3
       with:
         directory: config/manager/manager.yaml
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
-        version: "v0.2.3"
+        version: "48442350"
 
     - name: Scan directory ./config/samples/ with kube-linter
       uses: stackrox/kube-linter-action@v1.0.3
       with:
         directory: config/samples
         config: ${GITHUB_WORKSPACE}/.github/config_files/config_lint.yaml
-        version: "v0.2.3"
+        version: "48442350"
