@@ -219,7 +219,7 @@ func WithLabels(labels map[string]string) Modification {
 
 func WithAnnotations(annotations map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
-		set.Annotations = copyMap(annotations)
+		set.Annotations = merge.StringToStringMap(set.Annotations, annotations)
 	}
 }
 
