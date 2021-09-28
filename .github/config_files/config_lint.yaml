@@ -12,4 +12,3 @@ checks:
   - "no-liveness-probe"
   - "no-readiness-probe"
   - "use-namespace"
-  - "non-isolated-pod"

@@ -15,4 +15,3 @@ checks:
   - "run-as-non-root"
   - "no-read-only-root-fs"
   - "use-namespace"
-  - "non-isolated-pod"
