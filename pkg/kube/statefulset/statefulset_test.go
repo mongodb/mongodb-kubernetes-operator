@@ -230,4 +230,8 @@ func TestWithAnnotations(t *testing.T) {
 		"foo": "baz",
 	})(&sts)
 	assert.Equal(t, "baz", sts.Annotations["foo"])
+
+	// handles nil values gracefully
+	WithAnnotations(nil)(&sts)
+	assert.Len(t, sts.Annotations, 2)
 }
