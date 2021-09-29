@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: e2e-test
-  namespace: default
+  namespace: mongodb
 roleRef:
   kind: ClusterRole
   name: e2e-test

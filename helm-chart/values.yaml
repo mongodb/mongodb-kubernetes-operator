@@ -49,3 +49,6 @@ resource:
     useCertManager: true
     certificateKeySecretRef: tls-certificate
     caCertificateSecretRef: tls-ca-key-pair
+    certManager:
+      certDuration: 8760h   # 365 days
+      renewCertBefore: 720h # 30 days

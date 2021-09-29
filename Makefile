@@ -15,6 +15,7 @@ DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
 RELEASE_NAME_HELM ?= mongodb-kubernetes-operator
+TEST_NAMESPACE ?= mongodb
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -115,7 +116,7 @@ e2e-gh:
 	scripts/dev/run_e2e_gh.sh $(test)
 
 cleanup-e2e:
-	kubectl delete mdbc,all -l e2e-test=true | true
+	kubectl delete mdbc,all -l e2e-test=true -n ${TEST_NAMESPACE} | true
 
 # Generate code
 generate: controller-gen

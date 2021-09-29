@@ -73,6 +73,13 @@ func ForStatefulSetToExist(stsName string, retryInterval, timeout time.Duration,
 	return sts, waitForRuntimeObjectToExist(stsName, retryInterval, timeout, &sts, namespace)
 }
 
+// ForStatefulSetToBeDeleted waits until a StatefulSet of the given name is deleted
+// using the provided retryInterval and timeout
+func ForStatefulSetToBeDeleted(stsName string, retryInterval, timeout time.Duration, namespace string) error {
+	sts := appsv1.StatefulSet{}
+	return waitForRuntimeObjectToBeDeleted(stsName, retryInterval, timeout, &sts, namespace)
+}
+
 // ForStatefulSetToHaveUpdateStrategy waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
 func ForStatefulSetToHaveUpdateStrategy(t *testing.T, mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType, opts ...Configuration) error {
@@ -148,10 +155,24 @@ func ForPodReadiness(t *testing.T, isReady bool, containerName string, timeout t
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
 	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, obj)
-		if err != nil {
-			return false, client.IgnoreNotFound(err)
-		}
-		return true, nil
+		return runtimeObjectExists(name, obj, namespace)
 	})
+}
+
+// waitForRuntimeObjectToBeDeleted waits until a runtime.Object of the given name is deleted
+// using the provided retryInterval and timeout provided.
+func waitForRuntimeObjectToBeDeleted(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
+	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+		exists, err := runtimeObjectExists(name, obj, namespace)
+		return !exists, err
+	})
+}
+
+// runtimeObjectExists checks if a runtime.Object of the given name exists
+func runtimeObjectExists(name string, obj client.Object, namespace string) (bool, error) {
+	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, obj)
+	if err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	return true, nil
 }

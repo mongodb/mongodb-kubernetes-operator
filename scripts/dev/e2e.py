@@ -67,9 +67,13 @@ def _prepare_test_environment(config_file: str) -> None:
     )
 
     print("Creating Service Account")
+    service_account = _load_test_service_account()
+    # set namespace specified in config.json
+    service_account["metadata"]["namespace"] = dev_config.namespace
+
     k8s_conditions.ignore_if_already_exists(
         lambda: corev1.create_namespaced_service_account(
-            dev_config.namespace, _load_test_service_account()
+            dev_config.namespace, service_account
         )
     )
 

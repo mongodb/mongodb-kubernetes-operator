@@ -54,7 +54,7 @@ to be able to run properly. Create a json file with the following content:
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "mongodb",
   "repo_url": "localhost:5000",
   "operator_image": "mongodb-kubernetes-operator",
   "e2e_image": "community-e2e",
@@ -93,7 +93,7 @@ accessible from your Kubernetes cluster.
 ## Test Namespace
 
 You can change the namespace used for tests, if you are using `Kind`, for
-instance, you can leave this as `default`.
+instance, you can leave this as `mongodb`.
 
 ## Python Environment
 

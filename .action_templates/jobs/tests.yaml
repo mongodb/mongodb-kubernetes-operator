@@ -27,6 +27,10 @@ tests:
           distro: ubuntu
         - test-name: replica_set_tls_pem_file
           distro: ubuntu
+        - test-name: replica_set_tls_recreate_mdbc
+          distro: ubuntu
+        - test-name: replica_set_tls_rotate
+          distro: ubuntu
         - test-name: replica_set_tls_upgrade
           distro: ubuntu
         - test-name: statefulset_arbitrary_config
@@ -65,9 +69,13 @@ tests:
           distro: ubi
         - test-name: replica_set_tls
           distro: ubi
-        - test-name: replica_set_tls_upgrade
-          distro: ubi
         - test-name: replica_set_tls_pem_file
+          distro: ubi
+        - test-name: replica_set_tls_recreate_mdbc
+          distro: ubi
+        - test-name: replica_set_tls_rotate
+          distro: ubi
+        - test-name: replica_set_tls_upgrade
           distro: ubi
         - test-name: statefulset_arbitrary_config
           distro: ubi
