@@ -237,9 +237,8 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 			cert := verifiedChains[0][0]
 			if initialCertSerialNumber.Cmp(cert.SerialNumber) == 0 {
 				return errors.Errorf("certificate serial number has not changed: %s", cert.SerialNumber)
-			} else {
-				return nil
 			}
+			return nil
 		}
 
 		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tls}); err != nil {
@@ -404,10 +403,6 @@ func WithHosts(hosts []string) OptionApplier {
 
 // WithTls configures the client to use tls
 func WithTls(mdb mdbv1.MongoDBCommunity) OptionApplier {
-	if !mdb.Spec.Security.TLS.Enabled {
-		panic(errors.Errorf("TLS is not enabled"))
-	}
-
 	tlsConfig, err := getClientTLSConfig(mdb)
 	if err != nil {
 		panic(errors.Errorf("could not retrieve TLS config: %s", err))
@@ -453,33 +448,30 @@ func WithReplicaSet(rsname string) OptionApplier {
 func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 	caSecret := corev1.Secret{}
 	caSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: mdb.Namespace}
-	err := e2eutil.TestClient.Get(context.TODO(), caSecretName, &caSecret)
-	if err != nil {
+	if err := e2eutil.TestClient.Get(context.TODO(), caSecretName, &caSecret); err != nil {
 		return nil, err
-	} else {
-		caPEM := caSecret.Data["ca.crt"]
-		caPool := x509.NewCertPool()
-		caPool.AppendCertsFromPEM(caPEM)
-		return &tls.Config{ //nolint
-			RootCAs: caPool,
-		}, nil
 	}
+	caPEM := caSecret.Data["ca.crt"]
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(caPEM)
+	return &tls.Config{ //nolint
+		RootCAs: caPool,
+	}, nil
+
 }
 
 // GetClientCert reads the client key certificate
 func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: mdb.Namespace}
-	err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret)
-	if err != nil {
+	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
 		return nil, err
-	} else {
-		block, _ := pem.Decode(certSecret.Data["tls.crt"])
-		if block == nil {
-			return nil, errors.Errorf("error decoding client cert key")
-		}
-		return x509.ParseCertificate(block.Bytes)
 	}
+	block, _ := pem.Decode(certSecret.Data["tls.crt"])
+	if block == nil {
+		return nil, errors.Errorf("error decoding client cert key")
+	}
+	return x509.ParseCertificate(block.Bytes)
 }
 
 // defaults returns the default connectivity options

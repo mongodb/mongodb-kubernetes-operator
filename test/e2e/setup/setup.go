@@ -202,7 +202,7 @@ func deployOperator(config TestConfig, resourceName string, withTLS bool) error 
 func deployCertManager(config TestConfig) error {
 	const helmChartName = "cert-manager"
 	if err := helm.Uninstall(helmChartName, config.CertManagerNamespace); err != nil {
-		return err
+		return errors.Errorf("failed to uninstall cert-manager Helm chart: %s", err)
 	}
 
 	charlUrl := fmt.Sprintf("https://charts.jetstack.io/charts/cert-manager-%s.tgz", config.CertManagerVersion)
@@ -213,7 +213,7 @@ func deployCertManager(config TestConfig) error {
 	}
 	values := map[string]string{"installCRDs": "true"}
 	if err := helm.Install(charlUrl, helmChartName, flags, values); err != nil {
-		return err
+		return errors.Errorf("failed to install cert-manager Helm chart: %s", err)
 	}
 	return nil
 }

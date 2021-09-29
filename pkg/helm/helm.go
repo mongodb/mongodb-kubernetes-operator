@@ -14,7 +14,7 @@ func Uninstall(chartName string, namespace string) error {
 }
 
 // Install a helm chert at the given path with the given name and the provided set arguments.
-func Install(chartPath, chartName string, flags map[string]string, values map[string]string) error {
+func Install(chartPath, chartName string, flags map[string]string, templateValues map[string]string) error {
 	helmArgs := []string{"install"}
 	helmArgs = append(helmArgs, chartName, chartPath)
 	for flagKey, flagValue := range flags {
@@ -23,7 +23,7 @@ func Install(chartPath, chartName string, flags map[string]string, values map[st
 			helmArgs = append(helmArgs, flagValue)
 		}
 	}
-	helmArgs = append(helmArgs, mapToHelmValuesArg(values)...)
+	helmArgs = append(helmArgs, mapToHelmValuesArg(templateValues)...)
 	return executeHelmCommand(helmArgs, nil)
 }
 
