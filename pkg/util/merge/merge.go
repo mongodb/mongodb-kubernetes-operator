@@ -36,7 +36,7 @@ func StringToStringMap(map1, map2 map[string]string) map[string]string {
 
 // StringToBoolMap merges two string-to-bool maps together with the second map
 // overriding any values also specified in the first.
-func StringToBool(map1, map2 map[string]bool) map[string]bool {
+func StringToBoolMap(map1, map2 map[string]bool) map[string]bool {
 	mergedMap := make(map[string]bool)
 	for k, v := range map1 {
 		mergedMap[k] = v
