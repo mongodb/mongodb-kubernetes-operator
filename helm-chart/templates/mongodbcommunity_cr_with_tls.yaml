@@ -1,3 +1,4 @@
+{{- if .Values.createResource }}
 {{- if and .Values.resource.tls.enabled .Values.resource.tls.useCertManager }}
 # cert-manager resources
 apiVersion: cert-manager.io/v1
@@ -53,7 +54,6 @@ spec:
 {{- end }}
 
 # mongodb resources
-{{- if .Values.createResource }}
 ---
 apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
