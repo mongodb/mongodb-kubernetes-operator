@@ -45,6 +45,10 @@ const (
 	defaultMode AuthMode = "SCRAM-SHA-256"
 )
 
+const (
+	defaultClusterDomain = "cluster.local"
+)
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -489,32 +493,36 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoURI() string {
-	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
+func (m MongoDBCommunity) MongoURI(clusterDomain string) string {
+	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(clusterDomain), ","))
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoSRVURI() string {
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
+func (m MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s", m.ServiceName(), m.Namespace, clusterDomain)
 }
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
+func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
-		strings.Join(m.Hosts(), ","),
+		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
 		m.Spec.Security.TLS.Enabled)
 }
 
 // MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) string {
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.%s/%s?ssl=%t",
+func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, clusterDomain string) string {
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		m.ServiceName(),
@@ -524,11 +532,15 @@ func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) 
 		m.Spec.Security.TLS.Enabled)
 }
 
-func (m MongoDBCommunity) Hosts() []string {
+func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 	hosts := make([]string, m.Spec.Members)
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+
 	for i := 0; i < m.Spec.Members; i++ {
-		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.svc.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
 	}
 	return hosts
 }
