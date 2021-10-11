@@ -170,32 +170,22 @@ func Exists(secretGetter Getter, nsName types.NamespacedName) (bool, error) {
 	return true, nil
 }
 
-// CreateOrUpdateIfNeeded creates a secret if it doesn't exists, or updates it if needed, and returns it.
-func CreateOrUpdateIfNeeded(secretGetUpdateCreator GetUpdateCreator, nsName types.NamespacedName, data map[string]string, ownerReferences []metav1.OwnerReference) (corev1.Secret, error) {
-	createdSecret := Builder().
-		SetName(nsName.Name).
-		SetNamespace(nsName.Namespace).
-		SetStringData(data).
-		SetOwnerReferences(ownerReferences).
-		Build()
+// CreateOrUpdateIfNeeded creates a secret if it doesn't exists, or updates it if needed.
+func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
 	// Check if the secret exists
-	s, err := secretGetUpdateCreator.GetSecret(nsName)
+	olsSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
 
 		if apiErrors.IsNotFound(err) {
-			return createdSecret, secretGetUpdateCreator.CreateSecret(createdSecret)
+			return getUpdateCreator.CreateSecret(secret)
 		}
-		return corev1.Secret{}, err
+		return err
 	}
 
-	if reflect.DeepEqual(data, dataToStringData(s.Data)) {
-		return createdSecret, nil
+	if reflect.DeepEqual(secret.StringData, dataToStringData(olsSecret.Data)) {
+		return nil
 	}
 
 	// They are different so we need to update it
-	if err := secretGetUpdateCreator.UpdateSecret(createdSecret); err != nil {
-		return corev1.Secret{}, err
-	}
-
-	return createdSecret, nil
+	return getUpdateCreator.UpdateSecret(secret)
 }
