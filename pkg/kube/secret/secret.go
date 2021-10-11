@@ -1,6 +1,8 @@
 package secret
 
 import (
+	"reflect"
+
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -71,11 +73,15 @@ func ReadStringData(getter Getter, key client.ObjectKey) (map[string]string, err
 		return nil, err
 	}
 
+	return dataToStringData(secret.Data), nil
+}
+
+func dataToStringData(data map[string][]byte) map[string]string {
 	stringData := make(map[string]string)
-	for k, v := range secret.Data {
+	for k, v := range data {
 		stringData[k] = string(v)
 	}
-	return stringData, nil
+	return stringData
 }
 
 // UpdateField updates a single field in the secret with the provided objectKey
@@ -162,4 +168,34 @@ func Exists(secretGetter Getter, nsName types.NamespacedName) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// CreateOrUpdateIfNeeded creates a secret if it doesn't exists, or updates it if needed, and returns it.
+func CreateOrUpdateIfNeeded(secretGetUpdateCreator GetUpdateCreator, nsName types.NamespacedName, data map[string]string, ownerReferences []metav1.OwnerReference) (corev1.Secret, error) {
+	createdSecret := Builder().
+		SetName(nsName.Name).
+		SetNamespace(nsName.Namespace).
+		SetStringData(data).
+		SetOwnerReferences(ownerReferences).
+		Build()
+	// Check if the secret exists
+	s, err := secretGetUpdateCreator.GetSecret(nsName)
+	if err != nil {
+
+		if apiErrors.IsNotFound(err) {
+			return createdSecret, secretGetUpdateCreator.CreateSecret(createdSecret)
+		}
+		return corev1.Secret{}, err
+	}
+
+	if reflect.DeepEqual(data, dataToStringData(s.Data)) {
+		return createdSecret, nil
+	}
+
+	// They are different so we need to update it
+	if err := secretGetUpdateCreator.UpdateSecret(createdSecret); err != nil {
+		return corev1.Secret{}, err
+	}
+
+	return createdSecret, nil
 }
