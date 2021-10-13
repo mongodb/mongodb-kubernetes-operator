@@ -39,6 +39,6 @@ func loadTestConfigFromEnv() TestConfig {
 		ClusterWide:             envvar.ReadBool(clusterWideEnvName),
 		PerformCleanup:          envvar.ReadBool(performCleanupEnvName),
 		ReadinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
-		HelmChartPath:           envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-chart"),
+		HelmChartPath:           envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-charts/charts/community-operator"),
 	}
 }

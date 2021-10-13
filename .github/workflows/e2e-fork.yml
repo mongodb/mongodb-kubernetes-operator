@@ -53,6 +53,7 @@ jobs:
       with:
         ref: ${{github.event.pull_request.head.ref}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
+        submodules: true
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -186,6 +187,7 @@ jobs:
       with:
         ref: ${{github.event.pull_request.head.ref}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
+        submodules: true
     # template: .action_templates/steps/set-run-status.yaml
     - name: Set default run status
       run: echo "::set-output name=last_run_status::pending" > last_run_status
