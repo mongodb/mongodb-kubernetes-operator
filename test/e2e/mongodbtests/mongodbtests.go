@@ -318,7 +318,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(mdb, mdbOwnerReference))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBCommunityStatus{
-				MongoURI:                   mdb.MongoURI(),
+				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,
 				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      mdb.Spec.Members,

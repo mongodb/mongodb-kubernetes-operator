@@ -51,9 +51,9 @@ type OptionApplier interface {
 func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
-	clientOpts = WithHosts(mdb.Hosts()).ApplyOption(clientOpts...)
+	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
 
-	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(), mdb.NamespacedName())
+	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
 	users := mdb.Spec.Users
 	if len(users) == 1 {
