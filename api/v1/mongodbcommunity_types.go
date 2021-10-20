@@ -405,6 +405,10 @@ type MongoDBCommunity struct {
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
+func (m MongoDBCommunity) GetMongodConfiguration() map[string]interface{} {
+	return m.Spec.AdditionalMongodConfig.Object
+}
+
 func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-agent-password", Namespace: m.Namespace}
 }

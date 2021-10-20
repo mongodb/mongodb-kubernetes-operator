@@ -2,6 +2,7 @@ package construct
 
 import (
 	"fmt"
+	"github.com/stretchr/objx"
 	"os"
 	"strings"
 
@@ -43,8 +44,8 @@ const (
 	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
 	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
 
-	automationconfFilePath = "/data/automation-mongod.conf"
-	keyfileFilePath        = "/var/lib/mongodb-mms-automation/authentication/keyfile"
+	automationMongodConfFilePath = "/data/automation-mongod.conf"
+	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
 
@@ -82,6 +83,9 @@ type MongoDBStatefulSetOwner interface {
 	DataVolumeName() string
 	// LogsVolumeName returns the name that the data volume should have
 	LogsVolumeName() string
+
+	// GetMongodConfiguration returns the MongoDB configuration for each member.
+	GetMongodConfiguration() map[string]interface{}
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -165,7 +169,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
-				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts)),
+				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
 			),
@@ -276,7 +280,17 @@ func getMongoDBImage(version string) string {
 	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }
 
-func mongodbContainer(version string, volumeMounts []corev1.VolumeMount) container.Modification {
+// getDbPath returns the db path which should be used.
+func getDbPath(additionalMongoDBConfig map[string]interface{}) string {
+	if additionalMongoDBConfig == nil {
+		return automationMongodConfFilePath
+	}
+	config := objx.New(additionalMongoDBConfig)
+	return config.Get("storage.dbPath").Str(automationMongodConfFilePath)
+}
+
+func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig map[string]interface{}) container.Modification {
+	dbPath := getDbPath(additionalMongoDBConfig)
 	mongoDbCommand := fmt.Sprintf(`
 #run post-start hook to handle version changes
 /hooks/version-upgrade
@@ -291,7 +305,7 @@ tail -F /var/log/mongodb-mms-automation/mongodb.log > /dev/stdout &
 # start mongod with this configuration
 exec mongod -f %s;
 
-`, automationconfFilePath, keyfileFilePath, automationconfFilePath)
+`, dbPath, keyfileFilePath, dbPath)
 
 	containerCommand := []string{
 		"/bin/sh",
