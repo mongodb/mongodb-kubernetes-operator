@@ -128,14 +128,14 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
 		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), getDbPath(mdb.GetMongodConfiguration()))
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), GetDBDataDir(mdb.GetMongodConfiguration()))
 		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
 		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(mdb.DataVolumeName(), getDbPath(mdb.GetMongodConfiguration()), statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), GetDBDataDir(mdb.GetMongodConfiguration()), statefulset.WithSubPath("data")),
 			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
@@ -282,27 +282,16 @@ func getMongoDBImage(version string) string {
 	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }
 
-// getDbPath returns the db path which should be used.
-func getDbPath(additionalMongoDBConfig map[string]interface{}) string {
+// GetDBDataDir returns the db path which should be used.
+func GetDBDataDir(additionalMongoDBConfig objx.Map) string {
 	if additionalMongoDBConfig == nil {
 		return DefaultDataDir
 	}
-	if path, ok := additionalMongoDBConfig["storage.dbPath"]; ok {
-		return path.(string)
-	}
-	//return AutomationMongodConfFileName
-	config := objx.New(additionalMongoDBConfig)
-
-	dbPath := config.Get("storage.dbPath")
-	if dbPath.String() != "" {
-		return dbPath.String()
-	}
-
-	return DefaultDataDir
+	return additionalMongoDBConfig.Get("storage.dbPath").Str(DefaultDataDir)
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig map[string]interface{}) container.Modification {
-	filePath := getDbPath(additionalMongoDBConfig) + "/" + AutomationMongodConfFileName
+	filePath := GetDBDataDir(additionalMongoDBConfig) + "/" + AutomationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 #run post-start hook to handle version changes
 /hooks/version-upgrade

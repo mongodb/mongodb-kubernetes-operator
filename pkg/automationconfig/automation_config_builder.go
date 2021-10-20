@@ -114,7 +114,6 @@ func (b *Builder) SetDataDir(dataDir string) *Builder {
 	return b
 }
 
-
 func (b *Builder) SetFCV(fcv string) *Builder {
 	b.fcv = fcv
 	return b

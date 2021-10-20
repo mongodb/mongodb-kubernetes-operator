@@ -25,13 +25,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/imdario/mergo"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-	"github.com/stretchr/objx"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
@@ -425,21 +422,6 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 
 }
 
-
-// getDbPath returns the db path which should be used.
-func getDbPath(additionalMongoDBConfig map[string]interface{}) string {
-	if additionalMongoDBConfig == nil {
-		return construct.DefaultDataDir
-	}
-	if path, ok := additionalMongoDBConfig["storage.dbPath"]; ok {
-		return path.(string)
-	}
-	return construct.DefaultDataDir
-	//config := objx.New(additionalMongoDBConfig)
-	//return config.Get("storage.dbPath").Str(automationMongodConfFilePath)
-}
-
-
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
@@ -456,7 +438,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
-		SetDataDir(getDbPath(mdb.Spec.AdditionalMongodConfig.Object)).
+		SetDataDir(construct.GetDBDataDir(mdb.GetMongodConfiguration())).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
@@ -547,9 +529,10 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
 	return func(ac *automationconfig.AutomationConfig) {
 		for i := range ac.Processes {
-			// Mergo requires both objects to have the same type
-			// TODO: handle this error gracefully, we may need to add an error as second argument for all modification functions
-			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
+			args26 := &ac.Processes[i].Args26
+			for k, v := range mdb.Spec.AdditionalMongodConfig.Object {
+				args26.Set(k, v)
+			}
 		}
 	}
 }

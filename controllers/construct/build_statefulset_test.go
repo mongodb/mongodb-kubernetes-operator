@@ -81,20 +81,18 @@ func TestMongod_Container(t *testing.T) {
 func TestGetDbPath(t *testing.T) {
 	t.Run("Test default is used if unspecifed", func(t *testing.T) {
 		m := map[string]interface{}{}
-		path := getDbPath(m)
+		path := GetDBDataDir(m)
 		assert.Equal(t, AutomationMongodConfFilePath, path)
 	})
 
 	t.Run("Test storage.dbPath is used if specified", func(t *testing.T) {
-		//m := map[string]interface{}{
-		//	"storage": map[string]interface{}{
-		//		"dbPath": "/data/db",
-		//	},
-		//}
-		m := map[string]interface{}{}
-		m["storage.dbPath"]= "/data/db"
+		m := map[string]interface{}{
+			"storage": map[string]interface{}{
+				"dbPath": "/data/db",
+			},
+		}
 
-		path := getDbPath(m)
+		path := GetDBDataDir(m)
 		assert.Equal(t, "/data/db", path)
 	})
 }
