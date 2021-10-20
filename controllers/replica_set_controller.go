@@ -425,6 +425,21 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 
 }
 
+
+// getDbPath returns the db path which should be used.
+func getDbPath(additionalMongoDBConfig map[string]interface{}) string {
+	if additionalMongoDBConfig == nil {
+		return construct.DefaultDataDir
+	}
+	if path, ok := additionalMongoDBConfig["storage.dbPath"]; ok {
+		return path.(string)
+	}
+	return construct.DefaultDataDir
+	//config := objx.New(additionalMongoDBConfig)
+	//return config.Get("storage.dbPath").Str(automationMongodConfFilePath)
+}
+
+
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDNSName))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
@@ -441,6 +456,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetDataDir(getDbPath(mdb.Spec.AdditionalMongodConfig.Object)).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()

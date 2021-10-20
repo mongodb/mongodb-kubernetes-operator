@@ -44,7 +44,9 @@ const (
 	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
 	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
 
-	automationMongodConfFilePath = "/data/automation-mongod.conf"
+	AutomationMongodConfFilePath = "/data/automation-mongod.conf"
+	DefaultDataDir               = "/data"
+	AutomationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
@@ -126,14 +128,14 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
 		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data")
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), getDbPath(mdb.GetMongodConfiguration()))
 		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
 		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(mdb.DataVolumeName(), "/data", statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), getDbPath(mdb.GetMongodConfiguration()), statefulset.WithSubPath("data")),
 			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
@@ -283,14 +285,24 @@ func getMongoDBImage(version string) string {
 // getDbPath returns the db path which should be used.
 func getDbPath(additionalMongoDBConfig map[string]interface{}) string {
 	if additionalMongoDBConfig == nil {
-		return automationMongodConfFilePath
+		return DefaultDataDir
 	}
+	if path, ok := additionalMongoDBConfig["storage.dbPath"]; ok {
+		return path.(string)
+	}
+	//return AutomationMongodConfFileName
 	config := objx.New(additionalMongoDBConfig)
-	return config.Get("storage.dbPath").Str(automationMongodConfFilePath)
+
+	dbPath := config.Get("storage.dbPath")
+	if dbPath.String() != "" {
+		return dbPath.String()
+	}
+
+	return DefaultDataDir
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig map[string]interface{}) container.Modification {
-	dbPath := getDbPath(additionalMongoDBConfig)
+	filePath := getDbPath(additionalMongoDBConfig) + "/" + AutomationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 #run post-start hook to handle version changes
 /hooks/version-upgrade
@@ -305,7 +317,7 @@ tail -F /var/log/mongodb-mms-automation/mongodb.log > /dev/stdout &
 # start mongod with this configuration
 exec mongod -f %s;
 
-`, dbPath, keyfileFilePath, dbPath)
+`, filePath, keyfileFilePath, filePath)
 
 	containerCommand := []string{
 		"/bin/sh",

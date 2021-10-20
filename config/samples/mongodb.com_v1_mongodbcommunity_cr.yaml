@@ -22,7 +22,9 @@ spec:
           db: admin
       scramCredentialsSecretName: my-scram
   additionalMongodConfig:
-    storage.wiredTiger.engineConfig.journalCompressor: zlib
+#    storage.dbPath: /data3/db
+    storage:
+      dbPath: /some/path/db
 
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
@@ -33,4 +35,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: <your-password-here>
+  password: sdfgdfsgdf
