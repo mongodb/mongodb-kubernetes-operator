@@ -44,9 +44,8 @@ const (
 	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
 	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
 
-	AutomationMongodConfFilePath = "/data/automation-mongod.conf"
-	DefaultDataDir               = "/data"
-	AutomationMongodConfFileName = "automation-mongod.conf"
+	defaultDataDir               = "/data"
+	automationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
@@ -285,13 +284,13 @@ func getMongoDBImage(version string) string {
 // GetDBDataDir returns the db path which should be used.
 func GetDBDataDir(additionalMongoDBConfig objx.Map) string {
 	if additionalMongoDBConfig == nil {
-		return DefaultDataDir
+		return defaultDataDir
 	}
-	return additionalMongoDBConfig.Get("storage.dbPath").Str(DefaultDataDir)
+	return additionalMongoDBConfig.Get("storage.dbPath").Str(defaultDataDir)
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig map[string]interface{}) container.Modification {
-	filePath := GetDBDataDir(additionalMongoDBConfig) + "/" + AutomationMongodConfFileName
+	filePath := GetDBDataDir(additionalMongoDBConfig) + "/" + automationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 #run post-start hook to handle version changes
 /hooks/version-upgrade

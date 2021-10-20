@@ -82,7 +82,7 @@ func TestGetDbPath(t *testing.T) {
 	t.Run("Test default is used if unspecifed", func(t *testing.T) {
 		m := map[string]interface{}{}
 		path := GetDBDataDir(m)
-		assert.Equal(t, AutomationMongodConfFilePath, path)
+		assert.Equal(t, defaultDataDir, path)
 	})
 
 	t.Run("Test storage.dbPath is used if specified", func(t *testing.T) {

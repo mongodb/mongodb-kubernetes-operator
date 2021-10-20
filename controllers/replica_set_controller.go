@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/imdario/mergo"
+	"github.com/stretchr/objx"
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
@@ -529,10 +531,9 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Modification {
 	return func(ac *automationconfig.AutomationConfig) {
 		for i := range ac.Processes {
-			args26 := &ac.Processes[i].Args26
-			for k, v := range mdb.Spec.AdditionalMongodConfig.Object {
-				args26.Set(k, v)
-			}
+			// Mergo requires both objects to have the same type
+			// TODO: handle this error gracefully, we may need to add an error as second argument for all modification functions
+			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
 		}
 	}
 }
