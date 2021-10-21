@@ -37,11 +37,22 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Override the journal compressor setting
-	setting := "storage.wiredTiger.engineConfig.journalCompressor"
-	value := "zlib"
+	settings := []string{
+		"storage.wiredTiger.engineConfig.journalCompressor",
+		"storage.dbPath",
+	}
+
+	values := []string{
+		"zlib",
+		"/some/path/db",
+	}
+
+	// Override the journal compressor and dbPath settings
 	mongodConfig := objx.New(map[string]interface{}{})
-	mongodConfig.Set(setting, value)
+	for i := range settings {
+		mongodConfig.Set(settings[i], values[i])
+	}
+
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
@@ -49,5 +60,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Mongod config has been set", tester.EnsureMongodConfig(setting, value))
+	for i := range settings {
+		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
+	}
 }

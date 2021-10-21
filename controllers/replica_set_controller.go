@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/imdario/mergo"
+	"github.com/stretchr/objx"
 	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
@@ -25,13 +27,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/imdario/mergo"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-	"github.com/stretchr/objx"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
@@ -441,6 +440,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetDataDir(construct.GetDBDataDir(mdb.GetMongodConfiguration())).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()

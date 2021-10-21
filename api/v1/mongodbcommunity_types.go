@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/objx"
 	"net/url"
 	"strings"
 
@@ -403,6 +404,14 @@ type MongoDBCommunity struct {
 
 	Spec   MongoDBCommunitySpec   `json:"spec,omitempty"`
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
+}
+
+func (m MongoDBCommunity) GetMongodConfiguration() map[string]interface{} {
+	mongodConfig := objx.New(map[string]interface{}{})
+	for k, v := range m.Spec.AdditionalMongodConfig.Object {
+		mongodConfig.Set(k, v)
+	}
+	return mongodConfig
 }
 
 func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {

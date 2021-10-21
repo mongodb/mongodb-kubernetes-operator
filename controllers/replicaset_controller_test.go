@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -611,7 +612,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 }
 
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
 
 	assert.Len(t, sts.Spec.VolumeClaimTemplates, 3)
 
@@ -626,7 +627,7 @@ func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 }
 
 func TestChangeDataVolume_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
 	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
@@ -639,7 +640,7 @@ func TestChangeDataVolume_Configuration(t *testing.T) {
 }
 
 func TestCustomStorageClass_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "custom_storage_class.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, "custom_storage_class.yaml")
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
 
@@ -655,7 +656,7 @@ func TestCustomStorageClass_Configuration(t *testing.T) {
 }
 
 func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
-	sts := performReconciliationAndGetStatefulSet(t, "tolerations_example.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, "tolerations_example.yaml")
 
 	assert.Len(t, sts.Spec.Template.Spec.Tolerations, 2)
 	assert.Equal(t, "example-key", sts.Spec.Template.Spec.Tolerations[0].Key)
@@ -667,7 +668,39 @@ func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
 	assert.Equal(t, corev1.TaintEffectNoExecute, sts.Spec.Template.Spec.Tolerations[1].Effect)
 }
 
-func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv1.StatefulSet {
+func TestCustomDataDir_Configuration(t *testing.T) {
+	sts, c := performReconciliationAndGetStatefulSet(t, "specify_data_dir.yaml")
+
+	agentContainer := container.GetByName("mongodb-agent", sts.Spec.Template.Spec.Containers)
+	assert.NotNil(t, agentContainer)
+	assertVolumeMountPath(t, agentContainer.VolumeMounts, "data-volume", "/some/path/db")
+
+	mongoContainer := container.GetByName("mongod", sts.Spec.Template.Spec.Containers)
+	assert.NotNil(t, mongoContainer)
+
+	lastCommand := mongoContainer.Command[len(agentContainer.Command)-1]
+	assert.Contains(t, lastCommand, "/some/path/db", "startup command should be using the newly specified path")
+
+	ac, err := automationconfig.ReadFromSecret(c, types.NamespacedName{Name: "example-mongodb-config", Namespace: "test-ns"})
+	assert.NoError(t, err)
+
+	for _, p := range ac.Processes {
+		actualStoragePath := p.Args26.Get("storage.dbPath").String()
+		assert.Equal(t, "/some/path/db", actualStoragePath, "process dbPath should have been set")
+	}
+}
+
+func assertVolumeMountPath(t *testing.T, mounts []corev1.VolumeMount, name, path string) {
+	for _, v := range mounts {
+		if v.Name == name {
+			assert.Equal(t, path, v.MountPath)
+			return
+		}
+	}
+	t.Fatalf("volume with name %s was not present!", name)
+}
+
+func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) (appsv1.StatefulSet, client.Client) {
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)
 	mgr := client.NewManager(&mdb)
@@ -678,7 +711,7 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) appsv
 
 	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
 	assert.NoError(t, err)
-	return sts
+	return sts, mgr.Client
 }
 
 func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {

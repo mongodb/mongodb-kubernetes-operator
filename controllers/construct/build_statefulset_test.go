@@ -61,7 +61,7 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 }
 
 func TestMongod_Container(t *testing.T) {
-	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}))
+	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}, map[string]interface{}{}))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 1)
@@ -75,6 +75,25 @@ func TestMongod_Container(t *testing.T) {
 
 	t.Run("Resource requirements are correct", func(t *testing.T) {
 		assert.Equal(t, resourcerequirements.Defaults(), c.Resources)
+	})
+}
+
+func TestGetDbPath(t *testing.T) {
+	t.Run("Test default is used if unspecifed", func(t *testing.T) {
+		m := map[string]interface{}{}
+		path := GetDBDataDir(m)
+		assert.Equal(t, defaultDataDir, path)
+	})
+
+	t.Run("Test storage.dbPath is used if specified", func(t *testing.T) {
+		m := map[string]interface{}{
+			"storage": map[string]interface{}{
+				"dbPath": "/data/db",
+			},
+		}
+
+		path := GetDBDataDir(m)
+		assert.Equal(t, "/data/db", path)
 	})
 }
 

@@ -47,6 +47,7 @@ type Builder struct {
 	cafilePath           string
 	sslConfig            *TLS
 	tlsConfig            *TLS
+	dataDir              string
 }
 
 func NewBuilder() *Builder {
@@ -105,6 +106,11 @@ func (b *Builder) SetDomain(domain string) *Builder {
 
 func (b *Builder) SetName(name string) *Builder {
 	b.name = name
+	return b
+}
+
+func (b *Builder) SetDataDir(dataDir string) *Builder {
+	b.dataDir = dataDir
 	return b
 }
 
@@ -209,6 +215,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
 		return AutomationConfig{}, errors.Errorf("can't build the automation config: %s", err)
 	}
+
+	dataDir := DefaultMongoDBDataDir
+	if b.dataDir != "" {
+		dataDir = b.dataDir
+	}
+
 	totalVotes := 0
 	for i, h := range hostnames {
 
@@ -226,7 +238,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		}
 
 		process.SetPort(27017)
-		process.SetStoragePath(DefaultMongoDBDataDir)
+		process.SetStoragePath(dataDir)
 		process.SetReplicaSetName(b.name)
 
 		for _, mod := range b.processModifications {
