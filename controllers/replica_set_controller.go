@@ -220,7 +220,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	res, err := status.Update(r.client.Status(), &mdb,
 		statusOptions().
-			withMongoURI(mdb.MongoURI()).
+			withMongoURI(mdb.MongoURI(os.Getenv(clusterDNSName))).
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 			withMessage(None, "").
@@ -232,7 +232,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return res, err
 	}
 
-	if err := r.updateConnectionStringSecrets(mdb); err != nil {
+	if err := r.updateConnectionStringSecrets(mdb, os.Getenv(clusterDNSName)); err != nil {
 		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
