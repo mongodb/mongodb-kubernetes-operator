@@ -26,6 +26,10 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+- apiGroups:
   - apps
   resources:
   - deployments
