@@ -205,3 +205,33 @@ func TestCreateVolumeMountWithMultipleOptions(t *testing.T) {
 	assert.Equal(t, mount.SubPath, "our-subpath")
 	assert.True(t, mount.ReadOnly)
 }
+
+func TestWithAnnotations(t *testing.T) {
+	sts, err := defaultStatefulSetBuilder().Build()
+	assert.NoError(t, err)
+
+	assert.Len(t, sts.Annotations, 0)
+
+	// Test that it works when there are no annotations
+	WithAnnotations(map[string]string{
+		"foo": "bar",
+	})(&sts)
+	assert.Equal(t, "bar", sts.Annotations["foo"])
+
+	// test that WithAnnotations merges the maps
+	WithAnnotations(map[string]string{
+		"bar": "baz",
+	})(&sts)
+	assert.Equal(t, "bar", sts.Annotations["foo"])
+	assert.Equal(t, "baz", sts.Annotations["bar"])
+
+	// Test that we can override a key
+	WithAnnotations(map[string]string{
+		"foo": "baz",
+	})(&sts)
+	assert.Equal(t, "baz", sts.Annotations["foo"])
+
+	// handles nil values gracefully
+	WithAnnotations(nil)(&sts)
+	assert.Len(t, sts.Annotations, 2)
+}

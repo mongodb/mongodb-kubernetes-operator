@@ -328,3 +328,47 @@ To define a custom role:
    ```
    kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
    ```
+
+
+## Specify Non-Default Values for Readiness Probe
+
+Under some circumstances it might be necessary to set your own custom values for
+the `ReadinessProbe` used by the MongoDB Community Operator. To do so, you
+should use the `statefulSet` attribute in `resource.spec`, as in the following
+provided example [yaml
+file](../config/samples/mongodb.com_v1_mongodbcommunity_readiness_probe_values.yaml).
+Only those attributes passed will be set, for instance, given the following structure:
+
+```yaml
+spec:
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb-agent
+              readinessProbe:
+                failureThreshold: 40
+                initialDelaySeconds: 5
+```
+
+*Only* the values of `failureThreshold` and `initialDelaySeconds` will be set to
+their custom, specified values. The rest of the attributes will be set to their
+default values.
+
+*Please note that these are the actual values set by the Operator for our
+MongoDB Custom Resources.*
+
+### When to specify custom values for the Readiness Probe
+
+In some cases, for instance, with a less than optimal download speed from the
+image registry, it could be necessary for the Operator to tolerate a Pod that
+has taken longer than expected to restart or upgrade to a different version of
+MongoDB. In these cases we want the Kubernetes API to wait a little longer
+before giving up, we could increase the value of `failureThreshold` to `60`.
+
+In other cases, if the Kubernetes API is slower than usual, we would increase
+the value of `periodSeconds` to `20`, so the Kubernetes API will do half of the
+requests it normally does (default value for `periodSeconds` is `10`).
+
+*Please note that these are referential values only!*

@@ -58,6 +58,8 @@ jobs:
     # template: .action_templates/steps/checkout.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
+      with:
+        submodules: true
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -114,6 +116,10 @@ jobs:
           distro: ubuntu
         - test-name: replica_set_tls_pem_file
           distro: ubuntu
+        - test-name: replica_set_tls_recreate_mdbc
+          distro: ubuntu
+        - test-name: replica_set_tls_rotate
+          distro: ubuntu
         - test-name: replica_set_tls_upgrade
           distro: ubuntu
         - test-name: statefulset_arbitrary_config
@@ -152,9 +158,13 @@ jobs:
           distro: ubi
         - test-name: replica_set_tls
           distro: ubi
-        - test-name: replica_set_tls_upgrade
-          distro: ubi
         - test-name: replica_set_tls_pem_file
+          distro: ubi
+        - test-name: replica_set_tls_recreate_mdbc
+          distro: ubi
+        - test-name: replica_set_tls_rotate
+          distro: ubi
+        - test-name: replica_set_tls_upgrade
           distro: ubi
         - test-name: statefulset_arbitrary_config
           distro: ubi
@@ -180,6 +190,8 @@ jobs:
     # template: .action_templates/steps/checkout.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
+      with:
+        submodules: true
     # template: .action_templates/steps/set-run-status.yaml
     - name: Set default run status
       run: echo "::set-output name=last_run_status::pending" > last_run_status

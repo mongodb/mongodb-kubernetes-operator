@@ -82,8 +82,8 @@ type VolumeMountData struct {
 	ReadOnly  bool
 }
 
-func CreateVolumeFromConfigMap(name, sourceName string) corev1.Volume {
-	return corev1.Volume{
+func CreateVolumeFromConfigMap(name, sourceName string, options ...func(v *corev1.Volume)) corev1.Volume {
+	volume := &corev1.Volume{
 		Name: name,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -93,6 +93,11 @@ func CreateVolumeFromConfigMap(name, sourceName string) corev1.Volume {
 			},
 		},
 	}
+
+	for _, option := range options {
+		option(volume)
+	}
+	return *volume
 }
 
 func CreateVolumeFromSecret(name, sourceName string, options ...func(v *corev1.Volume)) corev1.Volume {
@@ -211,6 +216,13 @@ func WithLabels(labels map[string]string) Modification {
 		set.Labels = copyMap(labels)
 	}
 }
+
+func WithAnnotations(annotations map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Annotations = merge.StringToStringMap(set.Annotations, annotations)
+	}
+}
+
 func WithMatchLabels(matchLabels map[string]string) Modification {
 	return func(set *appsv1.StatefulSet) {
 		if set.Spec.Selector == nil {
@@ -277,6 +289,14 @@ func WithVolumeClaim(name string, f func(*corev1.PersistentVolumeClaim)) Modific
 		}
 		pvc := &set.Spec.VolumeClaimTemplates[idx]
 		f(pvc)
+	}
+}
+
+func WithVolumeClaimTemplates(pv []corev1.PersistentVolumeClaim) Modification {
+	pvCopy := make([]corev1.PersistentVolumeClaim, len(pv))
+	copy(pvCopy, pv)
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.VolumeClaimTemplates = pvCopy
 	}
 }
 

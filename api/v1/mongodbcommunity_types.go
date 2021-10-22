@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/objx"
 	"net/url"
 	"strings"
 
@@ -43,6 +44,10 @@ const (
 // SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
 const (
 	defaultMode AuthMode = "SCRAM-SHA-256"
+)
+
+const (
+	defaultClusterDomain = "cluster.local"
 )
 
 // MongoDBCommunitySpec defines the desired state of MongoDB
@@ -326,10 +331,16 @@ type TLS struct {
 	// +optional
 	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
 
-	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
+	// CaCertificateSecret is a reference to a Secret containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaConfigMap LocalObjectReference `json:"caConfigMapRef"`
+	CaCertificateSecret *LocalObjectReference `json:"caCertificateSecretRef,omitempty"`
+
+	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
+	// The certificate is expected to be available under the key "ca.crt"
+	// This field is ignored when CaCertificateSecretRef is configured
+	// +optional
+	CaConfigMap *LocalObjectReference `json:"caConfigMapRef,omitempty"`
 }
 
 // LocalObjectReference is a reference to another Kubernetes object by name.
@@ -375,7 +386,7 @@ func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
 type MongoDBCommunityStatus struct {
 	MongoURI string `json:"mongoUri"`
 	Phase    Phase  `json:"phase"`
-	Version  string `json:"version"`
+	Version  string `json:"version,omitempty"`
 
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
 	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
@@ -397,6 +408,14 @@ type MongoDBCommunity struct {
 
 	Spec   MongoDBCommunitySpec   `json:"spec,omitempty"`
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
+}
+
+func (m MongoDBCommunity) GetMongodConfiguration() map[string]interface{} {
+	mongodConfig := objx.New(map[string]interface{}{})
+	for k, v := range m.Spec.AdditionalMongodConfig.Object {
+		mongodConfig.Set(k, v)
+	}
+	return mongodConfig
 }
 
 func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
@@ -483,32 +502,36 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoURI() string {
-	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(), ","))
+func (m MongoDBCommunity) MongoURI(clusterDomain string) string {
+	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(clusterDomain), ","))
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoSRVURI() string {
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s.%s.%s", m.ServiceName(), m.Namespace, clusterDomain)
+func (m MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s", m.ServiceName(), m.Namespace, clusterDomain)
 }
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string) string {
+func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
-		strings.Join(m.Hosts(), ","),
+		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
 		m.Spec.Security.TLS.Enabled)
 }
 
 // MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) string {
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.%s/%s?ssl=%t",
+func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, clusterDomain string) string {
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		m.ServiceName(),
@@ -518,11 +541,15 @@ func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string) 
 		m.Spec.Security.TLS.Enabled)
 }
 
-func (m MongoDBCommunity) Hosts() []string {
+func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 	hosts := make([]string, m.Spec.Members)
-	clusterDomain := "svc.cluster.local" // TODO: make this configurable
+
+	if clusterDomain == "" {
+		clusterDomain = defaultClusterDomain
+	}
+
 	for i := 0; i < m.Spec.Members; i++ {
-		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.svc.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
 	}
 	return hosts
 }
@@ -538,6 +565,12 @@ func (m MongoDBCommunity) ServiceName() string {
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
+}
+
+// TLSCaCertificateSecretNamespacedName will get the namespaced name of the Secret containing the CA certificate
+// As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
+func (m MongoDBCommunity) TLSCaCertificateSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: m.Namespace}
 }
 
 // TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate

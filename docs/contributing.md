@@ -5,7 +5,7 @@ from a high perspective how everything works together.
 
 After our experience building the [Enterprise MongoDB Kubernetes
 Operator](https://github.com/mongodb/mongodb-enterprise-kubernetes), we have
-realized that is is very important to have a clean environment to work, and as such we have
+realized that it is very important to have a clean environment to work, and as such we have
 adopted a strategy that makes it easier for everyone to contribute.
 
 This strategy is based on using
@@ -54,7 +54,7 @@ to be able to run properly. Create a json file with the following content:
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "mongodb",
   "repo_url": "localhost:5000",
   "operator_image": "mongodb-kubernetes-operator",
   "e2e_image": "community-e2e",
@@ -93,7 +93,7 @@ accessible from your Kubernetes cluster.
 ## Test Namespace
 
 You can change the namespace used for tests, if you are using `Kind`, for
-instance, you can leave this as `default`.
+instance, you can leave this as `mongodb`.
 
 ## Python Environment
 

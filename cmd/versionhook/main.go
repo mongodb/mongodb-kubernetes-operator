@@ -127,7 +127,7 @@ func waitForAgentHealthStatus() (agent.Health, error) {
 func getAgentHealthStatus() (agent.Health, error) {
 	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
 	if err != nil {
-		return agent.Health{}, errors.Errorf("could not open file: %s", err)
+		return agent.Health{}, err
 	}
 	defer f.Close()
 

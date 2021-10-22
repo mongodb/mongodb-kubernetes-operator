@@ -26,25 +26,24 @@ const (
 	LastAppliedMongoDBVersion = "mongodb.com/v1.lastAppliedMongoDBVersion"
 )
 
-func GetAnnotation(object Versioned, key string) string {
+func GetAnnotation(object client.Object, key string) string {
 	value, ok := object.GetAnnotations()[key]
 	if !ok {
 		return ""
 	}
-
 	return value
 }
 
-func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient client.Client) error {
-	currentObject := spec
-	err := kubeClient.Get(context.TODO(), spec.NamespacedName(), currentObject)
+func SetAnnotations(object client.Object, annotations map[string]string, kubeClient client.Client) error {
+	currentObject := object
+	err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: object.GetName(), Namespace: object.GetNamespace()}, currentObject)
 	if err != nil {
 		return err
 	}
 
 	// If the object has no annotations, we first need to create an empty entry in
 	// metadata.annotations, otherwise the server will reject our request
-	payload := []patchValue{}
+	var payload []patchValue
 	if currentObject.GetAnnotations() == nil || len(currentObject.GetAnnotations()) == 0 {
 		payload = append(payload, patchValue{
 			Op:    "replace",
@@ -68,7 +67,7 @@ func SetAnnotations(spec Versioned, annotations map[string]string, kubeClient cl
 	}
 
 	patch := client.RawPatch(types.JSONPatchType, data)
-	return kubeClient.Patch(context.TODO(), spec, patch)
+	return kubeClient.Patch(context.TODO(), object, patch)
 }
 
 func UpdateLastAppliedMongoDBVersion(mdb Versioned, kubeClient client.Client) error {
@@ -78,3 +77,4 @@ func UpdateLastAppliedMongoDBVersion(mdb Versioned, kubeClient client.Client) er
 
 	return SetAnnotations(mdb, annotations, kubeClient)
 }
+

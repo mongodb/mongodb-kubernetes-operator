@@ -1,6 +1,6 @@
 checks:
   addAllBuiltIn: true
-  
+
   #Reasons to exclude
   # non-existent-service-account because the service account is created in another file
   # minimum-three-replicas because the deployment contains only 1 replica of the operator
@@ -14,3 +14,4 @@ checks:
   - "no-readiness-probe"
   - "run-as-non-root"
   - "no-read-only-root-fs"
+  - "use-namespace"

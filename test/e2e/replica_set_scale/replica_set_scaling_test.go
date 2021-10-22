@@ -51,7 +51,7 @@ func TestReplicaSetScaleUp(t *testing.T) {
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 			mdbv1.MongoDBCommunityStatus{
-				MongoURI:                   mdb.MongoURI(),
+				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,
 				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      5,
@@ -65,7 +65,7 @@ func TestReplicaSetScaleUp(t *testing.T) {
 		//t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 5))
 		//t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 		//	mdbv1.MongoDBStatus{
-		//		MongoURI:                   mdb.MongoURI(),
+		//		MongoURI:                   mdb.MongoURI(""),
 		//		Phase:                      mdbv1.Running,
 		//		Version:                    mdb.GetMongoDBVersion(),
 		//		CurrentMongoDBMembers:   3,

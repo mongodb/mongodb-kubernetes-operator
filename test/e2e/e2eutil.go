@@ -12,7 +12,6 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -152,10 +151,10 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 		Enabled:  true,
 		Optional: optional,
 		CertificateKeySecret: mdbv1.LocalObjectReference{
-			Name: "test-tls-secret",
+			Name: "tls-certificate",
 		},
-		CaConfigMap: mdbv1.LocalObjectReference{
-			Name: "test-tls-ca",
+		CaCertificateSecret: &mdbv1.LocalObjectReference{
+			Name: "tls-ca-key-pair",
 		},
 	}
 }
@@ -190,61 +189,5 @@ func EnsureNamespace(ctx *Context, namespace string) error {
 			Name:   namespace,
 			Labels: TestLabels(),
 		},
-	})
-}
-
-// EnsureServiceAccount checks that the given ServiceAccount exists and creates it if not.
-func EnsureServiceAccount(ctx *Context, namespace string, svcAcctName string) error {
-	return ensureObject(ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      svcAcctName,
-			Namespace: namespace,
-		},
-	})
-}
-
-// EnsureRole checks that the given role exists and creates it with the given rules if not.
-func EnsureRole(ctx *Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
-	return ensureObject(ctx, &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      roleName,
-		},
-		Rules: rules,
-	})
-}
-
-// EnsureClusterRole checks that the given cluster role exists and creates it with the given rules if not.
-func EnsureClusterRole(ctx *Context, namespace string, roleName string, rules []rbacv1.PolicyRule) error {
-	return ensureObject(ctx, &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      roleName,
-		},
-		Rules: rules,
-	})
-}
-
-// EnsureRoleBinding checks that the given role binding exists and creates it with the given subjects and roleRef if not.
-func EnsureRoleBinding(ctx *Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
-	return ensureObject(ctx, &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      roleBindingName,
-		},
-		Subjects: subjects,
-		RoleRef:  roleRef,
-	})
-}
-
-// EnsureClusterRoleBinding checks that the given cluster role exists and creates it with the given subjects and roleRef if not.
-func EnsureClusterRoleBinding(ctx *Context, namespace string, roleBindingName string, subjects []rbacv1.Subject, roleRef rbacv1.RoleRef) error {
-	return ensureObject(ctx, &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      roleBindingName,
-		},
-		Subjects: subjects,
-		RoleRef:  roleRef,
 	})
 }

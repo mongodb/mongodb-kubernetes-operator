@@ -36,7 +36,7 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
-		wait.Timeout(time.Minute * 15),
+		wait.Timeout(time.Minute * 20),
 	}
 	defaultOpts = append(defaultOpts, opts...)
 	return statefulSetIsReady(mdb, defaultOpts...)
@@ -99,6 +99,16 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRefe
 			t.Fatal(err)
 		}
 		assertEqualOwnerReference(t, "StatefulSet", stsNamespacedName, sts.GetOwnerReferences(), expectedOwnerReference)
+	}
+}
+
+// StatefulSetIsDeleted ensures that the underlying stateful set is deleted
+func StatefulSetIsDeleted(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForStatefulSetToBeDeleted(mdb.Name, time.Second*10, time.Minute*1, mdb.Namespace)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -308,7 +318,7 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(mdb, mdbOwnerReference))
 		t.Run("Test Status Was Updated", Status(mdb,
 			mdbv1.MongoDBCommunityStatus{
-				MongoURI:                   mdb.MongoURI(),
+				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,
 				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      mdb.Spec.Members,

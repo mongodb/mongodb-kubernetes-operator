@@ -9,11 +9,14 @@ import (
 
 func TestMongoDB_MongoURI(t *testing.T) {
 	mdb := newReplicaSet(2, "my-rs", "my-namespace")
-	assert.Equal(t, mdb.MongoURI(), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:27017,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:27017")
 	mdb = newReplicaSet(1, "my-single-rs", "my-single-namespace")
-	assert.Equal(t, mdb.MongoURI(), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.my.cluster:27017")
 	mdb = newReplicaSet(5, "my-big-rs", "my-big-namespace")
-	assert.Equal(t, mdb.MongoURI(), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017")
+	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017")
 }
 
 func TestGetScramCredentialsSecretName(t *testing.T) {

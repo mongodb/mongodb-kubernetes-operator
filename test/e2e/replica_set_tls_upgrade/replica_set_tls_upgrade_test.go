@@ -24,17 +24,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetTLSUpgrade(t *testing.T) {
-	ctx := setup.Setup(t)
+	resourceName := "mdb-tls"
+
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb-tls", "")
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if err := setup.CreateTLSResources(mdb.Namespace, ctx, setup.CertKeyPair); err != nil {
-		t.Fatalf("Failed to set up TLS resources: %s", err)
 	}
 
 	tester, err := FromResource(t, mdb)
@@ -58,18 +56,18 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 
 	// Ensure MongoDB is reachable both with and without TLS
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds(WithoutTls()))
-	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
-	t.Run("Internal cluster keyfile authentication is enabled", tester.HasKeyfileAuth(3, WithTls()))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
+	t.Run("Internal cluster keyfile authentication is enabled", tester.HasKeyfileAuth(3, WithTls(mdb)))
 
 	// Make TLS required
 	t.Run("MongoDB is reachable over TLS while making TLS required", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls())()
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls(mdb))()
 		t.Run("Make TLS required", tlstests.EnableTLS(&mdb, false))
 		t.Run("Stateful Set Reaches Ready State, after setting TLS to requireSSL", mongodbtests.StatefulSetBecomesReady(&mdb))
-		t.Run("Wait for TLS to be required", tester.HasTlsMode("requireSSL", 120, WithTls()))
+		t.Run("Wait for TLS to be required", tester.HasTlsMode("requireSSL", 120, WithTls(mdb)))
 	})
 
 	// Ensure MongoDB is reachable only over TLS
-	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls()))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
 	t.Run("Test TLS Required For Connectivity", tester.ConnectivityFails(WithoutTls()))
 }

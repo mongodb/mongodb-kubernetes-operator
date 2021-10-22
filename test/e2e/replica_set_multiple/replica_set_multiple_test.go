@@ -74,7 +74,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 			mdbv1.MongoDBCommunityStatus{
-				MongoURI:                   mdb0.MongoURI(),
+				MongoURI:                   mdb0.MongoURI(""),
 				Phase:                      mdbv1.Running,
 				CurrentMongoDBMembers:      5,
 				CurrentStatefulSetReplicas: 5,
@@ -87,7 +87,7 @@ func TestReplicaSetMultiple(t *testing.T) {
 		//t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb0, 3))
 		//t.Run("Test Status Was Updated", mongodbtests.Status(&mdb0,
 		//	mdbv1.MongoDBStatus{
-		//		MongoURI:                   mdb0.MongoURI(),
+		//		MongoURI:                   mdb0.MongoURI(""),
 		//		Phase:                      mdbv1.Running,
 		//		CurrentMongoDBMembers:   5,
 		//		CurrentStatefulSetReplicas: 5,

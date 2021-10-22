@@ -37,6 +37,9 @@ jobs:
       ##########################
       - name: Checkout Code
         uses: actions/checkout@v2
+        with:
+          # Make sure we also get the helm-charts submodule!
+          submodules: true
 
       - name: Install missing python packages
         run: sudo apt-get install -y --no-install-recommends python3-venv python3-setuptools
@@ -68,6 +71,5 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_PYTHON: true
           VALIDATE_BASH: true
-          FILTER_REGEX_EXCLUDE: "/helm-chart/templates/*"
+          FILTER_REGEX_EXCLUDE: "/helm-charts/charts/community-operator/templates/*"
           # VALIDATE_GO: true  This is currently broken: https://github.com/github/super-linter/issues/143
-...

@@ -129,3 +129,16 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	}
 	return value, nil
 }
+
+// Exists return whether a configmap with the given namespaced name exists
+func Exists(cmGetter Getter, nsName types.NamespacedName) (bool, error) {
+	_, err := cmGetter.GetConfigMap(nsName)
+
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}

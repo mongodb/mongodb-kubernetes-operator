@@ -56,7 +56,7 @@ func TestReplicaSetRecovery(t *testing.T) {
 		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
 			mdbv1.MongoDBCommunityStatus{
-				MongoURI:                   mdb.MongoURI(),
+				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,
 				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      3,

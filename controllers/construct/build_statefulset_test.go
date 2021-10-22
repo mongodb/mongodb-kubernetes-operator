@@ -61,7 +61,7 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 }
 
 func TestMongod_Container(t *testing.T) {
-	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}))
+	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}, map[string]interface{}{}))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 1)
@@ -75,6 +75,25 @@ func TestMongod_Container(t *testing.T) {
 
 	t.Run("Resource requirements are correct", func(t *testing.T) {
 		assert.Equal(t, resourcerequirements.Defaults(), c.Resources)
+	})
+}
+
+func TestGetDbPath(t *testing.T) {
+	t.Run("Test default is used if unspecifed", func(t *testing.T) {
+		m := map[string]interface{}{}
+		path := GetDBDataDir(m)
+		assert.Equal(t, defaultDataDir, path)
+	})
+
+	t.Run("Test storage.dbPath is used if specified", func(t *testing.T) {
+		m := map[string]interface{}{
+			"storage": map[string]interface{}{
+				"dbPath": "/data/db",
+			},
+		}
+
+		path := GetDBDataDir(m)
+		assert.Equal(t, "/data/db", path)
 	})
 }
 
@@ -93,7 +112,6 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	probe := agentContainer.ReadinessProbe
 	assert.True(t, reflect.DeepEqual(probes.New(DefaultReadiness()), *probe))
 	assert.Equal(t, probes.New(DefaultReadiness()).FailureThreshold, probe.FailureThreshold)
-	assert.Equal(t, int32(5), probe.InitialDelaySeconds)
 	assert.Len(t, agentContainer.VolumeMounts, 6)
 	assert.NotNil(t, agentContainer.ReadinessProbe)
 

@@ -27,3 +27,6 @@ ADD . .
 
 {% block command -%}
 {% endblock -%}
+
+{% block install_helm -%}
+{% endblock -%}
