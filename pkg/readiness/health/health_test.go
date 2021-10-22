@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestIsReadyState checks that Primary, Secondary and Undefined always result
+// TestIsReadyState checks that Primary, Secondary, Arbiter, and Undefined always result
 // in Ready State.
 func TestIsReadyStateNotPrimaryNorSecondary(t *testing.T) {
-	status := []replicationStatus{replicationStatusUndefined, replicationStatusPrimary, replicationStatusSecondary}
+	status := []replicationStatus{replicationStatusUndefined, replicationStatusPrimary, replicationStatusSecondary, replicationStatusArbiter}
 
 	for i := range status {
 		h := processHealth{ReplicaStatus: &status[i]}
@@ -21,7 +21,7 @@ func TestIsReadyStateNotPrimaryNorSecondary(t *testing.T) {
 func TestIsNotReady(t *testing.T) {
 	status := []replicationStatus{
 		replicationStatusStartup, replicationStatusRecovering, replicationStatusStartup2,
-		replicationStatusUnknown, replicationStatusArbiter, replicationStatusDown,
+		replicationStatusUnknown, replicationStatusDown,
 		replicationStatusRollback, replicationStatusRemoved,
 	}
 
