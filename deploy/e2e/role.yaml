@@ -29,6 +29,8 @@ rules:
   - ""
   resources:
   - persistentvolumes
+  verbs:
+  - create
 - apiGroups:
   - apps
   resources:
