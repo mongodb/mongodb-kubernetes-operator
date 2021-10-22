@@ -43,6 +43,7 @@ func getPersistentVolumeLocal(name string, localPath string, label string) corev
 			},
 			AccessModes:      []corev1.PersistentVolumeAccessMode{"ReadWriteOnce"},
 			StorageClassName: "default",
+			Capacity:         corev1.ResourceList{corev1.ResourceStorage: *resource.NewScaledQuantity(int64(8), resource.Giga)},
 			NodeAffinity: &corev1.VolumeNodeAffinity{
 				Required: &corev1.NodeSelector{
 					NodeSelectorTerms: []corev1.NodeSelectorTerm{
