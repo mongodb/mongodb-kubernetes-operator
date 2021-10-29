@@ -199,7 +199,7 @@ To add arbiters:
 
 You can upgrade the major, minor, and/or feature compatibility versions of your MongoDB resource. These settings are configured in your resource definition YAML file.
 
-- To upgrade your resource's major and/or minor versions, set the `spec.version` setting to the desired MongoDB version.
+- To upgrade your resource's major and/or minor versions, set the `spec.version` setting to the desired MongoDB version. Make sure to specify a full image tag, such as `5.0.3`. Setting the `spec.version` to loosely-defined tags such as `5.0` is not currently supported.
 
 - To modify your resource's [feature compatibility version](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
 
