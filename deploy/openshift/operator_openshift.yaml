@@ -32,7 +32,7 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - command:
-        - mongodb-kubernetes-operator
+        - /usr/local/bin/entrypoint
         env:
         - name: WATCH_NAMESPACE
           valueFrom:
