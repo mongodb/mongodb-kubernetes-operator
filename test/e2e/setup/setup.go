@@ -140,6 +140,8 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 	helmArgs["registry.agent"] = agentRegistry
 	helmArgs["registry.readinessProbe"] = readinessProbeRegistry
 
+	helmArgs["community-operator-crds.enabled"] = strconv.FormatBool(false)
+
 	helmArgs["createResource"] = strconv.FormatBool(false)
 	helmArgs["resource.name"] = resourceName
 	helmArgs["resource.tls.enabled"] = strconv.FormatBool(withTLS)
@@ -165,10 +167,14 @@ func deployOperator(config TestConfig, resourceName string, withTLS bool) error 
 
 	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS)
 	helmFlags := map[string]string{
-		"skip-crds":        "",
 		"namespace":        config.Namespace,
 		"create-namespace": "",
 	}
+
+	if err := helm.DependencyUpdate(config.HelmChartPath); err != nil {
+		return err
+	}
+
 	if err := helm.Install(config.HelmChartPath, helmChartName, helmFlags, helmArgs); err != nil {
 		return err
 	}

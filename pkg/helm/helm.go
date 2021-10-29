@@ -13,6 +13,12 @@ func Uninstall(chartName string, namespace string) error {
 	return executeHelmCommand(helmArgs, isNotFoundMessage)
 }
 
+// DependencyUpdate downloads dependencies for a Chart.
+func DependencyUpdate(chartPath string) error {
+	helmArgs := []string{"dependency", "update", chartPath}
+	return executeHelmCommand(helmArgs, nil)
+}
+
 // Install a helm chert at the given path with the given name and the provided set arguments.
 func Install(chartPath, chartName string, flags map[string]string, templateValues map[string]string) error {
 	helmArgs := []string{"install"}
