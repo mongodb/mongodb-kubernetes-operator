@@ -220,7 +220,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 		s, err := wait.ForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1, mdb.Namespace)
 		assert.NoError(t, err)
 
-		t.Logf("Secret %s/%s was successfully created", mdb.AutomationConfigSecretName(), mdb.Namespace)
+		t.Logf("Secret %s/%s was successfully created", mdb.Namespace, mdb.AutomationConfigSecretName())
 		assert.Contains(t, s.Data, automationconfig.ConfigKey)
 
 		t.Log("The Secret contained the automation config")
