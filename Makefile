@@ -1,13 +1,15 @@
 SHELL := /bin/bash
 
+MONGODB_COMMUNITY_CONFIG ?= $(HOME)/.community-operator-dev/config.json
+
 # Image URL to use all building/pushing image targets
-REPO_URL := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
-OPERATOR_IMAGE := $(shell jq -r .operator_image < ~/.community-operator-dev/config.json)
-NAMESPACE := $(shell jq -r .namespace < ~/.community-operator-dev/config.json)
-UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < ~/.community-operator-dev/config.json)
-READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < ~/.community-operator-dev/config.json)
-REGISTRY := $(shell jq -r .repo_url < ~/.community-operator-dev/config.json)
-AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < ~/.community-operator-dev/config.json)
+REPO_URL := $(shell jq -r .repo_url < $(MONGODB_COMMUNITY_CONFIG))
+OPERATOR_IMAGE := $(shell jq -r .operator_image < $(MONGODB_COMMUNITY_CONFIG))
+NAMESPACE := $(shell jq -r .namespace < $(MONGODB_COMMUNITY_CONFIG))
+UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < $(MONGODB_COMMUNITY_CONFIG))
+READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < $(MONGODB_COMMUNITY_CONFIG))
+REGISTRY := $(shell jq -r .repo_url < $(MONGODB_COMMUNITY_CONFIG))
+AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < $(MONGODB_COMMUNITY_CONFIG))
 
 HELM_CHART ?= ./helm-charts/charts/community-operator
 
