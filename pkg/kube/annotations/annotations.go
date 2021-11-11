@@ -77,4 +77,3 @@ func UpdateLastAppliedMongoDBVersion(mdb Versioned, kubeClient client.Client) er
 
 	return SetAnnotations(mdb, annotations, kubeClient)
 }
-
