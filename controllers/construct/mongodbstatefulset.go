@@ -2,9 +2,10 @@ package construct
 
 import (
 	"fmt"
-	"github.com/stretchr/objx"
 	"os"
 	"strings"
+
+	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -51,6 +52,7 @@ const (
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
 
 	MongodbUserCommand = `current_uid=$(id -u)
+AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
 declare -r current_uid
 if ! grep -q "${current_uid}" /etc/passwd ; then
 sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
