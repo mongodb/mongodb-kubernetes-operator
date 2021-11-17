@@ -62,14 +62,14 @@ def update_operator_deployment(operator_deployment: Dict, release: Dict) -> None
             )
 
 
-def update_chart_values(values: Dict, release: Dict):
+def update_chart_values(values: Dict, release: Dict) -> None:
     values["agent"]["version"] = release["mongodb-agent"]["version"]
     values["versionUpgradeHook"]["version"] = release["version-upgrade-hook"]
     values["readinessProbe"]["version"] = release["readiness-probe"]
     values["operator"]["version"] = release["mongodb-kubernetes-operator"]
 
 
-def update_chart(chart: Dict, release: Dict):
+def update_chart(chart: Dict, release: Dict) -> None:
     chart["version"] = release["mongodb-kubernetes-operator"]
     chart["appVersion"] = release["mongodb-kubernetes-operator"]
 
