@@ -25,13 +25,17 @@ func NewClient(c k8sClient.Client) Client {
 
 type Client interface {
 	k8sClient.Client
+	KubernetesSecretClient
 	// TODO: remove this function, add mongodb package which has GetAndUpdate function
 	GetAndUpdate(nsName types.NamespacedName, obj k8sClient.Object, updateFunc func()) error
 	configmap.GetUpdateCreateDeleter
 	service.GetUpdateCreateDeleter
-	secret.GetUpdateCreateDeleter
 	statefulset.GetUpdateCreateDeleter
 	pod.Getter
+}
+
+type KubernetesSecretClient interface {
+	secret.GetUpdateCreateDeleter
 }
 
 type client struct {
