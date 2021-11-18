@@ -341,6 +341,39 @@ func TestMergeVolumes_DoesNotAddDuplicatesWithSameName(t *testing.T) {
 	assert.Equal(t, "new-volume-3", mergedPodSpecTemplate.Spec.Volumes[2].Name)
 }
 
+func TestAddVolumes(t *testing.T) {
+	volumeModification := WithVolume(corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "old-host-path",
+			},
+		}},
+	)
+
+	toAddVolumes := []corev1.Volume{
+		{
+			Name: "new-volume",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "new-host-path",
+				},
+			},
+		},
+		{
+			Name: "new-volume-2",
+		},
+	}
+
+	volumesModification := WithVolumes(toAddVolumes)
+
+	p := New(volumeModification, volumesModification)
+	assert.Len(t, p.Spec.Volumes, 2)
+	assert.Equal(t, p.Spec.Volumes[0].Name, "new-volume")
+	assert.Equal(t, p.Spec.Volumes[1].Name, "new-volume-2")
+
+}
+
 func int64Ref(i int64) *int64 {
 	return &i
 }
