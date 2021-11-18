@@ -107,6 +107,22 @@ func WithServiceAccount(serviceAccountName string) Modification {
 	}
 }
 
+// WithVolumes appends the given volumes to the existing volume, it ensures not
+// to override existing volumes
+func WithVolumes(volumes []corev1.Volume) Modification {
+	return func(template *corev1.PodTemplateSpec) {
+		present := make(map[string]struct{})
+		for _, v := range template.Spec.Volumes {
+			present[v.Name] = struct{}{}
+		}
+		for _, v := range volumes {
+			if _, ok := present[v.Name]; !ok {
+				template.Spec.Volumes = append(template.Spec.Volumes, v)
+			}
+		}
+	}
+}
+
 // WithVolume ensures the given volume exists
 func WithVolume(volume corev1.Volume) Modification {
 	return func(template *corev1.PodTemplateSpec) {
