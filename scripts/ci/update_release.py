@@ -2,16 +2,23 @@
 
 import json
 import sys
-import yaml
-from typing import Dict
+from typing import Dict, Callable
+
+import ruamel.yaml
+
+yaml = ruamel.yaml.YAML()
+
 
 RELATIVE_PATH_TO_MANAGER_YAML = "config/manager/manager.yaml"
 RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML = "deploy/openshift/operator_openshift.yaml"
 
+RELATIVE_PATH_TO_CHART_VALUES = "helm-charts/charts/community-operator/values.yaml"
+RELATIVE_PATH_TO_CHART = "helm-charts/charts/community-operator/Chart.yaml"
+
 
 def _load_yaml_file(path: str) -> Dict:
     with open(path, "r") as f:
-        return yaml.safe_load(f.read())
+        return yaml.load(f.read())
 
 
 def _dump_yaml(operator: Dict, path: str) -> None:
@@ -19,10 +26,10 @@ def _dump_yaml(operator: Dict, path: str) -> None:
         yaml.dump(operator, f)
 
 
-def update_and_write_file(path: str) -> None:
+def update_and_write_file(path: str, update_function: Callable) -> None:
     release = _load_release()
     yaml_file = _load_yaml_file(path)
-    _update_operator_deployment(yaml_file, release)
+    update_function(yaml_file, release)
     _dump_yaml(yaml_file, path)
 
 
@@ -36,7 +43,7 @@ def _replace_tag(image: str, new_tag: str) -> str:
     return split_image[0] + ":" + new_tag
 
 
-def _update_operator_deployment(operator_deployment: Dict, release: Dict) -> None:
+def update_operator_deployment(operator_deployment: Dict, release: Dict) -> None:
     operator_container = operator_deployment["spec"]["template"]["spec"]["containers"][
         0
     ]
@@ -55,9 +62,33 @@ def _update_operator_deployment(operator_deployment: Dict, release: Dict) -> Non
             )
 
 
+def update_chart_values(values: Dict, release: Dict) -> None:
+    values["agent"]["version"] = release["mongodb-agent"]["version"]
+    values["versionUpgradeHook"]["version"] = release["version-upgrade-hook"]
+    values["readinessProbe"]["version"] = release["readiness-probe"]
+    values["operator"]["version"] = release["mongodb-kubernetes-operator"]
+
+
+def update_chart(chart: Dict, release: Dict) -> None:
+    chart["version"] = release["mongodb-kubernetes-operator"]
+    chart["appVersion"] = release["mongodb-kubernetes-operator"]
+
+    for dependency in chart["dependencies"]:
+        if dependency["name"] == "community-operator-crds":
+            dependency["version"] = release["mongodb-kubernetes-operator"]
+
+
 def main() -> int:
-    update_and_write_file(RELATIVE_PATH_TO_MANAGER_YAML)
-    update_and_write_file(RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML)
+    # Updating local files
+    update_and_write_file(RELATIVE_PATH_TO_MANAGER_YAML, update_operator_deployment)
+    update_and_write_file(
+        RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML, update_operator_deployment
+    )
+
+    # Updating Helm Chart files
+    update_and_write_file(RELATIVE_PATH_TO_CHART_VALUES, update_chart_values)
+    update_and_write_file(RELATIVE_PATH_TO_CHART, update_chart)
+
     return 0
 
 
