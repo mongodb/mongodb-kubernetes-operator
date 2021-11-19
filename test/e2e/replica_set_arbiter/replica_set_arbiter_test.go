@@ -66,4 +66,8 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
 
+	t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
+	t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetBecomesReady(&mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+	// t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
 }

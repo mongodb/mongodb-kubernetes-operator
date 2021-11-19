@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/imdario/mergo"
 	"github.com/stretchr/objx"
-	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -290,6 +291,15 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
+	if mdb.Spec.Arbiters > 0 {
+		r.log.Info("Creating/Updating StatefulSet for Arbiters")
+		if err := r.createOrUpdateStatefulSetForArbiters(mdb); err != nil {
+			return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
+		}
+	} else {
+		r.log.Info("Arbiters set to 0, not creating another STS")
+	}
+
 	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
 		return false, errors.Errorf("error getting StatefulSet: %s", err)
@@ -390,6 +400,14 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
+	svc = buildService(mdb)
+	svc.Name = mdb.Name + "-arb-svc"
+	err = r.client.Create(context.TODO(), &svc)
+	if err != nil && apiErrors.IsAlreadyExists(err) {
+		r.log.Infof("Arbiters service already exists... moving forward: %s", err)
+		return nil
+	}
+
 	return err
 }
 
@@ -403,6 +421,32 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 	buildStatefulSetModificationFunction(mdb)(&set)
 	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
+	}
+	return nil
+}
+
+func int32Ref(i int32) *int32 {
+	return &i
+}
+
+func int64Ref(i int64) *int64 {
+	return &i
+}
+
+func (r *ReplicaSetReconciler) createOrUpdateStatefulSetForArbiters(mdb mdbv1.MongoDBCommunity) error {
+	set := appsv1.StatefulSet{}
+	name := types.NamespacedName{Name: mdb.Name + "-arb", Namespace: mdb.Namespace}
+	err := r.client.Get(context.TODO(), name, &set)
+	err = k8sClient.IgnoreNotFound(err)
+	if err != nil {
+		return errors.Errorf("error getting Arbiters StatefulSet: %s", err)
+	}
+	buildStatefulSetModificationFunction(mdb)(&set)
+	set.Name = set.Name + "-arb"
+	set.Spec.ServiceName = mdb.Name + "-arb-svc"
+	set.Spec.Replicas = int32Ref(int32(mdb.Spec.Arbiters))
+	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
+		return errors.Errorf("error creating/updating Arbiters StatefulSet: %s", err)
 	}
 	return nil
 }
@@ -426,12 +470,14 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+	arbiterDomain := getDomain(mdb.Name+"-arb-svc", mdb.Namespace, os.Getenv(clusterDomain))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
+		SetArbiterDomain(arbiterDomain).
 		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
 		SetArbiters(mdb.Spec.Arbiters).
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
@@ -517,13 +563,18 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 
-	return buildAutomationConfig(
+	automationConfig, err := buildAutomationConfig(
 		mdb,
 		auth,
 		currentAC,
 		tlsModification,
 		customRolesModification,
 	)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
+	}
+
+	return automationConfig, nil
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD

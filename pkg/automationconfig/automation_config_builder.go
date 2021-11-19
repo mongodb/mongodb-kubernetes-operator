@@ -14,8 +14,9 @@ import (
 type Topology string
 
 const (
-	ReplicaSetTopology Topology = "ReplicaSet"
-	maxVotingMembers   int      = 7
+	ReplicaSetTopology    Topology = "ReplicaSet"
+	maxVotingMembers      int      = 7
+	arbitersStartingIndex int      = 100
 )
 
 type Modification func(*AutomationConfig)
@@ -31,6 +32,7 @@ type Builder struct {
 	members            int
 	arbiters           int
 	domain             string
+	arbiterDomain      string
 	name               string
 	fcv                string
 	topology           Topology
@@ -101,6 +103,11 @@ func (b *Builder) SetArbiters(arbiters int) *Builder {
 
 func (b *Builder) SetDomain(domain string) *Builder {
 	b.domain = domain
+	return b
+}
+
+func (b *Builder) SetArbiterDomain(domain string) *Builder {
+	b.arbiterDomain = domain
 	return b
 }
 
@@ -204,13 +211,18 @@ func (b *Builder) setFeatureCompatibilityVersionIfUpgradeIsHappening() error {
 }
 
 func (b *Builder) Build() (AutomationConfig, error) {
-	hostnames := make([]string, b.members)
+	hostnames := make([]string, b.members+b.arbiters)
 	for i := 0; i < b.members; i++ {
 		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
 	}
 
-	members := make([]ReplicaSetMember, b.members)
-	processes := make([]Process, b.members)
+	for i := b.members; i < b.arbiters+b.members; i++ {
+		// Arbiters will be in b.name-arb-svc service
+		hostnames[i] = fmt.Sprintf("%s-arb-%d.%s", b.name, i-b.members, b.arbiterDomain)
+	}
+
+	members := make([]ReplicaSetMember, b.members+b.arbiters)
+	processes := make([]Process, b.members+b.arbiters)
 
 	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
 		return AutomationConfig{}, errors.Errorf("can't build the automation config: %s", err)
@@ -221,20 +233,34 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		dataDir = b.dataDir
 	}
 
-	totalVotes := 0
 	for i, h := range hostnames {
+		isArbiter := false
+		replicaSetIndex := i
+		processIndex := i
+		if i >= b.members {
+			isArbiter = true
 
+			processIndex = i - b.members
+			// The arbiter's index will start on `arbitersStartingIndex` and increase
+			// from there. These ids must be kept constant if the data-bearing nodes
+			// change indexes, if, for instance, they are scaled up and down.
+			//
+			replicaSetIndex = arbitersStartingIndex + processIndex
+		}
+
+		fcv := versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion)
+		if b.fcv != "" {
+			fcv = b.fcv
+		}
+
+		// TODO: make a builder function for this struct
 		process := &Process{
-			Name:                        toProcessName(b.name, i),
+			Name:                        toProcessName(b.name, processIndex, isArbiter),
 			HostName:                    h,
-			FeatureCompatibilityVersion: versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion),
+			FeatureCompatibilityVersion: fcv,
 			ProcessType:                 Mongod,
 			Version:                     b.mongodbVersion,
 			AuthSchemaVersion:           5,
-		}
-
-		if b.fcv != "" {
-			process.FeatureCompatibilityVersion = b.fcv
 		}
 
 		process.SetPort(27017)
@@ -245,15 +271,13 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			mod(i, process)
 		}
 
-		processes[i] = *process
-
+		var horizon ReplicaSetHorizons
 		if b.replicaSetHorizons != nil {
-			members[i] = newReplicaSetMember(*process, i, b.replicaSetHorizons[i], totalVotes, b.arbiters)
-		} else {
-			members[i] = newReplicaSetMember(*process, i, nil, totalVotes, b.arbiters)
+			horizon = b.replicaSetHorizons[i]
 		}
-		totalVotes += members[i].Votes
 
+		members[i] = newReplicaSetMember(*process, replicaSetIndex, horizon, isArbiter, i < maxVotingMembers)
+		processes[i] = *process
 	}
 
 	if b.auth == nil {
@@ -274,6 +298,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				Id:              b.name,
 				Members:         members,
 				ProtocolVersion: "1",
+				NumberArbiters:  b.arbiters,
 			},
 		},
 		MonitoringVersions: b.monitoringVersions,
@@ -311,7 +336,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	return currentAc, nil
 }
 
-func toProcessName(name string, index int) string {
+func toProcessName(name string, index int, isArbiter bool) string {
+	if isArbiter {
+		return fmt.Sprintf("%s-arb-%d", name, index)
+	}
 	return fmt.Sprintf("%s-%d", name, index)
 }
 

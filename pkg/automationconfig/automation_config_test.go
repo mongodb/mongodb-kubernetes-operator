@@ -42,7 +42,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
 		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
-		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, toProcessName("my-rs", i, false), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
