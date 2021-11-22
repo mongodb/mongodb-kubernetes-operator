@@ -379,12 +379,25 @@ func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunitySt
 	}
 }
 
-// Scale update the MongoDB with a new number of members and updates the resource
+// Scale update the MongoDB with a new number of members and updates the resource.
 func Scale(mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Scale update the MongoDB with a new number of arbiters and updates the resource.
+func ScaleArbiters(mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newArbiters)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Arbiters = newArbiters
 		})
 		if err != nil {
 			t.Fatal(err)
