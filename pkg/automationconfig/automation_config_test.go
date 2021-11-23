@@ -65,8 +65,9 @@ func TestBuildAutomationConfig(t *testing.T) {
 func TestBuildAutomationConfigArbiters(t *testing.T) {
 	// Test no arbiter (field specified)
 	noArbiters := 0
+	noMembers := 4
 	ac, err := NewBuilder().
-		SetMembers(4).
+		SetMembers(noMembers).
 		SetArbiters(noArbiters).
 		Build()
 
@@ -79,7 +80,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 
 	// Test no arbiter (field NOT specified)
 	ac, err = NewBuilder().
-		SetMembers(4).
+		SetMembers(noMembers).
 		Build()
 
 	assert.NoError(t, err)
@@ -91,63 +92,25 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 
 	// Test only one arbiter
 	noArbiters = 1
+	noMembers = 4
 	ac, err = NewBuilder().
-		SetMembers(4).
+		SetMembers(noMembers).
 		SetArbiters(noArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first member should be an arbiter")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
+	assert.Len(t, rs.Members, noMembers + noArbiters)
+	assert.False(t, rs.Members[0].ArbiterOnly)
+	assert.False(t, rs.Members[1].ArbiterOnly)
+	assert.False(t, rs.Members[2].ArbiterOnly)
+	assert.False(t, rs.Members[3].ArbiterOnly)
+	assert.True(t, rs.Members[4].ArbiterOnly)
 
 	// Test with multiple arbiters
 	noArbiters = 2
-	ac, err = NewBuilder().
-		SetMembers(4).
-		SetArbiters(noArbiters).
-		Build()
-
-	assert.NoError(t, err)
-
-	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
-
-	//Test With only Arbiters
-	// The error will be generated when the reconcile loop is called (tested in the e2e tests).
-	noArbiters = 4
-	ac, err = NewBuilder().
-		SetMembers(noArbiters).
-		SetArbiters(noArbiters).
-		Build()
-
-	assert.NoError(t, err)
-
-	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
-
-	//Test With more Arbiters than members
-	// The error will be generated when the reconcile loop is called (tested in the e2e tests).
-	noMembers := 3
-	noArbiters = noMembers + 1
+	noMembers = 4
 	ac, err = NewBuilder().
 		SetMembers(noMembers).
 		SetArbiters(noArbiters).
@@ -157,10 +120,11 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
+		if i < noMembers {
+			assert.False(t, member.ArbiterOnly, "First members should not be arbiters")
 		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
+			assert.True(t, member.ArbiterOnly, "Last members should be arbiters")
+			assert.Equal(t, member.Id, 100 + i - noMembers)
 		}
 	}
 }
