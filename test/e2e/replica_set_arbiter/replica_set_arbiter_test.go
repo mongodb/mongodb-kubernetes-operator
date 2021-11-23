@@ -70,8 +70,12 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetBecomesReady(&mdb))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 
+	t.Run("Scale MongoDB Resource Up", mongodbtests.ScaleArbiters(&mdb, 2))
+	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+
 	t.Run("Scale MongoDB Resource Up", mongodbtests.ScaleArbiters(&mdb, 3))
-	t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetBecomesReady(&mdb))
+	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 
 	// t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))

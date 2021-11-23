@@ -16,6 +16,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type StatefulSetType int
+
+const (
+	MembersStatefulSet StatefulSetType = iota
+	ArbitersStatefulSet
+)
+
 // ForConfigMapToExist waits until a ConfigMap of the given name exists
 // using the provided retryInterval and timeout
 func ForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (corev1.ConfigMap, error) {
@@ -107,6 +114,15 @@ func ForStatefulSetToBeUnready(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts .
 	})
 }
 
+// ForArbitersStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
+// have reached the ready status.
+func ForArbitersStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetConditionWithSpecificSts(t, mdb, MembersStatefulSet, options, func(sts appsv1.StatefulSet) bool {
+		return statefulset.IsReady(sts, mdb.Spec.Members)
+	})
+}
+
 // ForStatefulSetToBeReadyAfterScaleDown waits for just the ready replicas to be correct
 // and does not account for the updated replicas
 func ForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
@@ -116,15 +132,19 @@ func ForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommu
 	})
 }
 
-func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
+func waitForStatefulSetConditionWithSpecificSts(t *testing.T, mdb *mdbv1.MongoDBCommunity, statefulSetType StatefulSetType, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := ForStatefulSetToExist(mdb.Name, waitOpts.RetryInterval, waitOpts.Timeout, mdb.Namespace)
 	if err != nil {
 		return errors.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}
+	name := mdb.NamespacedName()
+	if statefulSetType == ArbitersStatefulSet {
+		name = types.NamespacedName{Name: mdb.Name + "-arb", Namespace: mdb.Namespace}
+	}
 	return wait.Poll(waitOpts.RetryInterval, waitOpts.Timeout, func() (done bool, err error) {
-		err = e2eutil.TestClient.Get(context.TODO(), mdb.NamespacedName(), &sts)
+		err = e2eutil.TestClient.Get(context.TODO(), name, &sts)
 		if err != nil {
 			return false, err
 		}
@@ -133,6 +153,16 @@ func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, wait
 		ready := condition(sts)
 		return ready, nil
 	})
+}
+
+func waitForStatefulSetCondition(t *testing.T, mdb *mdbv1.MongoDBCommunity, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
+	// uses members statefulset
+	return waitForStatefulSetConditionWithSpecificSts(t, mdb, MembersStatefulSet, waitOpts, condition)
+}
+
+func waitForStatefulSetConditionArbiters(t *testing.T, mdb *mdbv1.MongoDBCommunity, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
+	// uses members statefulset
+	return waitForStatefulSetConditionWithSpecificSts(t, mdb, ArbitersStatefulSet, waitOpts, condition)
 }
 
 func ForPodReadiness(t *testing.T, isReady bool, containerName string, timeout time.Duration, pod corev1.Pod) error {

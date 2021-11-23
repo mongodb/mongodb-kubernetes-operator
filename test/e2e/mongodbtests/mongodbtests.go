@@ -42,6 +42,17 @@ func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configura
 	return statefulSetIsReady(mdb, defaultOpts...)
 }
 
+// StatefulSetBecomesReady ensures that the underlying stateful set
+// reaches the running state.
+func ArbitersStatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	defaultOpts := []wait.Configuration{
+		wait.RetryInterval(time.Second * 15),
+		wait.Timeout(time.Minute * 20),
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	return arbitersStatefulSetIsReady(mdb, defaultOpts...)
+}
+
 // StatefulSetBecomesUnready ensures the underlying stateful set reaches
 // the unready state.
 func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
@@ -66,11 +77,23 @@ func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testi
 	}
 }
 
-// StatefulSetIsReady ensures that the underlying stateful set
-// reaches the running state
+// statefulSetIsReady ensures that the underlying stateful set
+// reaches the running state.
 func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := wait.ForStatefulSetToBeReady(t, mdb, opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
+// arbitersStatefulSetIsReady ensures that the underlying stateful set
+// reaches the running state.
+func arbitersStatefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForArbitersStatefulSetToBeReady(t, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}

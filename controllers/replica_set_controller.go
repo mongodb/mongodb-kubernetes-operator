@@ -425,14 +425,6 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 	return nil
 }
 
-func int32Ref(i int32) *int32 {
-	return &i
-}
-
-func int64Ref(i int64) *int64 {
-	return &i
-}
-
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSetForArbiters(mdb mdbv1.MongoDBCommunity) error {
 	set := appsv1.StatefulSet{}
 	name := types.NamespacedName{Name: mdb.Name + "-arb", Namespace: mdb.Namespace}
@@ -442,9 +434,8 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSetForArbiters(mdb mdbv1.Mo
 		return errors.Errorf("error getting Arbiters StatefulSet: %s", err)
 	}
 	buildStatefulSetModificationFunction(mdb)(&set)
-	set.Name = set.Name + "-arb"
-	set.Spec.ServiceName = mdb.Name + "-arb-svc"
-	set.Spec.Replicas = int32Ref(int32(mdb.Spec.Arbiters))
+	buildArbitersModificationFunction(mdb)(&set)
+
 	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return errors.Errorf("error creating/updating Arbiters StatefulSet: %s", err)
 	}
@@ -609,6 +600,14 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		),
 
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
+	)
+}
+
+func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
+	return statefulset.Apply(
+		statefulset.WithReplicas(int(mdb.Spec.Arbiters)),
+		statefulset.WithServiceName(mdb.Name+"-arb-svc"),
+		statefulset.WithName(mdb.Name+"-arb"),
 	)
 }
 
