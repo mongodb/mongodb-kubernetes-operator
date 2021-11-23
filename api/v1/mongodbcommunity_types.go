@@ -391,6 +391,9 @@ type MongoDBCommunityStatus struct {
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
 	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
 
+	CurrentStatefulSetArbitersReplicas int `json:"currentStatefulSetArbitersReplicas"`
+	CurrentMongoDBArbiters             int `json:"currentMongoDBArbiters"`
+
 	Message string `json:"message,omitempty"`
 }
 
@@ -492,12 +495,35 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	return users
 }
 
+func (m MongoDBCommunity) IsStillScaling() bool {
+	return scale.IsStillScaling(m) || scale.IsStillScaling(automationConfigReplicasScaler{
+		desired: m.DesiredArbiters(),
+		current: m.CurrentArbiters(),
+	})
+}
+
+// AutomationConfigMembersThisReconciliation determines the correct number of
+// automation config replica set members based on our desired number, and our
+// current number.
 func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
-	// determine the correct number of automation config replica set members
-	// based on our desired number, and our current number
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
 		desired: m.Spec.Members,
 		current: m.Status.CurrentMongoDBMembers,
+	})
+}
+
+// AutomationConfigArbitersThisReconciliation determines the correct number of
+// automation config replica set arbiters based on our desired number, and our
+// current number.
+//
+// Will not update arbiters until members have reached desired number.
+func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
+	if m.AutomationConfigMembersThisReconciliation() < m.Spec.Members {
+		return m.Status.CurrentMongoDBArbiters
+	}
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired: m.Spec.Arbiters,
+		current: m.Status.CurrentMongoDBArbiters,
 	})
 }
 
@@ -602,6 +628,14 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
+func (m MongoDBCommunity) DesiredArbiters() int {
+	return m.Spec.Arbiters
+}
+
+func (m MongoDBCommunity) CurrentArbiters() int {
+	return m.Status.CurrentStatefulSetArbitersReplicas
+}
+
 func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
@@ -614,7 +648,17 @@ func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 }
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
-	return scale.ReplicasThisReconciliation(m)
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired: m.DesiredReplicas(),
+		current: m.CurrentReplicas(),
+	})
+}
+
+func (m *MongoDBCommunity) StatefulSetArbitersThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired: m.DesiredArbiters(),
+		current: m.CurrentArbiters(),
+	})
 }
 
 // GetUpdateStrategyType returns the type of RollingUpgradeStrategy that the

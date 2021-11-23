@@ -101,7 +101,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
-	assert.Len(t, rs.Members, noMembers + noArbiters)
+	assert.Len(t, rs.Members, noMembers+noArbiters)
 	assert.False(t, rs.Members[0].ArbiterOnly)
 	assert.False(t, rs.Members[1].ArbiterOnly)
 	assert.False(t, rs.Members[2].ArbiterOnly)
@@ -124,7 +124,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 			assert.False(t, member.ArbiterOnly, "First members should not be arbiters")
 		} else {
 			assert.True(t, member.ArbiterOnly, "Last members should be arbiters")
-			assert.Equal(t, member.Id, 100 + i - noMembers)
+			assert.Equal(t, member.Id, 100+i-noMembers)
 		}
 	}
 }

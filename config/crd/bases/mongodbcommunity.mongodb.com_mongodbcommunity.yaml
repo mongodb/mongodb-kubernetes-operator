@@ -323,7 +323,11 @@ spec:
           status:
             description: MongoDBCommunityStatus defines the observed state of MongoDB
             properties:
+              currentMongoDBArbiters:
+                type: integer
               currentMongoDBMembers:
+                type: integer
+              currentStatefulSetArbitersReplicas:
                 type: integer
               currentStatefulSetReplicas:
                 type: integer
@@ -336,7 +340,9 @@ spec:
               version:
                 type: string
             required:
+            - currentMongoDBArbiters
             - currentMongoDBMembers
+            - currentStatefulSetArbitersReplicas
             - currentStatefulSetReplicas
             - mongoUri
             - phase

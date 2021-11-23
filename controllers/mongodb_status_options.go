@@ -132,6 +132,20 @@ func (o *optionBuilder) withStatefulSetReplicas(members int) *optionBuilder {
 	return o
 }
 
+func (o *optionBuilder) withMongoDBArbiters(arbiters int) *optionBuilder {
+	o.options = append(o.options, mongoDBArbitersOption{
+		mongoDBArbiters: arbiters,
+	})
+	return o
+}
+
+func (o *optionBuilder) withStatefulSetArbiters(arbiters int) *optionBuilder {
+	o.options = append(o.options, statefulSetArbitersOption{
+		arbiters: arbiters,
+	})
+	return o
+}
+
 func (o *optionBuilder) withMessage(severityLevel severity, msg string) *optionBuilder {
 	if apierrors.IsTransientMessage(msg) {
 		severityLevel = Debug
@@ -201,5 +215,29 @@ func (s statefulSetReplicasOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
 }
 
 func (s statefulSetReplicasOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
+}
+
+type mongoDBArbitersOption struct {
+	mongoDBArbiters int
+}
+
+func (a mongoDBArbitersOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
+	mdb.Status.CurrentMongoDBArbiters = a.mongoDBArbiters
+}
+
+func (a mongoDBArbitersOption) GetResult() (reconcile.Result, error) {
+	return result.OK()
+}
+
+type statefulSetArbitersOption struct {
+	arbiters int
+}
+
+func (s statefulSetArbitersOption) ApplyOption(mdb *mdbv1.MongoDBCommunity) {
+	mdb.Status.CurrentStatefulSetArbitersReplicas = s.arbiters
+}
+
+func (s statefulSetArbitersOption) GetResult() (reconcile.Result, error) {
 	return result.OK()
 }

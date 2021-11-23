@@ -209,12 +209,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	if scale.IsStillScaling(mdb) {
+	if mdb.IsStillScaling() {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+			withStatefulSetArbiters(mdb.StatefulSetArbitersThisReconciliation()).
+			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withPendingPhase(10),
 		)
 	}
@@ -224,6 +226,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoURI(mdb.MongoURI(os.Getenv(clusterDomain))).
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+			withStatefulSetArbiters(mdb.StatefulSetArbitersThisReconciliation()).
+			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase().
 			withVersion(mdb.GetMongoDBVersion()),
@@ -464,13 +468,20 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	arbiterDomain := getDomain(mdb.Name+"-arb-svc", mdb.Namespace, os.Getenv(clusterDomain))
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
+	arbitersCount := mdb.AutomationConfigArbitersThisReconciliation()
+	if mdb.AutomationConfigMembersThisReconciliation() < mdb.Spec.Members {
+		// Have not reached desired amount of members yet, should not scale arbiters
+		arbitersCount = mdb.Status.CurrentMongoDBArbiters
+	}
+
+
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
 		SetArbiterDomain(arbiterDomain).
 		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
-		SetArbiters(mdb.Spec.Arbiters).
+		SetArbiters(arbitersCount).
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
