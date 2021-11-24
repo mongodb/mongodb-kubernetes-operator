@@ -474,7 +474,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		arbitersCount = mdb.Status.CurrentMongoDBArbiters
 	}
 
-
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).

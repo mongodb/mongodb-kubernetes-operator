@@ -497,8 +497,8 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 
 func (m MongoDBCommunity) IsStillScaling() bool {
 	return scale.IsStillScaling(m) || scale.IsStillScaling(automationConfigReplicasScaler{
-		desired: m.DesiredArbiters(),
 		current: m.CurrentArbiters(),
+		desired: m.DesiredArbiters(),
 	})
 }
 
@@ -507,8 +507,8 @@ func (m MongoDBCommunity) IsStillScaling() bool {
 // current number.
 func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
-		desired: m.Spec.Members,
 		current: m.Status.CurrentMongoDBMembers,
+		desired: m.Spec.Members,
 	})
 }
 
@@ -521,9 +521,11 @@ func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
 	if m.AutomationConfigMembersThisReconciliation() < m.Spec.Members {
 		return m.Status.CurrentMongoDBArbiters
 	}
+
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
-		desired: m.Spec.Arbiters,
-		current: m.Status.CurrentMongoDBArbiters,
+		desired:                m.Spec.Arbiters,
+		current:                m.Status.CurrentMongoDBArbiters,
+		forceIndividualScaling: true,
 	})
 }
 
@@ -628,6 +630,10 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
+func (m MongoDBCommunity) ForcedIndividualScaling() bool {
+	return false
+}
+
 func (m MongoDBCommunity) DesiredArbiters() int {
 	return m.Spec.Arbiters
 }
@@ -649,15 +655,17 @@ func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
-		desired: m.DesiredReplicas(),
-		current: m.CurrentReplicas(),
+		desired:                m.DesiredReplicas(),
+		current:                m.CurrentReplicas(),
+		forceIndividualScaling: false,
 	})
 }
 
 func (m *MongoDBCommunity) StatefulSetArbitersThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
-		desired: m.DesiredArbiters(),
-		current: m.CurrentArbiters(),
+		desired:                m.DesiredArbiters(),
+		current:                m.CurrentArbiters(),
+		forceIndividualScaling: true,
 	})
 }
 
@@ -698,7 +706,8 @@ func (m MongoDBCommunity) LogsVolumeName() string {
 }
 
 type automationConfigReplicasScaler struct {
-	current, desired int
+	current, desired       int
+	forceIndividualScaling bool
 }
 
 func (a automationConfigReplicasScaler) DesiredReplicas() int {
@@ -707,6 +716,10 @@ func (a automationConfigReplicasScaler) DesiredReplicas() int {
 
 func (a automationConfigReplicasScaler) CurrentReplicas() int {
 	return a.current
+}
+
+func (a automationConfigReplicasScaler) ForcedIndividualScaling() bool {
+	return a.forceIndividualScaling
 }
 
 // +kubebuilder:object:root=true

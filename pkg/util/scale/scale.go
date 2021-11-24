@@ -5,6 +5,7 @@ package scale
 type ReplicaSetScaler interface {
 	DesiredReplicas() int
 	CurrentReplicas() int
+	ForcedIndividualScaling() bool
 }
 
 // ReplicasThisReconciliation returns the number of replicas that should be configured
@@ -12,8 +13,16 @@ type ReplicaSetScaler interface {
 func ReplicasThisReconciliation(replicaSetScaler ReplicaSetScaler) int {
 	// the current replica set members will be 0 when we are creating a new deployment
 	// if this is the case, we want to jump straight to the desired members and not make changes incrementally
-	if replicaSetScaler.CurrentReplicas() == 0 || replicaSetScaler.CurrentReplicas() == replicaSetScaler.DesiredReplicas() {
+
+	if replicaSetScaler.CurrentReplicas() == replicaSetScaler.DesiredReplicas() {
 		return replicaSetScaler.DesiredReplicas()
+	}
+
+	if !replicaSetScaler.ForcedIndividualScaling() {
+		// Short-circuit to scale up all at once
+		if replicaSetScaler.CurrentReplicas() == 0 {
+			return replicaSetScaler.DesiredReplicas()
+		}
 	}
 
 	if IsScalingDown(replicaSetScaler) {
