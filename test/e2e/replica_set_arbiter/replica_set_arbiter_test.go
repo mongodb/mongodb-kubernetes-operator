@@ -52,8 +52,7 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Check status for case 2", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, desiredStatus))
 
-	// Valid case 1
-	numberArbiters = 1
+	numberArbiters = 0
 	numberMembers = 3
 	mdb, user = e2eutil.NewTestMongoDB(ctx, "mdb2", "")
 	mdb.Spec.Arbiters = numberArbiters
@@ -66,17 +65,13 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
 
-	t.Run("Scale MongoDB Resource Up", mongodbtests.Scale(&mdb, 5))
-	t.Run("Stateful Set Scaled Up Correctly", mongodbtests.StatefulSetBecomesReady(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-
-	t.Run("Scale MongoDB Resource Up", mongodbtests.ScaleArbiters(&mdb, 2))
+	// Arbiters need to be less than regular members
+	t.Run("Scale MongoDB Up to 2 Arbiters", mongodbtests.ScaleArbiters(&mdb, 2))
 	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 
-	t.Run("Scale MongoDB Resource Up", mongodbtests.ScaleArbiters(&mdb, 3))
+	t.Run("Scale MongoDB Up to 0 Arbiters", mongodbtests.ScaleArbiters(&mdb, 0))
 	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-
-	// t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))
+	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, 0))
 }

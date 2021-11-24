@@ -149,7 +149,7 @@ func waitForStatefulSetConditionWithSpecificSts(t *testing.T, mdb *mdbv1.MongoDB
 			return false, err
 		}
 		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d, Current updated replicas: %d, Current generation: %d, Observed Generation: %d\n",
-			mdb.Name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
+			name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
 		ready := condition(sts)
 		return ready, nil
 	})
