@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-kubernetes-operator
+spec:
+  template:
+    spec:
+      containers:
+      - name: mongodb-kubernetes-operator
+        env:
+        - name: WATCH_NAMESPACE
+          value: '*'
+          valueFrom:
+            $patch: delete
