@@ -5,7 +5,7 @@ nameReference:
   version: v1
   fieldSpecs:
     - kind: MongoDBCommunity
-      path: spec/users/passwordSecretRef
+      path: spec/users/passwordSecretRef/name
 - kind: ServiceAccount
   version: v1
   fieldSpecs:
