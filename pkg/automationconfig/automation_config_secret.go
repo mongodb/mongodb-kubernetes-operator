@@ -6,7 +6,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -30,7 +29,7 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
 	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
+		if secretGetUpdateCreator.IsNotFound(err) {
 			return createNewAutomationConfigSecret(secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
 		}
 		return AutomationConfig{}, err

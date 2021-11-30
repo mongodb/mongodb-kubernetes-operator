@@ -10,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -103,6 +105,10 @@ func (m *mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret, path ...
 		return nil
 	}
 	return alreadyExistsError()
+}
+
+func (c mockSecretGetUpdateCreator) IsNotFound(err error) bool {
+	return apiErrors.IsNotFound(err)
 }
 
 // notFoundError returns an error which returns true for "errors.IsNotFound"
