@@ -13,19 +13,19 @@ import (
 )
 
 type Getter interface {
-	GetSecret(objectKey client.ObjectKey) (corev1.Secret, error)
+	GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error)
 }
 
 type Updater interface {
-	UpdateSecret(secret corev1.Secret) error
+	UpdateSecret(secret corev1.Secret, path ...string) error
 }
 
 type Creator interface {
-	CreateSecret(secret corev1.Secret) error
+	CreateSecret(secret corev1.Secret, path ...string) error
 }
 
 type Deleter interface {
-	DeleteSecret(objectKey client.ObjectKey) error
+	DeleteSecret(objectKey client.ObjectKey, path ...string) error
 }
 
 type GetUpdater interface {
