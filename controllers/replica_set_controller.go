@@ -288,6 +288,10 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 }
 
 // deployStatefulSet deploys the backing StatefulSet of the MongoDBCommunity resource.
+//
+// When `Spec.Arbiters` > 0, a second StatefulSet will be created, with the amount
+// of Pods corresponding to the amount of expected arbiters.
+//
 // The returned boolean indicates that the StatefulSet is ready.
 func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Info("Creating/Updating StatefulSet")
@@ -398,18 +402,20 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 }
 
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	svc := buildService(mdb)
+	svc := buildService(mdb, false)
 	err := r.client.Create(context.TODO(), &svc)
 	if err != nil && apiErrors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
-	svc = buildService(mdb)
-	svc.Name = mdb.Name + "-arb-svc"
-	err = r.client.Create(context.TODO(), &svc)
-	if err != nil && apiErrors.IsAlreadyExists(err) {
-		r.log.Infof("Arbiters service already exists... moving forward: %s", err)
-		return nil
+
+	if mdb.Spec.Arbiters > 0 {
+		svc = buildService(mdb, true)
+		err = r.client.Create(context.TODO(), &svc)
+		if err != nil && apiErrors.IsAlreadyExists(err) {
+			r.log.Infof("Arbiters service already exists... moving forward: %s", err)
+			return nil
+		}
 	}
 
 	return err
@@ -460,12 +466,12 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 		mdb.GetOwnerReferences(),
 		ac,
 	)
-
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
-	arbiterDomain := getDomain(mdb.Name+"-arb-svc", mdb.Namespace, os.Getenv(clusterDomain))
+	arbiterDomain := getDomain(mdb.ArbiterServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
 	arbitersCount := mdb.AutomationConfigArbitersThisReconciliation()
@@ -495,13 +501,24 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-// TODO: Make sure this Service is as minimal as possible, to not interfere with
-// future implementations and Service Discovery mechanisms we might implement.
-func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
+//
+// If `isArbiter` is true, the function will create a Service suitable for the
+// Arbiter's StatefulSet.
+func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
 	label := make(map[string]string)
-	label["app"] = mdb.ServiceName()
+	if isArbiter {
+		label["app"] = mdb.ArbiterServiceName()
+	} else {
+		label["app"] = mdb.ServiceName()
+	}
+
+	name := mdb.ServiceName()
+	if isArbiter {
+		name = mdb.ArbiterServiceName()
+	}
+
 	return service.Builder().
-		SetName(mdb.ServiceName()).
+		SetName(name).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
 		SetServiceType(corev1.ServiceTypeClusterIP).

@@ -582,13 +582,22 @@ func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for this resource
+// ServiceName returns the name of the Service that should be created for this resource.
 func (m MongoDBCommunity) ServiceName() string {
 	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
 	if serviceName != "" {
 		return serviceName
 	}
 	return m.Name + "-svc"
+}
+
+// ArbiterServiceName returns the name of the Service for the Arbiters for this resource.
+func (m MongoDBCommunity) ArbiterServiceName() string {
+	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
+	if serviceName != "" {
+		return serviceName + "-arb-svc"
+	}
+	return m.Name + "-arb-svc"
 }
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {

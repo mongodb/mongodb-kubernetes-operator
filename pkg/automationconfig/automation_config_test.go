@@ -127,6 +127,36 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 			assert.Equal(t, member.Id, 100+i-noMembers)
 		}
 	}
+
+	// Test arbiters should be able to vote
+	noArbiters = 2
+	noMembers = 10
+	ac, err = NewBuilder().
+		SetMembers(noMembers).
+		SetArbiters(noArbiters).
+		Build()
+
+	assert.NoError(t, err)
+
+	m := ac.ReplicaSets[0].Members
+
+	// First 5 data-bearing nodes have votes
+	assert.Equal(t, 1, m[0].Votes)
+	assert.Equal(t, 1, m[1].Votes)
+	assert.Equal(t, 1, m[2].Votes)
+	assert.Equal(t, 1, m[3].Votes)
+	assert.Equal(t, 1, m[4].Votes)
+
+	// From 6th data-bearing nodes, they won'thave any votes
+	assert.Equal(t, 0, m[5].Votes)
+	assert.Equal(t, 0, m[6].Votes)
+	assert.Equal(t, 0, m[7].Votes)
+	assert.Equal(t, 0, m[8].Votes)
+	assert.Equal(t, 0, m[9].Votes)
+
+	// Arbiters always have votes
+	assert.Equal(t, 1, m[10].Votes)
+	assert.Equal(t, 1, m[11].Votes)
 }
 
 func TestReplicaSetHorizons(t *testing.T) {

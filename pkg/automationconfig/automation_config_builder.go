@@ -212,10 +212,13 @@ func (b *Builder) setFeatureCompatibilityVersionIfUpgradeIsHappening() error {
 
 func (b *Builder) Build() (AutomationConfig, error) {
 	hostnames := make([]string, b.members+b.arbiters)
+
+	// Create hostnames for data-bearing nodes. They start from 0
 	for i := 0; i < b.members; i++ {
 		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
 	}
 
+	// Create hostnames for arbiters. They are added right after the regular members
 	for i := b.members; i < b.arbiters+b.members; i++ {
 		// Arbiters will be in b.name-arb-svc service
 		hostnames[i] = fmt.Sprintf("%s-arb-%d.%s", b.name, i-b.members, b.arbiterDomain)
@@ -234,16 +237,16 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	}
 
 	for i, h := range hostnames {
-		isArbiter := false
+		// Arbiters start counting from b.members and up
+		isArbiter := i >= b.members
 		replicaSetIndex := i
 		processIndex := i
-		if i >= b.members {
-			isArbiter = true
 
+		if isArbiter {
 			processIndex = i - b.members
 			// The arbiter's index will start on `arbitersStartingIndex` and increase
 			// from there. These ids must be kept constant if the data-bearing nodes
-			// change indexes, if, for instance, they are scaled up and down.
+			// change indexes, if for instance, they are scaled up and down.
 			//
 			replicaSetIndex = arbitersStartingIndex + processIndex
 		}
@@ -276,7 +279,15 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			horizon = b.replicaSetHorizons[i]
 		}
 
-		members[i] = newReplicaSetMember(*process, replicaSetIndex, horizon, isArbiter, i < maxVotingMembers)
+		isVotingMember := true
+		if !isArbiter && i >= (maxVotingMembers-b.arbiters) {
+			// Arbiters can't be non-voting members
+			// If there are more than 7 (maxVotingMembers) members on this Replica Set
+			// those that lose right to vote should be the data-bearing nodes, not the
+			// arbiters.
+			isVotingMember = false
+		}
+		members[i] = newReplicaSetMember(*process, replicaSetIndex, horizon, isArbiter, isVotingMember)
 		processes[i] = *process
 	}
 
