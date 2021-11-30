@@ -16,7 +16,7 @@ type secretGetter struct {
 	secret corev1.Secret
 }
 
-func (c secretGetter) GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error) {
+func (c secretGetter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if c.secret.Name == objectKey.Name && c.secret.Namespace == objectKey.Namespace {
 		return c.secret, nil
 	}
@@ -100,7 +100,7 @@ type secretGetUpdater struct {
 	secret corev1.Secret
 }
 
-func (c secretGetUpdater) GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error) {
+func (c secretGetUpdater) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if c.secret.Name == objectKey.Name && c.secret.Namespace == objectKey.Namespace {
 		return c.secret, nil
 	}
@@ -110,7 +110,8 @@ func (c secretGetUpdater) GetSecret(objectKey client.ObjectKey, path ...string) 
 func (c secretGetUpdater) IsNotFound(err error) bool {
 	return apiErrors.IsNotFound(err)
 }
-func (c *secretGetUpdater) UpdateSecret(s corev1.Secret, path ...string) error {
+
+func (c *secretGetUpdater) UpdateSecret(s corev1.Secret) error {
 	c.secret = s
 	return nil
 }

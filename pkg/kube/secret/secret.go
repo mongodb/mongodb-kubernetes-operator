@@ -13,20 +13,20 @@ import (
 )
 
 type Getter interface {
-	GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error)
 	IsNotFound(err error) bool
+	GetSecret(objectKey client.ObjectKey) (corev1.Secret, error)
 }
 
 type Updater interface {
-	UpdateSecret(secret corev1.Secret, path ...string) error
+	UpdateSecret(secret corev1.Secret) error
 }
 
 type Creator interface {
-	CreateSecret(secret corev1.Secret, path ...string) error
+	CreateSecret(secret corev1.Secret) error
 }
 
 type Deleter interface {
-	DeleteSecret(objectKey client.ObjectKey, path ...string) error
+	DeleteSecret(objectKey client.ObjectKey) error
 }
 
 type GetUpdater interface {
