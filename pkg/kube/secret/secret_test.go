@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,10 @@ func (c secretGetter) GetSecret(objectKey client.ObjectKey, path ...string) (cor
 		return c.secret, nil
 	}
 	return corev1.Secret{}, notFoundError()
+}
+
+func (c secretGetter) IsNotFound(err error) bool {
+	return apiErrors.IsNotFound(err)
 }
 
 func newGetter(s corev1.Secret) Getter {
@@ -102,6 +107,9 @@ func (c secretGetUpdater) GetSecret(objectKey client.ObjectKey, path ...string) 
 	return corev1.Secret{}, notFoundError()
 }
 
+func (c secretGetUpdater) IsNotFound(err error) bool {
+	return apiErrors.IsNotFound(err)
+}
 func (c *secretGetUpdater) UpdateSecret(s corev1.Secret, path ...string) error {
 	c.secret = s
 	return nil

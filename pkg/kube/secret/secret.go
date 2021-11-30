@@ -14,6 +14,7 @@ import (
 
 type Getter interface {
 	GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error)
+	IsNotFound(err error) bool
 }
 
 type Updater interface {
