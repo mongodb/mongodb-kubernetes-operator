@@ -60,8 +60,6 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 		existingSecret.Data[ConfigKey] = acBytes
 	}
 
-	existingSecret.Name = secretNsName.Name
-	existingSecret.Namespace = secretNsName.Namespace
 	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 
