@@ -2,6 +2,7 @@ package secret
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -98,7 +99,7 @@ func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value s
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
 	_, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
+		if SecretNotExist(err) {
 			return getUpdateCreator.CreateSecret(secret)
 		}
 		return err
@@ -122,7 +123,7 @@ func HasAllKeys(secret corev1.Secret, keys ...string) bool {
 func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, nsName types.NamespacedName, ownerReferences []metav1.OwnerReference, key, value string) (string, error) {
 	existingSecret, err0 := secretGetUpdateCreateDeleter.GetSecret(nsName)
 	if err0 != nil {
-		if apiErrors.IsNotFound(err0) {
+		if SecretNotExist(err0) {
 			s := Builder().
 				SetNamespace(nsName.Namespace).
 				SetName(nsName.Name).
@@ -188,4 +189,11 @@ func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Sec
 
 	// They are different so we need to update it
 	return getUpdateCreator.UpdateSecret(secret)
+}
+
+func SecretNotExist(err error) bool {
+	if err == nil {
+		return false
+	}
+	return apiErrors.IsNotFound(err) || strings.Contains(err.Error(), "secret not found")
 }

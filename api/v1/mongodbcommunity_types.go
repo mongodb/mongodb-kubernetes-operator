@@ -3,9 +3,10 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/objx"
 	"net/url"
 	"strings"
+
+	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
@@ -651,6 +652,10 @@ func (m MongoDBCommunity) DataVolumeName() string {
 
 func (m MongoDBCommunity) LogsVolumeName() string {
 	return "logs-volume"
+}
+
+func (m MongoDBCommunity) NeedsAutomationConfigVolume() bool {
+	return true
 }
 
 type automationConfigReplicasScaler struct {

@@ -89,6 +89,9 @@ type MongoDBStatefulSetOwner interface {
 
 	// GetMongodConfiguration returns the MongoDB configuration for each member.
 	GetMongodConfiguration() map[string]interface{}
+
+	// NeedsAutomationConfigVolume returns whether the statefuslet needs to have a volume for the automationconfig.
+	NeedsAutomationConfigVolume() bool
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -114,15 +117,20 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
 	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
 
-	automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
-	automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
-
 	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName.Name)
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
-	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, automationConfigVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount}
+	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount}
+
+	automationConfigVolumeFunc := podtemplatespec.NOOP()
+	if mdb.NeedsAutomationConfigVolume() {
+		automationConfigVolume := statefulset.CreateVolumeFromSecret("automation-config", mdb.AutomationConfigSecretName())
+		automationConfigVolumeFunc = podtemplatespec.WithVolume(automationConfigVolume)
+		automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
+		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, automationConfigVolumeMount)
+	}
 	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod}
 	dataVolumeClaim := statefulset.NOOP()
 	logVolumeClaim := statefulset.NOOP()
@@ -167,7 +175,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithPodLabels(labels),
 				podtemplatespec.WithVolume(healthStatusVolume),
 				podtemplatespec.WithVolume(hooksVolume),
-				podtemplatespec.WithVolume(automationConfigVolume),
+				automationConfigVolumeFunc,
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
@@ -180,11 +188,11 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 }
 
 func BaseAgentCommand() string {
-	return "agent/mongodb-agent -cluster=" + clusterFilePath + " -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
+	return "agent/mongodb-agent -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
 }
 
 func AutomationAgentCommand() []string {
-	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + automationAgentOptions}
+	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions}
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
