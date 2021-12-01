@@ -3,8 +3,6 @@ package automationconfig
 import (
 	"encoding/json"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,7 +15,10 @@ const ConfigKey = "cluster-config.json"
 func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
 	acSecret, err := secretGetter.GetSecret(secretNsName)
 	if err != nil {
-		return AutomationConfig{}, client.IgnoreNotFound(err)
+		if secretGetter.IsNotFound(err) {
+			err = nil
+		}
+		return AutomationConfig{}, err
 	}
 	return FromBytes(acSecret.Data[ConfigKey])
 }
