@@ -27,7 +27,7 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 // if the desired config is the same as the current contents, no change is made.
 // The most recent AutomationConfig is returned. If no change is made, it will return the existing one, if there
 // is a change, the new AutomationConfig is returned.
-func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
+func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig, overrideNsName bool) (AutomationConfig, error) {
 	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
 		if secret.SecretNotExist(err) {
@@ -60,6 +60,10 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 		existingSecret.Data[ConfigKey] = acBytes
 	}
 
+	if overrideNsName {
+		existingSecret.Name = secretNsName.Name
+		existingSecret.Namespace = secretNsName.Namespace
+	}
 	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 

@@ -27,7 +27,7 @@ func TestEnsureSecret(t *testing.T) {
 
 		secretGetUpdateCreator := &mockSecretGetUpdateCreator{secret: &s}
 
-		ac, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig)
+		ac, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig, false)
 		assert.NoError(t, err)
 		assert.Equal(t, desiredAutomationConfig, ac, "The config should be returned if there is not one currently.")
 
@@ -50,7 +50,7 @@ func TestEnsureSecret(t *testing.T) {
 		newAc, err := newAutomationConfigBuilder().SetDomain("different-domain").Build()
 		assert.NoError(t, err)
 
-		res, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, newAc)
+		res, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, newAc, false)
 		assert.NoError(t, err)
 		assert.Equal(t, newAc, res)
 
