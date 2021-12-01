@@ -410,6 +410,10 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		})
 }
 
+// ensureService creates a Service unless it already exists.
+//
+// The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
+// will be created for the arbiters Statefulset.
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
 	svc := buildService(mdb, isArbiter)
 	err := r.client.Create(context.TODO(), &svc)
@@ -500,16 +504,13 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 // Arbiter's StatefulSet.
 func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
 	label := make(map[string]string)
-	if isArbiter {
-		label["app"] = mdb.ArbiterServiceName()
-	} else {
-		label["app"] = mdb.ServiceName()
-	}
 
 	name := mdb.ServiceName()
 	if isArbiter {
 		name = mdb.ArbiterServiceName()
 	}
+
+	label["app"] = name
 
 	return service.Builder().
 		SetName(name).
@@ -626,8 +627,8 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 
 func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
 	return statefulset.Apply(
-		statefulset.WithReplicas(int(mdb.Spec.Arbiters)),
-		statefulset.WithServiceName(mdb.Name+"-arb-svc"),
+		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
+		statefulset.WithServiceName(mdb.ArbiterServiceName()),
 		statefulset.WithName(mdb.Name+"-arb"),
 	)
 }

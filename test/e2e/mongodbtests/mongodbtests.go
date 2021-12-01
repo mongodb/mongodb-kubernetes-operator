@@ -42,7 +42,7 @@ func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configura
 	return statefulSetIsReady(mdb, defaultOpts...)
 }
 
-// StatefulSetBecomesReady ensures that the underlying stateful set
+// ArbitersStatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
 func ArbitersStatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
