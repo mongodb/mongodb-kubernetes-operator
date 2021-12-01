@@ -11,21 +11,21 @@ type mockSecretGetUpdateCreateDeleter struct {
 	secrets map[client.ObjectKey]corev1.Secret
 }
 
-func (c mockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey, path ...string) error {
+func (c mockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey) error {
 	delete(c.secrets, objectKey)
 	return nil
 }
 
-func (c mockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret, path ...string) error {
+func (c mockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret) error {
 	c.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	return nil
 }
 
-func (c mockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret, path ...string) error {
+func (c mockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) error {
 	return c.UpdateSecret(secret)
 }
 
-func (c mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error) {
+func (c mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if s, ok := c.secrets[objectKey]; !ok {
 		return corev1.Secret{}, notFoundError()
 	} else {
