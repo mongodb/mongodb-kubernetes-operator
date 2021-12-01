@@ -2,7 +2,6 @@ package scram
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,10 +31,6 @@ func (c mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) 
 	} else {
 		return s, nil
 	}
-}
-
-func (c mockSecretGetUpdateCreateDeleter) IsNotFound(err error) bool {
-	return apiErrors.IsNotFound(err)
 }
 
 type mockConfigurable struct {

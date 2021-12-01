@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -102,10 +101,6 @@ func (c client) GetSecret(objectKey k8sClient.ObjectKey) (corev1.Secret, error) 
 		return corev1.Secret{}, err
 	}
 	return s, nil
-}
-
-func (c client) IsNotFound(err error) bool {
-	return apiErrors.IsNotFound(err)
 }
 
 // UpdateSecret provides a thin wrapper and client.Client to update corev1.Secret types

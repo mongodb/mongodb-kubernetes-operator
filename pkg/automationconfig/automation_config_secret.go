@@ -15,7 +15,7 @@ const ConfigKey = "cluster-config.json"
 func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
 	acSecret, err := secretGetter.GetSecret(secretNsName)
 	if err != nil {
-		if secretGetter.IsNotFound(err) {
+		if secret.SecretNotExist(err) {
 			err = nil
 		}
 		return AutomationConfig{}, err
@@ -30,7 +30,7 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
 	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
-		if secretGetUpdateCreator.IsNotFound(err) {
+		if secret.SecretNotExist(err) {
 			return createNewAutomationConfigSecret(secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
 		}
 		return AutomationConfig{}, err
