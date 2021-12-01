@@ -95,7 +95,7 @@ func (c client) GetPod(objectKey k8sClient.ObjectKey) (corev1.Pod, error) {
 }
 
 // GetSecret provides a thin wrapper and client.Client to access corev1.Secret types
-func (c client) GetSecret(objectKey k8sClient.ObjectKey, path ...string) (corev1.Secret, error) {
+func (c client) GetSecret(objectKey k8sClient.ObjectKey) (corev1.Secret, error) {
 	s := corev1.Secret{}
 	if err := c.Get(context.TODO(), objectKey, &s); err != nil {
 		return corev1.Secret{}, err
@@ -104,17 +104,17 @@ func (c client) GetSecret(objectKey k8sClient.ObjectKey, path ...string) (corev1
 }
 
 // UpdateSecret provides a thin wrapper and client.Client to update corev1.Secret types
-func (c client) UpdateSecret(secret corev1.Secret, path ...string) error {
+func (c client) UpdateSecret(secret corev1.Secret) error {
 	return c.Update(context.TODO(), &secret)
 }
 
 // CreateSecret provides a thin wrapper and client.Client to create corev1.Secret types
-func (c client) CreateSecret(secret corev1.Secret, path ...string) error {
+func (c client) CreateSecret(secret corev1.Secret) error {
 	return c.Create(context.TODO(), &secret)
 }
 
 // DeleteSecret provides a thin wrapper and client.Client to delete corev1.Secret types
-func (c client) DeleteSecret(key k8sClient.ObjectKey, path ...string) error {
+func (c client) DeleteSecret(key k8sClient.ObjectKey) error {
 	s := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      key.Name,

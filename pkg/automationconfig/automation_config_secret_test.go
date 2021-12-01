@@ -83,7 +83,7 @@ type mockSecretGetUpdateCreator struct {
 	secret *corev1.Secret
 }
 
-func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey, path ...string) (corev1.Secret, error) {
+func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if m.secret != nil {
 		if objectKey.Name == m.secret.Name && objectKey.Namespace == m.secret.Namespace {
 			return *m.secret, nil
@@ -92,12 +92,12 @@ func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey, path 
 	return corev1.Secret{}, notFoundError()
 }
 
-func (m *mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret, path ...string) error {
+func (m *mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret) error {
 	m.secret = &secret
 	return nil
 }
 
-func (m *mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret, path ...string) error {
+func (m *mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret) error {
 	if m.secret == nil {
 		m.secret = &secret
 		return nil
