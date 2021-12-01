@@ -61,7 +61,9 @@ type MongoDBCommunitySpec struct {
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version,omitempty"`
 
-	// Arbiters is the number of arbiters (each counted as a member) in the replica set
+	// Arbiters is the number of arbiters to add to the Replica Set.
+	// It is not recommended to have more than one arbiter per Replica Set.
+	// More info: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/
 	// +optional
 	Arbiters int `json:"arbiters"`
 
