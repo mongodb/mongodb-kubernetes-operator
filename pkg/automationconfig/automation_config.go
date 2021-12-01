@@ -3,8 +3,10 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/nsf/jsondiff"
 	"github.com/stretchr/objx"
 )
 
@@ -292,6 +294,7 @@ func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
 	// and in the AutomationConfig Struct we use omitempty to set empty field to nil
 	// The agent requires the nil value we provide, otherwise the agent attempts to configure authentication.
 	ac0.Version = ac1.Version
+
 	ac0Bytes, err := json.Marshal(ac0)
 	if err != nil {
 		return false, err
@@ -301,6 +304,8 @@ func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	_, d := jsondiff.Compare(ac0Bytes, ac1Bytes, &jsondiff.Options{})
+	fmt.Printf("Diff: %s", d)
 	return bytes.Equal(ac0Bytes, ac1Bytes), nil
 }
 
