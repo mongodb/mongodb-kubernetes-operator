@@ -136,7 +136,7 @@ type ReplicaSetMember struct {
 type ReplicaSetHorizons map[string]string
 
 // newReplicaSetMember returns a ReplicaSetMember.
-func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, isArbiter bool, isVotingMember bool) ReplicaSetMember {
+func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArbiter bool, isVotingMember bool) ReplicaSetMember {
 	// ensure that the number of voting members in the replica set is not more than 7
 	// as this is the maximum number of voting members.
 	votes := 0
@@ -149,7 +149,7 @@ func newReplicaSetMember(p Process, id int, horizons ReplicaSetHorizons, isArbit
 
 	return ReplicaSetMember{
 		Id:          id,
-		Host:        p.Name,
+		Host:        name,
 		Priority:    priority,
 		ArbiterOnly: isArbiter,
 		Votes:       votes,

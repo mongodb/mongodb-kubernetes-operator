@@ -64,11 +64,11 @@ func TestBuildAutomationConfig(t *testing.T) {
 
 func TestBuildAutomationConfigArbiters(t *testing.T) {
 	// Test no arbiter (field specified)
-	noArbiters := 0
-	noMembers := 4
+	numArbiters := 0
+	numMembers := 4
 	ac, err := NewBuilder().
-		SetMembers(noMembers).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 
 	// Test no arbiter (field NOT specified)
 	ac, err = NewBuilder().
-		SetMembers(noMembers).
+		SetMembers(numMembers).
 		Build()
 
 	assert.NoError(t, err)
@@ -91,17 +91,17 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	}
 
 	// Test only one arbiter
-	noArbiters = 1
-	noMembers = 4
+	numArbiters = 1
+	numMembers = 4
 	ac, err = NewBuilder().
-		SetMembers(noMembers).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
-	assert.Len(t, rs.Members, noMembers+noArbiters)
+	assert.Len(t, rs.Members, numMembers+numArbiters)
 	assert.False(t, rs.Members[0].ArbiterOnly)
 	assert.False(t, rs.Members[1].ArbiterOnly)
 	assert.False(t, rs.Members[2].ArbiterOnly)
@@ -109,31 +109,31 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	assert.True(t, rs.Members[4].ArbiterOnly)
 
 	// Test with multiple arbiters
-	noArbiters = 2
-	noMembers = 4
+	numArbiters = 2
+	numMembers = 4
 	ac, err = NewBuilder().
-		SetMembers(noMembers).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
-		if i < noMembers {
+		if i < numMembers {
 			assert.False(t, member.ArbiterOnly, "First members should not be arbiters")
 		} else {
 			assert.True(t, member.ArbiterOnly, "Last members should be arbiters")
-			assert.Equal(t, member.Id, 100+i-noMembers)
+			assert.Equal(t, member.Id, 100+i-numMembers)
 		}
 	}
 
 	// Test arbiters should be able to vote
-	noArbiters = 2
-	noMembers = 10
+	numArbiters = 2
+	numMembers = 10
 	ac, err = NewBuilder().
-		SetMembers(noMembers).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)

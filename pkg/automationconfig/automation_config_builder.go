@@ -256,7 +256,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			fcv = b.fcv
 		}
 
-		// TODO: make a builder function for this struct
+		// TODO: Replace with a Builder for Process.
 		process := &Process{
 			Name:                        toProcessName(b.name, processIndex, isArbiter),
 			HostName:                    h,
@@ -273,6 +273,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		for _, mod := range b.processModifications {
 			mod(i, process)
 		}
+		processes[i] = *process
 
 		var horizon ReplicaSetHorizons
 		if b.replicaSetHorizons != nil {
@@ -287,8 +288,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			// arbiters.
 			isVotingMember = false
 		}
-		members[i] = newReplicaSetMember(*process, replicaSetIndex, horizon, isArbiter, isVotingMember)
-		processes[i] = *process
+
+		// TODO: Replace with a Builder for ReplicaSetMember.
+		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
 	}
 
 	if b.auth == nil {

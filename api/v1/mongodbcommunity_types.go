@@ -495,6 +495,8 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	return users
 }
 
+// IsStillScaling returns true if this resource is currently scaling,
+// considering both arbiters and regular members.
 func (m MongoDBCommunity) IsStillScaling() bool {
 	return scale.IsStillScaling(m) || scale.IsStillScaling(automationConfigReplicasScaler{
 		current: m.CurrentArbiters(),
@@ -639,6 +641,16 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
+// ForcedIndividualScaling if set to true, will always scale the deployment 1 by
+// 1, even if the resource has been just created.
+//
+// The reason for this is that we have 2 types of resources that are scaled at
+// different times: a) Regular members, which can be scaled from 0->n, for
+// instance, when the resource was just created; and b) Arbiters, which will be
+// scaled from 0->M 1 by 1 at all times.
+//
+// This was done to simplify the process of scaling arbiters, *after* members
+// have reached the desired amount of replicas.
 func (m MongoDBCommunity) ForcedIndividualScaling() bool {
 	return false
 }
