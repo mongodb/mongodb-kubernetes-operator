@@ -2,6 +2,7 @@ package secret
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -188,4 +189,11 @@ func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Sec
 
 	// They are different so we need to update it
 	return getUpdateCreator.UpdateSecret(secret)
+}
+
+func SecretNotExist(err error) bool {
+	if err == nil {
+		return false
+	}
+	return apiErrors.IsNotFound(err) || strings.Contains(err.Error(), "secret not found")
 }

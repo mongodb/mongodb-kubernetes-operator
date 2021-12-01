@@ -1,6 +1,10 @@
 package headless
 
 import (
+	"io/ioutil"
+	"os"
+	"strconv"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/health"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/pod"
@@ -15,9 +19,26 @@ import (
 // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod)
 // though passing the namespace as an environment variable makes the code simpler for testing and saves an IO operation
 func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, error) {
-	targetVersion, err := secret.ReadAutomationConfigVersionFromSecret(conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
+	var targetVersion int64
+	var err error
+	targetVersion, err = secret.ReadAutomationConfigVersionFromSecret(conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
 	if err != nil {
-		return false, err
+		file, err := os.Open("/var/lib/automation/config/acVersion/version")
+		if err != nil {
+			return false, err
+		}
+		defer file.Close()
+		data, err := ioutil.ReadAll(file)
+
+		if err != nil {
+			return false, err
+		}
+
+		targetVersion, err = strconv.ParseInt(string(data), 10, 64)
+
+		if err != nil {
+			return false, err
+		}
 	}
 
 	currentAgentVersion := readCurrentAgentInfo(health, targetVersion)

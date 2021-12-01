@@ -3,10 +3,7 @@ package automationconfig
 import (
 	"encoding/json"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -18,7 +15,10 @@ const ConfigKey = "cluster-config.json"
 func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
 	acSecret, err := secretGetter.GetSecret(secretNsName)
 	if err != nil {
-		return AutomationConfig{}, client.IgnoreNotFound(err)
+		if secret.SecretNotExist(err) {
+			err = nil
+		}
+		return AutomationConfig{}, err
 	}
 	return FromBytes(acSecret.Data[ConfigKey])
 }
@@ -30,7 +30,7 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
 	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
+		if secret.SecretNotExist(err) {
 			return createNewAutomationConfigSecret(secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
 		}
 		return AutomationConfig{}, err
@@ -60,6 +60,8 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 		existingSecret.Data[ConfigKey] = acBytes
 	}
 
+	existingSecret.Name = secretNsName.Name
+	existingSecret.Namespace = secretNsName.Namespace
 	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
 }
 

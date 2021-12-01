@@ -3,7 +3,6 @@ package scram
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -14,7 +13,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -146,7 +144,7 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User,
 	password, err := secret.ReadKey(getUpdateCreator, user.PasswordSecretKey, types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
 		// if the password is deleted, that's fine we can read from the stored credentials that were previously generated
-		if SecretNotExist(err) {
+		if secret.SecretNotExist(err) {
 			zap.S().Debugf("password secret was not found, reading from credentials from secret/%s", user.ScramCredentialsSecretName)
 			return readExistingCredentials(getUpdateCreator, mdbNamespacedName, user.ScramCredentialsSecretName)
 		}
@@ -189,7 +187,7 @@ func needToGenerateNewCredentials(secretGetter secret.Getter, username, scramCre
 	s, err := secretGetter.GetSecret(types.NamespacedName{Name: scramCredentialsSecretName, Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
 		// haven't generated credentials yet, so we are changing password
-		if SecretNotExist(err) {
+		if secret.SecretNotExist(err) {
 			zap.S().Debugf("No existing credentials found, generating new credentials")
 			return true, nil
 		}
@@ -342,11 +340,4 @@ func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secre
 // GetConnectionStringSecretName returns the name of the secret where the operator stores the connection string for current user
 func (u User) GetConnectionStringSecretName(mdb Configurable) string {
 	return fmt.Sprintf("%s-%s-%s", mdb.NamespacedName().Name, u.Database, u.Username)
-}
-
-func SecretNotExist(err error) bool {
-	if err == nil {
-		return false
-	}
-	return apiErrors.IsNotFound(err) || strings.Contains(err.Error(), "secret not found")
 }
