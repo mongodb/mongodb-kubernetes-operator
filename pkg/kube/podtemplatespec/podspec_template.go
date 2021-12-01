@@ -231,7 +231,12 @@ func WithAnnotations(annotations map[string]string) Modification {
 		annotations = map[string]string{}
 	}
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		podTemplateSpec.Annotations = annotations
+		if podTemplateSpec.Annotations == nil {
+			podTemplateSpec.Annotations = map[string]string{}
+		}
+		for k, v := range annotations {
+			podTemplateSpec.Annotations[k] = v
+		}
 	}
 }
 
