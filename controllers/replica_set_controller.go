@@ -142,10 +142,19 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Ensuring the service exists")
-	if err := r.ensureService(mdb); err != nil {
+	if err := r.ensureService(mdb, false); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
+				withMessage(Error, fmt.Sprintf("Error ensuring the service (members) exists: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	r.log.Debug("Ensuring the service for Arbiters exists")
+	if err := r.ensureService(mdb, true); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring the service (arbiters) exists: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -295,13 +304,13 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 // The returned boolean indicates that the StatefulSet is ready.
 func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Info("Creating/Updating StatefulSet")
-	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+	if err := r.createOrUpdateStatefulSet(mdb, false); err != nil {
 		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
 	if mdb.Spec.Arbiters > 0 {
 		r.log.Info("Creating/Updating StatefulSet for Arbiters")
-		if err := r.createOrUpdateStatefulSetForArbiters(mdb); err != nil {
+		if err := r.createOrUpdateStatefulSet(mdb, true); err != nil {
 			return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 		}
 	} else {
@@ -401,53 +410,38 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		})
 }
 
-func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	svc := buildService(mdb, false)
+func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
+	svc := buildService(mdb, isArbiter)
 	err := r.client.Create(context.TODO(), &svc)
 	if err != nil && apiErrors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
 
-	if mdb.Spec.Arbiters > 0 {
-		svc = buildService(mdb, true)
-		err = r.client.Create(context.TODO(), &svc)
-		if err != nil && apiErrors.IsAlreadyExists(err) {
-			r.log.Infof("Arbiters service already exists... moving forward: %s", err)
-			return nil
-		}
-	}
-
 	return err
 }
 
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
+func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
 	set := appsv1.StatefulSet{}
-	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
+
+	name := mdb.NamespacedName()
+	if isArbiter {
+		name.Name = name.Name + "-arb"
+	}
+
+	err := r.client.Get(context.TODO(), name, &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
+
 	buildStatefulSetModificationFunction(mdb)(&set)
+	if isArbiter {
+		buildArbitersModificationFunction(mdb)(&set)
+	}
+
 	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
-	}
-	return nil
-}
-
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSetForArbiters(mdb mdbv1.MongoDBCommunity) error {
-	set := appsv1.StatefulSet{}
-	name := types.NamespacedName{Name: mdb.Name + "-arb", Namespace: mdb.Namespace}
-	err := r.client.Get(context.TODO(), name, &set)
-	err = k8sClient.IgnoreNotFound(err)
-	if err != nil {
-		return errors.Errorf("error getting Arbiters StatefulSet: %s", err)
-	}
-	buildStatefulSetModificationFunction(mdb)(&set)
-	buildArbitersModificationFunction(mdb)(&set)
-
-	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
-		return errors.Errorf("error creating/updating Arbiters StatefulSet: %s", err)
 	}
 	return nil
 }
