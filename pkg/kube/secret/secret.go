@@ -99,7 +99,7 @@ func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value s
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
 	_, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
-		if apiErrors.IsNotFound(err) {
+		if SecretNotExist(err) {
 			return getUpdateCreator.CreateSecret(secret)
 		}
 		return err
@@ -123,7 +123,7 @@ func HasAllKeys(secret corev1.Secret, keys ...string) bool {
 func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, nsName types.NamespacedName, ownerReferences []metav1.OwnerReference, key, value string) (string, error) {
 	existingSecret, err0 := secretGetUpdateCreateDeleter.GetSecret(nsName)
 	if err0 != nil {
-		if apiErrors.IsNotFound(err0) {
+		if SecretNotExist(err0) {
 			s := Builder().
 				SetNamespace(nsName.Namespace).
 				SetName(nsName.Name).
