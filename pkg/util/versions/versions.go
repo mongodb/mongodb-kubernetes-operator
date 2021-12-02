@@ -13,8 +13,7 @@ func CalculateFeatureCompatibilityVersion(versionStr string) string {
 		return ""
 	}
 
-	baseVersion, _ := semver.Make("3.4.0")
-	if v1.GTE(baseVersion) {
+	if v1.GTE(semver.MustParse("3.4.0")) {
 		return fmt.Sprintf("%d.%d", v1.Major, v1.Minor)
 	}
 

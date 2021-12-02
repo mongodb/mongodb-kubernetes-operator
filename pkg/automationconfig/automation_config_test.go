@@ -42,7 +42,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("my-rs-%d.my-ns.svc.cluster.local", i), p.HostName)
 		assert.Equal(t, DefaultMongoDBDataDir, p.Args26.Get("storage.dbPath").Data())
 		assert.Equal(t, "my-rs", p.Args26.Get("replication.replSetName").Data())
-		assert.Equal(t, toProcessName("my-rs", i), p.Name)
+		assert.Equal(t, toProcessName("my-rs", i, false), p.Name)
 		assert.Equal(t, "4.2.0", p.Version)
 		assert.Equal(t, "4.0", p.FeatureCompatibilityVersion)
 	}
@@ -64,10 +64,11 @@ func TestBuildAutomationConfig(t *testing.T) {
 
 func TestBuildAutomationConfigArbiters(t *testing.T) {
 	// Test no arbiter (field specified)
-	noArbiters := 0
+	numArbiters := 0
+	numMembers := 4
 	ac, err := NewBuilder().
-		SetMembers(4).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
@@ -79,7 +80,7 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 
 	// Test no arbiter (field NOT specified)
 	ac, err = NewBuilder().
-		SetMembers(4).
+		SetMembers(numMembers).
 		Build()
 
 	assert.NoError(t, err)
@@ -90,79 +91,72 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	}
 
 	// Test only one arbiter
-	noArbiters = 1
+	numArbiters = 1
+	numMembers = 4
 	ac, err = NewBuilder().
-		SetMembers(4).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first member should be an arbiter")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
+	assert.Len(t, rs.Members, numMembers+numArbiters)
+	assert.False(t, rs.Members[0].ArbiterOnly)
+	assert.False(t, rs.Members[1].ArbiterOnly)
+	assert.False(t, rs.Members[2].ArbiterOnly)
+	assert.False(t, rs.Members[3].ArbiterOnly)
+	assert.True(t, rs.Members[4].ArbiterOnly)
 
 	// Test with multiple arbiters
-	noArbiters = 2
+	numArbiters = 2
+	numMembers = 4
 	ac, err = NewBuilder().
-		SetMembers(4).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
 	rs = ac.ReplicaSets[0]
 	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
+		if i < numMembers {
+			assert.False(t, member.ArbiterOnly, "First members should not be arbiters")
 		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
+			assert.True(t, member.ArbiterOnly, "Last members should be arbiters")
+			assert.Equal(t, member.Id, 100+i-numMembers)
 		}
 	}
 
-	//Test With only Arbiters
-	// The error will be generated when the reconcile loop is called (tested in the e2e tests).
-	noArbiters = 4
+	// Test arbiters should be able to vote
+	numArbiters = 2
+	numMembers = 10
 	ac, err = NewBuilder().
-		SetMembers(noArbiters).
-		SetArbiters(noArbiters).
+		SetMembers(numMembers).
+		SetArbiters(numArbiters).
 		Build()
 
 	assert.NoError(t, err)
 
-	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
+	m := ac.ReplicaSets[0].Members
 
-	//Test With more Arbiters than members
-	// The error will be generated when the reconcile loop is called (tested in the e2e tests).
-	noMembers := 3
-	noArbiters = noMembers + 1
-	ac, err = NewBuilder().
-		SetMembers(noMembers).
-		SetArbiters(noArbiters).
-		Build()
+	// First 5 data-bearing nodes have votes
+	assert.Equal(t, 1, m[0].Votes)
+	assert.Equal(t, 1, m[1].Votes)
+	assert.Equal(t, 1, m[2].Votes)
+	assert.Equal(t, 1, m[3].Votes)
+	assert.Equal(t, 1, m[4].Votes)
 
-	assert.NoError(t, err)
+	// From 6th data-bearing nodes, they won'thave any votes
+	assert.Equal(t, 0, m[5].Votes)
+	assert.Equal(t, 0, m[6].Votes)
+	assert.Equal(t, 0, m[7].Votes)
+	assert.Equal(t, 0, m[8].Votes)
+	assert.Equal(t, 0, m[9].Votes)
 
-	rs = ac.ReplicaSets[0]
-	for i, member := range rs.Members {
-		if i < noArbiters {
-			assert.True(t, member.ArbiterOnly, "The first two members should be arbiters")
-		} else {
-			assert.False(t, member.ArbiterOnly, "These members should not be arbiters")
-		}
-	}
+	// Arbiters always have votes
+	assert.Equal(t, 1, m[10].Votes)
+	assert.Equal(t, 1, m[11].Votes)
 }
 
 func TestReplicaSetHorizons(t *testing.T) {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/imdario/mergo"
 	"github.com/stretchr/objx"
-	"os"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -141,10 +142,19 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Ensuring the service exists")
-	if err := r.ensureService(mdb); err != nil {
+	if err := r.ensureService(mdb, false); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring the service exists: %s", err)).
+				withMessage(Error, fmt.Sprintf("Error ensuring the service (members) exists: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
+	r.log.Debug("Ensuring the service for Arbiters exists")
+	if err := r.ensureService(mdb, true); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring the service (arbiters) exists: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -208,12 +218,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
-	if scale.IsStillScaling(mdb) {
+	if mdb.IsStillScaling() {
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
 				mdb.CurrentReplicas(), mdb.DesiredReplicas())).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+			withStatefulSetArbiters(mdb.StatefulSetArbitersThisReconciliation()).
+			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withPendingPhase(10),
 		)
 	}
@@ -223,6 +235,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoURI(mdb.MongoURI(os.Getenv(clusterDomain))).
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
+			withStatefulSetArbiters(mdb.StatefulSetArbitersThisReconciliation()).
+			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase().
 			withVersion(mdb.GetMongoDBVersion()),
@@ -283,11 +297,24 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 }
 
 // deployStatefulSet deploys the backing StatefulSet of the MongoDBCommunity resource.
+//
+// When `Spec.Arbiters` > 0, a second StatefulSet will be created, with the amount
+// of Pods corresponding to the amount of expected arbiters.
+//
 // The returned boolean indicates that the StatefulSet is ready.
 func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Info("Creating/Updating StatefulSet")
-	if err := r.createOrUpdateStatefulSet(mdb); err != nil {
+	if err := r.createOrUpdateStatefulSet(mdb, false); err != nil {
 		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
+	}
+
+	if mdb.Spec.Arbiters > 0 {
+		r.log.Info("Creating/Updating StatefulSet for Arbiters")
+		if err := r.createOrUpdateStatefulSet(mdb, true); err != nil {
+			return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
+		}
+	} else {
+		r.log.Info("Arbiters set to 0, not creating another STS")
 	}
 
 	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
@@ -383,24 +410,40 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		})
 }
 
-func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	svc := buildService(mdb)
+// ensureService creates a Service unless it already exists.
+//
+// The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
+// will be created for the arbiters Statefulset.
+func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
+	svc := buildService(mdb, isArbiter)
 	err := r.client.Create(context.TODO(), &svc)
 	if err != nil && apiErrors.IsAlreadyExists(err) {
 		r.log.Infof("The service already exists... moving forward: %s", err)
 		return nil
 	}
+
 	return err
 }
 
-func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
+func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
 	set := appsv1.StatefulSet{}
-	err := r.client.Get(context.TODO(), mdb.NamespacedName(), &set)
+
+	name := mdb.NamespacedName()
+	if isArbiter {
+		name.Name = name.Name + "-arb"
+	}
+
+	err := r.client.Get(context.TODO(), name, &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
 		return errors.Errorf("error getting StatefulSet: %s", err)
 	}
+
 	buildStatefulSetModificationFunction(mdb)(&set)
+	if isArbiter {
+		buildArbitersModificationFunction(mdb)(&set)
+	}
+
 	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
@@ -421,19 +464,27 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 		mdb.GetOwnerReferences(),
 		ac,
 	)
-
 }
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+	arbiterDomain := getDomain(mdb.ArbiterServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
+
+	arbitersCount := mdb.AutomationConfigArbitersThisReconciliation()
+	if mdb.AutomationConfigMembersThisReconciliation() < mdb.Spec.Members {
+		// Have not reached desired amount of members yet, should not scale arbiters
+		arbitersCount = mdb.Status.CurrentMongoDBArbiters
+	}
 
 	return automationconfig.NewBuilder().
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
+		SetArbiterDomain(arbiterDomain).
 		SetMembers(mdb.AutomationConfigMembersThisReconciliation()).
-		SetArbiters(mdb.Spec.Arbiters).
+		SetArbiters(arbitersCount).
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
@@ -448,13 +499,21 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-// TODO: Make sure this Service is as minimal as possible, to not interfere with
-// future implementations and Service Discovery mechanisms we might implement.
-func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
+//
+// If `isArbiter` is true, the function will create a Service suitable for the
+// Arbiter's StatefulSet.
+func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
 	label := make(map[string]string)
-	label["app"] = mdb.ServiceName()
+
+	name := mdb.ServiceName()
+	if isArbiter {
+		name = mdb.ArbiterServiceName()
+	}
+
+	label["app"] = name
+
 	return service.Builder().
-		SetName(mdb.ServiceName()).
+		SetName(name).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
 		SetServiceType(corev1.ServiceTypeClusterIP).
@@ -517,13 +576,18 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 
-	return buildAutomationConfig(
+	automationConfig, err := buildAutomationConfig(
 		mdb,
 		auth,
 		currentAC,
 		tlsModification,
 		customRolesModification,
 	)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
+	}
+
+	return automationConfig, nil
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD
@@ -558,6 +622,14 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		),
 
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
+	)
+}
+
+func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
+	return statefulset.Apply(
+		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
+		statefulset.WithServiceName(mdb.ArbiterServiceName()),
+		statefulset.WithName(mdb.Name+"-arb"),
 	)
 }
 

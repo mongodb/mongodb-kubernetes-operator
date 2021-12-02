@@ -62,7 +62,9 @@ type MongoDBCommunitySpec struct {
 	// Version defines which version of MongoDB will be used
 	Version string `json:"version,omitempty"`
 
-	// Arbiters is the number of arbiters (each counted as a member) in the replica set
+	// Arbiters is the number of arbiters to add to the Replica Set.
+	// It is not recommended to have more than one arbiter per Replica Set.
+	// More info: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/
 	// +optional
 	Arbiters int `json:"arbiters"`
 
@@ -392,6 +394,9 @@ type MongoDBCommunityStatus struct {
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
 	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
 
+	CurrentStatefulSetArbitersReplicas int `json:"currentStatefulSetArbitersReplicas"`
+	CurrentMongoDBArbiters             int `json:"currentMongoDBArbiters"`
+
 	Message string `json:"message,omitempty"`
 }
 
@@ -493,12 +498,39 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	return users
 }
 
+// IsStillScaling returns true if this resource is currently scaling,
+// considering both arbiters and regular members.
+func (m MongoDBCommunity) IsStillScaling() bool {
+	return scale.IsStillScaling(m) || scale.IsStillScaling(automationConfigReplicasScaler{
+		current: m.CurrentArbiters(),
+		desired: m.DesiredArbiters(),
+	})
+}
+
+// AutomationConfigMembersThisReconciliation determines the correct number of
+// automation config replica set members based on our desired number, and our
+// current number.
 func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
-	// determine the correct number of automation config replica set members
-	// based on our desired number, and our current number
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
-		desired: m.Spec.Members,
 		current: m.Status.CurrentMongoDBMembers,
+		desired: m.Spec.Members,
+	})
+}
+
+// AutomationConfigArbitersThisReconciliation determines the correct number of
+// automation config replica set arbiters based on our desired number, and our
+// current number.
+//
+// Will not update arbiters until members have reached desired number.
+func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
+	if m.AutomationConfigMembersThisReconciliation() < m.Spec.Members {
+		return m.Status.CurrentMongoDBArbiters
+	}
+
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired:                m.Spec.Arbiters,
+		current:                m.Status.CurrentMongoDBArbiters,
+		forceIndividualScaling: true,
 	})
 }
 
@@ -555,13 +587,22 @@ func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 	return hosts
 }
 
-// ServiceName returns the name of the Service that should be created for this resource
+// ServiceName returns the name of the Service that should be created for this resource.
 func (m MongoDBCommunity) ServiceName() string {
 	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
 	if serviceName != "" {
 		return serviceName
 	}
 	return m.Name + "-svc"
+}
+
+// ArbiterServiceName returns the name of the Service for the Arbiters for this resource.
+func (m MongoDBCommunity) ArbiterServiceName() string {
+	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
+	if serviceName != "" {
+		return serviceName + "-arb-svc"
+	}
+	return m.Name + "-arb-svc"
 }
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
@@ -603,6 +644,28 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
+// ForcedIndividualScaling if set to true, will always scale the deployment 1 by
+// 1, even if the resource has been just created.
+//
+// The reason for this is that we have 2 types of resources that are scaled at
+// different times: a) Regular members, which can be scaled from 0->n, for
+// instance, when the resource was just created; and b) Arbiters, which will be
+// scaled from 0->M 1 by 1 at all times.
+//
+// This was done to simplify the process of scaling arbiters, *after* members
+// have reached the desired amount of replicas.
+func (m MongoDBCommunity) ForcedIndividualScaling() bool {
+	return false
+}
+
+func (m MongoDBCommunity) DesiredArbiters() int {
+	return m.Spec.Arbiters
+}
+
+func (m MongoDBCommunity) CurrentArbiters() int {
+	return m.Status.CurrentStatefulSetArbitersReplicas
+}
+
 func (m MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
@@ -615,7 +678,19 @@ func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 }
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
-	return scale.ReplicasThisReconciliation(m)
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired:                m.DesiredReplicas(),
+		current:                m.CurrentReplicas(),
+		forceIndividualScaling: false,
+	})
+}
+
+func (m *MongoDBCommunity) StatefulSetArbitersThisReconciliation() int {
+	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
+		desired:                m.DesiredArbiters(),
+		current:                m.CurrentArbiters(),
+		forceIndividualScaling: true,
+	})
 }
 
 // GetUpdateStrategyType returns the type of RollingUpgradeStrategy that the
@@ -659,7 +734,8 @@ func (m MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 }
 
 type automationConfigReplicasScaler struct {
-	current, desired int
+	current, desired       int
+	forceIndividualScaling bool
 }
 
 func (a automationConfigReplicasScaler) DesiredReplicas() int {
@@ -668,6 +744,10 @@ func (a automationConfigReplicasScaler) DesiredReplicas() int {
 
 func (a automationConfigReplicasScaler) CurrentReplicas() int {
 	return a.current
+}
+
+func (a automationConfigReplicasScaler) ForcedIndividualScaling() bool {
+	return a.forceIndividualScaling
 }
 
 // +kubebuilder:object:root=true

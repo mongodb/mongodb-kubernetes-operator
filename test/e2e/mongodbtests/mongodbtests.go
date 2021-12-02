@@ -42,6 +42,17 @@ func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configura
 	return statefulSetIsReady(mdb, defaultOpts...)
 }
 
+// ArbitersStatefulSetBecomesReady ensures that the underlying stateful set
+// reaches the running state.
+func ArbitersStatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	defaultOpts := []wait.Configuration{
+		wait.RetryInterval(time.Second * 15),
+		wait.Timeout(time.Minute * 20),
+	}
+	defaultOpts = append(defaultOpts, opts...)
+	return arbitersStatefulSetIsReady(mdb, defaultOpts...)
+}
+
 // StatefulSetBecomesUnready ensures the underlying stateful set reaches
 // the unready state.
 func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
@@ -66,11 +77,23 @@ func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testi
 	}
 }
 
-// StatefulSetIsReady ensures that the underlying stateful set
-// reaches the running state
+// statefulSetIsReady ensures that the underlying stateful set
+// reaches the running state.
 func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := wait.ForStatefulSetToBeReady(t, mdb, opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
+// arbitersStatefulSetIsReady ensures that the underlying stateful set
+// reaches the running state.
+func arbitersStatefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForArbitersStatefulSetToBeReady(t, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -379,12 +402,25 @@ func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunitySt
 	}
 }
 
-// Scale update the MongoDB with a new number of members and updates the resource
+// Scale update the MongoDB with a new number of members and updates the resource.
 func Scale(mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
 		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Members = newMembers
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Scale update the MongoDB with a new number of arbiters and updates the resource.
+func ScaleArbiters(mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newArbiters)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Arbiters = newArbiters
 		})
 		if err != nil {
 			t.Fatal(err)
