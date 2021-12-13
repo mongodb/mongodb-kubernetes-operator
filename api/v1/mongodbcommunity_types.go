@@ -102,7 +102,7 @@ type MongoDBCommunitySpec struct {
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 
-	// AutomationConfigOverride is merged on top of the operator created automation config. Process names are merged
+	// AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
 	// by name.
 	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfigOverride,omitempty"`
 }
