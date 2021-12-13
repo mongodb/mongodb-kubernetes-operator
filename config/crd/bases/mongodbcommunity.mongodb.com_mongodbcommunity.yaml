@@ -59,6 +59,16 @@ spec:
                   Set. It is not recommended to have more than one arbiter per Replica
                   Set. More info: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/'
                 type: integer
+              automationConfigOverride:
+                description: AutomationConfigOverride is merged on top of the operator
+                  created automation config. Process names are merged by name.
+                properties:
+                  automationConfig:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                required:
+                - automationConfig
+                type: object
               featureCompatibilityVersion:
                 description: FeatureCompatibilityVersion configures the feature compatibility
                   version that will be set for the deployment

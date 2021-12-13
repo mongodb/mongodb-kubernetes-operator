@@ -45,6 +45,7 @@ type MonitoringVersion struct {
 
 type Process struct {
 	Name                        string      `json:"name"`
+	Disabled                    bool        `json:"disabled"`
 	HostName                    string      `json:"hostname"`
 	Args26                      objx.Map    `json:"args2_6"`
 	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`

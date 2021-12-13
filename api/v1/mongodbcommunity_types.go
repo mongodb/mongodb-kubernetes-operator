@@ -101,6 +101,10 @@ type MongoDBCommunitySpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
+
+	// AutomationConfigOverride is merged on top of the operator created automation config. Process names are merged
+	// by name.
+	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfigOverride,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -195,6 +199,31 @@ type Resource struct {
 type AuthenticationRestriction struct {
 	ClientSource  []string `json:"clientSource"`
 	ServerAddress []string `json:"serverAddress"`
+}
+
+type AutomationConfigOverride struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Wrapper AutomationConfigWrapper `json:"automationConfig"`
+}
+
+type AutomationConfigWrapper struct {
+	AutomationConfig automationconfig.AutomationConfig `json:"-"`
+}
+
+// MarshalJSON defers JSON encoding to the wrapped map
+func (m *AutomationConfigWrapper) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.AutomationConfig)
+}
+
+// UnmarshalJSON will decode the data into the wrapped map
+func (m *AutomationConfigWrapper) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &m.AutomationConfig)
+}
+
+func (m *AutomationConfigWrapper) DeepCopy() *AutomationConfigWrapper {
+	return &AutomationConfigWrapper{
+		AutomationConfig: m.AutomationConfig,
+	}
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet

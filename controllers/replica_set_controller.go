@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	"os"
 
 	"github.com/imdario/mergo"
@@ -585,6 +586,10 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
+	}
+
+	if mdb.Spec.AutomationConfigOverride != nil {
+		automationConfig = merge.AutomationConfigs(automationConfig, mdb.Spec.AutomationConfigOverride.Wrapper.AutomationConfig)
 	}
 
 	return automationConfig, nil
