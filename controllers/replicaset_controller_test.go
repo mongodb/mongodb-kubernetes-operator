@@ -551,7 +551,7 @@ func TestAnnotationsAreAppliedToResource(t *testing.T) {
 }
 
 // assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
-// results in the AuthoritativeSet of the created Wrapper to have the expectedValue provided.
+// results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
 func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
