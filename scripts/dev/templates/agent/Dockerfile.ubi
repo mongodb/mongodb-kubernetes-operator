@@ -8,5 +8,5 @@ RUN microdnf install -y  --disableplugin=subscription-manager curl \
     && microdnf upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
-RUN microdnf remove perl-IO-Socket-SSL procps
+RUN microdnf remove perl-IO-Socket-SSL
 {% endblock -%}
