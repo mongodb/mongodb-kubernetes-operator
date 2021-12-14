@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	"os"
 
 	"github.com/imdario/mergo"
@@ -587,7 +588,28 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
 	}
 
+	if mdb.Spec.AutomationConfigOverride != nil {
+		automationConfig = merge.AutomationConfigs(automationConfig, overrideToAutomationConfig(*mdb.Spec.AutomationConfigOverride))
+	}
+
 	return automationConfig, nil
+}
+
+// overrideToAutomationConfig turns an automation config ovverride from the resource spec into an automation config
+// which can be used to merge.
+func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
+	var processes []automationconfig.Process
+	for _, p := range override.Processes {
+		processes = append(processes, automationconfig.Process{
+			Name:     p.Name,
+			Disabled: p.Disabled,
+		})
+	}
+
+	// TODO: currently we are just merging processes. Other fields can be added here.
+	return automationconfig.AutomationConfig{
+		Processes: processes,
+	}
 }
 
 // getMongodConfigModification will merge the additional configuration in the CRD

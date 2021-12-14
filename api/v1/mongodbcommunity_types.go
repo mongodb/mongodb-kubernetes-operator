@@ -102,6 +102,10 @@ type MongoDBCommunitySpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
+
+	// AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
+	// by name. Currently Only the process.disabled field is supported.
+	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfig,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -196,6 +200,20 @@ type Resource struct {
 type AuthenticationRestriction struct {
 	ClientSource  []string `json:"clientSource"`
 	ServerAddress []string `json:"serverAddress"`
+}
+
+// AutomationConfigOverride contains fields which will be overridden in the operator created config.
+type AutomationConfigOverride struct {
+	Processes []OverrideProcess `json:"processes"`
+}
+
+// Note: We do not use the automationconfig.Process type directly here as unmarshalling cannot happen directly
+// with the Args26 which is a map[string]interface{}
+
+// OverrideProcess contains fields that we can override on the AutomationConfig processes.
+type OverrideProcess struct {
+	Name     string `json:"name"`
+	Disabled bool   `json:"disabled"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
