@@ -37,7 +37,6 @@ jobs:
         - pipeline-argument: version-post-start-hook-init
         - pipeline-argument: readiness-probe-init
         - pipeline-argument: agent-ubi
-        - pipeline-argument: agent-ubuntu
         - pipeline-argument: e2e
     if: contains(github.event.pull_request.labels.*.name, 'dependencies') || contains(github.event.pull_request.labels.*.name,
       'safe-to-test')
@@ -88,50 +87,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - test-name: replica_set
-          distro: ubuntu
-        - test-name: replica_set_recovery
-          distro: ubuntu
-        - test-name: replica_set_recovery
-          distro: ubuntu
-        - test-name: replica_set_mongod_readiness
-          distro: ubuntu
-        - test-name: replica_set_scale
-          distro: ubuntu
-        - test-name: replica_set_scale_down
-          distro: ubuntu
-        - test-name: replica_set_change_version
-          distro: ubuntu
-        - test-name: feature_compatibility_version
-          distro: ubuntu
-        - test-name: feature_compatibility_version_upgrade
-          distro: ubuntu
-        - test-name: replica_set_tls
-          distro: ubuntu
-        - test-name: replica_set_tls_pem_file
-          distro: ubuntu
-        - test-name: replica_set_tls_recreate_mdbc
-          distro: ubuntu
-        - test-name: replica_set_tls_rotate
-          distro: ubuntu
-        - test-name: replica_set_tls_upgrade
-          distro: ubuntu
-        - test-name: statefulset_arbitrary_config
-          distro: ubuntu
-        - test-name: statefulset_arbitrary_config_update
-          distro: ubuntu
-        - test-name: replica_set_mongod_config
-          distro: ubuntu
-        - test-name: replica_set_cross_namespace_deploy
-          distro: ubuntu
-          cluster-wide: true
-        - test-name: replica_set_custom_role
-          distro: ubuntu
-        - test-name: replica_set_arbiter
-          distro: ubuntu
-        - test-name: replica_set_custom_persistent_volume
-          distro: ubuntu
-
         - test-name: replica_set
           distro: ubi
         - test-name: replica_set_recovery
