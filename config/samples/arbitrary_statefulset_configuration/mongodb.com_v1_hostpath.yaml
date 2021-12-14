@@ -1,0 +1,245 @@
+# This example deploys a 3 members ReplicaSet with HostPath volumes
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mdb0
+spec:
+  members: 3
+  security:
+    authentication:
+      modes:
+      - SCRAM
+  statefulSet:
+    spec:
+      template:
+        spec:
+          #  Hostpath volumes are owned by root
+          #  but MongoDB containers run as non root
+          #  so we use an init container to change the owner of
+          #  the directory (init containers run as root)
+          initContainers:
+          - command:
+              - chown
+              - -R
+              - "2000"
+              - /data
+            image: busybox
+            volumeMounts:
+            - mountPath: /data
+              name: data-volume
+            securityContext:
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+            name: change-dir-permissions
+        volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8G
+            selector:
+              matchLabels:
+                # We set this labels when creating the volume
+                # (see below)
+                type: data
+            storageClassName: default
+        - metadata:
+            name: logs-volume
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8G
+            selector:
+              matchLabels:
+                type: logs
+            storageClassName: default
+  type: ReplicaSet
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+      scramCredentialsSecretName: my-scram
+  version: 4.4.0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+type: Opaque
+stringData:
+  password: <your-password-here>
+---
+# Here we create 6 PVs: two for each ReplicaSet member
+# (one for data, one for logs)
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: data
+    name: data-volume-0
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-data-0
+      type: ""
+    nodeAffinity:
+      required:
+        # This is just an example for matchexpression
+        # This field is required depends on the specific
+        # of the environment the resource is deployed in
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: data
+    name: data-volume-1
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-data-1
+      type: ""
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+  status:
+    phase: Available
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: data
+    name: data-volume-2
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-data-2
+      type: ""
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: logs
+    name: logs-volume-0
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-logs-0
+      type: ""
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: logs
+    name: logs-volume-1
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-logs-1
+      type: ""
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    labels:
+      type: logs
+    name: logs-volume-2
+
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8G
+    hostPath:
+      path: /opt/data/mongo-logs-2
+      type: ""
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: default
+    volumeMode: Filesystem
+kind: List
+---
