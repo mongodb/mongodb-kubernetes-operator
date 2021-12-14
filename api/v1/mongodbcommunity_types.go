@@ -103,7 +103,7 @@ type MongoDBCommunitySpec struct {
 	AdditionalMongodConfig MongodConfiguration `json:"additionalMongodConfig,omitempty"`
 
 	// AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
-	// by name.
+	// by name. Currently Only the process.disabled field is supported.
 	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfigOverride,omitempty"`
 }
 
@@ -203,7 +203,7 @@ type AuthenticationRestriction struct {
 
 type AutomationConfigOverride struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Wrapper AutomationConfigWrapper `json:"automationConfig"`
+	Wrapper AutomationConfigWrapper `json:",inline"`
 }
 
 type AutomationConfigWrapper struct {

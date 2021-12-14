@@ -61,14 +61,10 @@ spec:
                 type: integer
               automationConfigOverride:
                 description: AutomationConfigOverride is merged on top of the operator
-                  created automation config. Process names are merged by name.
-                properties:
-                  automationConfig:
-                    type: object
-                    x-kubernetes-preserve-unknown-fields: true
-                required:
-                - automationConfig
+                  created automation config. Processes are merged by name. Currently
+                  Only the process.disabled field is supported.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               featureCompatibilityVersion:
                 description: FeatureCompatibilityVersion configures the feature compatibility
                   version that will be set for the deployment
