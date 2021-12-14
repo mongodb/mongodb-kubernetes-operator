@@ -43,23 +43,47 @@ func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 	connectionStringSecretNameMap := map[string]scram.User{}
 	nameCollisions := []string{}
+
+	scramSecretNameMap := map[string]scram.User{}
+	scramSecretNameCollisions := []string{}
+
 	for _, user := range mdb.GetScramUsers() {
-		secretName := user.GetConnectionStringSecretName(mdb)
-		if previousUser, exists := connectionStringSecretNameMap[secretName]; exists {
+
+		// Ensure no collisions in the connection string secret names
+		connectionStringSecretName := user.GetConnectionStringSecretName(mdb)
+		if previousUser, exists := connectionStringSecretNameMap[connectionStringSecretName]; exists {
 			nameCollisions = append(nameCollisions,
-				fmt.Sprintf(`[secret name: "%s" for user: "%s", db: "%s" and user: "%s", db: "%s"]`,
-					secretName,
+				fmt.Sprintf(`[connection string secret name: "%s" for user: "%s", db: "%s" and user: "%s", db: "%s"]`,
+					connectionStringSecretName,
 					previousUser.Username,
 					previousUser.Database,
 					user.Username,
 					user.Database))
 		} else {
-			connectionStringSecretNameMap[secretName] = user
+			connectionStringSecretNameMap[connectionStringSecretName] = user
 		}
+
+		// Ensure no collisions in the secret holding scram credentials
+		scramSecretName := user.ScramCredentialsSecretName
+		if previousUser, exists := scramSecretNameMap[scramSecretName]; exists {
+			scramSecretNameCollisions = append(scramSecretNameCollisions,
+				fmt.Sprintf(`[scram secret name: "%s" for user: "%s" and user: "%s"]`,
+					scramSecretName,
+					previousUser.Username,
+					user.Username))
+		} else {
+			connectionStringSecretNameMap[connectionStringSecretName] = user
+		}
+
 	}
 	if len(nameCollisions) > 0 {
 		return errors.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
 			strings.Join(nameCollisions, ", "))
+	}
+
+	if len(scramSecretNameCollisions) > 0 {
+		return errors.Errorf("scram credential secret names collision, update at least one of the users: %s",
+			strings.Join(scramSecretNameCollisions, ", "))
 	}
 
 	return nil
