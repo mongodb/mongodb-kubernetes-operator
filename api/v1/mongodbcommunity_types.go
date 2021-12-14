@@ -104,7 +104,7 @@ type MongoDBCommunitySpec struct {
 
 	// AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
 	// by name. Currently Only the process.disabled field is supported.
-	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfigOverride,omitempty"`
+	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfig,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -201,29 +201,18 @@ type AuthenticationRestriction struct {
 	ServerAddress []string `json:"serverAddress"`
 }
 
+// AutomationConfigOverride contains fields which will be overridden in the operator created config.
 type AutomationConfigOverride struct {
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Wrapper AutomationConfigWrapper `json:",inline"`
+	Processes []OverrideProcess `json:"processes"`
 }
 
-type AutomationConfigWrapper struct {
-	AutomationConfig automationconfig.AutomationConfig `json:"-"`
-}
+// Note: We do not use the automationconfig.Process type directly here as unmarshalling cannot happen directly
+// with the Args26 which is a map[string]interface{}
 
-// MarshalJSON defers JSON encoding to the wrapped map
-func (m *AutomationConfigWrapper) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.AutomationConfig)
-}
-
-// UnmarshalJSON will decode the data into the wrapped map
-func (m *AutomationConfigWrapper) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &m.AutomationConfig)
-}
-
-func (m *AutomationConfigWrapper) DeepCopy() *AutomationConfigWrapper {
-	return &AutomationConfigWrapper{
-		AutomationConfig: m.AutomationConfig,
-	}
+// OverrideProcess contains fields that we can override on the AutomationConfig processes.
+type OverrideProcess struct {
+	Name     string `json:"name"`
+	Disabled bool   `json:"disabled"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet

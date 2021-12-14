@@ -4,10 +4,10 @@ kind: MongoDBCommunity
 metadata:
   name: example-mongodb
 spec:
-  members: 1
-  automationConfigOverride:
+  members: 3
+  automationConfig:
     processes:
-      - name: example-mongodb-0
+      - name: example-mongodb-1
         disabled: true
   type: ReplicaSet
   version: "4.2.6"
@@ -35,4 +35,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: sdgdfs
+  password: <your-password-here>
