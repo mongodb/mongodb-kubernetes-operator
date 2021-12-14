@@ -27,7 +27,8 @@ import (
 type Type string
 
 const (
-	ReplicaSet Type = "ReplicaSet"
+	ReplicaSet       Type   = "ReplicaSet"
+	defaultDBForUser string = "admin"
 )
 
 type Phase string
@@ -476,9 +477,13 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 	for i, u := range m.Spec.Users {
 		roles := make([]scram.Role, len(u.Roles))
 		for j, r := range u.Roles {
+			db := r.DB
+			if db == "" {
+				db = defaultDBForUser
+			}
 			roles[j] = scram.Role{
 				Name:     r.Name,
-				Database: r.DB,
+				Database: db,
 			}
 		}
 		users[i] = scram.User{
