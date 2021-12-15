@@ -4,7 +4,7 @@
 
 {% block packages -%}
 RUN microdnf install -y  --disableplugin=subscription-manager curl \
-    hostname nss_wrapper tar gzip\
+    hostname nss_wrapper tar gzip procps\
     && microdnf upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
