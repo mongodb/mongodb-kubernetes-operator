@@ -291,6 +291,7 @@ type MongoDBUser struct {
 	Roles []Role `json:"roles"`
 
 	// ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
+	// These secrets names must be different for each user in a deployment.
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
 }
