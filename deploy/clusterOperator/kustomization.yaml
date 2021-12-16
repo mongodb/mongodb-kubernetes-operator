@@ -2,7 +2,4 @@
 bases:
 - ./mongodb-kubernetes-operator/config/crd
 - ./mongodb-kubernetes-operator/config/rbac/operator/clusterwide
-- ./mongodb-kubernetes-operator/config/manager
-
-patches:
-- ./mongodb-kubernetes-operator/config/manager/operator_Deployment_clusterwide_patch.yaml
+- ./mongodb-kubernetes-operator/config/operator/clusterwide
