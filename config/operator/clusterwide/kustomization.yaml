@@ -1,0 +1,5 @@
+bases:
+  - ../base
+
+patches:
+  - ./operator_Deployment_patch.yaml
