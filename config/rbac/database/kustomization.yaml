@@ -1,7 +1,7 @@
 resources:
-- service_account_database.yaml
-- role_database.yaml
-- role_binding_database.yaml
+- database_ServiceAccount.yaml
+- database_Role.yaml
+- database_RoleBinding.yaml
 
 configurations:
 - kustomizeconfig.yaml

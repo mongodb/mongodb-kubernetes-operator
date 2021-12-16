@@ -1,2 +1,2 @@
 resources:
-- service_account.yaml
+- operator_ServiceAccount.yaml
