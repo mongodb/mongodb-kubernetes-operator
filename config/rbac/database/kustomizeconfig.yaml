@@ -1,0 +1,16 @@
+# This file is for teaching kustomize how to substitute Secret and ServiceAccount
+# name references in MongoDBCommunity manifests.
+nameReference:
+- kind: Secret
+  version: v1
+  fieldSpecs:
+    - kind: MongoDBCommunity
+      path: spec/users/passwordSecretRef/name
+- kind: ServiceAccount
+  version: v1
+  fieldSpecs:
+    - kind: MongoDBCommunity
+      path: spec/statefulSet/spec/template/spec/serviceAccountName
+    - kind: MongoDBCommunity
+      path: spec/statefulSet/spec/template/spec/serviceAccount
+      

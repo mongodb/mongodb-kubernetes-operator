@@ -1,0 +1,7 @@
+# For operator per namespace deployment
+bases:
+- ../base/
+
+resources:
+- role.yaml
+- role_binding.yaml

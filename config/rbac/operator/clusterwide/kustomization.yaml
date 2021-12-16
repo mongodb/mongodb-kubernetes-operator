@@ -1,0 +1,7 @@
+# For shared/cluster wide operator
+bases:
+- ../base/
+
+resources:
+- role.yaml
+- role_binding.yaml
