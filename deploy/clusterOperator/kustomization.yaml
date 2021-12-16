@@ -1,0 +1,8 @@
+# Cluster wide/all namespace operator setup
+bases:
+- ./mongodb-kubernetes-operator/config/crd
+- ./mongodb-kubernetes-operator/config/rbac/operator/clusterwide
+- ./mongodb-kubernetes-operator/config/manager
+
+patches:
+- ./mongodb-kubernetes-operator/config/manager/operator_Deployment_clusterwide_patch.yaml
