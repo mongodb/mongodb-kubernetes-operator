@@ -364,9 +364,7 @@ spec:
               version:
                 type: string
             required:
-            - currentMongoDBArbiters
             - currentMongoDBMembers
-            - currentStatefulSetArbitersReplicas
             - currentStatefulSetReplicas
             - mongoUri
             - phase
