@@ -163,7 +163,12 @@ func WithSecurityContext(securityContext corev1.PodSecurityContext) Modification
 // DefaultPodSecurityContext returns the default pod security context with FsGroup = 2000
 func DefaultPodSecurityContext() corev1.PodSecurityContext {
 	fsGroup := int64(2000)
-	return corev1.PodSecurityContext{FSGroup: &fsGroup}
+	return corev1.PodSecurityContext{
+		FSGroup: &fsGroup,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
 }
 
 // WithImagePullSecrets adds an ImagePullSecrets local reference with the given name

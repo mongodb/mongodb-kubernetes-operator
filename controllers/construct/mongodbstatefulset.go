@@ -194,11 +194,6 @@ func AutomationAgentCommand() []string {
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -206,7 +201,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		securityContext,
+		containerSecurityContext(),
 		container.WithCommand(AutomationAgentCommand()),
 		container.WithEnvs(
 			corev1.EnvVar{
@@ -241,6 +236,7 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 		container.WithImage(os.Getenv(VersionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
+		containerSecurityContext(),
 	)
 }
 
@@ -277,6 +273,7 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
+		containerSecurityContext(),
 	)
 }
 
@@ -313,12 +310,6 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
-
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
@@ -331,7 +322,14 @@ exec mongod -f %s;
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
-
-		securityContext,
+		containerSecurityContext(),
 	)
+}
+
+func containerSecurityContext() container.Modification {
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		return container.WithSecurityContext(container.DefaultSecurityContext())
+	}
+	return container.NOOP()
 }
