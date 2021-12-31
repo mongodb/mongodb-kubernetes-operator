@@ -414,8 +414,8 @@ type MongoDBCommunityStatus struct {
 	CurrentStatefulSetReplicas int `json:"currentStatefulSetReplicas"`
 	CurrentMongoDBMembers      int `json:"currentMongoDBMembers"`
 
-	CurrentStatefulSetArbitersReplicas int `json:"currentStatefulSetArbitersReplicas"`
-	CurrentMongoDBArbiters             int `json:"currentMongoDBArbiters"`
+	CurrentStatefulSetArbitersReplicas int `json:"currentStatefulSetArbitersReplicas,omitempty"`
+	CurrentMongoDBArbiters             int `json:"currentMongoDBArbiters,omitempty"`
 
 	Message string `json:"message,omitempty"`
 }
