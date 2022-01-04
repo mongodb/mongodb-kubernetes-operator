@@ -62,7 +62,7 @@ jobs:
       #   Run: operator-sdk generate k8s
 
       - name: Lint Code Base
-        uses: docker://github/super-linter:v3
+        uses: docker://github/super-linter:v4
         env:
           VALIDATE_ALL_CODEBASE: true
           # Now we set the PYTHONPATH to the path of the dependencies *inside* the container
