@@ -182,7 +182,7 @@ Make sure you run commands in the correct namespace.
       ```
    c. Delete the old customResourceDefinition. Not strictly needed but no need to keep it around anymore (unless you got more installations of operator in your cluster)
       ```
-      kubectl delete crd mongodb.mongodb.com
+      kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
       ```
 3. In with the new
 
