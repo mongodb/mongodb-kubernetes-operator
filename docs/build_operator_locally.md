@@ -42,6 +42,6 @@ make all-images deploy
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
-5. Change the [manager yaml file](../config/manager/manager.yaml) `image` field to have the image you just built
+5. Change the `image` field in the [manager.yaml](../config/manager/manager.yaml) file to have the image you just built
 
 6. You can now deploy your resources following the [docs](../docs/README.md)
