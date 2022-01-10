@@ -13,7 +13,7 @@ The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](http
 You create and update MongoDB resources by defining a MongoDB resource definition. When you apply the MongoDB resource definition to your Kubernetes environment, the Operator:
 
 1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://docs.mongodb.com/manual/replication/) member.
-1. Writes the Automation configuration as a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and mounts it to each pod.
+1. Writes the Automation configuration as a [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and mounts it to each pod.
 1. Creates one [init container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) and two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
 
    - An init container which copies the `cmd/versionhook` binary to the main `mongod` container. This is run before `mongod` starts to handle [version upgrades](#example-mongodb-version-upgrade).
@@ -25,7 +25,7 @@ You create and update MongoDB resources by defining a MongoDB resource definitio
 1. Creates several volumes:
 
    - `data-volume` which is [persistent](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and mounts to `/data` on both the server and agent containers. Stores server data as well as `automation-mongod.conf` written by the agent and some locks the agent needs.
-   - `automation-config` which is mounted from the previously generated ConfigMap to both the server and agent. Only lives as long as the pod.
+   - `automation-config` which is mounted from the previously generated `Secret` to both the server and agent. Only lives as long as the pod.
    - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook. Only lives as long as the pod.
 
 1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDB resource definition](../deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml).
