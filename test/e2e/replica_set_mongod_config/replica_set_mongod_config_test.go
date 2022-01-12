@@ -26,14 +26,8 @@ func TestReplicaSet(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	scramUser := mdb.GetScramUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,10 +53,15 @@ func TestReplicaSet(t *testing.T) {
 
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
+	tester, err := FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
-	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	for i := range settings {
 		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
