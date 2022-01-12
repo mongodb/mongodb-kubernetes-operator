@@ -296,6 +296,13 @@ func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
 	assertReconciliationSuccessful(t, res, err)
 }
 
+func TestCustomNetPort_Configuration(t *testing.T) {
+	svc, _ := performReconciliationAndGetService(t, "specify_net_port.yaml")
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 40333, Name: "mongodb"})
+}
+
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
@@ -737,6 +744,19 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) (apps
 	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
 	assert.NoError(t, err)
 	return sts, mgr.Client
+}
+
+func performReconciliationAndGetService(t *testing.T, filePath string) (corev1.Service, client.Client) {
+	mdb, err := loadTestFixture(filePath)
+	assert.NoError(t, err)
+	mgr := client.NewManager(&mdb)
+	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
+	assertReconciliationSuccessful(t, res, err)
+	svc, err := mgr.Client.GetService(types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	return svc, mgr.Client
 }
 
 func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {
