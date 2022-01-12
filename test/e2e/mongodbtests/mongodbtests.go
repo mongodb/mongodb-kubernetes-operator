@@ -147,6 +147,19 @@ func ServiceHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReferenc
 	}
 }
 
+func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) func(t *testing.T) {
+	return func(t *testing.T) {
+		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
+		svc := corev1.Service{}
+		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &svc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Len(t, svc.Spec.Ports, 1)
+		assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: expectedPort, Name: "mongodb"})
+	}
+}
+
 func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	checkSecret := func(t *testing.T, resourceNamespacedName types.NamespacedName) {
 		secret := corev1.Secret{}
