@@ -276,6 +276,29 @@ func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
 	}
 }
 
+// NewMongodConfiguration returns an empty MongodConfiguration
+func NewMongodConfiguration() MongodConfiguration {
+	return MongodConfiguration{Object: map[string]interface{}{}}
+}
+
+// SetOption updated the MongodConfiguration with a new option
+func (m MongodConfiguration) SetOption(key string, value interface{}) MongodConfiguration {
+	m.Object = objx.New(m.Object).Set(key, value)
+	return m
+}
+
+// GetDBDataDir returns the db path which should be used.
+func (m MongodConfiguration) GetDBDataDir() string {
+	return objx.New(m.Object).Get("storage.dbPath").Str(automationconfig.DefaultMongoDBDataDir)
+}
+
+// GetDBPort returns the port that should be used for the mongod process.
+// If port is not specified, the default port of 27017 will be used.
+func (m MongodConfiguration) GetDBPort() int {
+	// When passed as a number "net.port" is unmarshalled into a float64
+	return int(objx.New(m.Object).Get("net.port").Float64(float64(automationconfig.DefaultDBPort)))
+}
+
 type MongoDBUser struct {
 	// Name is the username of the user
 	Name string `json:"name"`
@@ -436,10 +459,10 @@ type MongoDBCommunity struct {
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
-func (m MongoDBCommunity) GetMongodConfiguration() map[string]interface{} {
-	mongodConfig := objx.New(map[string]interface{}{})
+func (m MongoDBCommunity) GetMongodConfiguration() MongodConfiguration {
+	mongodConfig := NewMongodConfiguration()
 	for k, v := range m.Spec.AdditionalMongodConfig.Object {
-		mongodConfig.Set(k, v)
+		mongodConfig.SetOption(k, v)
 	}
 	return mongodConfig
 }
@@ -608,7 +631,12 @@ func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 	}
 
 	for i := 0; i < m.Spec.Members; i++ {
-		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.svc.%s:%d", m.Name, i, m.ServiceName(), m.Namespace, clusterDomain, 27017)
+		hosts[i] = fmt.Sprintf("%s-%d.%s.%s.svc.%s:%d",
+			m.Name, i,
+			m.ServiceName(),
+			m.Namespace,
+			clusterDomain,
+			m.GetMongodConfiguration().GetDBPort())
 	}
 	return hosts
 }

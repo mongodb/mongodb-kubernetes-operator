@@ -50,6 +50,7 @@ type Builder struct {
 	sslConfig            *TLS
 	tlsConfig            *TLS
 	dataDir              string
+	port                 int
 }
 
 func NewBuilder() *Builder {
@@ -61,6 +62,7 @@ func NewBuilder() *Builder {
 		backupVersions:       []BackupVersion{},
 		monitoringVersions:   []MonitoringVersion{},
 		processModifications: []func(int, *Process){},
+		port:                 DefaultDBPort,
 		tlsConfig:            nil,
 		sslConfig:            nil,
 	}
@@ -118,6 +120,11 @@ func (b *Builder) SetName(name string) *Builder {
 
 func (b *Builder) SetDataDir(dataDir string) *Builder {
 	b.dataDir = dataDir
+	return b
+}
+
+func (b *Builder) SetPort(port int) *Builder {
+	b.port = port
 	return b
 }
 
@@ -266,7 +273,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			AuthSchemaVersion:           5,
 		}
 
-		process.SetPort(27017)
+		process.SetPort(b.port)
 		process.SetStoragePath(dataDir)
 		process.SetReplicaSetName(b.name)
 

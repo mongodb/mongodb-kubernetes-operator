@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
@@ -269,6 +270,37 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
+}
+
+func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mongodConfig := objx.New(map[string]interface{}{})
+	mongodConfig.Set("net.port", 1000.)
+	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	svc := corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
+	assert.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 1000, Name: "mongodb"})
+
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+}
+
+func TestCustomNetPort_Configuration(t *testing.T) {
+	svc, _ := performReconciliationAndGetService(t, "specify_net_port.yaml")
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 40333, Name: "mongodb"})
 }
 
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
@@ -712,6 +744,19 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) (apps
 	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
 	assert.NoError(t, err)
 	return sts, mgr.Client
+}
+
+func performReconciliationAndGetService(t *testing.T, filePath string) (corev1.Service, client.Client) {
+	mdb, err := loadTestFixture(filePath)
+	assert.NoError(t, err)
+	mgr := client.NewManager(&mdb)
+	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
+	assertReconciliationSuccessful(t, res, err)
+	svc, err := mgr.Client.GetService(types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
+	assert.NoError(t, err)
+	return svc, mgr.Client
 }
 
 func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {

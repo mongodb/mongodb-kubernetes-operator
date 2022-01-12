@@ -1,9 +1,10 @@
 package merge
 
 import (
+	"testing"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestMergeAutomationConfigs(t *testing.T) {
@@ -52,7 +53,6 @@ func TestMergeAutomationConfigs_NonExistentMember(t *testing.T) {
 		}).Build()
 
 	assert.NoError(t, err)
-
 
 	assert.False(t, override.Processes[0].Disabled)
 	assert.True(t, override.Processes[1].Disabled)

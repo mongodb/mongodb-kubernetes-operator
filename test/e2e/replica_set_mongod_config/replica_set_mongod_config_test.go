@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -32,11 +32,6 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongotester.FromResource(t, mdb)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	settings := []string{
 		"storage.wiredTiger.engineConfig.journalCompressor",
 		"storage.dbPath",
@@ -53,7 +48,15 @@ func TestReplicaSet(t *testing.T) {
 		mongodConfig.Set(settings[i], values[i])
 	}
 
+	// Override the net.port setting
+	mongodConfig.Set("net.port", 40333.)
+
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	tester, err := FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
@@ -63,4 +66,6 @@ func TestReplicaSet(t *testing.T) {
 	for i := range settings {
 		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
 	}
+	t.Run("Mongod setting net.port has been set", tester.EnsureMongodConfig("net.port", int32(40333)))
+	t.Run("Service has the correct port", mongodbtests.ServiceUsesCorrectPort(&mdb, 40333))
 }

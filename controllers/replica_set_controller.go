@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	"os"
 
 	"github.com/imdario/mergo"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 
@@ -492,7 +492,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
-		SetDataDir(construct.GetDBDataDir(mdb.GetMongodConfiguration())).
+		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
+		SetPort(mdb.GetMongodConfiguration().GetDBPort()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
@@ -519,7 +520,7 @@ func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
 		SetSelector(label).
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
-		SetPort(27017).
+		SetPort(int32(mdb.GetMongodConfiguration().GetDBPort())).
 		SetPortName("mongodb").
 		SetPublishNotReadyAddresses(true).
 		SetOwnerReferences(mdb.GetOwnerReferences()).
