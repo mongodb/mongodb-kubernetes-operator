@@ -295,7 +295,7 @@ func (m MongodConfiguration) GetDBDataDir() string {
 }
 
 // GetDBPort returns the port that should be used for the mongod process.
-// If not port is specified, the default port of 27017 will be used.
+// If port is not specified, the default port of 27017 will be used.
 func (m MongodConfiguration) GetDBPort() int {
 	// When passed as a number "net.port" is unmarshalled into a float64
 	return int(objx.New(m.Object).Get("net.port").Float64(defaultDBPort))
