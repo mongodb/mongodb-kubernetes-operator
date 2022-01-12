@@ -17,7 +17,6 @@ const (
 	ReplicaSetTopology    Topology = "ReplicaSet"
 	maxVotingMembers      int      = 7
 	arbitersStartingIndex int      = 100
-	defaultPort           int      = 27017
 )
 
 type Modification func(*AutomationConfig)
@@ -63,7 +62,7 @@ func NewBuilder() *Builder {
 		backupVersions:       []BackupVersion{},
 		monitoringVersions:   []MonitoringVersion{},
 		processModifications: []func(int, *Process){},
-		port:                 defaultPort,
+		port:                 DefaultDBPort,
 		tlsConfig:            nil,
 		sslConfig:            nil,
 	}

@@ -11,6 +11,7 @@ import (
 const (
 	Mongod                ProcessType = "mongod"
 	DefaultMongoDBDataDir string      = "/data"
+	DefaultDBPort         int         = 27017
 	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
 )
 

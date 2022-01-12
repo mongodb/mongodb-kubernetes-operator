@@ -29,8 +29,6 @@ type Type string
 const (
 	ReplicaSet       Type   = "ReplicaSet"
 	defaultDBForUser string = "admin"
-	defaultDataDir          = "/data"
-	defaultDBPort           = 27017
 )
 
 type Phase string
@@ -291,14 +289,14 @@ func (m MongodConfiguration) SetOption(key string, value interface{}) MongodConf
 
 // GetDBDataDir returns the db path which should be used.
 func (m MongodConfiguration) GetDBDataDir() string {
-	return objx.New(m.Object).Get("storage.dbPath").Str(defaultDataDir)
+	return objx.New(m.Object).Get("storage.dbPath").Str(automationconfig.DefaultMongoDBDataDir)
 }
 
 // GetDBPort returns the port that should be used for the mongod process.
 // If port is not specified, the default port of 27017 will be used.
 func (m MongodConfiguration) GetDBPort() int {
 	// When passed as a number "net.port" is unmarshalled into a float64
-	return int(objx.New(m.Object).Get("net.port").Float64(defaultDBPort))
+	return int(objx.New(m.Object).Get("net.port").Float64(float64(automationconfig.DefaultDBPort)))
 }
 
 type MongoDBUser struct {

@@ -28,8 +28,8 @@ func TestMongoDB_MongoURI(t *testing.T) {
 func TestMongodConfiguration(t *testing.T) {
 	mc := NewMongodConfiguration()
 	assert.Equal(t, mc.Object, map[string]interface{}{})
-	assert.Equal(t, mc.GetDBDataDir(), defaultDataDir)
-	assert.Equal(t, mc.GetDBPort(), defaultDBPort)
+	assert.Equal(t, mc.GetDBDataDir(), "/data")
+	assert.Equal(t, mc.GetDBPort(), 27017)
 	mc.SetOption("net.port", 40333.)
 	assert.Equal(t, mc.GetDBPort(), 40333)
 	mc.SetOption("storage", map[string]interface{}{"dbPath": "/other/data/path"})
