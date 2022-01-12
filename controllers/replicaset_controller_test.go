@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
@@ -266,6 +267,30 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
 	assert.Len(t, svc.Spec.Ports, 1)
 	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 27017, Name: "mongodb"})
+
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+}
+
+func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	mongodConfig := objx.New(map[string]interface{}{})
+	mongodConfig.Set("net.port", 1000.)
+	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	svc := corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
+	assert.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 1000, Name: "mongodb"})
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)

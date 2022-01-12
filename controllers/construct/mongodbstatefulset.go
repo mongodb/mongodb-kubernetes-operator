@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/stretchr/objx"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/persistentvolumeclaim"
@@ -19,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -45,7 +44,6 @@ const (
 	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
 	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
 
-	defaultDataDir               = "/data"
 	automationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
@@ -88,7 +86,7 @@ type MongoDBStatefulSetOwner interface {
 	LogsVolumeName() string
 
 	// GetMongodConfiguration returns the MongoDB configuration for each member.
-	GetMongodConfiguration() map[string]interface{}
+	GetMongodConfiguration() mdbv1.MongodConfiguration
 
 	// NeedsAutomationConfigVolume returns whether the statefuslet needs to have a volume for the automationconfig.
 	NeedsAutomationConfigVolume() bool
@@ -137,14 +135,14 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
 	if mdb.HasSeparateDataAndLogsVolumes() {
 		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), GetDBDataDir(mdb.GetMongodConfiguration()))
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir())
 		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
 		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
 	} else {
 		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(mdb.DataVolumeName(), GetDBDataDir(mdb.GetMongodConfiguration()), statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir(), statefulset.WithSubPath("data")),
 			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
 		}
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
@@ -291,16 +289,8 @@ func getMongoDBImage(version string) string {
 	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }
 
-// GetDBDataDir returns the db path which should be used.
-func GetDBDataDir(additionalMongoDBConfig objx.Map) string {
-	if additionalMongoDBConfig == nil {
-		return defaultDataDir
-	}
-	return additionalMongoDBConfig.Get("storage.dbPath").Str(defaultDataDir)
-}
-
-func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig map[string]interface{}) container.Modification {
-	filePath := GetDBDataDir(additionalMongoDBConfig) + "/" + automationMongodConfFileName
+func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
+	filePath := additionalMongoDBConfig.GetDBDataDir() + "/" + automationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 #run post-start hook to handle version changes
 /hooks/version-upgrade
