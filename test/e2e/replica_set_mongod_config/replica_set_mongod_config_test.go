@@ -41,13 +41,11 @@ func TestReplicaSet(t *testing.T) {
 	settings := []string{
 		"storage.wiredTiger.engineConfig.journalCompressor",
 		"storage.dbPath",
-		"net.port",
 	}
 
-	values := []interface{}{
+	values := []string{
 		"zlib",
 		"/some/path/db",
-		40333.,
 	}
 
 	// Override the journal compressor and dbPath settings
@@ -55,6 +53,9 @@ func TestReplicaSet(t *testing.T) {
 	for i := range settings {
 		mongodConfig.Set(settings[i], values[i])
 	}
+
+	// Override the net.port setting
+	mongodConfig.Set("net.port", 40333.)
 
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
@@ -66,5 +67,6 @@ func TestReplicaSet(t *testing.T) {
 	for i := range settings {
 		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
 	}
+	t.Run("Mongod setting net.port has been set", tester.EnsureMongodConfig("net.port", int32(40333)))
 	t.Run("Service has the correct port", mongodbtests.ServiceUsesCorrectPort(&mdb, 40333))
 }

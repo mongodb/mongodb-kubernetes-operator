@@ -156,7 +156,7 @@ func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) fun
 			t.Fatal(err)
 		}
 		assert.Len(t, svc.Spec.Ports, 1)
-		assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: expectedPort, Name: "mongodb"})
+		assert.Equal(t, svc.Spec.Ports[0].Port, expectedPort)
 	}
 }
 
