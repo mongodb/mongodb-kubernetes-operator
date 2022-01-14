@@ -620,7 +620,7 @@ func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Mo
 		for i := range ac.Processes {
 			// Mergo requires both objects to have the same type
 			// TODO: handle this error gracefully, we may need to add an error as second argument for all modification functions
-			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.Spec.AdditionalMongodConfig.Object), mergo.WithOverride)
+			_ = mergo.Merge(&ac.Processes[i].Args26, objx.New(mdb.GetMongodConfiguration().Object), mergo.WithOverride)
 		}
 	}
 }
