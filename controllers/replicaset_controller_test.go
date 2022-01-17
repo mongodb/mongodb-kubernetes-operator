@@ -373,6 +373,21 @@ func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T
 
 }
 
+func TestAutomationConfig_DuplicatesInMongodConfig(t *testing.T) {
+	mdb, err := loadTestFixture("duplicate_additional_config.yaml")
+	assert.NoError(t, err)
+	mgr := client.NewManager(&mdb)
+	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
+	r := NewReconciler(mgr)
+
+	ac, err := r.buildAutomationConfig(mdb)
+	assert.NoError(t, err)
+	for _, p := range ac.Processes {
+		assert.Equal(t, p.Args26.Get("deep.nested.value").String(), "first")
+		assert.Equal(t, p.Args26["deep"], map[string]interface{}{"nested": map[string]interface{}{"value": "first"}})
+	}
+}
+
 func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb := newTestReplicaSet()
 
