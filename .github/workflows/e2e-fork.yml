@@ -217,12 +217,3 @@ jobs:
       with:
         name: ${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics
         path: ${{ github.workspace }}/diagnostics
-  # template: .action_templates/jobs/e2e-success.yaml
-  e2e-success:
-    if: always()
-    needs: [tests]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check E2E Result
-      if: needs.tests.result != 'success'
-      run: exit 1

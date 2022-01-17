@@ -21,7 +21,6 @@ jobs:
     - template: run-test-matrix
     - template: save-run-status
     - template: dump-and-upload-diagnostics
-  - template: e2e-success
 
 events:
   - template: pull-request-target
