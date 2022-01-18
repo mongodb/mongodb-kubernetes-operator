@@ -1,0 +1,7 @@
+# For shared/cluster wide operator
+bases:
+- ../base/
+
+resources:
+- operator_ClusterRole.yaml
+- operator_ClusterRoleBinding.yaml

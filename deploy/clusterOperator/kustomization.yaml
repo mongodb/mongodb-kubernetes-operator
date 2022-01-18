@@ -1,0 +1,5 @@
+# Cluster wide/all namespace operator setup
+bases:
+- ../../config/crd
+- ../../config/rbac/operator/clusterwide
+- ../../config/operator/clusterwide
