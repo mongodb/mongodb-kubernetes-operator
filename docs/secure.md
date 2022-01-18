@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [Secure MongoDBCommunity Resource Connections using TLS](#secure-mongodb-resource-connections-using-tls)
+- [Secure MongoDBCommunity Resource Connections using TLS](#secure-mongodbcommunity-resource-connections-using-tls)
   - [Prerequisites](#prerequisites)
   - [Procedure](#procedure)
 

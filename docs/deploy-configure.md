@@ -7,7 +7,7 @@ The [`/config/samples`](../config/samples) directory contains example MongoDBCom
 - [Deploy a Replica Set](#deploy-a-replica-set)
 - [Scale a Replica Set](#scale-a-replica-set)
 - [Add Arbiters to a Replica Set](#add-arbiters-to-a-replica-set)
-- [Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
+- [Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version](#upgrade-your-mongodbcommunity-resource-version-and-feature-compatibility-version)
   - [Example](#example)
 - [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
 - [Define a Custom Database Role](#define-a-custom-database-role)
@@ -56,7 +56,7 @@ To deploy your first replica set:
    }
    ```
 
-   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodb-resource-connections-using-tls).</br></br>
+   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodbcommunity-resource-connections-using-tls).</br></br>
 
    You can use the connection strings in this secret in your application:
 

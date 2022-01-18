@@ -1,6 +1,6 @@
 # Create a Database User #
 
-You can create a MongoDB database user to authenticate to your MongoDBCommunity resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDBCommunity resource definition](#modify-the-mongodb-resource).
+You can create a MongoDB database user to authenticate to your MongoDBCommunity resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDBCommunity resource definition](#modify-the-mongodbcommunity-resource).
 
 You cannot disable SCRAM authentication.
 
