@@ -18,7 +18,7 @@ our local working environments in CI/CD systems.
 # High-Perspective Architecture
 
 The operator itself consists of 1 image, that has all the operational logic to deploy and
-maintain the MongoDB resources in your cluster.
+maintain the MongoDBCommunity resources in your cluster.
 
 The operator deploys MongoDB in Pods (via a higher-level resource, a
 StatefulSet), on each Pod there will be multiple images coexisting during the

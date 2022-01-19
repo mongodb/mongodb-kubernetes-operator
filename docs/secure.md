@@ -1,12 +1,12 @@
-# Secure MongoDB Resources #
+# Secure MongoDBCommunity Resources #
 
 ## Table of Contents
 
-- [Secure MongoDB Resource Connections using TLS](#secure-mongodb-resource-connections-using-tls)
+- [Secure MongoDBCommunity Resource Connections using TLS](#secure-mongodbcommunity-resource-connections-using-tls)
   - [Prerequisites](#prerequisites)
   - [Procedure](#procedure)
 
-## Secure MongoDB Resource Connections using TLS
+## Secure MongoDBCommunity Resource Connections using TLS
 
 You can configure the MongoDB Community Kubernetes Operator to use TLS certificates to encrypt traffic between:
 
@@ -15,21 +15,21 @@ You can configure the MongoDB Community Kubernetes Operator to use TLS certifica
 
 ### Prerequisites
 
-Before you secure MongoDB resource connections using TLS, you must:
+Before you secure MongoDBCommunity resource connections using TLS, you must:
 
-1. Create a PEM-encoded TLS certificate for the servers in the MongoDB resource using your own Certificate Authority (CA). The certificate must have one of the following:
+1. Create a PEM-encoded TLS certificate for the servers in the MongoDBCommunity resource using your own Certificate Authority (CA). The certificate must have one of the following:
 
    - A wildcard `Common Name` that matches the domain name of all of the replica set members:
 
      ```
-     *.<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local
+     *.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
      ```
    - The domain name for each of the replica set members as `Subject Alternative Names` (SAN):
 
      ```
-     <metadata.name of the MongoDB resource>-0.<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local
-     <metadata.name of the MongoDB resource>-1.<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local
-     <metadata.name of the MongoDB resource>-2.<metadata.name of the MongoDB resource>-svc.<namespace>.svc.cluster.local
+     <metadata.name of the MongoDBCommunity resource>-0.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
+     <metadata.name of the MongoDBCommunity resource>-1.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
+     <metadata.name of the MongoDBCommunity resource>-2.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
      ```
 
 1. Create a Kubernetes ConfigMap that contains the certificate for the CA that signed your server certificate. The key in the ConfigMap that references the certificate must be named `ca.crt`. Kubernetes configures this automatically if the certificate file is named `ca.crt`:
@@ -49,9 +49,9 @@ Before you secure MongoDB resource connections using TLS, you must:
 
 ### Procedure
 
-To secure connections to MongoDB resources using TLS:
+To secure connections to MongoDBCommunity resources using TLS:
 
-1. Add the following fields to the MongoDB resource definition:
+1. Add the following fields to the MongoDBCommunity resource definition:
 
    - `spec.security.tls.enabled`: Encrypts communications using TLS certificates between MongoDB hosts in a replica set and client applications and MongoDB deployments. Set to `true`.
    - `spec.security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://docs.mongodb.com/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
@@ -97,7 +97,7 @@ To secure connections to MongoDB resources using TLS:
    ```
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
-1. From within the Kubernetes cluster, connect to the MongoDB resource.
+1. From within the Kubernetes cluster, connect to the MongoDBCommunity resource.
    - If `spec.security.tls.optional` is omitted or `false`: clients must
      establish TLS connections to the MongoDB servers in the replica set.
    - If `spec.security.tls.optional` is true, clients can establish TLS or

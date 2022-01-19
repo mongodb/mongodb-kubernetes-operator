@@ -12,7 +12,7 @@
   * Fixes an issue ...
 
 
-## MongoDB Resource
+## MongoDBCommunity Resource
 * Breaking Changes
   * Breaking Change 1
 * Changes

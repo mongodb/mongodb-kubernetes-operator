@@ -27,20 +27,20 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
 
 ### Understand Deployment Scopes
 
-You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDB resources:
+You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDBCommunity resources:
 
 - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
 - [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
 
 #### Operator in Same Namespace as Resources
 
-You scope the Operator to a namespace. The Operator watches MongoDB resources in that same [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
+You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in that same [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
 
 This is the default scope when you install the Operator using the [installation instructions](#procedure).
 
 #### Operator in Different Namespace Than Resources
 
-You scope the Operator to a namespace. The Operator watches MongoDB resources in other namespaces.
+You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in other namespaces.
 
 To configure the Operator to watch resources in other namespaces:
 

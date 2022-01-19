@@ -1,6 +1,6 @@
 # Create a Database User #
 
-You can create a MongoDB database user to authenticate to your MongoDB resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDB resource definition](#modify-the-mongodb-resource).
+You can create a MongoDB database user to authenticate to your MongoDBCommunity resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDBCommunity resource definition](#modify-the-mongodbcommunity-resource).
 
 You cannot disable SCRAM authentication.
 
@@ -27,9 +27,9 @@ You cannot disable SCRAM authentication.
    kubectl apply -f <db-user-secret>.yaml --namespace <my-namespace>
    ```
 
-## Modify the MongoDB Resource
+## Modify the MongoDBCommunity Resource
 
-1. Add the following fields to the MongoDB resource definition:
+1. Add the following fields to the MongoDBCommunity resource definition:
 
    | Key | Type | Description | Required? |
    |----|----|----|----|
@@ -69,7 +69,7 @@ You cannot disable SCRAM authentication.
    ...
    ```
 2. Save the file.
-3. Apply the updated MongoDB resource definition:
+3. Apply the updated MongoDBCommunity resource definition:
 
    ```
    kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
@@ -77,12 +77,12 @@ You cannot disable SCRAM authentication.
 
 ## Next Steps
 
-- After the MongoDB resource is running, the Operator no longer requires the user's secret. MongoDB recommends that you securely store the user's password and then delete the user secret:
+- After the MongoDBCommunity resource is running, the Operator no longer requires the user's secret. MongoDB recommends that you securely store the user's password and then delete the user secret:
   ```
   kubectl delete secret <db-user-secret> --namespace <my-namespace>
   ```
 
-- To authenticate to your MongoDB resource, run the following command:
+- To authenticate to your MongoDBCommunity resource, run the following command:
    ```
    mongo "mongodb://<service-object-name>.<my-namespace>.svc.cluster.local:27017/?replicaSet=<replica-set-name>" --username <username> --password <password> --authenticationDatabase <authentication-database>
    ```

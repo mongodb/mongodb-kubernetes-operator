@@ -1,13 +1,13 @@
-# Deploy and Configure a MongoDB Resource #
+# Deploy and Configure a MongoDBCommunity Resource #
 
-The [`/config/samples`](../config/samples) directory contains example MongoDB resources that you can modify and deploy.
+The [`/config/samples`](../config/samples) directory contains example MongoDBCommunity resources that you can modify and deploy.
 
 ## Table of Contents
 
 - [Deploy a Replica Set](#deploy-a-replica-set)
 - [Scale a Replica Set](#scale-a-replica-set)
 - [Add Arbiters to a Replica Set](#add-arbiters-to-a-replica-set)
-- [Upgrade your MongoDB Resource Version and Feature Compatibility Version](#upgrade-your-mongodb-resource-version-and-feature-compatibility-version)
+- [Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version](#upgrade-your-mongodbcommunity-resource-version-and-feature-compatibility-version)
   - [Example](#example)
 - [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
 - [Define a Custom Database Role](#define-a-custom-database-role)
@@ -21,7 +21,7 @@ To deploy your first replica set:
    ```
    kubectl apply -f config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml --namespace <my-namespace>
    ```
-3. Verify that the MongoDB resource deployed:
+3. Verify that the MongoDBCommunity resource deployed:
    ```
    kubectl get mongodbcommunity --namespace <my-namespace>
    ```
@@ -56,7 +56,7 @@ To deploy your first replica set:
    }
    ```
 
-   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDB Resource Connections using TLS](secure.md#secure-mongodb-resource-connections-using-tls).</br></br>
+   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodbcommunity-resource-connections-using-tls).</br></br>
 
    You can use the connection strings in this secret in your application:
 
@@ -95,7 +95,7 @@ To deploy your first replica set:
 You can scale up (increase) or scale down (decrease) the number of
 members in a replica set.
 
-Consider the following example MongoDB resource definition:
+Consider the following example MongoDBCommunity resource definition:
 
 ```yaml
 apiVersion: mongodbcommunity.mongodb.com/v1
@@ -130,13 +130,13 @@ To scale a replica set:
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 
-   **NOTE**: When you scale down a MongoDB resource, the Community Operator
+   **NOTE**: When you scale down a MongoDBCommunity resource, the Community Operator
    might take several minutes to remove the StatefulSet replicas for the
    members that you remove from the replica set.
 
 ## Add Arbiters to a Replica Set
 
-To add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDB resource definition. 
+To add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDBCommunity resource definition. 
 
 The value of the `spec.arbiters` field must be:
 
@@ -145,7 +145,7 @@ The value of the `spec.arbiters` field must be:
 
 **NOTE**: At least one replica set member must not be an arbiter.
 
-Consider the following MongoDB resource definition example:
+Consider the following MongoDBCommunity resource definition example:
 
 ```yaml
 apiVersion: mongodbcommunity.mongodb.com/v1
@@ -195,9 +195,9 @@ To add arbiters:
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 
-## Upgrade your MongoDB Resource Version and Feature Compatibility Version
+## Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version
 
-You can upgrade the major, minor, and/or feature compatibility versions of your MongoDB resource. These settings are configured in your resource definition YAML file.
+You can upgrade the major, minor, and/or feature compatibility versions of your MongoDBCommunity resource. These settings are configured in your resource definition YAML file.
 
 - To upgrade your resource's major and/or minor versions, set the `spec.version` setting to the desired MongoDB version. Make sure to specify a full image tag, such as `5.0.3`. Setting the `spec.version` to loosely-defined tags such as `5.0` is not currently supported.
 
@@ -207,7 +207,7 @@ If you update `spec.version` to a later version, consider setting `spec.featureC
 
 ### Example
 
-Consider the following example MongoDB resource definition:
+Consider the following example MongoDBCommunity resource definition:
 
 ```yaml
 apiVersion: mongodbcommunity.mongodb.com/v1
@@ -264,7 +264,7 @@ You can define [custom roles](https://docs.mongodb.com/manual/core/security-user
 
 To define a custom role:
 
-1. Add the following fields to the MongoDB resource definition:
+1. Add the following fields to the MongoDBCommunity resource definition:
 
    | Key | Type | Description | Required? |
    |----|----|----|----|
@@ -323,7 +323,7 @@ To define a custom role:
    ```
 
 2. Save the file.
-3. Apply the updated MongoDB resource definition:
+3. Apply the updated MongoDBCommunity resource definition:
 
    ```
    kubectl apply -f <mongodb-crd>.yaml --namespace <my-namespace>
