@@ -182,11 +182,11 @@ func TestMergeContainer(t *testing.T) {
 		)
 		mergedContainer := Container(defaultContainer, overrideContainer)
 		assert.Equal(t, overrideContainer.Name, mergedContainer.Name, "Name was overridden, and should be used.")
-		assert.Equal(t, []string{"a", "b", "c", "d", "f", "e"}, mergedContainer.Command, "Command was specified in both, so results should be merged.")
+		assert.Equal(t, []string{"d", "f", "e"}, mergedContainer.Command, "Command specified in the override container overrides the default container.")
 		assert.Equal(t, overrideContainer.Image, mergedContainer.Image, "Image was overridden, and should be used.")
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, overrideContainer.WorkingDir, mergedContainer.WorkingDir)
-		assert.Equal(t, []string{"arg0", "arg1", "arg3", "arg2"}, mergedContainer.Args, "Args were specified in both, so results should be merged.")
+		assert.Equal(t, []string{"arg3", "arg2"}, mergedContainer.Args, "Args specified in the override container overrides the default container.")
 
 		assert.Equal(t, overrideContainer.Resources, mergedContainer.Resources)
 
@@ -259,11 +259,9 @@ func TestMergeContainer(t *testing.T) {
 	t.Run("No Override Fields", func(t *testing.T) {
 		mergedContainer := Container(defaultContainer, corev1.Container{})
 		assert.Equal(t, defaultContainer.Name, mergedContainer.Name, "Name was not overridden, and should not be used.")
-		assert.Equal(t, defaultContainer.Command, mergedContainer.Command, "Command was not specified. The original Command should be used.")
 		assert.Equal(t, defaultContainer.Image, mergedContainer.Image, "Image was not overridden, and should not be used.")
 		assert.Equal(t, defaultContainer.ImagePullPolicy, mergedContainer.ImagePullPolicy, "No ImagePullPolicy was specified in the override, so the default should be used.")
 		assert.Equal(t, defaultContainer.WorkingDir, mergedContainer.WorkingDir)
-		assert.Equal(t, defaultContainer.Args, mergedContainer.Args, "Args were not specified. The original Args should be used.")
 
 		assert.Equal(t, defaultContainer.Resources, mergedContainer.Resources)
 
