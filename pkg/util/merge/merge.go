@@ -97,8 +97,14 @@ func Container(defaultContainer, overrideContainer corev1.Container) corev1.Cont
 		merged.Image = overrideContainer.Image
 	}
 
-	merged.Command = StringSlices(defaultContainer.Command, overrideContainer.Command)
-	merged.Args = StringSlices(defaultContainer.Args, overrideContainer.Args)
+	merged.Command = defaultContainer.Command
+	if len(overrideContainer.Command) > 0 {
+		merged.Command = overrideContainer.Command
+	}
+	merged.Args = defaultContainer.Args
+	if len(overrideContainer.Args) > 0 {
+		merged.Args = overrideContainer.Args
+	}
 
 	if overrideContainer.WorkingDir != "" {
 		merged.WorkingDir = overrideContainer.WorkingDir
