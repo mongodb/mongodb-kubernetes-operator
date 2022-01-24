@@ -32,33 +32,33 @@ spec:
               runAsUser: 0
               runAsGroup: 0
             name: change-dir-permissions
-        volumeClaimTemplates:
-        - metadata:
-            name: data-volume
-          spec:
-            accessModes:
-            - ReadWriteOnce
-            resources:
-              requests:
-                storage: 8G
-            selector:
-              matchLabels:
-                # We set this labels when creating the volume
-                # (see below)
-                type: data
-            storageClassName: default
-        - metadata:
-            name: logs-volume
-          spec:
-            accessModes:
-            - ReadWriteOnce
-            resources:
-              requests:
-                storage: 8G
-            selector:
-              matchLabels:
-                type: logs
-            storageClassName: default
+      volumeClaimTemplates:
+      - metadata:
+          name: data-volume
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 8G
+          selector:
+            matchLabels:
+              # We set this labels when creating the volume
+              # (see below)
+              type: data
+          storageClassName: default
+      - metadata:
+          name: logs-volume
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 8G
+          selector:
+            matchLabels:
+              type: logs
+          storageClassName: default
   type: ReplicaSet
   users:
     - name: my-user
