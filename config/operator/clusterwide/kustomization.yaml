@@ -2,4 +2,4 @@ bases:
   - ../base
 
 patches:
-  - ./operator_Deployment_patch.yaml
+  - ./operator_deployment_patch.yaml

@@ -3,5 +3,5 @@ bases:
 - ../base/
 
 resources:
-- operator_ClusterRole.yaml
-- operator_ClusterRoleBinding.yaml
+- operator_clusterrole.yaml
+- operator_clusterrolebinding.yaml
