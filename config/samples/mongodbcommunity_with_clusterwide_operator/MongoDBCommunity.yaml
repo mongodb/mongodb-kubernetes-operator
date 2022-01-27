@@ -1,0 +1,76 @@
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mongodb1
+spec:
+  members: 1
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      modes: ["SCRAM", "SCRAM-SHA-1"]
+  users:
+    - name: theadmin
+      db: admin
+      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+        name: theadmin-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+        - name: backup
+          db: admin
+        - name: dbAdminAnyDatabase
+          db: admin
+        - name: readWriteAnyDatabase
+          db: admin
+        - name: restore
+          db: admin
+      scramCredentialsSecretName: theadmin
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+# This statefulSet spec is merged with the operator provided statefulSet
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongodb-agent
+              readinessProbe:
+                failureThreshold: 5000
+                initialDelaySeconds: 30
+
+          #required to permit Kustomize to pass on the dynamic Kustomization ServiceAccount name
+          serviceAccountName: mongodb-database
+          serviceAccount: mongodb-database
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: openebs.io/engine
+                    operator: In
+                    values:
+                    - mayastor
+# Assumption: volumeClaimTemplates with metadata.name = data-volume is used by the
+# operator provided mongod containers!
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: "mayastor-1"
+            resources:
+              requests:
+                storage: 1Gi
+        - metadata:
+            name: logs-volume
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: "mayastor-1"
+            resources:
+              requests:
+                storage: 1Gi
+      

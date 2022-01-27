@@ -1,0 +1,18 @@
+#disable name prefix and suffix as the operator generated metadata.name-svc
+commonLabels:
+  app: mongodb
+
+# Only provision the accounts and access needed by the MongoDBCommunity resource and its children
+# Rationale: The MongoDBCommunity resource operator may be deployed to watch one or all namespaces
+# and hence the requisite RBAC is dependent; creating extra operator RBAC in the namespace of the
+# MongoDBCommunity resource may be redundant.
+bases:
+- ./secrets
+- ../../rbac/database
+
+resources:
+- namespace.yaml
+- MongoDBCommunity.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
