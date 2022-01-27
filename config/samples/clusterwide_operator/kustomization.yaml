@@ -1,0 +1,10 @@
+# Cluster wide/all namespace operator setup
+namespace: test-mongodb-system
+
+resources:
+  - "./namespace.yaml"
+  
+bases:
+- ../../crd
+- ../../rbac/operator/clusterwide
+- ../../operator/clusterwide
