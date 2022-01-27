@@ -1,5 +1,5 @@
 resources:
-- operator_Deployment.yaml
+- manager.yaml
 
 generatorOptions:
   disableNameSuffixHash: true
