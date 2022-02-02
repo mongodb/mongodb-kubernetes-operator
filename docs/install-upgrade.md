@@ -62,7 +62,7 @@ To configure the Operator to watch resources in other namespaces:
                  value: "*"
    ```
 
-2. Modify the [clusterRoleBinding](../deploy/clusterwide/role_binding.yaml) namespace value for the serviceAccount `mongodb-kubernetes-operator` to the namespace in which the operator is deployed.
+2. Modify the [clusterRoleBinding](../deploy/clusterwide/cluster_role_binding.yaml) namespace value for the serviceAccount `mongodb-kubernetes-operator` to the namespace in which the operator is deployed.
 
 3. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
 
@@ -200,4 +200,4 @@ Make sure you run commands in the correct namespace.
       ```
       kubectl delete pod <sts-name>-0
       ```
-   d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.   
+   d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.
