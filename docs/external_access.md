@@ -37,7 +37,22 @@ kubectl create secret tls ca-key-pair  --cert=<path-to-ca.crt>  --key=<path-to-c
 
 ### Create the Cert Manager issuer and secret
 
-Edit the file [cert-manager-certificate.yaml](../config/samples/external_access/cert-manager-certificate.yaml) to replace ```<mongodb-name>``` with your MongoDB deployment name. Also replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you will have to add an equal number of entries for each member of the replicaset.
+Edit the file [cert-manager-certificate.yaml](../config/samples/external_access/cert-manager-certificate.yaml) to replace ```<mongodb-name>``` with your MongoDB deployment name. Also replace ```<domain-rs-1>```, ```<domain-rs-2>```, and ```<domain-rs-3>``` with the external FQDNs of the MongoDB replicaset members. Please remember that you will have to add an equal number of entries for each member of the replicaset, for example:
+
+```yaml
+...
+spec:
+  members: 3
+  type: ReplicaSet
+  replicaSetHorizons:
+  - horizon1: <domain1-rs-1>:31181
+    horizon2: <domain2-rs-1>:31181
+  - horizon1: <domain1-rs-2>:31182
+    horizon2: <domain2-rs-2>:31182
+  - horizon1: <domain1-rs-3>:31183
+    horizon2: <domain2-rs-3>:31183
+...
+```
 
 Apply the manifests. Replace ```<your-namespace>``` with the namespace you are using for the deployment.
 
