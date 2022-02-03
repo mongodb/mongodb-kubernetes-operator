@@ -62,7 +62,7 @@ To configure the Operator to watch resources in other namespaces:
                  value: "*"
    ```
 
-2. Modify the [clusterRoleBinding](../deploy/clusterwide/role_binding.yaml) namespace value for the serviceAccount `mongodb-kubernetes-operator` to the namespace in which the operator is deployed.
+2. Modify the [clusterRoleBinding](../deploy/clusterwide/cluster_role_binding.yaml) namespace value for the serviceAccount `mongodb-kubernetes-operator` to the namespace in which the operator is deployed.
 
 3. Run the following command to create cluster-wide roles and role-bindings in the default namespace:
 
