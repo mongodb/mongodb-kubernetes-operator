@@ -48,8 +48,15 @@ func newMockedSecretGetUpdateCreateDeleter(secrets ...corev1.Secret) secret.GetU
 	}
 	return mockSecretGetUpdateCreateDeleter
 }
+
 func notFoundError() error {
 	return &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
+}
+
+func TestUsernameCanHaveAnUnderscore(t *testing.T) {
+	user := buildMongoDBUser("name_with_underscores")
+	mdb := buildConfigurable("mdb")
+	assert.Equal(t, "mdb-admin-name-with-underscores-user", user.GetConnectionStringSecretName(mdb))
 }
 
 func TestReadExistingCredentials(t *testing.T) {
@@ -74,7 +81,6 @@ func TestReadExistingCredentials(t *testing.T) {
 		_, _, err := readExistingCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredsSecret), mdbObjectKey, "different-username")
 		assert.Error(t, err)
 	})
-
 }
 
 func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *testing.T) {
@@ -136,7 +142,6 @@ func TestEnsureScramCredentials(t *testing.T) {
 		assert.NotEmpty(t, scram256Creds.ServerKey)
 		assert.Equal(t, 15000, scram256Creds.IterationCount)
 	})
-
 }
 
 func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
