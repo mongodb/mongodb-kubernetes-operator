@@ -87,13 +87,21 @@ func TestMountConnectionString(t *testing.T) {
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
-	t.Run("Application Pod can connect to MongoDB using the generated secret", func(t *testing.T) {
+	t.Run("Application Pod can connect to MongoDB using the generated standard connection string.", func(t *testing.T) {
 		testPod := createPythonTestPod(mdb.Namespace, fmt.Sprintf("%s-%s-%s", mdb.Name, user.DB, user.Name), "connectionString.standard")
 		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
 			TestContext: ctx,
 		})
 		assert.NoError(t, err)
-		assert.NoError(t, wait.ForPodPhase(t, time.Minute*20, testPod, corev1.PodSucceeded))
+		assert.NoError(t, wait.ForPodPhase(t, time.Minute*5, testPod, corev1.PodSucceeded))
 	})
 
+	t.Run("Application Pod can connect to MongoDB using the generated secret SRV connection string", func(t *testing.T) {
+		testPod := createPythonTestPod(mdb.Namespace, fmt.Sprintf("%s-%s-%s", mdb.Name, user.DB, user.Name), "connectionString.standardSrv")
+		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
+			TestContext: ctx,
+		})
+		assert.NoError(t, err)
+		assert.NoError(t, wait.ForPodPhase(t, time.Minute*5, testPod, corev1.PodSucceeded))
+	})
 }
