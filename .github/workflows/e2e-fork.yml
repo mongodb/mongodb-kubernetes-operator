@@ -130,6 +130,8 @@ jobs:
           distro: ubi
         - test-name: replica_set_custom_persistent_volume
           distro: ubi
+        - test-name: replica_set_mount_connection_string
+          distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
