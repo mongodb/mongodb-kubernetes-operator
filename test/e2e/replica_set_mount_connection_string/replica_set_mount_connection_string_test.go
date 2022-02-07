@@ -93,7 +93,7 @@ func TestMountConnectionString(t *testing.T) {
 			TestContext: ctx,
 		})
 		assert.NoError(t, err)
-		assert.NoError(t, wait.ForPodPhase(t, time.Minute*10, testPod, corev1.PodSucceeded))
+		assert.NoError(t, wait.ForPodPhase(t, time.Minute*20, testPod, corev1.PodSucceeded))
 	})
 
 }
