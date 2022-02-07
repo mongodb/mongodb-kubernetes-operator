@@ -36,7 +36,7 @@ func createPythonTestPod(namespace, secretName, secretKey string) corev1.Pod {
 			Containers: []corev1.Container{
 				{
 					Name:       "python-app",
-					Image:      "quay.io/repository/mongodb/mongodb-kubernetes-operator-test-app:latest",
+					Image:      "quay.io/mongodb/mongodb-kubernetes-operator-test-app:latest",
 					Command:    []string{"python", "main.py"},
 					WorkingDir: "/app",
 					Env: []corev1.EnvVar{
