@@ -1,0 +1,99 @@
+package replica_set_mount_connection_string
+
+import (
+	"context"
+	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
+	"testing"
+	"time"
+
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
+	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+)
+
+func TestMain(m *testing.M) {
+	code, err := e2eutil.RunTest(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(code)
+}
+
+func createPythonTestPod(namespace, secretName, secretKey string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: namespace,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:       "python-app",
+					Image:      "quay.io/repository/mongodb/mongodb-kubernetes-operator-test-app:latest",
+					Command:    []string{"python", "main.py"},
+					WorkingDir: "/app",
+					Env: []corev1.EnvVar{
+						{
+							Name: "CONNECTION_STRING",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: secretName,
+									},
+									Key: secretKey,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestMountConnectionString(t *testing.T) {
+	ctx := setup.Setup(t)
+	defer ctx.Teardown()
+
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	scramUser := mdb.GetScramUsers()[0]
+
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tester, err := FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
+	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
+	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet((mdb.Name))))
+	t.Run("Test Basic Connectivity with generated connection string secret",
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
+	t.Run("Test SRV Connectivity with generated connection string secret",
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+
+	t.Run("Application Pod can connect to MongoDB using the generated secret", func(t *testing.T) {
+		testPod := createPythonTestPod(mdb.Namespace, fmt.Sprintf("%s-%s-%s", mdb.Name, user.DB, user.Name), "connectionString.standard")
+		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
+			TestContext: ctx,
+		})
+		assert.NoError(t, err)
+		assert.NoError(t, wait.ForPodPhase(t, time.Minute*1, testPod, corev1.PodSucceeded))
+	})
+
+}
