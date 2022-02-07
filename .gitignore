@@ -94,3 +94,5 @@ Dockerfile.ubi-*
 Dockerfile.ubuntu-*
 
 diagnostics
+
+!test/test-app/Dockerfile

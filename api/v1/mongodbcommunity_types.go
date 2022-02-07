@@ -585,7 +585,7 @@ func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m MongoDBCommunity) MongoURI(clusterDomain string) string {
-	return fmt.Sprintf("mongodb://%s", strings.Join(m.Hosts(clusterDomain), ","))
+	return fmt.Sprintf("mongodb://%s/?replicaSet=%s", strings.Join(m.Hosts(clusterDomain), ","), m.Name)
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
@@ -593,17 +593,18 @@ func (m MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
-	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s", m.ServiceName(), m.Namespace, clusterDomain)
+	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s/?replicaSet=%s", m.ServiceName(), m.Namespace, clusterDomain, m.Name)
 }
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
 func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
-	return fmt.Sprintf("mongodb://%s:%s@%s/%s?ssl=%t",
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?replicaSet=%s&ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
+		m.Name,
 		m.Spec.Security.TLS.Enabled)
 }
 
@@ -613,13 +614,14 @@ func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, 
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?ssl=%t",
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		m.ServiceName(),
 		m.Namespace,
 		clusterDomain,
 		user.Database,
+		m.Name,
 		m.Spec.Security.TLS.Enabled)
 }
 
