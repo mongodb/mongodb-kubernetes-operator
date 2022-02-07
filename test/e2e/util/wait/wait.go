@@ -187,7 +187,7 @@ func ForPodPhase(t *testing.T, timeout time.Duration, pod corev1.Pod, podPhase c
 		if err != nil {
 			return false, err
 		}
-		t.Logf("Current phase %s", pod.Status.Phase)
+		t.Logf("Current phase %s, expected phase %s", pod.Status.Phase, podPhase)
 		return pod.Status.Phase == podPhase, nil
 	})
 }
