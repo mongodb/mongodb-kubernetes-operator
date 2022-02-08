@@ -9,7 +9,7 @@ def main() -> int:
     client = MongoClient(connection_string)
 
     try:
-        client.db.col.insert_one({})
+        client.db.testing.insert_one({})
     except Exception as e:
         print(f"Error inserting document {e}")
         return 1
