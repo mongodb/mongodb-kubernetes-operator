@@ -6,10 +6,11 @@ from pymongo import MongoClient
 
 def main() -> int:
     connection_string = os.getenv("CONNECTION_STRING")
+    print(f"Using connection String: {connection_string}")
     client = MongoClient(connection_string)
 
     try:
-        client.db.testing.insert_one({})
+        client.testing.col.insert_one({})
     except Exception as e:
         print(f"Error inserting document {e}")
         return 1
