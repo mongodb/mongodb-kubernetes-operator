@@ -26,6 +26,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// createPythonTestPod creates a pod with a simple python app which connects to a MongoDB database
+// using the connection string referenced within a given secret key.
 func createPythonTestPod(namespace, secretName, secretKey string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -33,6 +35,7 @@ func createPythonTestPod(namespace, secretName, secretKey string) corev1.Pod {
 			Namespace: namespace,
 		},
 		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
 			Containers: []corev1.Container{
 				{
 					Name:       "python-app",
