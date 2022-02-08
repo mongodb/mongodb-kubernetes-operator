@@ -28,10 +28,10 @@ func TestMain(m *testing.M) {
 
 // createPythonTestPod creates a pod with a simple python app which connects to a MongoDB database
 // using the connection string referenced within a given secret key.
-func createPythonTestPod(namespace, secretName, secretKey string) corev1.Pod {
+func createPythonTestPod(idx int, namespace, secretName, secretKey string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
+			Name:      fmt.Sprintf("test-pod-%d", idx),
 			Namespace: namespace,
 		},
 		Spec: corev1.PodSpec{
@@ -91,7 +91,7 @@ func TestMountConnectionString(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
 	t.Run("Application Pod can connect to MongoDB using the generated standard connection string.", func(t *testing.T) {
-		testPod := createPythonTestPod(mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standard")
+		testPod := createPythonTestPod(0, mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standard")
 		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
 			TestContext: ctx,
 		})
@@ -100,7 +100,7 @@ func TestMountConnectionString(t *testing.T) {
 	})
 
 	t.Run("Application Pod can connect to MongoDB using the generated secret SRV connection string", func(t *testing.T) {
-		testPod := createPythonTestPod(mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standardSrv")
+		testPod := createPythonTestPod(1, mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standardSrv")
 		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
 			TestContext: ctx,
 		})
