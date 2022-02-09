@@ -82,7 +82,9 @@ def main() -> int:
     if image_name not in QUAY_URL_MAP:
         raise ValueError("No associated image urls for key [{}]".format(image_name))
 
-    if _all_urls_are_released(QUAY_URL_MAP[image_name], name_to_version_map[image_name]):
+    if _all_urls_are_released(
+        QUAY_URL_MAP[image_name], name_to_version_map[image_name]
+    ):
         print("released")
     else:
         print("unreleased")
