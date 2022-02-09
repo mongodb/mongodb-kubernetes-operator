@@ -11,10 +11,19 @@ import requests
 
 # contains a map of the quay urls to fetch data about the corresponding images.
 QUAY_URL_MAP = {
-    "mongodb-agent": "https://quay.io/api/v1/repository/mongodb/mongodb-agent-ubi",
-    "readiness-probe": "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-readinessprobe",
-    "version-upgrade-hook": "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook",
-    "mongodb-kubernetes-operator": "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator",
+    "mongodb-agent": [
+        "https://quay.io/api/v1/repository/mongodb/mongodb-agent-ubi",
+        "https://quay.io/api/v1/repository/mongodb/mongodb-agent",
+    ],
+    "readiness-probe": [
+        "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-readinessprobe",
+    ],
+    "version-upgrade-hook": [
+        "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook"
+    ],
+    "mongodb-kubernetes-operator": [
+        "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator"
+    ],
 }
 
 
@@ -37,7 +46,7 @@ def _load_image_name_to_version_map() -> Dict:
 def main() -> int:
     if len(sys.argv) != 2:
         raise ValueError("usage: determine_required_releases.py [image-name]")
-    image_name = sys.argv[1]
+    image_name = sys.argv[1]  # mongodb-agent
     image_name_map = _load_image_name_to_version_map()
 
     if image_name not in image_name_map:
@@ -50,12 +59,19 @@ def main() -> int:
     if image_name not in QUAY_URL_MAP:
         raise ValueError("No associated image url with key [{}]".format(image_name))
 
-    tags = _get_all_released_tags(image_name)
-    if image_name_map[image_name] in tags:
-        print("released")
-    else:
-        print("unreleased")
-    return 0
+    print(image_name_map)
+    print(image_name)
+
+    for repo in QUAY_URL_MAP[image_name]:
+        print(repo)
+        tags = _get_all_released_tags(repo)
+        print(tags)
+
+    # if image_name_map[image_name] in tags:
+    #     print("released")
+    # else:
+    #     print("unreleased")
+    # return 0
 
 
 if __name__ == "__main__":
