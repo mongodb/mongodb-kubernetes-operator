@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/monitoring"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
@@ -578,12 +580,30 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
 	}
 
+	prometheusModification := automationconfig.NOOP()
+	if mdb.Spec.Metrics != nil {
+		secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Metrics.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
+		r.secretWatcher.Watch(secretNamespacedName, mdb.NamespacedName())
+
+		password, err := secret.ReadKey(r.client, mdb.Spec.Metrics.Prometheus.GetPasswordKey(), secretNamespacedName)
+		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				r.log.Infof("Could not read Secret %s. Prometheus will not be configured during this reconciliation, %s", mdb.Spec.Metrics.Prometheus.PasswordSecretRef.Name, err)
+			} else {
+				return automationconfig.AutomationConfig{}, errors.Errorf("could not configure Prometheus modification: %s", err)
+			}
+		} else {
+			prometheusModification = monitoring.PrometheusModification(mdb, password)
+		}
+	}
+
 	automationConfig, err := buildAutomationConfig(
 		mdb,
 		auth,
 		currentAC,
 		tlsModification,
 		customRolesModification,
+		prometheusModification,
 	)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)

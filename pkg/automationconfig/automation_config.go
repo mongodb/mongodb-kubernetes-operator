@@ -20,6 +20,7 @@ type AutomationConfig struct {
 	Processes   []Process    `json:"processes"`
 	ReplicaSets []ReplicaSet `json:"replicaSets"`
 	Auth        Auth         `json:"auth"`
+	Prometheus  *Prometheus  `json:"prometheus,omitempty"`
 
 	// TLSConfig and SSLConfig exist to allow configuration of older agents which accept the "ssl" field rather or "tls"
 	// only one of these should be set.
@@ -183,6 +184,31 @@ type Auth struct {
 	KeyFileWindows string `json:"keyfileWindows,omitempty"`
 	// AutoPwd is a required field when going from `Disabled=false` to `Disabled=true`
 	AutoPwd string `json:"autoPwd,omitempty"`
+}
+
+type Prometheus struct {
+	Enabled          bool   `json:"enabled"`
+	Username         string `json:"username"`
+	Password         string `json:"password"`
+	Scheme           string `json:"scheme"`
+	TLSPemPath       string `json:"tlsPemPath"`
+	TLSPemPassword   string `json:"tlsPemPassword"`
+	Mode             string `json:"mode"`
+	ListenAddress    string `json:"listenAddress"`
+	MetricsPath      string `json:"metricsPath"`
+	ServiceDiscovery string `json:"serviceDiscovery"`
+}
+
+func NewDefaultPrometheus(username string) Prometheus {
+	return Prometheus{
+		Enabled:          true,
+		Username:         username,
+		Scheme:           "http",
+		Mode:             "opsManager",
+		ListenAddress:    "0.0.0.0:9216",
+		MetricsPath:      "/metrics",
+		ServiceDiscovery: "file",
+	}
 }
 
 type CustomRole struct {
