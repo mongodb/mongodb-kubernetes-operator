@@ -95,7 +95,7 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
@@ -197,7 +197,7 @@ images:
         dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context
           agent_version: $(inputs.params.agent_version)
 
         labels:
