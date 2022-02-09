@@ -18,7 +18,7 @@ VALID_IMAGE_NAMES = frozenset(
     ]
 )
 
-GOLANG_TAG = "1.16"
+GOLANG_TAG = "1.17"
 DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
