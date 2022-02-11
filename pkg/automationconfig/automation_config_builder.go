@@ -283,7 +283,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		processes[i] = *process
 
 		var horizon ReplicaSetHorizons
-		if b.replicaSetHorizons != nil {
+		if b.replicaSetHorizons != nil && i < len(b.replicaSetHorizons) {
 			horizon = b.replicaSetHorizons[i]
 		}
 

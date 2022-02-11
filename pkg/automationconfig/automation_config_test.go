@@ -159,6 +159,34 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	assert.Equal(t, 1, m[11].Votes)
 }
 
+func TestReplicaSetHorizonsScaleDown(t *testing.T) {
+	var expected ReplicaSetHorizons
+
+	horizons := []ReplicaSetHorizons{
+		{"horizon": "test-horizon-0"},
+		{"horizon": "test-horizon-1"},
+		{"horizon": "test-horizon-2"},
+	}
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(4).
+		SetReplicaSetHorizons(horizons).
+		Build()
+
+	assert.NoError(t, err)
+
+	for i, member := range ac.ReplicaSets[0].Members {
+		if i >= len(horizons) {
+			expected = nil
+		} else {
+			expected = ReplicaSetHorizons{"horizon": fmt.Sprintf("test-horizon-%d", i)}
+		}
+		assert.Equal(t, expected, member.Horizons)
+	}
+}
+
 func TestReplicaSetHorizons(t *testing.T) {
 	ac, err := NewBuilder().
 		SetName("my-rs").
