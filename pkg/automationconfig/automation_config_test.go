@@ -159,6 +159,46 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	assert.Equal(t, 1, m[11].Votes)
 }
 
+func TestReplicaSetMultipleHorizonsScaleDown(t *testing.T) {
+	var expected ReplicaSetHorizons
+
+	horizons := []ReplicaSetHorizons{
+		{
+			"internal": "test-horizon-0",
+			"external": "test-horizon-0",
+		},
+		{
+			"internal": "test-horizon-1",
+			"external": "test-horizon-1",
+		},
+		{
+			"internal": "test-horizon-2",
+			"external": "test-horizon-2",
+		},
+	}
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(4).
+		SetReplicaSetHorizons(horizons).
+		Build()
+
+	assert.NoError(t, err)
+
+	for i, member := range ac.ReplicaSets[0].Members {
+		if i >= len(horizons) {
+			expected = nil
+		} else {
+			expected = ReplicaSetHorizons{
+				"internal": fmt.Sprintf("test-horizon-%d", i),
+				"external": fmt.Sprintf("test-horizon-%d", i),
+			}
+		}
+		assert.Equal(t, expected, member.Horizons)
+	}
+}
+
 func TestReplicaSetHorizonsScaleDown(t *testing.T) {
 	var expected ReplicaSetHorizons
 
