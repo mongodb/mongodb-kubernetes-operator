@@ -88,41 +88,37 @@ spec:
               members:
                 description: Members is the number of members in the replica set
                 type: integer
-              metrics:
-                description: Metrics configurations.
+              prometheus:
+                description: Prometheus configurations.
                 properties:
-                  prometheus:
+                  metricsPath:
+                    description: Indicates path to the metrics endpoint.
+                    pattern: ^\/[a-z0-9]+$
+                    type: string
+                  passwordSecretRef:
+                    description: Name of a Secret containing a HTTP Basic Auth Password.
                     properties:
-                      metricsPath:
-                        description: Indicates path to the metrics endpoint.
-                        pattern: ^\/[a-z0-9]+$
+                      key:
+                        description: Key is the key in the secret storing this password.
+                          Defaults to "password"
                         type: string
-                      passwordSecretRef:
-                        description: Name of a Secret containing a HTTP Basic Auth
-                          Password.
-                        properties:
-                          key:
-                            description: Key is the key in the secret storing this
-                              password. Defaults to "password"
-                            type: string
-                          name:
-                            description: Name is the name of the secret storing this
-                              user's password
-                            type: string
-                        required:
-                        - name
-                        type: object
-                      port:
-                        description: Port where metrics endpoint will bind to. Defaults
-                          to 9216.
-                        type: integer
-                      username:
-                        description: HTTP Basic Auth Username for metrics endpoint.
+                      name:
+                        description: Name is the name of the secret storing this user's
+                          password
                         type: string
                     required:
-                    - passwordSecretRef
-                    - username
+                    - name
                     type: object
+                  port:
+                    description: Port where metrics endpoint will bind to. Defaults
+                      to 9216.
+                    type: integer
+                  username:
+                    description: HTTP Basic Auth Username for metrics endpoint.
+                    type: string
+                required:
+                - passwordSecretRef
+                - username
                 type: object
               replicaSetHorizons:
                 description: ReplicaSetHorizons Add this parameter and values if you

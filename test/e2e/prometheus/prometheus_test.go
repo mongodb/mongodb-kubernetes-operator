@@ -25,7 +25,7 @@ func TestReplicaSet(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	mdb.Spec.Metrics = e2eutil.NewMetricsConfig(mdb.Namespace)
+	mdb.Spec.Prometheus = e2eutil.NewPrometheusConfig(mdb.Namespace)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {

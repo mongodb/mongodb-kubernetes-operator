@@ -9,21 +9,20 @@ spec:
   version: "5.0.6"
 
   # You can expose metrics for Prometheus polling using the
-  # `metrics.prometheus` entry.
-  metrics:
-    prometheus:
-      # Metrics endpoint HTTP Basic Auth username
-      username: <username>
+  # `prometheus` entry.
+  prometheus:
+    # Metrics endpoint HTTP Basic Auth username
+    username: <username>
 
-      # Metrics endpoint HTTP Basic Auth password
-      passwordSecretRef:
-        name: metrics-endpoint-password
+    # Metrics endpoint HTTP Basic Auth password
+    passwordSecretRef:
+      name: metrics-endpoint-password
 
-      # Optional, defaults to `/metrics`
-      # metricsPath: /metrics
+    # Optional, defaults to `/metrics`
+    # metricsPath: /metrics
 
-      # Optional defaults to 9216
-      # port: 9216
+    # Optional defaults to 9216
+    # port: 9216
 
   security:
     authentication:

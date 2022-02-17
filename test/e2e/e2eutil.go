@@ -159,7 +159,7 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	}
 }
 
-func NewMetricsConfig(namespace string) *mdbv1.Metrics {
+func NewPrometheusConfig(namespace string) *mdbv1.Prometheus {
 	sec := secret.Builder().
 		SetName("prom-secret").
 		SetNamespace(namespace).
@@ -172,12 +172,10 @@ func NewMetricsConfig(namespace string) *mdbv1.Metrics {
 		}
 	}
 
-	return &mdbv1.Metrics{
-		Prometheus: mdbv1.Prometheus{
-			Username: "prom-user",
-			PasswordSecretRef: mdbv1.SecretKeyReference{
-				Name: "prom-secret",
-			},
+	return &mdbv1.Prometheus{
+		Username: "prom-user",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "prom-secret",
 		},
 	}
 }

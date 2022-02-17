@@ -581,14 +581,14 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	prometheusModification := automationconfig.NOOP()
-	if mdb.Spec.Metrics != nil {
-		secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Metrics.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
+	if mdb.Spec.Prometheus != nil {
+		secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
 		r.secretWatcher.Watch(secretNamespacedName, mdb.NamespacedName())
 
-		password, err := secret.ReadKey(r.client, mdb.Spec.Metrics.Prometheus.GetPasswordKey(), secretNamespacedName)
+		password, err := secret.ReadKey(r.client, mdb.Spec.Prometheus.GetPasswordKey(), secretNamespacedName)
 		if err != nil {
 			if apiErrors.IsNotFound(err) {
-				r.log.Infof("Could not read Secret %s. Prometheus will not be configured during this reconciliation, %s", mdb.Spec.Metrics.Prometheus.PasswordSecretRef.Name, err)
+				r.log.Infof("Could not read Secret %s. Prometheus will not be configured during this reconciliation, %s", mdb.Spec.Prometheus.PasswordSecretRef.Name, err)
 			} else {
 				return automationconfig.AutomationConfig{}, errors.Errorf("could not configure Prometheus modification: %s", err)
 			}

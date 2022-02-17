@@ -107,9 +107,9 @@ type MongoDBCommunitySpec struct {
 	// by name. Currently Only the process.disabled field is supported.
 	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfig,omitempty"`
 
-	// Metrics configurations.
+	// Prometheus configurations.
 	// +optional
-	Metrics *Metrics `json:"metrics,omitempty"`
+	Prometheus *Prometheus `json:"prometheus,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -130,10 +130,6 @@ type CustomRole struct {
 	// The authentication restrictions the server enforces on the role.
 	// +optional
 	AuthenticationRestrictions []AuthenticationRestriction `json:"authenticationRestrictions,omitempty"`
-}
-
-type Metrics struct {
-	Prometheus Prometheus `json:"prometheus,omitempty"`
 }
 
 type Prometheus struct {
