@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -154,6 +155,27 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 		},
 		CaCertificateSecret: &mdbv1.LocalObjectReference{
 			Name: "tls-ca-key-pair",
+		},
+	}
+}
+
+func NewPrometheusConfig(namespace string) *mdbv1.Prometheus {
+	sec := secret.Builder().
+		SetName("prom-secret").
+		SetNamespace(namespace).
+		SetField("password", "prom-password").
+		Build()
+	err := TestClient.Create(context.TODO(), &sec, &CleanupOptions{})
+	if err != nil {
+		if !apiErrors.IsAlreadyExists(err) {
+			panic(fmt.Sprintf("Error trying to create secret: %s", err))
+		}
+	}
+
+	return &mdbv1.Prometheus{
+		Username: "prom-user",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "prom-secret",
 		},
 	}
 }

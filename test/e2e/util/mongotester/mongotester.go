@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -31,10 +32,13 @@ import (
 type Tester struct {
 	mongoClient *mongo.Client
 	clientOpts  []*options.ClientOptions
+	resource    *mdbv1.MongoDBCommunity
 }
 
-func newTester(mdb mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
-	t := &Tester{}
+func newTester(mdb *mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
+	t := &Tester{
+		resource: mdb,
+	}
 	t.clientOpts = append(t.clientOpts, opts...)
 	return t
 }
@@ -72,7 +76,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
-	return newTester(mdb, clientOpts...), nil
+	return newTester(&mdb, clientOpts...), nil
 }
 
 // ConnectivitySucceeds performs a basic check that ensures that it is possible
@@ -177,12 +181,13 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 		err := m.mongoClient.Database("admin").
 			RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
 			Decode(&result)
-		actualValue := result[key]
-		t.Logf("Actual Value: %+v, type: %s", actualValue, reflect.TypeOf(actualValue))
 		if err != nil {
 			t.Logf("Unable to get admin setting %s with error : %s", key, err)
 			return false
 		}
+
+		actualValue := result[key]
+		t.Logf("Actual Value: %+v, type: %s", actualValue, reflect.TypeOf(actualValue))
 		return reflect.DeepEqual(expectedValue, actualValue)
 	}, tries, opts...)
 }
@@ -494,4 +499,24 @@ type connectivityOpts struct {
 	ContextTimeout time.Duration
 	Database       string
 	Collection     string
+}
+
+func (m *Tester) PrometheusEndpointIsReachable(username, password string) func(t *testing.T) {
+	client := &http.Client{}
+	return func(t *testing.T) {
+		var idx int
+
+		// Verify that the Prometheus port is enabled and responding with 200
+		// on every Pod.
+		for idx = 0; idx < m.resource.Spec.Members; idx++ {
+			url := fmt.Sprintf("http://%s-%d.%s-svc.%s.svc.cluster.local:9216/metrics", m.resource.Name, idx, m.resource.Name, m.resource.Namespace)
+			req, err := http.NewRequest("GET", url, nil)
+			assert.NoError(t, err)
+			req.SetBasicAuth(username, password)
+
+			response, err := client.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, response.StatusCode, 200)
+		}
+	}
 }

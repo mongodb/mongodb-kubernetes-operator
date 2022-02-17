@@ -106,6 +106,10 @@ type MongoDBCommunitySpec struct {
 	// AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
 	// by name. Currently Only the process.disabled field is supported.
 	AutomationConfigOverride *AutomationConfigOverride `json:"automationConfig,omitempty"`
+
+	// Prometheus configurations.
+	// +optional
+	Prometheus *Prometheus `json:"prometheus,omitempty"`
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -126,6 +130,30 @@ type CustomRole struct {
 	// The authentication restrictions the server enforces on the role.
 	// +optional
 	AuthenticationRestrictions []AuthenticationRestriction `json:"authenticationRestrictions,omitempty"`
+}
+
+type Prometheus struct {
+	// Port where metrics endpoint will bind to. Defaults to 9216.
+	// +optional
+	Port int `json:"port,omitempty"`
+
+	// HTTP Basic Auth Username for metrics endpoint.
+	Username string `json:"username"`
+
+	// Name of a Secret containing a HTTP Basic Auth Password.
+	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
+
+	// Indicates path to the metrics endpoint.
+	// +kubebuilder:validation:Pattern=^\/[a-z0-9]+$
+	MetricsPath string `json:"metricsPath,omitempty"`
+}
+
+func (p Prometheus) GetPasswordKey() string {
+	if p.PasswordSecretRef.Key != "" {
+		return p.PasswordSecretRef.Key
+	}
+
+	return "password"
 }
 
 // ConvertToAutomationConfigCustomRole converts between a custom role defined by the crd and a custom role

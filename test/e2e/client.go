@@ -20,6 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+
+	// Needed for running tests on GCP
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 // TestClient is the global client used by e2e tests.
