@@ -82,7 +82,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = getPemOrConcatenatedCrtAndKey(r.client, mdb)
+	_, err = getPemOrConcatenatedCrtAndKey(r.client, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		r.log.Warnf(err.Error())
 		return false, nil
@@ -102,7 +102,7 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -111,13 +111,13 @@ func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
-	cert, err := secret.ReadKey(getter, tlsSecretCertName, mdb.TLSSecretNamespacedName())
+func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
+	cert, err := secret.ReadKey(getter, tlsSecretCertName, secretName)
 	if err != nil {
 		return ""
 	}
 
-	key, err := secret.ReadKey(getter, tlsSecretKeyName, mdb.TLSSecretNamespacedName())
+	key, err := secret.ReadKey(getter, tlsSecretKeyName, secretName)
 	if err != nil {
 		return ""
 	}
@@ -126,8 +126,8 @@ func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
 }
 
 // getPem will fetch the pem from the user-provided secret
-func getPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity) string {
-	pem, err := secret.ReadKey(getter, tlsSecretPemName, mdb.TLSSecretNamespacedName())
+func getPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
+	pem, err := secret.ReadKey(getter, tlsSecretPemName, secretName)
 	if err != nil {
 		return ""
 	}
@@ -144,9 +144,9 @@ func combineCertificateAndKey(cert, key string) string {
 // This is either the tls.pem entry in the given secret, or the concatenation
 // of tls.crt and tls.key
 // It performs a basic validation on the entries.
-func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
-	certKey := getCertAndKey(getter, mdb)
-	pem := getPem(getter, mdb)
+func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) (string, error) {
+	certKey := getCertAndKey(getter, mdb, secretName)
+	pem := getPem(getter, mdb, secretName)
 	if certKey == "" && pem == "" {
 		return "", fmt.Errorf(`Neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
@@ -165,7 +165,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb)
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return err
 	}
@@ -175,6 +175,26 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 	operatorSecret := secret.Builder().
 		SetName(mdb.TLSOperatorSecretNamespacedName().Name).
 		SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
+		SetField(fileName, certKey).
+		SetOwnerReferences(mdb.GetOwnerReferences()).
+		Build()
+
+	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+}
+
+// ensurePrometheusTLSSecret will create or update the operator-managed Secret containing
+// the concatenated certificate and key from the user-provided Secret.
+func ensurePrometheusTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.DeepCopy().PrometheusTLSSecretNamespacedName())
+	if err != nil {
+		return err
+	}
+	// Calculate file name from certificate and key
+	fileName := tlsOperatorSecretFileName(certKey)
+
+	operatorSecret := secret.Builder().
+		SetName(mdb.PrometheusTLSOperatorSecretNamespacedName().Name).
+		SetNamespace(mdb.PrometheusTLSOperatorSecretNamespacedName().Namespace).
 		SetField(fileName, certKey).
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
@@ -248,5 +268,29 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Mod
 		podtemplatespec.WithVolume(tlsSecretVolume),
 		podtemplatespec.WithVolumeMounts(construct.AgentName, tlsSecretVolumeMount, caVolumeMount),
 		podtemplatespec.WithVolumeMounts(construct.MongodbName, tlsSecretVolumeMount, caVolumeMount),
+	)
+}
+
+// buildTLSPrometheus adds the TLS mounts for Prometheus.
+func buildTLSPrometheus(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
+	if mdb.Spec.Prometheus == nil || mdb.Spec.Prometheus.TLSSecretRef.Name == "" {
+		return podtemplatespec.NOOP()
+	}
+
+	// Configure a volume which mounts the secret holding the server key and certificate
+	// The same key-certificate pair is used for all servers
+	tlsSecretVolume := statefulset.CreateVolumeFromSecret("prom-tls-secret", mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
+
+	// TODO: Is it ok to use the same `tlsOperatorSecretMountPath`
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
+
+	// MongoDB expects both key and certificate to be provided in a single PEM file
+	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
+	// Because of this we need to use an init container which reads the two files mounted from the secret and combines them into one
+	return podtemplatespec.Apply(
+		// podtemplatespec.WithVolume(caVolume),
+		podtemplatespec.WithVolume(tlsSecretVolume),
+		podtemplatespec.WithVolumeMounts(construct.AgentName, tlsSecretVolumeMount),
+		podtemplatespec.WithVolumeMounts(construct.MongodbName, tlsSecretVolumeMount),
 	)
 }

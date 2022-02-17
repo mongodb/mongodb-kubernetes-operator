@@ -15,8 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/monitoring"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
@@ -187,6 +185,14 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		)
 	}
 
+	if err := r.ensurePrometheusTLSResources(mdb); err != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
+				withFailedPhase(),
+		)
+	}
+
 	if err := r.ensureUserResources(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
@@ -296,6 +302,23 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 			return errors.Errorf("could not ensure TLS secret: %s", err)
 		}
 	}
+	return nil
+}
+
+// ensurePrometheusTLSResources creates any required TLS resources that the MongoDBCommunity
+// requires for TLS configuration.
+func (r *ReplicaSetReconciler) ensurePrometheusTLSResources(mdb mdbv1.MongoDBCommunity) error {
+	if mdb.Spec.Prometheus == nil || mdb.Spec.Prometheus.TLSSecretRef.Name == "" {
+		return nil
+	}
+
+	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
+	// require the contents.
+	r.log.Infof("Prometheus TLS is enabled, creating/updating TLS secret")
+	if err := ensurePrometheusTLSSecret(r.client, mdb); err != nil {
+		return errors.Errorf("could not ensure TLS secret: %s", err)
+	}
+
 	return nil
 }
 
@@ -585,15 +608,9 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
 		r.secretWatcher.Watch(secretNamespacedName, mdb.NamespacedName())
 
-		password, err := secret.ReadKey(r.client, mdb.Spec.Prometheus.GetPasswordKey(), secretNamespacedName)
+		prometheusModification, err = getPrometheusModification(r.client, mdb)
 		if err != nil {
-			if apiErrors.IsNotFound(err) {
-				r.log.Infof("Could not read Secret %s. Prometheus will not be configured during this reconciliation, %s", mdb.Spec.Prometheus.PasswordSecretRef.Name, err)
-			} else {
-				return automationconfig.AutomationConfig{}, errors.Errorf("could not configure Prometheus modification: %s", err)
-			}
-		} else {
-			prometheusModification = monitoring.PrometheusModification(mdb, password)
+			return automationconfig.AutomationConfig{}, errors.Errorf("could not enable TLS on Prometheus endpoint: %s", err)
 		}
 	}
 
@@ -661,6 +678,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		statefulset.WithPodSpecTemplate(
 			podtemplatespec.Apply(
 				buildTLSPodSpecModification(mdb),
+				buildTLSPrometheus(mdb),
 			),
 		),
 
