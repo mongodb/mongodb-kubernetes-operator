@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	// Keep in sync with api/v1/mongodbcommunity_types.go
 	DefaultPrometheusPort = 9216
 	ListenAddress         = "0.0.0.0"
 )
@@ -70,7 +71,7 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 func prometheusPort(mdb mdbv1.MongoDBCommunity) *corev1.ServicePort {
 	if mdb.Spec.Prometheus != nil {
 		return &corev1.ServicePort{
-			Port: DefaultPrometheusPort,
+			Port: int32(mdb.Spec.Prometheus.GetPort()),
 			Name: "prometheus",
 		}
 	}

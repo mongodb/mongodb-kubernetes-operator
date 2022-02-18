@@ -34,13 +34,13 @@ const (
 type Phase string
 
 const (
-	Running Phase = "Running"
-	Failed  Phase = "Failed"
-	Pending Phase = "Pending"
-)
+	Running            Phase = "Running"
+	Failed             Phase = "Failed"
+	Pending            Phase = "Pending"
+	defaultPasswordKey       = "password"
 
-const (
-	defaultPasswordKey = "password"
+	// Keep in sync with controllers/prometheus.go
+	defaultPrometheusPort = 9216
 )
 
 // SCRAM-SHA-256 and SCRAM-SHA-1 are the supported auth modes.
@@ -159,6 +159,14 @@ func (p Prometheus) GetPasswordKey() string {
 	}
 
 	return "password"
+}
+
+func (p Prometheus) GetPort() int {
+	if p.Port != 0 {
+		return p.Port
+	}
+
+	return defaultPrometheusPort
 }
 
 // ConvertToAutomationConfigCustomRole converts between a custom role defined by the crd and a custom role
