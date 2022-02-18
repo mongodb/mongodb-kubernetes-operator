@@ -4,5 +4,10 @@ zz_*
 vendor/
 scripts/
 .git/
+bin/
+testbin/
+.mypy_cache/
+main
+__debug_bin
 # allow agent LICENSE
 !scripts/dev/templates/agent/LICENSE
