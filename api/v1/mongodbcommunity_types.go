@@ -146,6 +146,11 @@ type Prometheus struct {
 	// Indicates path to the metrics endpoint.
 	// +kubebuilder:validation:Pattern=^\/[a-z0-9]+$
 	MetricsPath string `json:"metricsPath,omitempty"`
+
+	// Name of a Secret (type kubernetes.io/tls) holding the certificates to use in the
+	// Prometheus endpoint.
+	// +optional
+	TLSSecretRef SecretKeyReference `json:"tlsSecretKeyRef,omitempty"`
 }
 
 func (p Prometheus) GetPasswordKey() string {
@@ -708,10 +713,21 @@ func (m MongoDBCommunity) TLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: m.Namespace}
 }
 
+// PrometheusTLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
+func (m MongoDBCommunity) PrometheusTLSSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Spec.Prometheus.TLSSecretRef.Name, Namespace: m.Namespace}
+}
+
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
 func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
+}
+
+// PrometheusTLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
+// containing the combined certificate and key.
+func (m MongoDBCommunity) PrometheusTLSOperatorSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name + "-prometheus-certificate-key", Namespace: m.Namespace}
 }
 
 func (m MongoDBCommunity) NamespacedName() types.NamespacedName {

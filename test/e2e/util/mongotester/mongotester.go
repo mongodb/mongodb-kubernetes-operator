@@ -337,6 +337,40 @@ func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
 	return nil
 }
 
+// PrometheusEndpointIsReachable returns a testing function that will check for
+// the Prometheus endpoint to be rechable. It can be configued to use HTTPS if
+// `useTls` is set to `true`.
+func (m *Tester) PrometheusEndpointIsReachable(username, password string, useTls bool) func(t *testing.T) {
+	scheme := "http"
+	customTransport := http.DefaultTransport.(*http.Transport).Clone()
+	if useTls {
+		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint
+		scheme = "https"
+	}
+	client := &http.Client{Transport: customTransport}
+
+	return func(t *testing.T) {
+		_ = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+			var idx int
+
+			// Verify that the Prometheus port is enabled and responding with 200
+			// on every Pod.
+			for idx = 0; idx < m.resource.Spec.Members; idx++ {
+				url := fmt.Sprintf("%s://%s-%d.%s-svc.%s.svc.cluster.local:9216/metrics", scheme, m.resource.Name, idx, m.resource.Name, m.resource.Namespace)
+				req, err := http.NewRequest("GET", url, nil)
+				assert.NoError(t, err)
+				req.SetBasicAuth(username, password)
+
+				response, err := client.Do(req)
+				assert.NoError(t, err)
+				assert.Equal(t, response.StatusCode, 200)
+			}
+
+			return true, nil
+		})
+	}
+}
+
 // clientOptionAdder is the standard implementation that simply adds a
 // new options.ClientOption to the mongo client
 type clientOptionAdder struct {
@@ -499,24 +533,4 @@ type connectivityOpts struct {
 	ContextTimeout time.Duration
 	Database       string
 	Collection     string
-}
-
-func (m *Tester) PrometheusEndpointIsReachable(username, password string) func(t *testing.T) {
-	client := &http.Client{}
-	return func(t *testing.T) {
-		var idx int
-
-		// Verify that the Prometheus port is enabled and responding with 200
-		// on every Pod.
-		for idx = 0; idx < m.resource.Spec.Members; idx++ {
-			url := fmt.Sprintf("http://%s-%d.%s-svc.%s.svc.cluster.local:9216/metrics", m.resource.Name, idx, m.resource.Name, m.resource.Namespace)
-			req, err := http.NewRequest("GET", url, nil)
-			assert.NoError(t, err)
-			req.SetBasicAuth(username, password)
-
-			response, err := client.Do(req)
-			assert.NoError(t, err)
-			assert.Equal(t, response.StatusCode, 200)
-		}
-	}
 }

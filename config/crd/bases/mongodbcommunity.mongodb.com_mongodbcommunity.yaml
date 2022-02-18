@@ -113,6 +113,21 @@ spec:
                     description: Port where metrics endpoint will bind to. Defaults
                       to 9216.
                     type: integer
+                  tlsSecretKeyRef:
+                    description: Name of a Secret (type kubernetes.io/tls) holding
+                      the certificates to use in the Prometheus endpoint.
+                    properties:
+                      key:
+                        description: Key is the key in the secret storing this password.
+                          Defaults to "password"
+                        type: string
+                      name:
+                        description: Name is the name of the secret storing this user's
+                          password
+                        type: string
+                    required:
+                    - name
+                    type: object
                   username:
                     description: HTTP Basic Auth Username for metrics endpoint.
                     type: string
