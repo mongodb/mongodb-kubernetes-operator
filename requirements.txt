@@ -1,8 +1,9 @@
-git+https://github.com/mongodb/sonar@0.0.12#egg=sonar
+git+https://github.com/mongodb/sonar@96d13ff76a29349d07d2d6baa95e057495f00adf
 github-action-templates==0.0.4
 docker==4.3.1
 kubernetes==11.0.0
 jinja2==2.11.3
+MarkupSafe==2.0.1
 PyYAML==5.4.1
 black==20.8b1
 mypy==0.782
