@@ -296,6 +296,48 @@ func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
 	assertReconciliationSuccessful(t, res, err)
 }
 
+func TestService_configuresPrometheus(t *testing.T) {
+	mdb := newTestReplicaSet()
+	mdb.Spec.Prometheus = &mdbv1.Prometheus{
+		Username: "username",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "secret",
+		},
+	}
+
+	mongodConfig := objx.New(map[string]interface{}{})
+	mongodConfig.Set("net.port", 1000.)
+	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
+
+	mgr := client.NewManager(&mdb)
+	err := secret.CreateOrUpdate(mgr.Client,
+		secret.Builder().
+			SetName("secret").
+			SetNamespace(mdb.Namespace).
+			SetField("password", "my-password").
+			Build(),
+	)
+
+	assert.NoError(t, err)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	svc := corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
+	assert.Len(t, svc.Spec.Ports, 2)
+	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 1000, Name: "mongodb"})
+	assert.Equal(t, svc.Spec.Ports[1], corev1.ServicePort{Port: 9216, Name: "prometheus"})
+
+	assert.Equal(t, svc.Labels["app"], mdb.ServiceName())
+
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+}
+
 func TestCustomNetPort_Configuration(t *testing.T) {
 	svc, _ := performReconciliationAndGetService(t, "specify_net_port.yaml")
 	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)

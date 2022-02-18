@@ -543,13 +543,23 @@ func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
 		SetName(name).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
+		SetLabels(label).
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
-		SetPort(int32(mdb.GetMongodConfiguration().GetDBPort())).
-		SetPortName("mongodb").
 		SetPublishNotReadyAddresses(true).
 		SetOwnerReferences(mdb.GetOwnerReferences()).
+		AddPort(mongoDBPort(mdb)).
+		AddPort(prometheusPort(mdb)).
 		Build()
+}
+
+// mongoDBPort returns a `corev1.ServicePort` to be configured in the StatefulSet
+// for this MongoDB resource.
+func mongoDBPort(mdb mdbv1.MongoDBCommunity) *corev1.ServicePort {
+	return &corev1.ServicePort{
+		Port: int32(mdb.GetMongodConfiguration().GetDBPort()),
+		Name: "mongodb",
+	}
 }
 
 // validateSpec checks if the MongoDB resource Spec is valid.

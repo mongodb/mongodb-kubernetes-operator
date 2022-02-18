@@ -3,6 +3,8 @@ package controllers
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -12,7 +14,8 @@ import (
 )
 
 const (
-	listenAddress = "0.0.0.0"
+	DefaultPrometheusPort = 9216
+	ListenAddress         = "0.0.0.0"
 )
 
 // PrometheusModification adds Prometheus configuration to AutomationConfig.
@@ -50,7 +53,7 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 		promConfig.Password = password
 
 		if mdb.Spec.Prometheus.Port > 0 {
-			promConfig.ListenAddress = fmt.Sprintf("%s:%d", listenAddress, mdb.Spec.Prometheus.Port)
+			promConfig.ListenAddress = fmt.Sprintf("%s:%d", ListenAddress, mdb.Spec.Prometheus.Port)
 		}
 
 		if mdb.Spec.Prometheus.MetricsPath != "" {
@@ -59,4 +62,17 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 
 		config.Prometheus = &promConfig
 	}, nil
+}
+
+// prometheusPort returns a `corev1.ServicePort` to be configured in the StatefulSet
+// for the Prometheus endpoint. This function will only return a new Port when
+// Prometheus has been configured, and nil otherwise.
+func prometheusPort(mdb mdbv1.MongoDBCommunity) *corev1.ServicePort {
+	if mdb.Spec.Prometheus != nil {
+		return &corev1.ServicePort{
+			Port: DefaultPrometheusPort,
+			Name: "prometheus",
+		}
+	}
+	return nil
 }

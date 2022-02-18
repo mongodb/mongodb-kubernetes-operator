@@ -10,7 +10,7 @@ type builder struct {
 	namespace             string
 	clusterIp             string
 	serviceType           corev1.ServiceType
-	servicePort           corev1.ServicePort
+	servicePort           []corev1.ServicePort
 	labels                map[string]string
 	loadBalancerIP        string
 	publishNotReady       bool
@@ -55,18 +55,11 @@ func (b *builder) SetClusterIP(clusterIP string) *builder {
 	return b
 }
 
-func (b *builder) SetPort(port int32) *builder {
-	b.servicePort.Port = port
-	return b
-}
+func (b *builder) AddPort(port *corev1.ServicePort) *builder {
+	if port != nil {
+		b.servicePort = append(b.servicePort, *port)
+	}
 
-func (b *builder) SetPortName(portName string) *builder {
-	b.servicePort.Name = portName
-	return b
-}
-
-func (b *builder) SetNodePort(port int32) *builder {
-	b.servicePort.NodePort = port
 	return b
 }
 
@@ -105,7 +98,7 @@ func (b *builder) Build() corev1.Service {
 			LoadBalancerIP:           b.loadBalancerIP,
 			Type:                     b.serviceType,
 			ClusterIP:                b.clusterIp,
-			Ports:                    []corev1.ServicePort{b.servicePort},
+			Ports:                    b.servicePort,
 			Selector:                 b.selector,
 		},
 	}
@@ -117,5 +110,6 @@ func Builder() *builder {
 		ownerReferences: []metav1.OwnerReference{},
 		selector:        map[string]string{},
 		annotations:     map[string]string{},
+		servicePort:     []corev1.ServicePort{},
 	}
 }
