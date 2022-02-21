@@ -1,0 +1,104 @@
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mongodb
+  namespace: mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "5.0.6"
+
+  # You can expose metrics for Prometheus polling using the
+  # `prometheus` entry.
+  prometheus:
+    # Metrics endpoint HTTP Basic Auth username
+    username: prometheus-username
+
+    # Metrics endpoint HTTP Basic Auth password
+    passwordSecretRef:
+      name: metrics-endpoint-password
+
+  security:
+    authentication:
+      modes: ["SCRAM"]
+
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef:
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+      scramCredentialsSecretName: my-scram
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+  namespace: mongodb
+type: Opaque
+stringData:
+  password: 'Not-So-Secure!'
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: metrics-endpoint-password
+  namespace: mongodb
+type: Opaque
+stringData:
+  password: 'Not-So-Secure!'
+  username: prometheus-username
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+
+  # This needs to match `spec.ServiceMonitorSelector.matchLabels` from your
+  # `prometheuses.monitoring.coreos.com` resouce.
+  labels:
+    release: prometheus
+
+  name: mongodb-sm
+  namespace: mongodb
+spec:
+  endpoints:
+
+  # Configuring a Prometheus Endpoint with basic Auth.
+  # `prom-secret` is a Secret containing a `username` and `password` entries.
+  - basicAuth:
+      password:
+        key: password
+        name: metrics-endpoint-password
+      username:
+        key: username
+        name: metrics-endpoint-password
+
+    # This port matches what we created in our MongoDB Service.
+    port: prometheus
+
+    # If using HTTPS enabled endpoint, change scheme to https
+    scheme: http
+
+    # Configure different TLS related settings. For more information, see:
+    # https://github.com/prometheus-operator/prometheus-operator/blob/main/pkg/apis/monitoring/v1/types.go#L909
+    # tlsConfig:
+    #    insecureSkipVerify: true
+
+  # What namespace to watch
+  namespaceSelector:
+    matchNames:
+    - mongodb
+
+  # Service labels to match
+  selector:
+    matchLabels:
+      app: mongodb-svc

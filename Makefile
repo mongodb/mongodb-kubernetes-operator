@@ -47,6 +47,10 @@ run: install install-rbac
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
+debug: install install-rbac
+	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
+	dlv debug ./cmd/manager/main.go
+
 # Install CRDs into a cluster
 install: manifests helm install-crd
 

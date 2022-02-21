@@ -24,6 +24,10 @@ spec:
     # Optional defaults to 9216
     # port: 9216
 
+    # Prometheus endpoint can be configured to use HTTPS
+    # tlsSecretKeyRef:
+    #   name: "<kubernetes.io/tls secret name>"
+
   security:
     authentication:
       modes: ["SCRAM"]
