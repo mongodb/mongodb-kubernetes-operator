@@ -16,11 +16,11 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: example-prometheus-cert
+  name: prometheus-target-cert
   namespace: mongodb
 spec:
   # Secret names are always required.
-  secretName: example-prometheus-cert
+  secretName: prometheus-target-cert
 
   duration: 2160h  # 90 days
   renewBefore: 360h  # 15 days
@@ -34,13 +34,13 @@ spec:
     encoding: PKCS1
     size: 2048
   usages:
-    - client auth
+    - server auth
 
   # we will include each hostname in our Replica Set.
   dnsNames:
-    - example-prometheus-0.example-prometheus-svc.mongodb.svc.cluster.local
-    - example-prometheus-1.example-prometheus-svc.mongodb.svc.cluster.local
-    - example-prometheus-2.example-prometheus-svc.mongodb.svc.cluster.local
+    - mongodb-0.mongodb-svc.mongodb.svc.cluster.local
+    - mongodb-1.mongodb-svc.mongodb.svc.cluster.local
+    - mongodb-2.mongodb-svc.mongodb.svc.cluster.local
 
   issuerRef:
     name: ca-issuer

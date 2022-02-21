@@ -97,7 +97,7 @@ following command:
 ``` shell
 $ kubectl apply -f issuer-and-cert.yaml --namespace mongodb
 issuer.cert-manager.io/ca-issuer created
-certificate.cert-manager.io/example-prometheus-cert created
+certificate.cert-manager.io/prometheus-target-cert created
 ```
 
 ### Enabling TLS on the MongoDB CRD
@@ -111,11 +111,11 @@ We need to add a new entry to `spec.prometheus` section of the MongoDB
 operation.
 
 ``` shell
-$ kubectl patch mdbc example-prometheus --type='json' \
-    -p='[{"op": "add", "path": "/spec/prometheus/tlsSecretKeyRef", "value":{"name": "example-prometheus-cert"}}]' \
+$ kubectl patch mdbc mongodb --type='json' \
+    -p='[{"op": "add", "path": "/spec/prometheus/tlsSecretKeyRef", "value":{"name": "prometheus-target-cert"}}]' \
     --namespace mongodb
 
-mongodbcommunity.mongodbcommunity.mongodb.com/example-prometheus patched
+mongodbcommunity.mongodbcommunity.mongodb.com/mongodb patched
 ```
 
 After a few minutes, the MongoDB resource should be back in Running phase. Now
@@ -127,16 +127,16 @@ endpoint.
 To update our `ServiceMonitor` we will again patch the resource:
 
 ``` shell
-$ kubectl patch servicemonitors prometheus-metrics-sm --type='json' \
+$ kubectl patch servicemonitors mongodb-sm --type='json' \
     -p='
 [
     {"op": "replace", "path": "/spec/endpoints/0/scheme", "value": "https"},
     {"op": "add",     "path": "/spec/endpoints/0/tlsConfig", "value": {"insecureSkipVerify": true}}
 ]
 ' \
-    --namespace prometheus-system
+    --namespace mongodb
 
-servicemonitor.monitoring.coreos.com/prometheus-metrics-sm patched
+servicemonitor.monitoring.coreos.com/mongodb-sm patched
 ```
 
 With these changes, the new `ServiceMonitor` will be pointing at the HTTPS

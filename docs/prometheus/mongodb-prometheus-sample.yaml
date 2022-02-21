@@ -2,7 +2,7 @@
 apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
-  name: example-prometheus
+  name: mongodb
   namespace: mongodb
 spec:
   members: 3
@@ -65,10 +65,10 @@ metadata:
   # This needs to match `spec.ServiceMonitorSelector.matchLabels` from your
   # `prometheuses.monitoring.coreos.com` resouce.
   labels:
-    release: prom
+    release: prometheus
 
-  name: prometheus-metrics-sm
-  namespace: prometheus-system
+  name: mongodb-sm
+  namespace: mongodb
 spec:
   endpoints:
 
@@ -101,4 +101,4 @@ spec:
   # Service labels to match
   selector:
     matchLabels:
-      app: example-prometheus-svc
+      app: mongodb-svc
