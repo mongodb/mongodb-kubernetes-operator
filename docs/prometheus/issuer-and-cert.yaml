@@ -1,0 +1,52 @@
+# Creates a new Cert-Manager `Issuer` using a certificate stored in a
+# `Secret` named "issuer-secret".
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ca-issuer
+  namespace: mongodb
+spec:
+  ca:
+    secretName: issuer-secret
+
+# Creates a new Cert-Manager `Certificate` using the `Issuer` we just
+# (name: ca-issuer).
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-prometheus-cert
+  namespace: mongodb
+spec:
+  # Secret names are always required.
+  secretName: example-prometheus-cert
+
+  duration: 2160h  # 90 days
+  renewBefore: 360h  # 15 days
+  subject:
+    organizations:
+      - mongodb
+
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - client auth
+
+  # we will include each hostname in our Replica Set.
+  dnsNames:
+    - example-prometheus-0.example-prometheus-svc.mongodb.svc.cluster.local
+    - example-prometheus-1.example-prometheus-svc.mongodb.svc.cluster.local
+    - example-prometheus-2.example-prometheus-svc.mongodb.svc.cluster.local
+
+  issuerRef:
+    name: ca-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: Issuer
+    # This is optional since cert-manager will default to this value however
+    # if you are using an external issuer, change this to that issuer group.
+    group: cert-manager.io

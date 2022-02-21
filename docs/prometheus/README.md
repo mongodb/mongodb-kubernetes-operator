@@ -11,7 +11,7 @@ Prometheus metrics coming from MongoDB.
 
 ## Quick Start
 
-We have tested this setup with versuion 0.54 of the [Prometheus
+We have tested this setup with version 0.54 of the [Prometheus
 Operator](https://github.com/prometheus-operator/prometheus-operator).
 
 ### Installing Prometheus Operator
@@ -20,12 +20,11 @@ The Prometheus Operator can be installed using Helm. Find the installation
 instructions
 [here](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack#kube-prometheus-stack):
 
-What I did was:
+This can be done with:
 
 ``` shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-
 helm install prometheus prometheus-community/kube-prometheus-stack --namespace prometheus-system --create-namespace
 ```
 
@@ -60,3 +59,90 @@ Namespace.
 It will also create a `ServiceMonitor` that will configure Prometheus to consume
 this resurce's metrics. This will be created in the `prometheus-system`
 namespace.
+
+
+## Bonus: Enable TLS on the Prometheus Endpoint
+
+### Installing Cert-Manager
+
+We will install [Cert-Manager](https://cert-manager.io/) from using Helm.
+
+``` shell
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.7.1 \
+  --set installCRDs=true
+```
+
+Now with Cert-Manager installed we we'll create a Cert-Manager `Issuer` and then
+a `Certificate`. We provide 2 files that can be used to create a new `Issuer`.
+
+First we need to create a `Secret` holding a TLS certificate `tls.crt` and
+`tls.key` entries. We provide the certificate and key files that can be used to
+create a Cert-Manager `Certificate`, they are in the `testdata/tls` directory.
+
+``` shell
+$ kubectl create secret tls issuer-secret --cert=../../testdata/tls/ca.crt --key=../../testdata/tls/ca.key \
+    --namespace mongodb
+secret/issuer-secret created
+```
+
+And now we are ready to create a new `Issuer` and `Certificate`, by running the
+following command:
+
+``` shell
+$ kubectl apply -f issuer-and-cert.yaml --namespace mongodb
+issuer.cert-manager.io/ca-issuer created
+certificate.cert-manager.io/example-prometheus-cert created
+```
+
+### Enabling TLS on the MongoDB CRD
+
+<center>_Make sure this configuration is not used in Production environments! A Security
+expert should be advising you on how to configure TLS_</center>
+
+We need to add a new entry to `spec.prometheus` section of the MongoDB
+`CustomResource`; we can do it executing the following
+[patch](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/update-api-object-kubectl-patch/)
+operation.
+
+``` shell
+$ kubectl patch mdbc example-prometheus --type='json' \
+    -p='[{"op": "add", "path": "/spec/prometheus/tlsSecretKeyRef", "value":{"name": "example-prometheus-cert"}}]' \
+    --namespace mongodb
+
+mongodbcommunity.mongodbcommunity.mongodb.com/example-prometheus patched
+```
+
+After a few minutes, the MongoDB resource should be back in Running phase. Now
+we need to configure our Prometheus `ServiceMonitor` to point at the HTTPS
+endpoint.
+
+### Update ServiceMonitor
+
+To update our `ServiceMonitor` we will again patch the resource:
+
+``` shell
+$ kubectl patch servicemonitors prometheus-metrics-sm --type='json' \
+    -p='
+[
+    {"op": "replace", "path": "/spec/endpoints/0/scheme", "value": "https"},
+    {"op": "add",     "path": "/spec/endpoints/0/tlsConfig", "value": {"insecureSkipVerify": true}}
+]
+' \
+    --namespace prometheus-system
+
+servicemonitor.monitoring.coreos.com/prometheus-metrics-sm patched
+```
+
+With these changes, the new `ServiceMonitor` will be pointing at the HTTPS
+endpoint (defined in `/spec/endpoints/0/scheme`). We are also setting
+`spec/endpoints/0/tlsConfig/insecureSkipVerify` to `true`, which will make
+Prometheus to not verify TLS certificates on MongoDB's end.
+
+Prometheus should now be able to scrape the MongoDB's target using HTTPS this
+time.

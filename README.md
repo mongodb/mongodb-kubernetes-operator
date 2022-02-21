@@ -45,6 +45,7 @@ The MongoDB Community Kubernetes Operator supports the following features:
 - Secure client-to-server and server-to-server connections with TLS
 - Create users with [SCRAM](https://docs.mongodb.com/manual/core/security-scram/) authentication
 - Create custom roles
+- Enable a [metrics target that can be used with Prometheus](docs/prometheus/README.md)
 
 ### Planned Features
 - Server internal authentication via keyfile
