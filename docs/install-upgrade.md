@@ -201,3 +201,19 @@ Make sure you run commands in the correct namespace.
       kubectl delete pod <sts-name>-0
       ```
    d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.   
+
+## Rotating TLS certificate for the MongoDB deployment
+
+Renew the secret for your TLS certificates
+```
+kubectl create secret tls <secret_name> \
+  --cert=<replica-set-tls-cert> \
+  --key=<replica-set-tls-key> \
+  --dry-run=client \
+   -o yaml |
+kubectl apply -f -
+```
+*`secret_name` is what you've specified under `Spec.Security.TLS.CertificateKeySecret.Name`*.
+
+If you're using a tool like cert-manager, you can follow [these instructions](https://cert-manager.io/docs/usage/certificate/#renewal) to rotate the certificate.
+The operator should would watch the secret change and re-trigger a reconcile process. 
