@@ -301,6 +301,10 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
 			return errors.Errorf("could not ensure TLS secret: %s", err)
 		}
+		r.log.Infof("Ensuring the automation config is up to date with the latest TLS secret")
+		if _, err := r.ensureAutomationConfig(mdb); err != nil {
+			return errors.Errorf("failed to sync automation config with latest TLS secret")
+		}
 	}
 	return nil
 }
