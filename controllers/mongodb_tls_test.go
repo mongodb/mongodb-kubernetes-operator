@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -202,6 +203,38 @@ func TestTLSOperatorSecret(t *testing.T) {
 		certificateKey, err := secret.ReadKey(k8sclient, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
+	})
+
+	t.Run("Updating TLS secret triggers automation config update", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLS()
+		k8sclient := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
+		err := createTLSSecret(k8sclient, mdb, "CERT", "KEY", "")
+		assert.NoError(t, err)
+		err = createTLSConfigMap(k8sclient, mdb)
+		assert.NoError(t, err)
+
+		r := NewReconciler(client.NewManagerWithClient(k8sclient))
+		err = r.ensureTLSResources(mdb)
+		assert.NoError(t, err)
+
+		var ac automationconfig.AutomationConfig
+		acjson, err := secret.ReadKey(k8sclient, automationconfig.ConfigKey, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+		assert.NoError(t, err)
+		err = json.Unmarshal([]byte(acjson), &ac)
+		assert.NoError(t, err)
+
+		assert.Equal(t, &automationconfig.TLS{
+			CAFilePath:            tlsCAMountPath + tlsCACertName,
+			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
+		}, ac.TLSConfig)
+
+		for _, process := range ac.Processes {
+			operatorSecretFileName := tlsOperatorSecretFileName("CERT\nKEY")
+
+			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
+		}
 	})
 }
 
