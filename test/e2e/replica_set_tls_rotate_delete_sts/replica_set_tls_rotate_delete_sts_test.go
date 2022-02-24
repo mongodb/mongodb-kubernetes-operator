@@ -8,8 +8,6 @@ import (
 
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
-	"time"
-
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -57,10 +55,11 @@ func TestReplicaSetTLSRotateDeleteSts(t *testing.T) {
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 
 	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls(mdb))()
-		t.Run("Stateful Set Is Deleted", mongodbtests.StatefulSetIsDeleted(&mdb))
+		t.Run("Delete Statefulset", mongodbtests.DeleteStatefulSet(&mdb))
 		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
 		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb, initialCertSerialNumber))
+		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(&mdb))
 		t.Run("Wait for MongoDB to reach Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
 	})
 }
