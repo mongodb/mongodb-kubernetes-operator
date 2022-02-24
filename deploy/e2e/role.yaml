@@ -134,6 +134,7 @@ rules:
   - watch
   - create
   - delete
+  - patch
   - update
 - apiGroups:
   - acme.cert-manager.io
