@@ -61,5 +61,6 @@ func TestReplicaSetTLSRotateDeleteSts(t *testing.T) {
 		t.Run("Stateful Set Is Deleted", mongodbtests.StatefulSetIsDeleted(&mdb))
 		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
 		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb, initialCertSerialNumber))
+		t.Run("Wait for MongoDB to reach Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	})
 }
