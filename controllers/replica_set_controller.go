@@ -301,10 +301,6 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
 			return errors.Errorf("could not ensure TLS secret: %s", err)
 		}
-		r.log.Infof("Ensuring the automation config is up to date with the latest TLS secret")
-		if _, err := r.ensureAutomationConfig(mdb); err != nil {
-			return errors.Errorf("failed to sync automation config with latest TLS secret")
-		}
 	}
 	return nil
 }
@@ -400,7 +396,11 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 // functions should be sequential or not. A value of false indicates they will run in reversed order.
 func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
-	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if !statefulset.IsReady(sts, mdb.StatefulSetReplicasThisReconciliation()) && mdb.Spec.Security.TLS.Enabled {
+		r.log.Debug("Enabling TLS on a deployment with a StatefulSet that is not Ready, the Automation Config must be updated first")
+		return true
+	}
 	if err == nil && mdb.Spec.Security.TLS.Enabled {
 		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
 		return false
