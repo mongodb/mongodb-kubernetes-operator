@@ -33,6 +33,8 @@ tests:
           distro: ubi
         - test-name: replica_set_tls_rotate
           distro: ubi
+        - test-name: replica_set_tls_rotate_delete_sts
+          distro: ubi
         - test-name: replica_set_tls_upgrade
           distro: ubi
         - test-name: statefulset_arbitrary_config
