@@ -67,6 +67,7 @@ spec:
         securityContext:
           readOnlyRootFilesystem: true
           runAsUser: 2000
+          allowPrivilegeEscalation: false
       securityContext:
         seccompProfile:
           type: RuntimeDefault
