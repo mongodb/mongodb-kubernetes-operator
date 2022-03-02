@@ -91,6 +91,13 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	// Watch certificate-key secret to handle rotations
 	r.secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
 
+	// Watch CA certificate changes
+	if caResourceType == "Secret" {
+		r.secretWatcher.Watch(mdb.TLSCaCertificateSecretNamespacedName(), mdb.NamespacedName())
+	} else {
+		r.configMapWatcher.Watch(mdb.TLSConfigMapNamespacedName(), mdb.NamespacedName())
+	}
+
 	r.log.Infof("Successfully validated TLS config")
 	return true, nil
 }

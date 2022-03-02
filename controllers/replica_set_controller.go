@@ -72,12 +72,14 @@ func init() {
 func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
+	configMapWatcher := watch.New()
 
 	return &ReplicaSetReconciler{
-		client:        kubernetesClient.NewClient(mgrClient),
-		scheme:        mgr.GetScheme(),
-		log:           zap.S(),
-		secretWatcher: &secretWatcher,
+		client:           kubernetesClient.NewClient(mgrClient),
+		scheme:           mgr.GetScheme(),
+		log:              zap.S(),
+		secretWatcher:    &secretWatcher,
+		configMapWatcher: &configMapWatcher,
 	}
 }
 
@@ -87,6 +89,7 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, r.configMapWatcher).
 		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
@@ -95,10 +98,11 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 type ReplicaSetReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client        kubernetesClient.Client
-	scheme        *runtime.Scheme
-	log           *zap.SugaredLogger
-	secretWatcher *watch.ResourceWatcher
+	client           kubernetesClient.Client
+	scheme           *runtime.Scheme
+	log              *zap.SugaredLogger
+	secretWatcher    *watch.ResourceWatcher
+	configMapWatcher *watch.ResourceWatcher
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
