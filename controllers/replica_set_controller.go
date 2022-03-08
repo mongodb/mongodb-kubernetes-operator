@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -46,6 +47,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -453,12 +455,24 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 // The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
 // will be created for the arbiters Statefulset.
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
-	svc := buildService(mdb, isArbiter)
-	err := r.client.Create(context.TODO(), &svc)
-	if err != nil && apiErrors.IsAlreadyExists(err) {
-		r.log.Infof("The service already exists... moving forward: %s", err)
+	name := mdb.ServiceName()
+	if isArbiter {
+		name = mdb.ArbiterServiceName()
+	}
+
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: mdb.Namespace}}
+	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.client, svc, func() error {
+		resourceVersion := svc.ResourceVersion // Save resourceVersion for later
+		*svc = buildService(mdb, isArbiter)
+		svc.ResourceVersion = resourceVersion
+		return nil
+	})
+	if err != nil {
+		r.log.Infof("Cloud not create or patch the service: %s", err)
 		return nil
 	}
+
+	r.log.Infow("Create/Update operation succeeded", "operation", op)
 
 	return err
 }
