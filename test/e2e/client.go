@@ -22,6 +22,7 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	// Needed for running tests on GCP
+	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
@@ -88,8 +89,9 @@ type E2ETestClient struct {
 	Client client.Client
 	// We need the core API client for some operations that the controller-runtime client doesn't support
 	// (e.g. exec into the container)
-	CoreV1Client corev1client.CoreV1Client
-	restConfig   *rest.Config
+	CoreV1Client  corev1client.CoreV1Client
+	DynamicClient dynamic.Interface
+	restConfig    *rest.Config
 }
 
 // NewE2ETestClient creates a new E2ETestClient.
@@ -102,7 +104,11 @@ func newE2ETestClient(config *rest.Config, scheme *runtime.Scheme) (*E2ETestClie
 	if err != nil {
 		return nil, err
 	}
-	return &E2ETestClient{Client: cli, CoreV1Client: *coreClient, restConfig: config}, err
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return &E2ETestClient{Client: cli, CoreV1Client: *coreClient, DynamicClient: dynamicClient, restConfig: config}, err
 }
 
 // Create wraps client.Create to provide post-test cleanup functionality.

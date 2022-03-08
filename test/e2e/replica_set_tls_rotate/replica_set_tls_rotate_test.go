@@ -58,5 +58,9 @@ func TestReplicaSetTLSRotate(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10, WithTls(mdb))()
 		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
 		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb, initialCertSerialNumber))
+		t.Run("Wait for MongoDB to reach Running Phase after rotating server cert", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Extend CA certificate validity", tlstests.ExtendCACertificate(&mdb))
+		t.Run("Wait for MongoDB to start reconciling after extending CA", mongodbtests.MongoDBReachesPendingPhase(&mdb))
+		t.Run("Wait for MongoDB to reach Running Phase after extending CA", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	})
 }

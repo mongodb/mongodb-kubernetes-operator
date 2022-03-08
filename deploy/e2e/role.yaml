@@ -173,6 +173,7 @@ rules:
   - watch
   - create
   - update
+  - patch
   - delete
   - patch
   - deletecollection

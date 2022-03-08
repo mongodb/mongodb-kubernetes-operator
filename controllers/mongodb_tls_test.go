@@ -39,17 +39,16 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	// Assert that all TLS volumes have been added.
 	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
+	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
 		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: mdb.Spec.Security.TLS.CaConfigMap.Name,
-				},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  mdb.TLSOperatorCASecretNamespacedName().Name,
+				DefaultMode: &permission,
 			},
 		},
 	})
-	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-secret",
 		VolumeSource: corev1.VolumeSource{
@@ -90,7 +89,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		err = createTLSConfigMap(client, mdb)
 		assert.NoError(t, err)
 
-		tlsModification, err := getTLSConfigModification(client, mdb)
+		tlsModification, err := getTLSConfigModification(client, client, mdb)
 		assert.NoError(t, err)
 		ac, err := buildAutomationConfig(mdb, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
 		assert.NoError(t, err)
@@ -117,7 +116,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		ac := createAC(mdb)
 
 		assert.Equal(t, &automationconfig.TLS{
-			CAFilePath:            tlsCAMountPath + tlsCACertName,
+			CAFilePath:            tlsCAMountPath + tlsOperatorSecretFileName("CERT"),
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
 		}, ac.TLSConfig)
 
@@ -126,7 +125,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 			assert.Equal(t, automationconfig.TLSModeRequired, process.Args26.Get("net.tls.mode").Data())
 			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
-			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsOperatorSecretFileName("CERT"), process.Args26.Get("net.tls.CAFile").Data())
 			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
@@ -137,7 +136,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		ac := createAC(mdb)
 
 		assert.Equal(t, &automationconfig.TLS{
-			CAFilePath:            tlsCAMountPath + tlsCACertName,
+			CAFilePath:            tlsCAMountPath + tlsOperatorSecretFileName("CERT"),
 			ClientCertificateMode: automationconfig.ClientCertificateModeOptional,
 		}, ac.TLSConfig)
 
@@ -146,7 +145,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 			assert.Equal(t, automationconfig.TLSModePreferred, process.Args26.Get("net.tls.mode").Data())
 			assert.Equal(t, tlsOperatorSecretMountPath+operatorSecretFileName, process.Args26.Get("net.tls.certificateKeyFile").Data())
-			assert.Equal(t, tlsCAMountPath+tlsCACertName, process.Args26.Get("net.tls.CAFile").Data())
+			assert.Equal(t, tlsCAMountPath+tlsOperatorSecretFileName("CERT"), process.Args26.Get("net.tls.CAFile").Data())
 			assert.True(t, process.Args26.Get("net.tls.allowConnectionsWithoutCertificates").MustBool())
 		}
 	})
