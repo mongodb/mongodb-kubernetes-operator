@@ -229,6 +229,17 @@ func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *tes
 	}
 }
 
+// MongoDBReachesPendingPhase ensures the MongoDB resources gets to the Pending phase
+func MongoDBReachesPendingPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Pending, time.Second*15, time.Minute*2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("MongoDB %s/%s is Pending!", mdb.Namespace, mdb.Name)
+	}
+}
+
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {

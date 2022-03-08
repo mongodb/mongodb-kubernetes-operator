@@ -48,6 +48,11 @@ func ExtendCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 				"path":  "/spec/renewBefore",
 				"value": "720h0m0s",
 			},
+			map[string]interface{}{
+				"op":    "add",
+				"path":  "/spec/dnsNames",
+				"value": []string{"*.ca-example.domain"},
+			},
 		}
 		payload, err := json.Marshal(patch)
 		assert.NoError(t, err)
