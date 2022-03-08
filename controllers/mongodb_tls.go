@@ -7,6 +7,7 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 
-	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -40,33 +40,15 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Info("Ensuring TLS is correctly configured")
 
 	// Ensure CA cert is configured
-	var caResourceName types.NamespacedName
-	var caResourceType string
-	var caData map[string]string
-	var err error
-	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
-		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
-		caResourceType = "Secret"
-		caData, err = secret.ReadStringData(r.client, caResourceName)
-	} else {
-		caResourceName = mdb.TLSConfigMapNamespacedName()
-		caResourceType = "ConfigMap"
-		caData, err = configmap.ReadData(r.client, caResourceName)
-	}
+	_, err := getCaCrt(r.client, r.client, mdb)
 
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			r.log.Warnf(`CA %s "%s" not found`, caResourceType, caResourceName)
+			r.log.Warnf("CA resource not found: %s", err)
 			return false, nil
 		}
 
 		return false, err
-	}
-
-	// Ensure Secret or ConfigMap has a "ca.crt" field
-	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		r.log.Warnf(`%s "%s" should have a CA certificate in field "%s"`, caResourceType, caResourceName, tlsCACertName)
-		return false, nil
 	}
 
 	// Ensure Secret exists
@@ -92,7 +74,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	r.secretWatcher.Watch(mdb.TLSSecretNamespacedName(), mdb.NamespacedName())
 
 	// Watch CA certificate changes
-	if caResourceType == "Secret" {
+	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		r.secretWatcher.Watch(mdb.TLSCaCertificateSecretNamespacedName(), mdb.NamespacedName())
 	} else {
 		r.configMapWatcher.Watch(mdb.TLSConfigMapNamespacedName(), mdb.NamespacedName())
@@ -104,17 +86,22 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
 // It will also ensure that the combined cert-key secret is created.
-func getTLSConfigModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
+func getTLSConfigModification(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return automationconfig.NOOP(), nil
 	}
 
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
+	caCert, err := getCaCrt(cmGetter, secretGetter, mdb)
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
 
-	return tlsConfigModification(mdb, certKey), nil
+	certKey, err := getPemOrConcatenatedCrtAndKey(secretGetter, mdb, mdb.TLSSecretNamespacedName())
+	if err != nil {
+		return automationconfig.NOOP(), err
+	}
+
+	return tlsConfigModification(mdb, certKey, caCert), nil
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
@@ -169,6 +156,51 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 	return certKey, nil
 }
 
+func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
+	var caResourceName types.NamespacedName
+	var caResourceType string
+	var caData map[string]string
+	var err error
+	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
+		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
+		caResourceType = "Secret"
+		caData, err = secret.ReadStringData(secretGetter, caResourceName)
+	} else {
+		caResourceName = mdb.TLSConfigMapNamespacedName()
+		caResourceType = "ConfigMap"
+		caData, err = configmap.ReadData(cmGetter, caResourceName)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
+		return "", errors.Errorf(`%s "%s" should have a CA certificate in field "%s"`, caResourceType, caResourceName, tlsCACertName)
+	} else {
+		return cert, nil
+	}
+}
+
+// ensureCASecret will create or update the operator managed Secret containing
+// the CA certficate from the user provided Secret or ConfigMap.
+func ensureCASecret(cmGetter configmap.Getter, secretGetter secret.Getter, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	cert, err := getCaCrt(cmGetter, secretGetter, mdb)
+	if err != nil {
+		return err
+	}
+
+	caFileName := tlsOperatorSecretFileName(cert)
+
+	operatorSecret := secret.Builder().
+		SetName(mdb.TLSOperatorCASecretNamespacedName().Name).
+		SetNamespace(mdb.TLSOperatorCASecretNamespacedName().Namespace).
+		SetField(caFileName, cert).
+		SetOwnerReferences(mdb.GetOwnerReferences()).
+		Build()
+
+	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+}
+
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
@@ -221,8 +253,8 @@ func tlsOperatorSecretFileName(certKey string) string {
 }
 
 // tlsConfigModification will enable TLS in the automation config.
-func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey string) automationconfig.Modification {
-	caCertificatePath := tlsCAMountPath + tlsCACertName
+func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey, caCert string) automationconfig.Modification {
+	caCertificatePath := tlsCAMountPath + tlsOperatorSecretFileName(caCert)
 	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName(certKey)
 
 	mode := automationconfig.TLSModeRequired
@@ -254,12 +286,7 @@ func buildTLSPodSpecModification(mdb mdbv1.MongoDBCommunity) podtemplatespec.Mod
 
 	// Configure a volume which mounts the CA certificate from either a Secret or a ConfigMap
 	// The certificate is used by both mongod and the agent
-	var caVolume v1.Volume
-	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
-		caVolume = statefulset.CreateVolumeFromSecret("tls-ca", mdb.Spec.Security.TLS.CaCertificateSecret.Name)
-	} else {
-		caVolume = statefulset.CreateVolumeFromConfigMap("tls-ca", mdb.Spec.Security.TLS.CaConfigMap.Name)
-	}
+	caVolume := statefulset.CreateVolumeFromSecret("tls-ca", mdb.TLSOperatorCASecretNamespacedName().Name)
 	caVolumeMount := statefulset.CreateVolumeMount(caVolume.Name, tlsCAMountPath, statefulset.WithReadOnly(true))
 
 	// Configure a volume which mounts the secret holding the server key and certificate

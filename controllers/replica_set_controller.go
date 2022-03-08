@@ -301,6 +301,10 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 	// the TLS secret needs to be created beforehand, as both the StatefulSet and AutomationConfig
 	// require the contents.
 	if mdb.Spec.Security.TLS.Enabled {
+		r.log.Infof("TLS is enabled, creating/updating CA secret")
+		if err := ensureCASecret(r.client, r.client, r.client, mdb); err != nil {
+			return errors.Errorf("could not ensure CA secret: %s", err)
+		}
 		r.log.Infof("TLS is enabled, creating/updating TLS secret")
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
 			return errors.Errorf("could not ensure TLS secret: %s", err)
@@ -601,7 +605,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 }
 
 func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
-	tlsModification, err := getTLSConfigModification(r.client, mdb)
+	tlsModification, err := getTLSConfigModification(r.client, r.client, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
 	}

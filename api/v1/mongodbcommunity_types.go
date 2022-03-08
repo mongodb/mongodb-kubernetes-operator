@@ -726,6 +726,10 @@ func (m MongoDBCommunity) PrometheusTLSSecretNamespacedName() types.NamespacedNa
 	return types.NamespacedName{Name: m.Spec.Prometheus.TLSSecretRef.Name, Namespace: m.Namespace}
 }
 
+func (m MongoDBCommunity) TLSOperatorCASecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Name: m.Name + "-ca-certificate", Namespace: m.Namespace}
+}
+
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
 func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName {

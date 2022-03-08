@@ -3,6 +3,7 @@ package tlstests
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -23,6 +26,33 @@ func EnableTLS(mdb *mdbv1.MongoDBCommunity, optional bool) func(*testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func ExtendCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return func(t *testing.T) {
+		certGVR := schema.GroupVersionResource{
+			Group:    "cert-manager.io",
+			Version:  "v1",
+			Resource: "certificates",
+		}
+		caCertificateClient := e2eutil.TestClient.DynamicClient.Resource(certGVR).Namespace(mdb.Namespace)
+		patch := []interface{}{
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/duration",
+				"value": "8760h0m0s",
+			},
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/renewBefore",
+				"value": "720h0m0s",
+			},
+		}
+		payload, err := json.Marshal(patch)
+		assert.NoError(t, err)
+		_, err = caCertificateClient.Patch(context.TODO(), "tls-selfsigned-ca", types.JSONPatchType, payload, metav1.PatchOptions{})
+		assert.NoError(t, err)
 	}
 }
 
