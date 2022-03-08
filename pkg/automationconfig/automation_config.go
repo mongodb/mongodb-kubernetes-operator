@@ -187,27 +187,27 @@ type Auth struct {
 }
 
 type Prometheus struct {
-	Enabled          bool   `json:"enabled"`
-	Username         string `json:"username"`
-	Password         string `json:"password"`
-	Scheme           string `json:"scheme"`
-	TLSPemPath       string `json:"tlsPemPath"`
-	TLSPemPassword   string `json:"tlsPemPassword"`
-	Mode             string `json:"mode"`
-	ListenAddress    string `json:"listenAddress"`
-	MetricsPath      string `json:"metricsPath"`
-	ServiceDiscovery string `json:"serviceDiscovery"`
+	Enabled        bool   `json:"enabled"`
+	Username       string `json:"username"`
+	Password       string `json:"password,omitempty"`
+	PasswordHash   string `json:"passwordHash,omitempty"`
+	PasswordSalt   string `json:"passwordSalt,omitempty"`
+	Scheme         string `json:"scheme"`
+	TLSPemPath     string `json:"tlsPemPath"`
+	TLSPemPassword string `json:"tlsPemPassword"`
+	Mode           string `json:"mode"`
+	ListenAddress  string `json:"listenAddress"`
+	MetricsPath    string `json:"metricsPath"`
 }
 
 func NewDefaultPrometheus(username string) Prometheus {
 	return Prometheus{
-		Enabled:          true,
-		Username:         username,
-		Scheme:           "http",
-		Mode:             "opsManager",
-		ListenAddress:    "0.0.0.0:9216",
-		MetricsPath:      "/metrics",
-		ServiceDiscovery: "file",
+		Enabled:       true,
+		Username:      username,
+		Scheme:        "http",
+		Mode:          "opsManager",
+		ListenAddress: "0.0.0.0:9216",
+		MetricsPath:   "/metrics",
 	}
 }
 
