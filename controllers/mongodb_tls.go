@@ -158,16 +158,13 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 
 func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
 	var caResourceName types.NamespacedName
-	var caResourceType string
 	var caData map[string]string
 	var err error
 	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
-		caResourceType = "Secret"
 		caData, err = secret.ReadStringData(secretGetter, caResourceName)
 	} else {
 		caResourceName = mdb.TLSConfigMapNamespacedName()
-		caResourceType = "ConfigMap"
 		caData, err = configmap.ReadData(cmGetter, caResourceName)
 	}
 	if err != nil {
@@ -175,7 +172,7 @@ func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.M
 	}
 
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		return "", errors.Errorf(`%s "%s" should have a CA certificate in field "%s"`, caResourceType, caResourceName, tlsCACertName)
+		return "", errors.Errorf(`CA certificate resource "%s" should have a CA certificate in field "%s"`, caResourceName, tlsCACertName)
 	} else {
 		return cert, nil
 	}
