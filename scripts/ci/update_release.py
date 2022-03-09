@@ -14,6 +14,7 @@ RELATIVE_PATH_TO_OPENSHIFT_MANAGER_YAML = "deploy/openshift/operator_openshift.y
 
 RELATIVE_PATH_TO_CHART_VALUES = "helm-charts/charts/community-operator/values.yaml"
 RELATIVE_PATH_TO_CHART = "helm-charts/charts/community-operator/Chart.yaml"
+RELATIVE_PATH_TO_CRD_CHART = "helm-charts/charts/community-operator-crds/Chart.yaml"
 
 
 def _load_yaml_file(path: str) -> Dict:
@@ -73,7 +74,7 @@ def update_chart(chart: Dict, release: Dict) -> None:
     chart["version"] = release["mongodb-kubernetes-operator"]
     chart["appVersion"] = release["mongodb-kubernetes-operator"]
 
-    for dependency in chart["dependencies"]:
+    for dependency in chart.get("dependencies", []):
         if dependency["name"] == "community-operator-crds":
             dependency["version"] = release["mongodb-kubernetes-operator"]
 
@@ -88,6 +89,7 @@ def main() -> int:
     # Updating Helm Chart files
     update_and_write_file(RELATIVE_PATH_TO_CHART_VALUES, update_chart_values)
     update_and_write_file(RELATIVE_PATH_TO_CHART, update_chart)
+    update_and_write_file(RELATIVE_PATH_TO_CRD_CHART, update_chart)
 
     return 0
 
