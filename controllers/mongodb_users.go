@@ -44,9 +44,20 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 		if err != nil {
 			return err
 		}
+		secretName := user.GetConnectionStringSecretName(mdb)
+		existingSecret, err := r.client.GetSecret(types.NamespacedName{
+			Name:      secretName,
+			Namespace: mdb.Namespace,
+		})
+		if err != nil && !apiErrors.IsNotFound(err) {
+			return err
+		}
+		if err == nil && !secret.HasOwnerReferences(existingSecret, mdb.GetOwnerReferences()) {
+			return fmt.Errorf("connection string secret %s already exists and is not managed by the operator", secretName)
+		}
 
 		connectionStringSecret := secret.Builder().
-			SetName(user.GetConnectionStringSecretName(mdb)).
+			SetName(secretName).
 			SetNamespace(mdb.Namespace).
 			SetField("connectionString.standard", mdb.MongoAuthUserURI(user, pwd, clusterDomain)).
 			SetField("connectionString.standardSrv", mdb.MongoAuthUserSRVURI(user, pwd, clusterDomain)).

@@ -59,10 +59,6 @@ func TestUsernameIsTransformedAndValid(t *testing.T) {
 	assert.Equal(t, "mdb-admin-name-with-weird-chars-user", user.GetConnectionStringSecretName(mdb))
 }
 
-func TestUsernameCanHaveAn(t *testing.T) {
-	assert.Equal(t, "normalize-username-with-no-allowed-chars-only", normalizeUsername("?_normalize/_-username/?@with/[]?no]?/:allowed:chars[only?"))
-}
-
 func TestReadExistingCredentials(t *testing.T) {
 	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "default"}
 	user := buildMongoDBUser("mdbuser-0")

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -169,6 +170,17 @@ func Exists(secretGetter Getter, nsName types.NamespacedName) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// HasOwnerReferences checks whether an existing secret has a given set of owner references.
+func HasOwnerReferences(secret corev1.Secret, ownerRefs []metav1.OwnerReference) bool {
+	secretRefs := secret.GetOwnerReferences()
+	for _, ref := range ownerRefs {
+		if !contains.OwnerReferences(secretRefs, ref) {
+			return false
+		}
+	}
+	return true
 }
 
 // CreateOrUpdateIfNeeded creates a secret if it doesn't exists, or updates it if needed.
