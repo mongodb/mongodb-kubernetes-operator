@@ -44,7 +44,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 		if err != nil {
 			return err
 		}
-		secretName := user.GetConnectionStringSecretName(mdb)
+		secretName := user.ConnectionStringSecretName
 		existingSecret, err := r.client.GetSecret(types.NamespacedName{
 			Name:      secretName,
 			Namespace: mdb.Namespace,

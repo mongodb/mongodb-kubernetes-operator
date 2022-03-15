@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/names"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -358,6 +359,11 @@ type MongoDBUser struct {
 	// These secrets names must be different for each user in a deployment.
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
+
+	// ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
+	// If provided, this secret must be different for each user in a deployment.
+	// +optional
+	ConnectionStringSecretName string `json:"connectionStringSecretName"`
 }
 
 func (m MongoDBUser) GetPasswordSecretKey() string {
@@ -371,6 +377,15 @@ func (m MongoDBUser) GetPasswordSecretKey() string {
 // scramsCredentialSecretName with "scram-credentials"
 func (m MongoDBUser) GetScramCredentialsSecretName() string {
 	return fmt.Sprintf("%s-%s", m.ScramCredentialsSecretName, "scram-credentials")
+}
+
+// GetConnectionStringSecretName gets the connection string secret name provided by the user or generated
+// from the SCRAM user configuration.
+func (m MongoDBUser) GetConnectionStringSecretName(resourceName string) string {
+	if m.ConnectionStringSecretName != "" {
+		return m.ConnectionStringSecretName
+	}
+	return names.NormalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
 }
 
 // SecretKeyReference is a reference to the secret containing the user's password
@@ -583,6 +598,7 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 			PasswordSecretKey:          u.GetPasswordSecretKey(),
 			PasswordSecretName:         u.PasswordSecretRef.Name,
 			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
+			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
 		}
 	}
 	return users

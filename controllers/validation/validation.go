@@ -50,7 +50,7 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 	for _, user := range mdb.GetScramUsers() {
 
 		// Ensure no collisions in the connection string secret names
-		connectionStringSecretName := user.GetConnectionStringSecretName(mdb)
+		connectionStringSecretName := user.ConnectionStringSecretName
 		if previousUser, exists := connectionStringSecretNameMap[connectionStringSecretName]; exists {
 			nameCollisions = append(nameCollisions,
 				fmt.Sprintf(`[connection string secret name: "%s" for user: "%s", db: "%s" and user: "%s", db: "%s"]`,
