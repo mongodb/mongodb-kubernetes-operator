@@ -1,20 +1,14 @@
-# MongoDB Kubernetes Operator 0.7.3
+# MongoDB Kubernetes Operator 0.7.4
 
 ## Kubernetes Operator
 
-- Changes
-  - The Operator can correctly scale arbiters up and down. When arbiters are
-    enabled (this is, when `spec.arbiters > 0`), a new StatefulSet will be
-    created to hold the Pods that will act as arbiters. The new StatefulSet will
-    be named `<mongodb-resource>-arb`.
-  - Add support for exposing Prometheus metrics from the ReplicaSet
 - Bug fixes
-  - The operator will watch for changes in the referenced CA certificates as well as server certificates
+  - The names of connection string secrets generated for configured users are RFC1123 validated.
 
 ## MongoDBCommunity Resource
 
 - Changes
-  - Exposing Prometheus metrics is now possible by configuring `spec.prometheus`.
+  - Adds an optional field `users[i].connectionStringSecretName` for deterministically setting the name of the connection string secret created by the operator for every configured user.
 
 
 ## Updated Image Tags
