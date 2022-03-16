@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/names"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,7 +21,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"regexp"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type Type string
@@ -385,7 +387,31 @@ func (m MongoDBUser) GetConnectionStringSecretName(resourceName string) string {
 	if m.ConnectionStringSecretName != "" {
 		return m.ConnectionStringSecretName
 	}
-	return names.NormalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
+	return normalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
+}
+
+// normalizeName returns a string that conforms to RFC-1123
+func normalizeName(name string) string {
+	errors := validation.IsDNS1123Subdomain(name)
+	if len(errors) == 0 {
+		return name
+	}
+
+	// convert name to lowercase and replace invalid characters with '-'
+	name = strings.ToLower(name)
+	re := regexp.MustCompile("[^a-z0-9-]+")
+	name = re.ReplaceAllString(name, "-")
+
+	// Remove duplicate `-` resulting from contiguous non-allowed chars.
+	re = regexp.MustCompile(`\-+`)
+	name = re.ReplaceAllString(name, "-")
+
+	name = strings.Trim(name, "-")
+
+	if len(name) > validation.DNS1123SubdomainMaxLength {
+		name = name[0:validation.DNS1123SubdomainMaxLength]
+	}
+	return name
 }
 
 // SecretKeyReference is a reference to the secret containing the user's password
