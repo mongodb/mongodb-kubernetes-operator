@@ -2,9 +2,6 @@ package scram
 
 import (
 	"encoding/base64"
-	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -82,6 +79,11 @@ type User struct {
 	// for this user. These credentials will be generated if they do not exist, or used if they do.
 	// Note: there will be one secret with credentials per user created.
 	ScramCredentialsSecretName string
+
+	// ConnectionStringSecretName is the name of the secret object created by the operator
+	// which exposes the connection strings for the user.
+	// Note: there will be one secret with connection strings per user created.
+	ConnectionStringSecretName string
 }
 
 // Options contains a set of values that can be used for more fine grained configuration of authentication.
@@ -337,26 +339,4 @@ func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secre
 	acUser.ScramSha1Creds = &sha1Creds
 	acUser.ScramSha256Creds = &sha256Creds
 	return acUser, nil
-}
-
-// GetConnectionStringSecretName returns the name of the secret where the
-// operator stores the connection string for current user.
-func (u User) GetConnectionStringSecretName(mdb Configurable) string {
-	return fmt.Sprintf("%s-%s-%s", mdb.NamespacedName().Name, u.Database, normalizeUsername(u.Username))
-}
-
-// normalizeUsername returns a string that conforms to RFC-1123, by replacing
-// non-allowed characters with `-`.
-//
-// The MongoDB username can contain the chars in `acceptedChars` variable, as
-// documented here: https://docs.mongodb.com/manual/reference/connection-string/.
-func normalizeUsername(username string) string {
-	acceptedChars := `[:\/\?#\[\]@_]`
-	re := regexp.MustCompile(acceptedChars)
-	username = re.ReplaceAllString(username, "-")
-
-	// Remove duplicate `-` resulting from contiguous non-allowed chars.
-	re = regexp.MustCompile(`\-+`)
-	username = re.ReplaceAllString(username, "-")
-	return strings.Trim(username, "-")
 }

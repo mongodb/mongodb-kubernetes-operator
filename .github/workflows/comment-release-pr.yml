@@ -17,5 +17,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Review and publish the release here: https://github.com/mongodb/mongodb-kubernetes-operator/releases
+              body: 'Review and publish the release here: https://github.com/mongodb/mongodb-kubernetes-operator/releases'
             })

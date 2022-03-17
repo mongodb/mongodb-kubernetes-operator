@@ -53,16 +53,6 @@ func notFoundError() error {
 	return &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
 }
 
-func TestUsernameIsTransformedAndValid(t *testing.T) {
-	user := buildMongoDBUser("name_with@weird?chars")
-	mdb := buildConfigurable("mdb")
-	assert.Equal(t, "mdb-admin-name-with-weird-chars-user", user.GetConnectionStringSecretName(mdb))
-}
-
-func TestUsernameCanHaveAn(t *testing.T) {
-	assert.Equal(t, "normalize-username-with-no-allowed-chars-only", normalizeUsername("?_normalize/_-username/?@with/[]?no]?/:allowed:chars[only?"))
-}
-
 func TestReadExistingCredentials(t *testing.T) {
 	mdbObjectKey := types.NamespacedName{Name: "mdb-0", Namespace: "default"}
 	user := buildMongoDBUser("mdbuser-0")

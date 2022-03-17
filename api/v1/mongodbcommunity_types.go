@@ -21,7 +21,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"regexp"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type Type string
@@ -358,6 +361,11 @@ type MongoDBUser struct {
 	// These secrets names must be different for each user in a deployment.
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
+
+	// ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
+	// If provided, this secret must be different for each user in a deployment.
+	// +optional
+	ConnectionStringSecretName string `json:"connectionStringSecretName"`
 }
 
 func (m MongoDBUser) GetPasswordSecretKey() string {
@@ -371,6 +379,39 @@ func (m MongoDBUser) GetPasswordSecretKey() string {
 // scramsCredentialSecretName with "scram-credentials"
 func (m MongoDBUser) GetScramCredentialsSecretName() string {
 	return fmt.Sprintf("%s-%s", m.ScramCredentialsSecretName, "scram-credentials")
+}
+
+// GetConnectionStringSecretName gets the connection string secret name provided by the user or generated
+// from the SCRAM user configuration.
+func (m MongoDBUser) GetConnectionStringSecretName(resourceName string) string {
+	if m.ConnectionStringSecretName != "" {
+		return m.ConnectionStringSecretName
+	}
+	return normalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
+}
+
+// normalizeName returns a string that conforms to RFC-1123
+func normalizeName(name string) string {
+	errors := validation.IsDNS1123Subdomain(name)
+	if len(errors) == 0 {
+		return name
+	}
+
+	// convert name to lowercase and replace invalid characters with '-'
+	name = strings.ToLower(name)
+	re := regexp.MustCompile("[^a-z0-9-]+")
+	name = re.ReplaceAllString(name, "-")
+
+	// Remove duplicate `-` resulting from contiguous non-allowed chars.
+	re = regexp.MustCompile(`\-+`)
+	name = re.ReplaceAllString(name, "-")
+
+	name = strings.Trim(name, "-")
+
+	if len(name) > validation.DNS1123SubdomainMaxLength {
+		name = name[0:validation.DNS1123SubdomainMaxLength]
+	}
+	return name
 }
 
 // SecretKeyReference is a reference to the secret containing the user's password
@@ -583,6 +624,7 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 			PasswordSecretKey:          u.GetPasswordSecretKey(),
 			PasswordSecretName:         u.PasswordSecretRef.Name,
 			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
+			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
 		}
 	}
 	return users

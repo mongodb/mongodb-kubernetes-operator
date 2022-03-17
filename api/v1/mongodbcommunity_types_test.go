@@ -113,6 +113,51 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 
 }
 
+func TestGetConnectionStringSecretName(t *testing.T) {
+	testusers := []struct {
+		in  MongoDBUser
+		exp string
+	}{
+		{
+			MongoDBUser{
+				Name:                       "mdb-0",
+				DB:                         "admin",
+				ScramCredentialsSecretName: "scram-credential-secret-name-0",
+			},
+			"replica-set-admin-mdb-0",
+		},
+		{
+			MongoDBUser{
+				Name:                       "?_normalize/_-username/?@with/[]?no]?/:allowed:chars[only?",
+				DB:                         "admin",
+				ScramCredentialsSecretName: "scram-credential-secret-name-0",
+			},
+			"replica-set-admin-normalize-username-with-no-allowed-chars-only",
+		},
+		{
+			MongoDBUser{
+				Name:                       "AppUser",
+				DB:                         "Administrators",
+				ScramCredentialsSecretName: "scram-credential-secret-name-0",
+			},
+			"replica-set-administrators-appuser",
+		},
+		{
+			MongoDBUser{
+				Name:                       "mdb-0",
+				DB:                         "admin",
+				ScramCredentialsSecretName: "scram-credential-secret-name-0",
+				ConnectionStringSecretName: "connection-string-secret",
+			},
+			"connection-string-secret",
+		},
+	}
+
+	for _, tt := range testusers {
+		assert.Equal(t, tt.exp, tt.in.GetConnectionStringSecretName("replica-set"))
+	}
+}
+
 func newReplicaSet(members int, name, namespace string) MongoDBCommunity {
 	return MongoDBCommunity{
 		TypeMeta: metav1.TypeMeta{},

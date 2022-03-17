@@ -337,6 +337,12 @@ spec:
                   in your deployment
                 items:
                   properties:
+                    connectionStringSecretName:
+                      description: ConnectionStringSecretName is the name of the secret
+                        object created by the operator which exposes the connection
+                        strings for the user. If provided, this secret must be different
+                        for each user in a deployment.
+                      type: string
                     db:
                       description: DB is the database the user is stored in. Defaults
                         to "admin"
