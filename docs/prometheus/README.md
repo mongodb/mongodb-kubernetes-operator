@@ -51,7 +51,7 @@ To learn more, see the [Installation Instructions](/docs/install-upgrade.md#oper
 
 ## Create a MongoDB Resource
 
- You can use the [mongodb-prometheus-sample.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/prometheus/mongodb-prometheus-sample.yaml) file to 
+ You can use the [mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml) file to 
  deploy a MongoDB resource in your Kubernetes cluster, with a
 [`ServiceMonitor`](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md#related-resources)
 to indicate to Prometheus how to consume metrics data from 
