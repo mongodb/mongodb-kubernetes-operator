@@ -1,6 +1,6 @@
 # Use Prometheus with your MongoDB Resource
 
- You can use the [mongodb-prometheus-sample.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/prometheus/mongodb-prometheus-sample.yaml) file to 
+ You can use the [mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml) file to 
  deploy a MongoDB resource in your Kubernetes cluster, with a
 [`ServiceMonitor`](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md#related-resources)
 to indicate to Prometheus how to consume metrics data from 
@@ -8,8 +8,8 @@ it.
 
 The sample specifies a simple MongoDB resource with one user,
 and the `spec.Prometheus` attribute with basic HTTP 
-authentication and no TLS. The sample will allow you to test
-the Prometheus metrics coming from MongoDB.
+authentication and no TLS. The sample lets you test
+the metrics that MongoDB sends to Prometheus.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ Operator](https://github.com/prometheus-operator/prometheus-operator).
 ### Install the Prometheus Operator
 
 You can install the Prometheus Operator using Helm. To learn 
-more, see the [installation instructions](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack#kube-prometheus-stack):
+more, see the [installation instructions](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack#kube-prometheus-stack).
 
 To install the Prometheus Operator using Helm, run the 
 following commands:
@@ -32,7 +32,9 @@ following commands:
 ``` shell
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install prometheus prometheus-community/kube-prometheus-stack --namespace <prometheus-system> --create-namespace
+helm install prometheus prometheus-community/ \   
+  kube-prometheus-stack --namespace <prometheus-system> \   
+  --create-namespace
 ```
 
 ### Install the MongoDB Community Kubernetes Operator
@@ -45,7 +47,7 @@ Kubernetes Operator and resources:
 helm install community-operator mongodb/community-operator --namespace <mongodb> --create-namespace
 ```
 
-To learn more, see the [Installation Instructions](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#operator-in-same-namespace-as-resources).
+To learn more, see the [Installation Instructions](/docs/install-upgrade.md#operator-in-same-namespace-as-resources).
 
 ## Create a MongoDB Resource
 
@@ -93,15 +95,19 @@ namespace.
    `Issuer` and then a `Certificate`. You can use the two files 
    that we provide to create a new `Issuer`:
 
-   a. Run the following command to create a `Secret` holding a 
-      TLS certificate `tls.crt` and `tls.key` entries. You can 
-      use the certificate and key files that we provide in the 
-      [`testdata/tls`](https://github.com/mongodb/mongodb-kubernetes-operator/tree/master/testdata/tls) 
-      directory to create a Cert-Manager `Certificate`.
+   a. Run the following command to create a `Secret` that 
+      contains the TLS certificate `tls.crt` and `tls.key` 
+      entries. You can use the certificate and key files that 
+      we provide in the [`testdata/tls`](/testdata/tls) directory to create a Cert-Manager `Certificate`.
 
       ``` shell
-      $ kubectl create secret tls issuer-secret --cert=../../testdata/tls/ca.crt --key=../../testdata/tls/ca.key \
-          --namespace mongodb
+      kubectl create secret tls issuer-secret --cert=../../testdata/tls/ca.crt --key=../../testdata/tls/ca.key \
+        --namespace mongodb
+      ```
+
+      The following response appears:
+
+      ``` shell
       secret/issuer-secret created
       ```
 
@@ -109,7 +115,11 @@ namespace.
       `Certificate`:
 
       ``` shell
-      $ kubectl apply -f issuer-and-cert.yaml --namespace mongodb
+      kubectl apply -f issuer-and-cert.yaml --namespace mongodb
+      ```
+      The following response appears:
+
+      ``` shell
       issuer.cert-manager.io/ca-issuer created
       certificate.cert-manager.io/prometheus-target-cert created
       ```
@@ -126,10 +136,14 @@ the following [patch](https://kubernetes.io/docs/tasks/manage-kubernetes-objects
 operation to add the needed entry.
 
 ``` shell
-$ kubectl patch mdbc mongodb --type='json' \
-    -p='[{"op": "add", "path": "/spec/prometheus/tlsSecretKeyRef", "value":{"name": "prometheus-target-cert"}}]' \
-    --namespace mongodb
+kubectl patch mdbc mongodb --type='json' \
+  -p='[{"op": "add", "path": "/spec/prometheus/tlsSecretKeyRef", "value":{"name": "prometheus-target-cert"}}]' \
+  --namespace mongodb
+```
 
+The following response appears:
+
+``` shell
 mongodbcommunity.mongodbcommunity.mongodb.com/mongodb patched
 ```
 
@@ -143,7 +157,7 @@ To update the `ServiceMonitor`, run the following command to
 patch the resource again:
 
 ``` shell
-$ kubectl patch servicemonitors mongodb-sm --type='json' \
+kubectl patch servicemonitors mongodb-sm --type='json' \
     -p='
 [
     {"op": "replace", "path": "/spec/endpoints/0/scheme", "value": "https"},
@@ -151,7 +165,11 @@ $ kubectl patch servicemonitors mongodb-sm --type='json' \
 ]
 ' \
     --namespace mongodb
+```
 
+The following reponse appears:
+
+``` shell
 servicemonitor.monitoring.coreos.com/mongodb-sm patched
 ```
 
@@ -161,5 +179,5 @@ set `spec/endpoints/0/tlsConfig/insecureSkipVerify` to `true`,
 so that Prometheus doesn't verify the TLS certificates on 
 MongoDB's end.
 
-Prometheus should now be able to scrape the MongoDB's target 
+Prometheus should now be able to scrape the MongoDB target 
 using HTTPS.
