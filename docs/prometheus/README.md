@@ -60,8 +60,14 @@ it.
 You can apply the sample directly with the following command:
 
 ``` shell
-kubectl apply -f mongodb-prometheus-sample.yaml
+kubectl apply -f <mongodb-prometheus-sample.yaml>
 ```
+
+**Note:** If you haven't cloned the 
+[mongodb-kubernetes-operator](/mongodb-kubernetes-operator) 
+repository, you must provide the full URL that points to the 
+[mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml) file in the command:
+[https://raw.githubusercontent.com/mongodb/mongodb-kubernetes-operator/master/docs/prometheus/mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml)
 
 This command creates two `Secrets` that contain authentication 
 for a new MongoDB user and basic HTTP authentication for the 
