@@ -64,7 +64,7 @@ kubectl apply -f <mongodb-prometheus-sample.yaml>
 ```
 
 **Note:** If you haven't cloned the 
-[mongodb-kubernetes-operator](/mongodb-kubernetes-operator) 
+[mongodb-kubernetes-operator](https://github.com/mongodb/mongodb-kubernetes-operator) 
 repository, you must provide the full URL that points to the 
 [mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml) file in the command:
 [https://raw.githubusercontent.com/mongodb/mongodb-kubernetes-operator/master/docs/prometheus/mongodb-prometheus-sample.yaml](mongodb-prometheus-sample.yaml)
