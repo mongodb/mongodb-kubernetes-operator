@@ -181,6 +181,17 @@ func ForPodReadiness(t *testing.T, isReady bool, containerName string, timeout t
 	})
 }
 
+func ForPodPhase(t *testing.T, timeout time.Duration, pod corev1.Pod, podPhase corev1.PodPhase) error {
+	return wait.Poll(time.Second*3, timeout, func() (done bool, err error) {
+		err = e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)
+		if err != nil {
+			return false, err
+		}
+		t.Logf("Current phase %s, expected phase %s", pod.Status.Phase, podPhase)
+		return pod.Status.Phase == podPhase, nil
+	})
+}
+
 // waitForRuntimeObjectToExist waits until a runtime.Object of the given name exists
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToExist(name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
