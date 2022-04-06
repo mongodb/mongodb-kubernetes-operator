@@ -33,7 +33,7 @@ To deploy your first replica set:
    | Variable | Description | Value in Sample |
    |----|----|----|
    | `<metadata.name>` | Name of the MongoDB database resource. | `example-mongodb` |
-   | `<auth-db>` | [Authentication database](https://docs.mongodb.com/manual/core/security-users/#std-label-user-authentication-database) where you defined the database user. | `admin` |
+   | `<auth-db>` | [Authentication database](https://www.mongodb.com/docs/manual/core/security-users/#std-label-user-authentication-database) where you defined the database user. | `admin` |
    | `<username>` | Username of the database user. | `my-user` |
 
    Update the variables in the following command, then run it to retrieve a user's connection strings to the replica set from the secret:
@@ -45,7 +45,7 @@ To deploy your first replica set:
    -o json | jq -r '.data | with_entries(.value |= @base64d)'
    ```
 
-   The command returns the replica set's standard and DNS seed list [connection strings](https://docs.mongodb.com/manual/reference/connection-string/#connection-string-formats) in addition to the user's name and password:
+   The command returns the replica set's standard and DNS seed list [connection strings](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-string-formats) in addition to the user's name and password:
 
    ```json
    {
@@ -56,7 +56,7 @@ To deploy your first replica set:
    }
    ```
 
-   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://docs.mongodb.com/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodbcommunity-resource-connections-using-tls).</br></br>
+   **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodbcommunity-resource-connections-using-tls).</br></br>
 
    You can use the connection strings in this secret in your application:
 
@@ -84,7 +84,7 @@ To deploy your first replica set:
    user@app:~$
    ```
 
-6. Use one of the connection strings returned in step 4 to connect to the replica set. The following example uses [`mongosh`](https://docs.mongodb.com/mongodb-shell/) to connect to a replica set:
+6. Use one of the connection strings returned in step 4 to connect to the replica set. The following example uses [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) to connect to a replica set:
 
    ```
    mongosh "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true"
@@ -136,7 +136,7 @@ To scale a replica set:
 
 ## Add Arbiters to a Replica Set
 
-To add [arbiters](https://docs.mongodb.com/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDBCommunity resource definition. 
+To add [arbiters](https://www.mongodb.com/docs/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDBCommunity resource definition. 
 
 The value of the `spec.arbiters` field must be:
 
@@ -201,9 +201,9 @@ You can upgrade the major, minor, and/or feature compatibility versions of your 
 
 - To upgrade your resource's major and/or minor versions, set the `spec.version` setting to the desired MongoDB version. Make sure to specify a full image tag, such as `5.0.3`. Setting the `spec.version` to loosely-defined tags such as `5.0` is not currently supported.
 
-- To modify your resource's [feature compatibility version](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
+- To modify your resource's [feature compatibility version](https://www.mongodb.com/docs/manual/reference/command/setFeatureCompatibilityVersion/), set the `spec.featureCompatibilityVersion` setting to the desired version.
 
-If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
+If you update `spec.version` to a later version, consider setting `spec.featureCompatibilityVersion` to the current working MongoDB version to give yourself the option to downgrade if necessary. To learn more about feature compatibility, see [`setFeatureCompatibilityVersion`](https://www.mongodb.com/docs/manual/reference/command/setFeatureCompatibilityVersion/) in the MongoDB Manual.
 
 ### Example
 
@@ -239,7 +239,7 @@ To upgrade this resource from `4.0.6` to `4.2.7`:
      featureCompatibilityVersion: "4.0"
    ```
 
-   **NOTE:** Setting `featureCompatibilityVersion` to `4.0` disables [4.2 features incompatible with MongoDB 4.0](https://docs.mongodb.com/manual/release-notes/4.2-compatibility/#compatibility-enabled).
+   **NOTE:** Setting `featureCompatibilityVersion` to `4.0` disables [4.2 features incompatible with MongoDB 4.0](https://www.mongodb.com/docs/manual/release-notes/4.2-compatibility/#compatibility-enabled).
 
 2. Reapply the configuration to Kubernetes:
    ```
@@ -258,7 +258,7 @@ See [here](../deploy/openshift/operator_openshift.yaml) for an example of how to
 
 ## Define a Custom Database Role
 
-You can define [custom roles](https://docs.mongodb.com/manual/core/security-user-defined-roles/) to give you fine-grained access control over your MongoDB database resource.
+You can define [custom roles](https://www.mongodb.com/docs/manual/core/security-user-defined-roles/) to give you fine-grained access control over your MongoDB database resource.
 
   **NOTE**: Custom roles are scoped to a single MongoDB database resource.
 
@@ -269,14 +269,14 @@ To define a custom role:
    | Key | Type | Description | Required? |
    |----|----|----|----|
    | `spec.security.authentication.ignoreUnknownUsers` | boolean | Flag that indicates whether you can add users that don't exist in the `MongoDBCommunity` resource. If omitted, defaults to `true`. | No | 
-   | `spec.security.roles` | array | Array that defines [custom roles](https://docs.mongodb.com/manual/core/security-user-defined-roles/) roles that give you fine-grained access control over your MongoDB deployment. | Yes |
+   | `spec.security.roles` | array | Array that defines [custom roles](https://www.mongodb.com/docs/manual/core/security-user-defined-roles/) roles that give you fine-grained access control over your MongoDB deployment. | Yes |
    | `spec.security.roles.role` | string | Name of the custom role. | Yes |
    | `spec.security.roles.db` | string | Database in which you want to store the user-defined role. | Yes |
    | `spec.security.roles.authenticationRestrictions` | array | Array that defines the IP address from which and to which users assigned this role can connect. | No |
    | `spec.security.roles.authenticationRestrictions.clientSource` | array | Array of IP addresses or CIDR blocks from which users assigned this role can connect. <br><br> MongoDB servers reject connection requests from users with this role if the requests come from a client that is not present in this array. | No |
    | `spec.security.roles.authenticationRestrictions.serverAddress` | array | Array of IP addresses or CIDR blocks to which users assigned this role can connect. <br><br> MongoDB servers reject connection requests from users with this role if the client requests to connect to a server that is not present in this array. | No |
-   | `spec.security.roles.privileges` | array | List of actions that users granted this role can perform. For a list of accepted values, see [Privilege Actions](https://docs.mongodb.com/manual/reference/privilege-actions/#database-management-actions) in the MongoDB Manual for the MongoDB versions you deploy with the Kubernetes Operator. | Yes |
-   | `spec.security.roles.privileges.actions` | array | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles). | Yes |
+   | `spec.security.roles.privileges` | array | List of actions that users granted this role can perform. For a list of accepted values, see [Privilege Actions](https://www.mongodb.com/docs/manual/reference/privilege-actions/#database-management-actions) in the MongoDB Manual for the MongoDB versions you deploy with the Kubernetes Operator. | Yes |
+   | `spec.security.roles.privileges.actions` | array | Name of the role. Valid values are [built-in roles](https://www.mongodb.com/docs/manual/reference/built-in-roles/#built-in-roles). | Yes |
    | `spec.security.roles.privileges.resource.database`| string | Database for which the privilege `spec.security.roles.privileges.actions` apply. An empty string (`""`) indicates that the privilege actions apply to all databases. <br><br> If you provide a value for this setting, you must also provide a value for `spec.security.roles.privileges.resource.collection`. | Conditional |
    | `spec.security.roles.privileges.resource.collection`| string | Collection for which the privilege `spec.security.roles.privileges.actions` apply. An empty string (`""`) indicates that the privilege actions apply to all of the database's collections.<br><br> If you provide a value for this setting, you must also provide a value for `spec.security.roles.privileges.resource.database`. | Conditional |
    | `spec.security.roles.privileges.resource.cluster`| string | Flag that indicates that the privilege `spec.security.roles.privileges.actions` apply to all databases and collections in the MongoDB deployment. If omitted, defaults to `false`.<br><br> If set to `true`, do not provide values for `spec.security.roles.privileges.resource.database` and `spec.security.roles.privileges.resource.collection`. | Conditional |

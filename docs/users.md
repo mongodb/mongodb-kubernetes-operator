@@ -1,6 +1,6 @@
 # Create a Database User #
 
-You can create a MongoDB database user to authenticate to your MongoDBCommunity resource using [SCRAM](https://docs.mongodb.com/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDBCommunity resource definition](#modify-the-mongodbcommunity-resource).
+You can create a MongoDB database user to authenticate to your MongoDBCommunity resource using [SCRAM](https://www.mongodb.com/docs/manual/core/security-scram/). First, [create a Kubernetes secret](#create-a-user-secret) for the new user's password. Then, [modify and apply the MongoDBCommunity resource definition](#modify-the-mongodbcommunity-resource).
 
 You cannot disable SCRAM authentication.
 
@@ -40,7 +40,7 @@ You cannot disable SCRAM authentication.
    | `spec.users.passwordSecretRef.key` | string| Key in the secret that corresponds to the value of the user's password. Defaults to `password`. | No |
    | `spec.users.scramCredentialsSecretName` | string| ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the operator for storing SCRAM credentials for the user. The name should comply with [DNS1123 subdomain](https://tools.ietf.org/html/rfc1123). Also, please make sure the name is unique among `users`.  | Yes |
    | `spec.users.roles` | array of objects | Configures roles assigned to the user. | Yes |
-   | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://docs.mongodb.com/manual/reference/built-in-roles/#built-in-roles) and [custom roles](deploy-configure.md#define-a-custom-database-role) that you have defined. | Yes |
+   | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://www.mongodb.com/docs/manual/reference/built-in-roles/#built-in-roles) and [custom roles](deploy-configure.md#define-a-custom-database-role) that you have defined. | Yes |
    | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
 
    ```yaml

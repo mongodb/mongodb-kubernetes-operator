@@ -12,13 +12,13 @@ The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](http
 
 You create and update MongoDBCommunity resources by defining a MongoDBCommunity resource definition. When you apply the MongoDBCommunity resource definition to your Kubernetes environment, the Operator:
 
-1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://docs.mongodb.com/manual/replication/) member.
+1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://www.mongodb.com/docs/manual/replication/) member.
 1. Writes the Automation configuration as a [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and mounts it to each pod.
 1. Creates one [init container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) and two [containers](https://kubernetes.io/docs/concepts/containers/overview/) in each pod:
 
    - An init container which copies the `cmd/versionhook` binary to the main `mongod` container. This is run before `mongod` starts to handle [version upgrades](#example-mongodb-version-upgrade).
 
-   - A container for the [`mongod`](https://docs.mongodb.com/manual/reference/program/mongod/index.html) process binary. `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
+   - A container for the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/index.html) process binary. `mongod` is the primary daemon process for the MongoDB system. It handles data requests, manages data access, and performs background management operations.
 
    - A container for the MongoDB Agent. The Automation function of the MongoDB Agent handles configuring, stopping, and restarting the `mongod` process. The MongoDB Agent periodically polls the `mongod` to determine status and can deploy changes as needed.
 
@@ -59,7 +59,7 @@ When you update the MongoDB version in your resource definition and reapply it t
 
 1. The Operator updates the [image](https://kubernetes.io/docs/concepts/containers/images/) specification to the new version of MongoDB and writes a new Automation configuration ConfigMap to each pod.
 
-1. The MongoDB Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://docs.mongodb.com/manual/reference/method/db.shutdownServer/#db.shutdownServer).
+1. The MongoDB Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://www.mongodb.com/docs/manual/reference/method/db.shutdownServer/#db.shutdownServer).
 
 1. Kubernetes will restart the `mongod` container causing the version change hook to run and check the state of the MongoDB Agent. If the MongoDB Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
 

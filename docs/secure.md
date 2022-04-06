@@ -54,7 +54,7 @@ To secure connections to MongoDBCommunity resources using TLS:
 1. Add the following fields to the MongoDBCommunity resource definition:
 
    - `spec.security.tls.enabled`: Encrypts communications using TLS certificates between MongoDB hosts in a replica set and client applications and MongoDB deployments. Set to `true`.
-   - `spec.security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://docs.mongodb.com/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
+   - `spec.security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://www.mongodb.com/docs/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
 
      ---
      **NOTE**
