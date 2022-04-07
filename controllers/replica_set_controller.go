@@ -149,19 +149,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	r.log.Debug("Ensuring the service exists")
-	if err := r.ensureService(mdb, false); err != nil {
+	if err := r.ensureService(mdb); err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring the service (members) exists: %s", err)).
-				withFailedPhase(),
-		)
-	}
-
-	r.log.Debug("Ensuring the service for Arbiters exists")
-	if err := r.ensureService(mdb, true); err != nil {
-		return status.Update(r.client.Status(), &mdb,
-			statusOptions().
-				withMessage(Error, fmt.Sprintf("Error ensuring the service (arbiters) exists: %s", err)).
 				withFailedPhase(),
 		)
 	}
@@ -454,16 +445,13 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 //
 // The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
 // will be created for the arbiters Statefulset.
-func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
+func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	name := mdb.ServiceName()
-	if isArbiter {
-		name = mdb.ArbiterServiceName()
-	}
 
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: mdb.Namespace}}
 	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.client, svc, func() error {
 		resourceVersion := svc.ResourceVersion // Save resourceVersion for later
-		*svc = buildService(mdb, isArbiter)
+		*svc = buildService(mdb)
 		svc.ResourceVersion = resourceVersion
 		return nil
 	})
@@ -520,7 +508,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 
 func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
-	arbiterDomain := getDomain(mdb.ArbiterServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+	arbiterDomain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
 
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -552,16 +540,9 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-//
-// If `isArbiter` is true, the function will create a Service suitable for the
-// Arbiter's StatefulSet.
-func buildService(mdb mdbv1.MongoDBCommunity, isArbiter bool) corev1.Service {
+func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 	label := make(map[string]string)
-
 	name := mdb.ServiceName()
-	if isArbiter {
-		name = mdb.ArbiterServiceName()
-	}
 
 	label["app"] = name
 
@@ -725,7 +706,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
 	return statefulset.Apply(
 		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
-		statefulset.WithServiceName(mdb.ArbiterServiceName()),
+		statefulset.WithServiceName(mdb.ServiceName()),
 		statefulset.WithName(mdb.Name+"-arb"),
 	)
 }

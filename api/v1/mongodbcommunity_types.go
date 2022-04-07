@@ -744,15 +744,6 @@ func (m MongoDBCommunity) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-// ArbiterServiceName returns the name of the Service for the Arbiters for this resource.
-func (m MongoDBCommunity) ArbiterServiceName() string {
-	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
-	if serviceName != "" {
-		return serviceName + "-arb-svc"
-	}
-	return m.Name + "-arb-svc"
-}
-
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
