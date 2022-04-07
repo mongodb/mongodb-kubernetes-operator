@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Black Check
-        uses: jpetrucciani/black-check@20.8b1
+        uses: jpetrucciani/black-check@7f5b2ad20fa5484f1884f07c1937e032ed8cd939
 
   Mypy:
     runs-on: ubuntu-latest
