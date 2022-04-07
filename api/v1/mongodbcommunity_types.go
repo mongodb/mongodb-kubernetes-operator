@@ -68,7 +68,7 @@ type MongoDBCommunitySpec struct {
 
 	// Arbiters is the number of arbiters to add to the Replica Set.
 	// It is not recommended to have more than one arbiter per Replica Set.
-	// More info: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/
+	// More info: https://www.mongodb.com/docs/manual/tutorial/add-replica-set-arbiter/
 	// +optional
 	Arbiters int `json:"arbiters"`
 
@@ -99,7 +99,7 @@ type MongoDBCommunitySpec struct {
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
-	// configuration file: https://docs.mongodb.com/manual/reference/configuration-options/
+	// configuration file: https://www.mongodb.com/docs/manual/reference/configuration-options/
 	// +kubebuilder:validation:Type=object
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -227,7 +227,7 @@ type Privilege struct {
 }
 
 // Resource specifies specifies the resources upon which a privilege permits actions.
-// See https://docs.mongodb.com/manual/reference/resource-document for more.
+// See https://www.mongodb.com/docs/manual/reference/resource-document for more.
 type Resource struct {
 	// +optional
 	DB *string `json:"db,omitempty"`

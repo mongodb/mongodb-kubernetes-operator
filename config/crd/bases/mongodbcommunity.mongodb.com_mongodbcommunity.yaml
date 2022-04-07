@@ -56,14 +56,14 @@ spec:
               additionalMongodConfig:
                 description: 'AdditionalMongodConfig is additional configuration that
                   can be passed to each data-bearing mongod at runtime. Uses the same
-                  structure as the mongod configuration file: https://docs.mongodb.com/manual/reference/configuration-options/'
+                  structure as the mongod configuration file: https://www.mongodb.com/docs/manual/reference/configuration-options/'
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               arbiters:
                 description: 'Arbiters is the number of arbiters to add to the Replica
                   Set. It is not recommended to have more than one arbiter per Replica
-                  Set. More info: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/'
+                  Set. More info: https://www.mongodb.com/docs/manual/tutorial/add-replica-set-arbiter/'
                 type: integer
               automationConfig:
                 description: AutomationConfigOverride is merged on top of the operator
@@ -218,7 +218,7 @@ spec:
                                 type: array
                               resource:
                                 description: Resource specifies specifies the resources
-                                  upon which a privilege permits actions. See https://docs.mongodb.com/manual/reference/resource-document
+                                  upon which a privilege permits actions. See https://www.mongodb.com/docs/manual/reference/resource-document
                                   for more.
                                 properties:
                                   anyResource:
