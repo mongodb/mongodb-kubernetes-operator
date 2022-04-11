@@ -225,6 +225,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if mdb.IsStillScaling() {
+		r.log.Debug("*** MongoDB resource is still scaling")
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
@@ -234,6 +235,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withPendingPhase(10),
 		)
+	} else {
+		r.log.Debug("*** MongoDB resource is NOT scaling")
 	}
 
 	res, err := status.Update(r.client.Status(), &mdb,
@@ -408,7 +411,7 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if scale.IsScalingUp(mdb) {
+	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
 		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
 		return false
 	}
