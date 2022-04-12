@@ -344,6 +344,7 @@ spec:
                         for each user in a deployment.
                       type: string
                     db:
+                      default: admin
                       description: DB is the database the user is stored in. Defaults
                         to "admin"
                       type: string

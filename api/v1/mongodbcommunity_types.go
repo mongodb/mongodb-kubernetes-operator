@@ -349,7 +349,9 @@ type MongoDBUser struct {
 
 	// DB is the database the user is stored in. Defaults to "admin"
 	// +optional
-	DB string `json:"db"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=admin
+	DB string `json:"db,omitempty"`
 
 	// PasswordSecretRef is a reference to the secret containing this user's password
 	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
@@ -387,6 +389,7 @@ func (m MongoDBUser) GetConnectionStringSecretName(resourceName string) string {
 	if m.ConnectionStringSecretName != "" {
 		return m.ConnectionStringSecretName
 	}
+
 	return normalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
 }
 
@@ -613,13 +616,19 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 			}
 		}
 
-		db := u.DB
-		if db == "" {
-			db = defaultDBForUser
+		// When the MongoDB resource has been fetched from Kubernetes,
+		// the User's database will be set to "admin" because this is set
+		// by default on the CRD, but when running e2e tests, the resource
+		// we are working with is local -- it has not been posted to the
+		// Kubernetes API and the `u.DB` was not set to the default ("admin").
+		// This is why the "admin" value is being set here.
+		if u.DB == "" {
+			u.DB = defaultDBForUser
 		}
+
 		users[i] = scram.User{
 			Username:                   u.Name,
-			Database:                   db,
+			Database:                   u.DB,
 			Roles:                      roles,
 			PasswordSecretKey:          u.GetPasswordSecretKey(),
 			PasswordSecretName:         u.PasswordSecretRef.Name,
