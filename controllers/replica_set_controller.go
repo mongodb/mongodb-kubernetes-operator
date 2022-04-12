@@ -335,13 +335,9 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
-	if mdb.Spec.Arbiters > 0 {
-		r.log.Info("Creating/Updating StatefulSet for Arbiters")
-		if err := r.createOrUpdateStatefulSet(mdb, true); err != nil {
-			return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
-		}
-	} else {
-		r.log.Info("Arbiters set to 0, not creating another STS")
+	r.log.Info("Creating/Updating StatefulSet for Arbiters")
+	if err := r.createOrUpdateStatefulSet(mdb, true); err != nil {
+		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
 	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
