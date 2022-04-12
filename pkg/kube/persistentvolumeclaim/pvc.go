@@ -55,3 +55,10 @@ func WithStorageClassName(storageClassName string) Modification {
 		claim.Spec.StorageClassName = &storageClassName
 	}
 }
+
+// WithLabels sets the PersistentVolumeClaim's labels
+func WithLabels(labels map[string]string) Modification {
+	return func(claim *corev1.PersistentVolumeClaim) {
+		claim.Labels = labels
+	}
+}
