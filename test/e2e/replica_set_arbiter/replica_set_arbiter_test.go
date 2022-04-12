@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
+	"github.com/stretchr/testify/assert"
+
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
@@ -57,7 +60,7 @@ func TestReplicaSetArbiter(t *testing.T) {
 	mdb, user = e2eutil.NewTestMongoDB(ctx, "mdb2", "")
 	mdb.Spec.Arbiters = numberArbiters
 	mdb.Spec.Members = numberMembers
-	_, err = setup.GeneratePasswordForUser(ctx, user, "")
+	pwd, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +72,20 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("Scale MongoDB Up to 2 Arbiters", mongodbtests.ScaleArbiters(&mdb, 2))
 	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+
+	t.Run("Test SRV Connectivity with generated connection string secret", func(t *testing.T) {
+		tester, err := FromResource(t, mdb)
+		if err != nil {
+			t.Fatal(err)
+		}
+		scramUser := mdb.GetScramUsers()[0]
+
+		expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=mdb2&ssl=false", mdb.Name, mdb.Name, pwd, mdb.Namespace)
+		cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
+
+		assert.Equal(t, expectedCnxStr, cnxStrSrv)
+		tester.ConnectivitySucceeds(WithURI(cnxStrSrv))
+	})
 
 	t.Run("Scale MongoDB Up to 0 Arbiters", mongodbtests.ScaleArbiters(&mdb, 0))
 	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))

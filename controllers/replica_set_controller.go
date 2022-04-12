@@ -225,7 +225,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if mdb.IsStillScaling() {
-		r.log.Debug("*** MongoDB resource is still scaling")
 		return status.Update(r.client.Status(), &mdb, statusOptions().
 			withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 			withMessage(Info, fmt.Sprintf("Performing scaling operation, currentMembers=%d, desiredMembers=%d",
@@ -235,8 +234,6 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withPendingPhase(10),
 		)
-	} else {
-		r.log.Debug("*** MongoDB resource is NOT scaling")
 	}
 
 	res, err := status.Update(r.client.Status(), &mdb,
