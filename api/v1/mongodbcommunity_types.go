@@ -349,7 +349,9 @@ type MongoDBUser struct {
 
 	// DB is the database the user is stored in. Defaults to "admin"
 	// +optional
-	DB string `json:"db"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=admin
+	DB string `json:"db,omitempty"`
 
 	// PasswordSecretRef is a reference to the secret containing this user's password
 	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
