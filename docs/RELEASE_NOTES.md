@@ -10,6 +10,8 @@
 - Changes
   - Adds an optional field `users[i].connectionStringSecretName` for deterministically setting the name of the connection string secret created by the operator for every configured user.
 
+- Bug fixes
+  - Allows for *arbiters* to be set using `spec.arbiters` attribute. Fixes a condition where *arbiters* could not be added to the Replica Set.
 
 ## Updated Image Tags
 
