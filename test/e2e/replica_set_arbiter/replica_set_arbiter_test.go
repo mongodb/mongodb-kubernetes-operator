@@ -64,6 +64,15 @@ func TestReplicaSetArbiter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	tester, err := FromResource(t, mdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scramUser := mdb.GetScramUsers()[0]
+	expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=mdb2&ssl=false", mdb.Name, pwd, mdb.Name, mdb.Namespace)
+	cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
+
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
@@ -74,15 +83,6 @@ func TestReplicaSetArbiter(t *testing.T) {
 	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 
 	t.Run("Test SRV Connectivity with generated connection string secret", func(t *testing.T) {
-		tester, err := FromResource(t, mdb)
-		if err != nil {
-			t.Fatal(err)
-		}
-		scramUser := mdb.GetScramUsers()[0]
-
-		expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=mdb2&ssl=false", mdb.Name, mdb.Name, pwd, mdb.Namespace)
-		cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
-
 		assert.Equal(t, expectedCnxStr, cnxStrSrv)
 		tester.ConnectivitySucceeds(WithURI(cnxStrSrv))
 	})
