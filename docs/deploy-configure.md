@@ -136,7 +136,11 @@ To scale a replica set:
 
 ## Add Arbiters to a Replica Set
 
-To add [arbiters](https://www.mongodb.com/docs/manual/core/replica-set-arbiter/) to your replica set, add the `spec.arbiters` field to your MongoDBCommunity resource definition. 
+To add [arbiters](https://www.mongodb.com/docs/manual/core/replica-set-arbiter/) to
+your replica set, add the `spec.arbiters` field to your MongoDBCommunity
+resource definition. This attribute configures the absolute amount of arbiters
+in this Replica Set, this is, the amount of `mongod` instances will be
+`spec.members` + `spec.arbiters`.
 
 The value of the `spec.arbiters` field must be:
 
@@ -173,7 +177,7 @@ To add arbiters:
      members: 3
      type: ReplicaSet
      arbiters: 3
-     version: "4.2.7"
+     version: "4.4.13"
    ```
 
    If necessary, update the value of the `spec.members` field to ensure that you have at least one member that is not an arbiter:
@@ -187,7 +191,7 @@ To add arbiters:
      members: 5
      type: ReplicaSet
      arbiters: 3
-     version: "4.2.7"
+     version: "4.4.13"
    ```
 
 2. Reapply the configuration to Kubernetes:

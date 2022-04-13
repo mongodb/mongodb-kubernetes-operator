@@ -642,10 +642,13 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 // IsStillScaling returns true if this resource is currently scaling,
 // considering both arbiters and regular members.
 func (m MongoDBCommunity) IsStillScaling() bool {
-	return scale.IsStillScaling(m) || scale.IsStillScaling(automationConfigReplicasScaler{
-		current: m.CurrentArbiters(),
-		desired: m.DesiredArbiters(),
-	})
+	arbiters := automationConfigReplicasScaler{
+		current:                m.CurrentArbiters(),
+		desired:                m.DesiredArbiters(),
+		forceIndividualScaling: true,
+	}
+
+	return scale.IsStillScaling(m) || scale.IsStillScaling(arbiters)
 }
 
 // AutomationConfigMembersThisReconciliation determines the correct number of
@@ -664,7 +667,7 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 //
 // Will not update arbiters until members have reached desired number.
 func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
-	if m.AutomationConfigMembersThisReconciliation() < m.Spec.Members {
+	if scale.IsStillScaling(m) {
 		return m.Status.CurrentMongoDBArbiters
 	}
 
@@ -742,15 +745,6 @@ func (m MongoDBCommunity) ServiceName() string {
 		return serviceName
 	}
 	return m.Name + "-svc"
-}
-
-// ArbiterServiceName returns the name of the Service for the Arbiters for this resource.
-func (m MongoDBCommunity) ArbiterServiceName() string {
-	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
-	if serviceName != "" {
-		return serviceName + "-arb-svc"
-	}
-	return m.Name + "-arb-svc"
 }
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {

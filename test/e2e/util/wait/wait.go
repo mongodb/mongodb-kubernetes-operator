@@ -118,8 +118,8 @@ func ForStatefulSetToBeUnready(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts .
 // have reached the ready status.
 func ForArbitersStatefulSetToBeReady(t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {
 	options := newOptions(opts...)
-	return waitForStatefulSetConditionWithSpecificSts(t, mdb, MembersStatefulSet, options, func(sts appsv1.StatefulSet) bool {
-		return statefulset.IsReady(sts, mdb.Spec.Members)
+	return waitForStatefulSetConditionWithSpecificSts(t, mdb, ArbitersStatefulSet, options, func(sts appsv1.StatefulSet) bool {
+		return statefulset.IsReady(sts, mdb.Spec.Arbiters)
 	})
 }
 
@@ -149,7 +149,7 @@ func waitForStatefulSetConditionWithSpecificSts(t *testing.T, mdb *mdbv1.MongoDB
 			return false, err
 		}
 		t.Logf("Waiting for %s to have %d replicas. Current ready replicas: %d, Current updated replicas: %d, Current generation: %d, Observed Generation: %d\n",
-			name, mdb.Spec.Members, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
+			name, *sts.Spec.Replicas, sts.Status.ReadyReplicas, sts.Status.UpdatedReplicas, sts.Generation, sts.Status.ObservedGeneration)
 		ready := condition(sts)
 		return ready, nil
 	})
