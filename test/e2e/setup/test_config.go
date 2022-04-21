@@ -13,6 +13,7 @@ const (
 	clusterWideEnvName              = "CLUSTER_WIDE"
 	performCleanupEnvName           = "PERFORM_CLEANUP"
 	helmChartPathEnvName            = "HELM_CHART_PATH"
+	operatorVerion                  = "OPERATOR_VERSION"
 )
 
 type TestConfig struct {
@@ -26,6 +27,7 @@ type TestConfig struct {
 	AgentImage              string
 	ReadinessProbeImage     string
 	HelmChartPath           string
+	OperatorVersion         string
 }
 
 func loadTestConfigFromEnv() TestConfig {
@@ -40,5 +42,7 @@ func loadTestConfigFromEnv() TestConfig {
 		PerformCleanup:          envvar.ReadBool(performCleanupEnvName),
 		ReadinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
 		HelmChartPath:           envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-charts/charts/community-operator"),
+		// TODO: remove this with install latest release = true
+		OperatorVersion: envvar.GetEnvOrDefault(operatorVerion, ""),
 	}
 }

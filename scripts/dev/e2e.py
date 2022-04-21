@@ -124,6 +124,10 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                             "name": "PERFORM_CLEANUP",
                             "value": f"{args.perform_cleanup}",
                         },
+                        # {
+                        #     "name": "OPERATOR_VERSION",
+                        #     "value": f"{args.operator_version}",
+                        # },
                     ],
                     "command": [
                         "go",

@@ -35,6 +35,20 @@ const (
 	Pem               tlsSecretType = "PEM"
 )
 
+func SetupLatestOperatorRelease(t *testing.T) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := loadTestConfigFromEnv()
+	if err := deployOperator(config, "mdb", false); err != nil {
+		t.Fatal(err)
+	}
+	return ctx
+
+}
+
 func Setup(t *testing.T) *e2eutil.Context {
 	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
@@ -113,33 +127,34 @@ func extractRegistryNameAndVersion(fullImage string) (string, string, string) {
 
 // getHelmArgs returns a map of helm arguments that are required to install the operator.
 func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName string, withTLS bool) map[string]string {
-	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.AgentImage)
-	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.VersionUpgradeHookImage)
-	readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.ReadinessProbeImage)
-	operatorRegistry, operatorName, operatorVersion := extractRegistryNameAndVersion(testConfig.OperatorImage)
+	// agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.AgentImage)
+	// versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.VersionUpgradeHookImage)
+	// readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.ReadinessProbeImage)
+	// operatorRegistry, operatorName, operatorVersion := extractRegistryNameAndVersion(testConfig.OperatorImage)
 
 	helmArgs := make(map[string]string)
 
 	helmArgs["namespace"] = testConfig.Namespace
 
 	helmArgs["operator.watchNamespace"] = watchNamespace
-	helmArgs["operator.operatorImageName"] = operatorName
-	helmArgs["operator.version"] = operatorVersion
 
-	helmArgs["versionUpgradeHook.name"] = versionUpgradeHookName
-	helmArgs["versionUpgradeHook.version"] = versionUpgradeHookVersion
+	// These shouldn't be modified if we are installing the latest operator
+	// helmArgs["operator.operatorImageName"] = operatorName
+	// helmArgs["operator.version"] = operatorVersion
+	// helmArgs["versionUpgradeHook.name"] = versionUpgradeHookName
+	// helmArgs["versionUpgradeHook.version"] = versionUpgradeHookVersion
 
-	helmArgs["readinessProbe.name"] = readinessProbeName
-	helmArgs["readinessProbe.version"] = readinessProbeVersion
+	// helmArgs["readinessProbe.name"] = readinessProbeName
+	// helmArgs["readinessProbe.version"] = readinessProbeVersion
 
-	helmArgs["agent.version"] = agentVersion
-	helmArgs["agent.name"] = agentName
+	// helmArgs["agent.version"] = agentVersion
+	// helmArgs["agent.name"] = agentName
 
-	helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
-	helmArgs["registry.operator"] = operatorRegistry
-	helmArgs["registry.agent"] = agentRegistry
-	helmArgs["registry.readinessProbe"] = readinessProbeRegistry
-
+	// helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
+	// helmArgs["registry.operator"] = operatorRegistry
+	// helmArgs["registry.agent"] = agentRegistry
+	// helmArgs["registry.readinessProbe"] = readinessProbeRegistry
+	// From here modification is fine, wrap the above logic in an "if" block based on TestConfig
 	helmArgs["community-operator-crds.enabled"] = strconv.FormatBool(false)
 
 	helmArgs["createResource"] = strconv.FormatBool(false)
@@ -148,6 +163,24 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 	helmArgs["resource.tls.useCertManager"] = strconv.FormatBool(withTLS)
 
 	return helmArgs
+}
+
+func deployOperatorLatestRelease(config TestConfig, resourceName string) error {
+	// TODO: move this to common code to be shared with deployOperator
+	e2eutil.OperatorNamespace = config.Namespace
+	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
+	watchNamespace := config.Namespace
+	if config.ClusterWide {
+		watchNamespace = "*"
+	}
+	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
+
+	helmChartName := "mongodb-kubernetes-operator"
+	if err := helm.Uninstall(helmChartName, config.Namespace); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // deployOperator installs all resources required by the operator using helm.
