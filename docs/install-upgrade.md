@@ -4,16 +4,14 @@
 
 - [Install the Operator](#install-the-operator)
   - [Understand Deployment Scopes](#understand-deployment-scopes)
-  - [Install the Operator using a Helm chart](#install-the-operator-using-Helm)
+  - [Install the Operator using Helm](#install-the-operator-using-Helm)
      - [Prerequisites to Install using Helm](#prerequisites-to-install-using-Helm)
-     - [Understand Deployment Scopes using Helm](#understand-deployment-scopes-using-Helm)
-     - [Configure the MongoDB Docker Image or Container Registry using Helm](#configure-the-mongodb-docker-image-or-container-registry-using-Helm)
      - [Procedure using Helm](#procedure-using-Helm)
-  - [Install the Operator using kubectl]
-     - [Prerequisites](#prerequisites-to-install-using-kubectl)
-     - [Understand Deployment Scopes](#understand-deployment-scopes)
+  - [Install the Operator using kubectl](#install-the-operator-using-kubectl)
+     - [Prerequisites to Install using kubectl](#prerequisites-to-install-using-kubectl)
+     - [Install in a Different Namespace using kubectl](#install-in-a-different-namespace-using-kubectl)
      - [Configure the MongoDB Docker Image or Container Registry](#configure-the-mongodb-docker-image-or-container-registry)
-     - [Procedure](#procedure)
+     - [Procedure using kubectl](#procedure-using-kubectl)
 - [Upgrade the Operator](#upgrade-the-operator)
 
 ## Install the Operator
