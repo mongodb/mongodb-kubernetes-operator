@@ -18,7 +18,11 @@
 
 The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
-Use the following resources to prepare your implementation and install the Community Operator.
+Use the following resources to prepare your implementation and install the Community Operator:
+
+- [Understand Deployment Scopes](#understand-deployment-scopes)
+- [Install the Operator using Helm](#install-the-operator-using-Helm)
+- [Install the Operator using kubectl](#install-the-operator-using-kubectl)
 
 ### Understand Deployment Scopes
 
@@ -37,7 +41,7 @@ This is the default scope when you [install the Operator using Helm](#install-th
 
 You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in other namespaces.
 
-To deploy the Operator in a different namespace than the resources, [Install in a Different Namespace using Helm](#install-in-a-different-namespace-using-helm) or [].
+To deploy the Operator in a different namespace than the resources, [Install in a Different Namespace using Helm](#install-in-a-different-namespace-using-helm) or [Install in a Different Namespace using kubectl](#install-in-a-different-namespace-using-kubectl).
 
 ### Install the Operator using Helm
 
@@ -80,7 +84,7 @@ include `--set community-operator-crds.enabled=false` when installing the Operat
 
 To install the Custom Resource Definitions and the Community Operator in 
 a different namespace using Helm, run the install 
-command with the `--namespace`` flag from the terminal. Include the `--create-namespace` 
+command with the `--namespace` flag from the terminal. Include the `--create-namespace` 
 flag if you are creating a new namespace.
    ```
    helm install community-operator mongodb/community-operator --namespace mongodb [--create-namespace]
