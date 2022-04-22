@@ -3,15 +3,33 @@
 ## Table of Contents
 
 - [Install the Operator](#install-the-operator)
-  - [Prerequisites](#prerequisites)
-  - [Understand Deployment Scopes](#understand-deployment-scopes)
-  - [Configure the MongoDB Docker Image or Container Registry](#configure-the-mongodb-docker-image-or-container-registry)
-  - [Procedure](#procedure)
+  - [Install the Operator using a HELM chart](#install-the-operator-using-helm)
+     - [Prerequisites to Install using HELM](#prerequisites-to-install-using-helm)
+     - [Understand Deployment Scopes using HELM](#understand-deployment-scopes-using-helm)
+     - [Configure the MongoDB Docker Image or Container Registry using HELM](#configure-the-mongodb-docker-image-or-container-registry-using-helm)
+     - [Procedure using HELM](#procedure-using-helm)
+  - [Install the Operator using kubectl]
+     - [Prerequisites](#prerequisites-to-install-using-kubectl)
+     - [Understand Deployment Scopes](#understand-deployment-scopes)
+     - [Configure the MongoDB Docker Image or Container Registry](#configure-the-mongodb-docker-image-or-container-registry)
+     - [Procedure](#procedure)
 - [Upgrade the Operator](#upgrade-the-operator)
 
 ## Install the Operator
 
-### Prerequisites
+### Install the Operator using HELM
+
+#### Prerequisites to Install using HELM
+
+#### Understand Deployment Scopes using HELM
+
+#### Configure the MongoDB Docker Image or Container Registry using HELM
+
+#### Procedure using HELM
+
+### Install the Operator using kubectl
+
+#### Prerequisites to Install using kubectl
 
 Before you install the MongoDB Community Kubernetes Operator, you must:
 
@@ -25,20 +43,20 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
 4. **Optional** Review the possible Operator [deployment scopes](#understand-deployment-scopes) and configure the Operator to watch other namespaces.
 5. **Optional** Configure the [MongoDB Docker image or container registry](#configure-the-mongodb-docker-image-or-container-registry).
 
-### Understand Deployment Scopes
+#### Understand Deployment Scopes
 
 You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDBCommunity resources:
 
 - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
 - [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
 
-#### Operator in Same Namespace as Resources
+##### Operator in Same Namespace as Resources
 
 You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in that same [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
 
 This is the default scope when you install the Operator using the [installation instructions](#procedure).
 
-#### Operator in Different Namespace Than Resources
+##### Operator in Different Namespace Than Resources
 
 You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in other namespaces.
 
@@ -78,7 +96,7 @@ To configure the Operator to watch resources in other namespaces:
 
 5. [Install the operator](#procedure).
 
-### Configure the MongoDB Docker Image or Container Registry
+#### Configure the MongoDB Docker Image or Container Registry
 
 By default, the Operator pulls the MongoDB database Docker image from `registry.hub.docker.com/library/mongo`.
 
@@ -111,7 +129,7 @@ for MongoDB Docker images:
 
 3. [Install the operator](#procedure).
 
-### Procedure
+#### Procedure
 
 The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
