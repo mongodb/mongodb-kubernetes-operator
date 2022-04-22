@@ -3,11 +3,12 @@
 ## Table of Contents
 
 - [Install the Operator](#install-the-operator)
-  - [Install the Operator using a HELM chart](#install-the-operator-using-helm)
-     - [Prerequisites to Install using HELM](#prerequisites-to-install-using-helm)
-     - [Understand Deployment Scopes using HELM](#understand-deployment-scopes-using-helm)
-     - [Configure the MongoDB Docker Image or Container Registry using HELM](#configure-the-mongodb-docker-image-or-container-registry-using-helm)
-     - [Procedure using HELM](#procedure-using-helm)
+  - [Understand Deployment Scopes](#understand-deployment-scopes)
+  - [Install the Operator using a Helm chart](#install-the-operator-using-Helm)
+     - [Prerequisites to Install using Helm](#prerequisites-to-install-using-Helm)
+     - [Understand Deployment Scopes using Helm](#understand-deployment-scopes-using-Helm)
+     - [Configure the MongoDB Docker Image or Container Registry using Helm](#configure-the-mongodb-docker-image-or-container-registry-using-Helm)
+     - [Procedure using Helm](#procedure-using-Helm)
   - [Install the Operator using kubectl]
      - [Prerequisites](#prerequisites-to-install-using-kubectl)
      - [Understand Deployment Scopes](#understand-deployment-scopes)
@@ -17,21 +18,83 @@
 
 ## Install the Operator
 
-### Install the Operator using HELM
+The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
 
-#### Prerequisites to Install using HELM
+Use the following resources to prepare your implementation and install the Community Operator.
 
-#### Understand Deployment Scopes using HELM
+### Understand Deployment Scopes
 
-#### Configure the MongoDB Docker Image or Container Registry using HELM
+You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDBCommunity resources:
 
-#### Procedure using HELM
+- [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
+- [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
+
+#### Operator in Same Namespace as Resources
+
+You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in that same [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
+
+This is the default scope when you [install the Operator using Helm](#install-the-operator-using-helm) or [install the Operator using kubectl](#install-the-operator-using-kubectl).
+
+#### Operator in Different Namespace Than Resources
+
+You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in other namespaces.
+
+To deploy the Operator in a different namespace than the resources, [Install in a Different Namespace using Helm](#install-in-a-different-namespace-using-helm) or [].
+
+### Install the Operator using Helm
+
+You can install the Operator using the [MongoDB Helm Charts](https://mongodb.github.io/helm-charts/).
+
+#### Prerequisites to Install using Helm
+
+Before you install the MongoDB Community Kubernetes Operator using Helm, you must:
+
+1. Have a Kubernetes solution available to use.
+   If you need a Kubernetes solution, see the [Kubernetes documentation on picking the right solution](https://kubernetes.io/docs/setup). For testing, MongoDB recommends [Kind](https://kind.sigs.k8s.io/).
+2. Clone this repository.
+   ```
+   git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
+   ```
+
+#### Procedure using Helm
+
+Use one of the following procedures to install the Operator using Helm:
+
+- [Install in the Default Namespace using Helm](#install-in-the-default-namespace-using-helm)
+- [Install in a Different Namespace using Helm](#install-in-a-different-namespace-using-helm)
+
+##### Install in the Default Namespace using Helm
+
+To install the Custom Resource Definitions and the Community Operator in 
+the `default` namespace using Helm, run the install command from the 
+terminal:
+   ```
+   helm install community-operator mongodb/community-operator
+   ```
+
+If you already installed the `community-operator-crds` Helm chart, you must
+include `--set community-operator-crds.enabled=false` when installing the Operator:
+   ```
+   helm install community-operator mongodb/community-operator --set community-operator-crds.enabled=false
+   ```
+
+##### Install in a Different Namespace using Helm
+
+To install the Custom Resource Definitions and the Community Operator in 
+a different namespace using Helm, run the install 
+command with the `--namespace`` flag from the terminal. Include the `--create-namespace` 
+flag if you are creating a new namespace.
+   ```
+   helm install community-operator mongodb/community-operator --namespace mongodb [--create-namespace]
+   ```
 
 ### Install the Operator using kubectl
 
+You can install the Operator using kubectl instead of Helm.
+
 #### Prerequisites to Install using kubectl
 
-Before you install the MongoDB Community Kubernetes Operator, you must:
+Before you install the MongoDB Community Kubernetes Operator using kubectl, you must:
 
 1. Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
 2. Have a Kubernetes solution available to use.
@@ -40,25 +103,10 @@ Before you install the MongoDB Community Kubernetes Operator, you must:
    ```
    git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
    ```
-4. **Optional** Review the possible Operator [deployment scopes](#understand-deployment-scopes) and configure the Operator to watch other namespaces.
+4. **Optional** Configure the Operator to watch other namespaces.
 5. **Optional** Configure the [MongoDB Docker image or container registry](#configure-the-mongodb-docker-image-or-container-registry).
 
-#### Understand Deployment Scopes
-
-You can deploy the MongoDB Community Kubernetes Operator with different scopes based on where you want to deploy MongoDBCommunity resources:
-
-- [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
-- [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
-
-##### Operator in Same Namespace as Resources
-
-You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in that same [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
-
-This is the default scope when you install the Operator using the [installation instructions](#procedure).
-
-##### Operator in Different Namespace Than Resources
-
-You scope the Operator to a namespace. The Operator watches MongoDBCommunity resources in other namespaces.
+##### Install in a Different Namespace using kubectl
 
 To configure the Operator to watch resources in other namespaces:
 
@@ -94,9 +142,9 @@ To configure the Operator to watch resources in other namespaces:
    kubectl apply -k config/rbac --namespace <my-namespace>
    ```
 
-5. [Install the operator](#procedure).
+5. [Install the operator](#procedure-using-kubectl).
 
-#### Configure the MongoDB Docker Image or Container Registry
+##### Configure the MongoDB Docker Image or Container Registry
 
 By default, the Operator pulls the MongoDB database Docker image from `registry.hub.docker.com/library/mongo`.
 
@@ -127,15 +175,13 @@ for MongoDB Docker images:
 
 2. Save the file.
 
-3. [Install the operator](#procedure).
+3. [Install the operator](#procedure-using-kubectl).
 
-#### Procedure
+#### Procedure using kubectl
 
-The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and a controller.
+The Operator can be installed using kubectl and the [Makefile](../Makefile) provided by `operator-sdk`
 
-The Operator can be installed using the [Makefile](../Makefile) provided by `operator-sdk`
-
-To install the MongoDB Community Kubernetes Operator:
+To install the MongoDB Community Kubernetes Operator using kubectl:
 
 1. Change to the directory in which you cloned the repository.
 2. Install the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
