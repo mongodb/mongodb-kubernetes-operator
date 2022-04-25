@@ -53,9 +53,10 @@ Before you install the MongoDB Community Kubernetes Operator using Helm, you mus
 
 1. Have a Kubernetes solution available to use.
    If you need a Kubernetes solution, see the [Kubernetes documentation on picking the right solution](https://kubernetes.io/docs/setup). For testing, MongoDB recommends [Kind](https://kind.sigs.k8s.io/).
-2. Clone this repository.
+2. [Install Helm](https://helm.sh/docs/intro/install/).
+3. Add the [MongoDB Helm Charts for Kubernetes](https://mongodb.github.io/helm-charts/) repository to Helm by running the following command:
    ```
-   git clone https://github.com/mongodb/mongodb-kubernetes-operator.git
+   helm repo add mongodb https://mongodb.github.io/helm-charts
    ```
 
 #### Procedure using Helm
@@ -96,7 +97,7 @@ You can install the Operator using kubectl instead of Helm.
 
 #### Prerequisites to Install using kubectl
 
-Before you install the MongoDB Community Kubernetes Operator using kubectl, you must:
+Before you install the MongoDB Community Kubernetes Operator using `kubectl`, you must:
 
 1. Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
 2. Have a Kubernetes solution available to use.
@@ -181,7 +182,7 @@ for MongoDB Docker images:
 
 #### Procedure using kubectl
 
-The Operator can be installed using kubectl and the [Makefile](../Makefile) provided by `operator-sdk`
+The Operator can be installed using `kubectl` and the [Makefile](../Makefile) provided by `operator-sdk`
 
 To install the MongoDB Community Kubernetes Operator using kubectl:
 
