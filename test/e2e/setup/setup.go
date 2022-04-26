@@ -181,7 +181,6 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 	}
 
 	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS, defaultOperator)
-	fmt.Println(helmArgs)
 	helmFlags := map[string]string{
 		"namespace":        config.Namespace,
 		"create-namespace": "",
