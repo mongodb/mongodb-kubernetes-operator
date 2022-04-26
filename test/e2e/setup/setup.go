@@ -35,6 +35,19 @@ const (
 	Pem               tlsSecretType = "PEM"
 )
 
+func SetupWithDefaultOperator(t *testing.T) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := LoadTestConfigFromEnv()
+	if err := DeployOperator(config, "mdb", false, true); err != nil {
+		t.Fatal(err)
+	}
+	return ctx
+}
+
 func Setup(t *testing.T) *e2eutil.Context {
 	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
@@ -42,8 +55,8 @@ func Setup(t *testing.T) *e2eutil.Context {
 		t.Fatal(err)
 	}
 
-	config := loadTestConfigFromEnv()
-	if err := deployOperator(config, "mdb", false); err != nil {
+	config := LoadTestConfigFromEnv()
+	if err := DeployOperator(config, "mdb", false, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,12 +70,12 @@ func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConf
 		t.Fatal(err)
 	}
 
-	config := loadTestConfigFromEnv()
+	config := LoadTestConfigFromEnv()
 	if err := deployCertManager(config); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := deployOperator(config, resourceName, true); err != nil {
+	if err := DeployOperator(config, resourceName, true, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,7 +125,7 @@ func extractRegistryNameAndVersion(fullImage string) (string, string, string) {
 }
 
 // getHelmArgs returns a map of helm arguments that are required to install the operator.
-func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName string, withTLS bool) map[string]string {
+func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName string, withTLS bool, defaultOperator bool) map[string]string {
 	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.AgentImage)
 	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.VersionUpgradeHookImage)
 	readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.ReadinessProbeImage)
@@ -123,22 +136,24 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 	helmArgs["namespace"] = testConfig.Namespace
 
 	helmArgs["operator.watchNamespace"] = watchNamespace
-	helmArgs["operator.operatorImageName"] = operatorName
-	helmArgs["operator.version"] = operatorVersion
 
-	helmArgs["versionUpgradeHook.name"] = versionUpgradeHookName
-	helmArgs["versionUpgradeHook.version"] = versionUpgradeHookVersion
+	if !defaultOperator {
+		helmArgs["operator.operatorImageName"] = operatorName
+		helmArgs["operator.version"] = operatorVersion
+		helmArgs["versionUpgradeHook.name"] = versionUpgradeHookName
+		helmArgs["versionUpgradeHook.version"] = versionUpgradeHookVersion
 
-	helmArgs["readinessProbe.name"] = readinessProbeName
-	helmArgs["readinessProbe.version"] = readinessProbeVersion
+		helmArgs["readinessProbe.name"] = readinessProbeName
+		helmArgs["readinessProbe.version"] = readinessProbeVersion
 
-	helmArgs["agent.version"] = agentVersion
-	helmArgs["agent.name"] = agentName
+		helmArgs["agent.version"] = agentVersion
+		helmArgs["agent.name"] = agentName
 
-	helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
-	helmArgs["registry.operator"] = operatorRegistry
-	helmArgs["registry.agent"] = agentRegistry
-	helmArgs["registry.readinessProbe"] = readinessProbeRegistry
+		helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
+		helmArgs["registry.operator"] = operatorRegistry
+		helmArgs["registry.agent"] = agentRegistry
+		helmArgs["registry.readinessProbe"] = readinessProbeRegistry
+	}
 
 	helmArgs["community-operator-crds.enabled"] = strconv.FormatBool(false)
 
@@ -150,8 +165,8 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 	return helmArgs
 }
 
-// deployOperator installs all resources required by the operator using helm.
-func deployOperator(config TestConfig, resourceName string, withTLS bool) error {
+// DeployOperator installs all resources required by the operator using helm.
+func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaultOperator bool) error {
 	e2eutil.OperatorNamespace = config.Namespace
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
 	watchNamespace := config.Namespace
@@ -165,7 +180,7 @@ func deployOperator(config TestConfig, resourceName string, withTLS bool) error 
 		return err
 	}
 
-	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS)
+	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS, defaultOperator)
 	helmFlags := map[string]string{
 		"namespace":        config.Namespace,
 		"create-namespace": "",

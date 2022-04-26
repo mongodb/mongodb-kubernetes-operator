@@ -28,7 +28,7 @@ type TestConfig struct {
 	HelmChartPath           string
 }
 
-func loadTestConfigFromEnv() TestConfig {
+func LoadTestConfigFromEnv() TestConfig {
 	return TestConfig{
 		Namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "mongodb"),
 		CertManagerNamespace:    envvar.GetEnvOrDefault(testCertManagerNamespaceEnvName, "cert-manager"),
