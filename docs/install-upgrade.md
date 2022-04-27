@@ -91,9 +91,15 @@ flag if you are creating a new namespace.
    helm install community-operator mongodb/community-operator --namespace mongodb [--create-namespace]
    ```
 
+To configure the Operator to watch resources in another namespace, run the following command from the terminal. Replace `example` with the namespace the Operator should watch:
+
+   ```
+   helm install community-operator mongodb/community-operator --set operator.watchNamespace="example"
+   ```
+
 ### Install the Operator using kubectl
 
-You can install the Operator using kubectl instead of Helm.
+You can install the Operator using `kubectl` instead of Helm.
 
 #### Prerequisites to Install using kubectl
 
@@ -182,11 +188,11 @@ for MongoDB Docker images:
 
 #### Procedure using kubectl
 
-The Operator can be installed using `kubectl` and the [Makefile](../Makefile) provided by `operator-sdk`
+The Operator can be installed using `kubectl` and the [Makefile](../Makefile).
 
 To install the MongoDB Community Kubernetes Operator using kubectl:
 
-1. Change to the directory in which you cloned the repository.
+1. Change to the Community Operator's directory.
 2. Install the [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
 
    a. Invoke the following command:
