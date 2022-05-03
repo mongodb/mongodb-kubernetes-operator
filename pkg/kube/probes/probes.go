@@ -22,10 +22,10 @@ func New(funcs ...Modification) corev1.Probe {
 
 func WithExecCommand(cmd []string) Modification {
 	return func(probe *corev1.Probe) {
-		if probe.Handler.Exec == nil {
-			probe.Handler.Exec = &corev1.ExecAction{}
+		if probe.ProbeHandler.Exec == nil {
+			probe.ProbeHandler.Exec = &corev1.ExecAction{}
 		}
-		probe.Handler.Exec.Command = cmd
+		probe.ProbeHandler.Exec.Command = cmd
 	}
 }
 
@@ -56,8 +56,8 @@ func WithTimeoutSeconds(timeoutSeconds int) Modification {
 	}
 }
 
-func WithHandler(handler corev1.Handler) Modification {
+func WithHandler(handler corev1.ProbeHandler) Modification {
 	return func(probe *corev1.Probe) {
-		probe.Handler = handler
+		probe.ProbeHandler = handler
 	}
 }

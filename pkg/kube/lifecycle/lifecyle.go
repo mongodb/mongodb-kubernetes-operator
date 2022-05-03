@@ -17,7 +17,7 @@ func Apply(modifications ...Modification) Modification {
 func WithPrestopCommand(preStopCmd []string) Modification {
 	return func(lc *corev1.Lifecycle) {
 		if lc.PreStop == nil {
-			lc.PreStop = &corev1.Handler{}
+			lc.PreStop = &corev1.LifecycleHandler{}
 		}
 		if lc.PreStop.Exec == nil {
 			lc.PreStop.Exec = &corev1.ExecAction{}
