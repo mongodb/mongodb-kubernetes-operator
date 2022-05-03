@@ -279,7 +279,7 @@ func TestMergeContainer(t *testing.T) {
 		Ports:        []corev1.ContainerPort{},
 		ReadinessProbe: &corev1.Probe{
 			// only "periodSeconds" was overwritten - other fields stayed untouched
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{Path: "/foo"},
 			},
 			PeriodSeconds: 20,
@@ -456,7 +456,7 @@ func getDefaultContainer() corev1.Container {
 		Name:    "container-0",
 		Image:   "image-0",
 		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{HTTPGet: &corev1.HTTPGetAction{
+			ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{
 				Path: "/foo",
 			}},
 			PeriodSeconds: 10,

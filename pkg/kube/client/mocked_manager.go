@@ -126,7 +126,7 @@ func (m *MockedManager) AddReadyzCheck(name string, check healthz.Checker) error
 }
 
 func (m *MockedManager) GetLogger() logr.Logger {
-	return nil
+	return logr.Logger{}
 }
 
 func (m *MockedManager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
