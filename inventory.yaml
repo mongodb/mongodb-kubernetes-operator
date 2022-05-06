@@ -68,7 +68,7 @@ images:
           - s3_bucket
 
         output:
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubuntu-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/$(inputs.params.release_version)/ubuntu/Dockerfile
 
       - name: agent-context-ubuntu-release
         task_type: docker_build
@@ -172,7 +172,7 @@ images:
           - release_version
 
         output:
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/Dockerfile.ubi-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: agent-context-ubi-release
         task_type: docker_build
