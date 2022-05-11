@@ -149,7 +149,8 @@ The value of the `spec.arbiters` field must be:
 
 **NOTE**: At least one replica set member must not be an arbiter.
 
-Consider the following MongoDBCommunity resource definition example:
+Consider the following MongoDBCommunity resource definition example, with a PSS
+(Primary-Secondary-Secondary) configuration:
 
 ```yaml
 apiVersion: mongodbcommunity.mongodb.com/v1
@@ -157,12 +158,12 @@ kind: MongoDBCommunity
 metadata:
   name: example-mongodb
 spec:
-  members: 3
   type: ReplicaSet
+  members: 3
   version: "4.2.7"
 ```
 
-To add arbiters:
+To add arbiters: 
 
 1. Edit the resource definition.
 
@@ -174,23 +175,9 @@ To add arbiters:
    metadata:
      name: example-mongodb
    spec:
+     type: ReplicaSet
      members: 3
-     type: ReplicaSet
-     arbiters: 3
-     version: "4.4.13"
-   ```
-
-   If necessary, update the value of the `spec.members` field to ensure that you have at least one member that is not an arbiter:
-
-   ```yaml
-   apiVersion: mongodbcommunity.mongodb.com/v1
-   kind: MongoDBCommunity
-   metadata:
-     name: example-mongodb
-   spec:
-     members: 5
-     type: ReplicaSet
-     arbiters: 3
+     arbiters: 1
      version: "4.4.13"
    ```
 
@@ -198,6 +185,9 @@ To add arbiters:
    ```
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
+
+The resulting Replica Set has a PSSA (Primary-Secondary-Secondary-Arbiter)
+configuration.
 
 ## Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version
 
