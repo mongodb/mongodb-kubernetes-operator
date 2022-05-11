@@ -163,7 +163,9 @@ spec:
   version: "4.2.7"
 ```
 
-To add arbiters, edit the resource definition.
+To add arbiters: 
+
+1. Edit the resource definition.
 
    Add the `spec.arbiters` field and assign its value to the number of arbiters that you want the replica set to have.
 
