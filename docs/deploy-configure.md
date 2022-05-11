@@ -184,7 +184,7 @@ To add arbiters, edit the resource definition.
    kubectl apply -f <example>.yaml --namespace <my-namespace>
    ```
 
-The resulting Replica Set will be PSSA (Primary-Secondary-Secondary-Arbiter)
+The resulting Replica Set has a PSSA (Primary-Secondary-Secondary-Arbiter)
 configuration.
 
 ## Upgrade your MongoDBCommunity Resource Version and Feature Compatibility Version
