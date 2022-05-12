@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/objx"
 
+	rwconcern "github.com/mongodb/mongodb-kubernetes-operator/pkg/agent/read_write_concern"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
@@ -258,6 +259,8 @@ type AutomationConfigOverride struct {
 type OverrideProcess struct {
 	Name     string `json:"name"`
 	Disabled bool   `json:"disabled"`
+
+	DefaultRWConcern *rwconcern.ReadWriteConcern `json:"defaultRWConcern"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet

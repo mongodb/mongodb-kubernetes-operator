@@ -404,7 +404,7 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
+	if scale.IsScalingUp(mdb) || (mdb.CurrentArbiters() < mdb.DesiredArbiters() && mdb.CurrentArbiters() != 0) {
 		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
 		return false
 	}
@@ -652,8 +652,9 @@ func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automat
 	var processes []automationconfig.Process
 	for _, p := range override.Processes {
 		processes = append(processes, automationconfig.Process{
-			Name:     p.Name,
-			Disabled: p.Disabled,
+			Name:             p.Name,
+			Disabled:         p.Disabled,
+			DefaultRWConcern: p.DefaultRWConcern,
 		})
 	}
 

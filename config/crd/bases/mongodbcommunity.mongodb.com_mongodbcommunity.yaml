@@ -75,11 +75,32 @@ spec:
                       description: OverrideProcess contains fields that we can override
                         on the AutomationConfig processes.
                       properties:
+                        defaultRWConcern:
+                          properties:
+                            defaultReadConcern:
+                              properties:
+                                level:
+                                  type: string
+                              type: object
+                            defaultWriteConcern:
+                              properties:
+                                j:
+                                  type: boolean
+                                w:
+                                  type: string
+                                wtimeout:
+                                  type: integer
+                              type: object
+                          required:
+                          - defaultReadConcern
+                          - defaultWriteConcern
+                          type: object
                         disabled:
                           type: boolean
                         name:
                           type: string
                       required:
+                      - defaultRWConcern
                       - disabled
                       - name
                       type: object

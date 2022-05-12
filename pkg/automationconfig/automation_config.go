@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	rwconcern "github.com/mongodb/mongodb-kubernetes-operator/pkg/agent/read_write_concern"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
 )
@@ -46,14 +47,15 @@ type MonitoringVersion struct {
 }
 
 type Process struct {
-	Name                        string      `json:"name"`
-	Disabled                    bool        `json:"disabled"`
-	HostName                    string      `json:"hostname"`
-	Args26                      objx.Map    `json:"args2_6"`
-	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
-	ProcessType                 ProcessType `json:"processType"`
-	Version                     string      `json:"version"`
-	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	Name                        string                      `json:"name"`
+	Disabled                    bool                        `json:"disabled"`
+	HostName                    string                      `json:"hostname"`
+	Args26                      objx.Map                    `json:"args2_6"`
+	FeatureCompatibilityVersion string                      `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType                 `json:"processType"`
+	Version                     string                      `json:"version"`
+	AuthSchemaVersion           int                         `json:"authSchemaVersion"`
+	DefaultRWConcern            *rwconcern.ReadWriteConcern `json:"defaultRWConcern,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
