@@ -1,0 +1,1364 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 0,
+    "id": 5,
+    "iteration": 1650460419048,
+    "links": [],
+    "panels": [
+      {
+        "collapsed": false,
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 4,
+        "panels": [],
+        "type": "row"
+      },
+      {
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 0,
+          "y": 1
+        },
+        "id": 2,
+        "maxDataPoints": null,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "/^Last \\(not null\\)$/",
+            "values": false
+          },
+          "text": {},
+          "textMode": "value"
+        },
+        "pluginVersion": "7.5.2",
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "mongodb_uptimeMillis",
+            "format": "time_series",
+            "instant": true,
+            "interval": "",
+            "intervalFactor": 1,
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": null,
+        "timeShift": null,
+        "title": "Uptime (minutes)",
+        "transformations": [
+          {
+            "id": "reduce",
+            "options": {
+              "includeTimeField": false,
+              "mode": "seriesToRows",
+              "reducers": [
+                "lastNotNull"
+              ]
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 6,
+          "y": 1
+        },
+        "id": 5,
+        "maxDataPoints": null,
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true,
+          "text": {}
+        },
+        "pluginVersion": "7.5.2",
+        "repeat": null,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "mongodb_connections_available",
+            "format": "time_series",
+            "instant": false,
+            "interval": "",
+            "intervalFactor": 1,
+            "legendFormat": "Available",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_connections_active",
+            "hide": false,
+            "instant": false,
+            "interval": "",
+            "legendFormat": "Active",
+            "refId": "B"
+          }
+        ],
+        "timeFrom": null,
+        "timeShift": null,
+        "title": "Connections",
+        "transformations": [
+          {
+            "id": "reduce",
+            "options": {
+              "includeTimeField": false,
+              "mode": "seriesToRows",
+              "reducers": [
+                "lastNotNull"
+              ]
+            }
+          }
+        ],
+        "type": "gauge"
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 12,
+          "y": 1
+        },
+        "hiddenSeries": false,
+        "id": 6,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "maxDataPoints": null,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(container_memory_working_set_bytes{pod=~\"$Cluster.*\", container=~\"mongodb.*\"})\n",
+            "format": "time_series",
+            "instant": false,
+            "interval": "",
+            "intervalFactor": 1,
+            "legendFormat": "Working",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": ":node_memory_MemAvailable_bytes:sum",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Available",
+            "refId": "B"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Mongo Pods Memory Usage in GB / Total Available on Cluster",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "transformations": [
+          {
+            "id": "reduce",
+            "options": {
+              "includeTimeField": false,
+              "mode": "seriesToRows",
+              "reducers": []
+            }
+          }
+        ],
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "description": "",
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 18,
+          "y": 1
+        },
+        "hiddenSeries": false,
+        "id": 7,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "maxDataPoints": null,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"$Cluster.*\", image!~\"sha.*\", container=~\"mongo.*\"}[5m]))",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Usage",
+            "refId": "Used"
+          },
+          {
+            "exemplar": true,
+            "expr": "cluster:node_cpu:sum_rate5m",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Available",
+            "refId": "Available"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Mongo Pods CPU Usage / Total Available on Cluster",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "transformations": [
+          {
+            "id": "reduce",
+            "options": {
+              "includeTimeField": false,
+              "mode": "seriesToRows",
+              "reducers": []
+            }
+          }
+        ],
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "id": 11,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true,
+          "text": {}
+        },
+        "pluginVersion": "7.5.2",
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_catalogStats_collections{pod=~\"$Cluster.*\"})",
+            "instant": false,
+            "interval": "",
+            "legendFormat": "Collections",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_catalogStats_capped{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "instant": false,
+            "interval": "",
+            "legendFormat": "Capped Collections",
+            "refId": "B"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_catalogStats_timeseries{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "instant": false,
+            "interval": "",
+            "legendFormat": "Timeseries",
+            "refId": "C"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_catalogStats_views{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Views",
+            "refId": "D"
+          }
+        ],
+        "title": "Catalog Stats",
+        "type": "bargauge"
+      },
+      {
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "graph": false,
+                "legend": false,
+                "tooltip": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "id": 9,
+        "options": {
+          "graph": {},
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltipOptions": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "7.5.2",
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(mongodb_globalLock_activeClients_total{pod=~\"$Cluster.*\"})",
+            "interval": "",
+            "legendFormat": "Total",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "sum(mongodb_globalLock_activeClients_readers{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Readers",
+            "refId": "B"
+          },
+          {
+            "exemplar": true,
+            "expr": "sum(mongodb_globalLock_activeClients_writers{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Writers",
+            "refId": "C"
+          }
+        ],
+        "title": "Global Locks",
+        "transformations": [],
+        "type": "timeseries"
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 11,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "hiddenSeries": false,
+        "id": 13,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_cursor_open_total{pod=~\"$Cluster.*\"}",
+            "format": "time_series",
+            "hide": false,
+            "instant": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Open",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_cursor_open_noTimeout{pod=~\"$Cluster.*\"}",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Open No Timeout",
+            "refId": "B"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_cursor_timed_out{pod=~\"$Cluster.*\"}",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Timed Out",
+            "refId": "C"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Cursors",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 11,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "hiddenSeries": false,
+        "id": 15,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_document_inserted{pod=~\"$Cluster.*\"}",
+            "interval": "",
+            "legendFormat": "{{pod}} Inserted",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_document_returned{pod=~\"$Cluster.*\"}",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Returned",
+            "refId": "B"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_document_deleted{pod=~\"$Cluster.*\"}",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Deleted",
+            "refId": "C"
+          },
+          {
+            "exemplar": true,
+            "expr": "mongodb_metrics_document_updated{pod=~\"$Cluster.*\"}",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "{{pod}} Updated",
+            "refId": "D"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Documents",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "transformations": [],
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "datasource": null,
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 27
+        },
+        "id": 17,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [],
+            "fields": "",
+            "values": false
+          },
+          "text": {},
+          "textMode": "auto"
+        },
+        "pluginVersion": "7.5.2",
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(mongodb_metrics_repl_network_bytes{pod=~\"$Cluster.*\"})",
+            "instant": false,
+            "interval": "",
+            "legendFormat": "Total Usage",
+            "refId": "A"
+          }
+        ],
+        "title": "Replication Network Usage",
+        "transformations": [
+          {
+            "id": "reduce",
+            "options": {
+              "reducers": [
+                "lastNotNull"
+              ]
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "datasource": null,
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 27
+        },
+        "id": 19,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "text": {},
+          "textMode": "auto"
+        },
+        "pluginVersion": "7.5.2",
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(mongodb_metrics_repl_network_ops{pod=~\"$Cluster.*\"})",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "Replication Operations",
+        "type": "stat"
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 27
+        },
+        "hiddenSeries": false,
+        "id": 26,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_network_bytesIn{pod=~\"$Cluster.*\"})",
+            "interval": "",
+            "legendFormat": "Bytes In",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_network_bytesOut{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Bytes Out",
+            "refId": "B"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Network Usage",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "unit": "µs"
+          },
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 35
+        },
+        "hiddenSeries": false,
+        "id": 23,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_reads_latency{pod=~\"$Cluster.*\"})",
+            "interval": "",
+            "legendFormat": "Reads",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_commands_latency{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Commands",
+            "refId": "C"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_transactions_latency{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Transactions",
+            "refId": "D"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_writes_latency{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Writes",
+            "refId": "B"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Latencies",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "µs",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 35
+        },
+        "hiddenSeries": false,
+        "id": 24,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.2",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_reads_ops{pod=~\"$Cluster.*\"})",
+            "interval": "",
+            "legendFormat": "Reads",
+            "refId": "A"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_commands_ops{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Commands",
+            "refId": "C"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_transactions_ops{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Transactions",
+            "refId": "D"
+          },
+          {
+            "exemplar": true,
+            "expr": "max(mongodb_opLatencies_writes_ops{pod=~\"$Cluster.*\"})",
+            "hide": false,
+            "interval": "",
+            "legendFormat": "Writes",
+            "refId": "B"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "Ops",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      }
+    ],
+    "schemaVersion": 27,
+    "style": "dark",
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "allValue": null,
+          "current": {
+            "selected": false,
+            "text": "replica-set-with-prom",
+            "value": "replica-set-with-prom"
+          },
+          "datasource": null,
+          "definition": "label_values(mongodb_connections_available, cl_name)",
+          "description": null,
+          "error": null,
+          "hide": 0,
+          "includeAll": false,
+          "label": null,
+          "multi": false,
+          "name": "Cluster",
+          "options": [],
+          "query": {
+            "query": "label_values(mongodb_connections_available, cl_name)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "tagValuesQuery": "",
+          "tags": [],
+          "tagsQuery": "",
+          "type": "query",
+          "useTags": false
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "MongoDB Dashboard Copy",
+    "uid": "_y8XBgynz",
+    "version": 22
+  }
