@@ -159,11 +159,16 @@ CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
+# Try to use already installed helm from PATH
+ifeq (ok,$(shell test -f "$$(which helm)" && echo ok))
+    HELM=$(shell which helm)
+else
+    HELM=/usr/bin/local/helm
+endif
+
 # Download helm locally if necessary
-HELM = /usr/local/bin/helm
 helm:
 	$(call install-helm)
-
 
 define install-helm
 @[ -f $(HELM) ] || { \
