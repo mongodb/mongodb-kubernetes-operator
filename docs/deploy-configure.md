@@ -11,6 +11,8 @@ The [`/config/samples`](../config/samples) directory contains example MongoDBCom
   - [Example](#example)
 - [Deploy Replica Sets on OpenShift](#deploy-replica-sets-on-openshift)
 - [Define a Custom Database Role](#define-a-custom-database-role)
+- [Specify Non-Default Values for Readiness Probe](#specify-non-default-values-for-readiness-probe)
+  - [When to specify custom values for the Readiness Probe](#when-to-specify-custom-values-for-the-readiness-probe)
 
 ## Deploy a Replica Set
 

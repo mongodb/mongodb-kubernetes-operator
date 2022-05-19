@@ -4,6 +4,8 @@
 
 - [Install the Operator](#install-the-operator)
   - [Understand Deployment Scopes](#understand-deployment-scopes)
+    - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
+    - [Operator in Different Namespace Than Resources](#operator-in-different-namespace-than-resources)
   - [Install the Operator using Helm](#install-the-operator-using-Helm)
      - [Prerequisites to Install using Helm](#prerequisites-to-install-using-Helm)
      - [Procedure using Helm](#procedure-using-Helm)
@@ -13,6 +15,7 @@
      - [Configure the MongoDB Docker Image or Container Registry](#configure-the-mongodb-docker-image-or-container-registry)
      - [Procedure using kubectl](#procedure-using-kubectl)
 - [Upgrade the Operator](#upgrade-the-operator)
+- [Rotating TLS certificate for the MongoDB deployment](#rotating-tls-certificate-for-the-mongodb-deployment)
 
 ## Install the Operator
 
