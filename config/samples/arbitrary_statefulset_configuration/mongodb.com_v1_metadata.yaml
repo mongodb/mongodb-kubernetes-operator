@@ -1,0 +1,59 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mdb0
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      modes: [ "SCRAM" ]
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
+        name: my-user-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+      scramCredentialsSecretName: my-scram
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+
+  statefulSet:
+    metadata:
+      annotations:
+        statefulSetAnnotationTest: testValue
+      labels:
+        statefulSetLabelTest: testValue
+    spec:
+      selector:
+        matchLabels:
+          podTemplateLabelTest: testValue
+
+      template:
+        metadata:
+          annotations:
+            podTemplateAnnotationTest: testValue
+          labels:
+            podTemplateLabelTest: testValue
+
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+            annotations:
+              pvcTemplateAnnotationTest: testValue
+            labels:
+              pvcTemplateLabelTest: testValue
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-user-password
+type: Opaque
+stringData:
+  password: <your-password-here>
