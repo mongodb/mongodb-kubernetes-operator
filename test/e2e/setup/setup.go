@@ -213,7 +213,7 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 		return err
 	}
 
-	if err := wait.PollImmediate(time.Second, 30*time.Second, hasDeploymentRequiredReplicas(&dep)); err != nil {
+	if err := wait.PollImmediate(time.Second, 60*time.Second, hasDeploymentRequiredReplicas(&dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
