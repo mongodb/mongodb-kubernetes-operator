@@ -157,7 +157,7 @@ all-images: operator-image e2e-image agent-image readiness-probe-image version-u
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
 # Download helm locally if necessary
 HELM = /usr/local/bin/helm
@@ -177,16 +177,16 @@ rm -rf $(TMP_DIR) ;\
 }
 endef
 
-# go-get-tool will 'go get' any package $2 and install it to $1.
+# go-install-tool will 'go install' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
+define go-install-tool
 @[ -f $(1) ] || { \
 set -e ;\
 TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
