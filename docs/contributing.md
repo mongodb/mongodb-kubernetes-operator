@@ -90,6 +90,9 @@ The build process consists of multiple Docker images being built. You need to sp
 where you want the locally built images to be pushed. The Docker registry needs to be
 accessible from your Kubernetes cluster.
 
+### Local kind cluster
+For local testing you can use a [local Kind cluster](build_operator_locally.md#steps).
+
 ## Test Namespace
 
 You can change the namespace used for tests, if you are using `Kind`, for
@@ -99,6 +102,7 @@ instance, you can leave this as `mongodb`.
 
 The test runner is a Python script, in order to use it a virtualenv needs to be
 created.
+**Python 3.9 is not supported yet. Please use Python 3.8.**
   
 ### Pip
 ```sh
@@ -200,14 +204,11 @@ replica_set_scale
 The tests should run individually using the runner like this:
 
 ```sh
-make e2e-k8s test=<test-name>
+make e2e-k8s test=replica_set
 ```
 
 This will run the `replica_set` E2E test which is a simple test which installs a
 MongoDB Replica Set and asserts that the deployed server can be connected to.
-
-
- 
 
 ### Run the test locally with go test & Telepresence
 ```sh

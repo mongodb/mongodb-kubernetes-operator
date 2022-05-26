@@ -4,7 +4,7 @@ This document contains a quickstart guide to build and deploy the operator local
 
 
 ## Prerequisites
-This guide assumes that you have already installed the following tools:
+This guide assumes that you have already prepared [Python virtual env](contributing.md#python-environment) and installed the following tools:
 
 * [Kind](https://kind.sigs.k8s.io/)
 * [Docker](https://www.docker.com/)
@@ -16,20 +16,22 @@ This guide assumes that you have already installed the following tools:
 1. Create a local kubernetes cluster and start a local registry by running
 
 ```sh
-./scripts/dev/setup_kind_cluster.sh
+./scripts/dev/setup_kind_cluster.sh -n test-cluster
 ```
 
-2. Set the kind kubernetes context if you have not already done so:
-```bash
-export KUBECONFIG=~/.kube/kind
+Alternatively create a local cluster and set current kubectl context to it.
+```sh
+./scripts/dev/setup_kind_cluster.sh -en test-cluster
 ```
 
-3. Run the following to get kind credentials:
+3. Run the following to get kind credentials and switch current context to the newly created cluster:
 
 ```sh
-kind export kubeconfig
-# check it worked by running:
-kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
+kind export kubeconfig --name test-cluster
+# should return kind-test-cluster
+kubectl config current-context
+# should have test-cluster-control-plane node listed
+kubectl get nodes
 ```
 
 4. Build and deploy the operator:
@@ -38,7 +40,6 @@ kubectl cluster-info --context kind-kind --kubeconfig $KUBECONFIG
 # builds all required images and then deploys the operator
 make all-images deploy
 ```
-
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
