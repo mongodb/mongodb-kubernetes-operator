@@ -1,4 +1,4 @@
-git+https://github.com/mongodb/sonar@96d13ff76a29349d07d2d6baa95e057495f00adf
+git+https://github.com/mongodb/sonar@94ed8a31e3f28c1d8a4b2ce96a341662c3f74c62
 github-action-templates==0.0.4
 docker==4.3.1
 kubernetes==11.0.0
