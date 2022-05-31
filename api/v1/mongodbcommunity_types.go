@@ -343,6 +343,12 @@ func (m MongodConfiguration) GetDBPort() int {
 	return int(objx.New(m.Object).Get("net.port").Float64(float64(automationconfig.DefaultDBPort)))
 }
 
+// SetDBPort ensures that port is stored as float64
+func (m MongodConfiguration) SetDBPort(port int) MongodConfiguration {
+	m.SetOption("net.port", float64(port))
+	return m
+}
+
 type MongoDBUser struct {
 	// Name is the username of the user
 	Name string `json:"name"`

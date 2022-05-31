@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// performCheckHeadlessMode validates if the Agent has reached the correct goal state
+// PerformCheckHeadlessMode validates if the Agent has reached the correct goal state
 // The state is fetched from K8s automation config Secret directly to avoid flakiness of mounting process
 // Dev note: there is an alternative way to get current namespace: to read from
 // /var/run/secrets/kubernetes.io/serviceaccount/namespace file (see

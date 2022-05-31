@@ -60,6 +60,23 @@ func (p *Process) SetPort(port int) *Process {
 	return p.SetArgs26Field("net.port", port)
 }
 
+func (p *Process) GetPort() int {
+	if p.Args26 == nil {
+		return 0
+	}
+
+	// Args26 map could be manipulated in memory, e.g. via SetPort - then it will be as int,
+	// or it could be deserialized from JSON and then integer in an untyped map will be deserialized as float64.
+	// It's behavior of https://pkg.go.dev/encoding/json#Unmarshal that is converting JSON integers as float64.
+	// TODO: ensure the port is stored only as one type
+	netPortValue := p.Args26.Get("net.port")
+	if netPortValue.IsFloat64() {
+		return int(netPortValue.Float64())
+	}
+
+	return netPortValue.Int()
+}
+
 func (p *Process) SetStoragePath(storagePath string) *Process {
 	return p.SetArgs26Field("storage.dbPath", storagePath)
 }

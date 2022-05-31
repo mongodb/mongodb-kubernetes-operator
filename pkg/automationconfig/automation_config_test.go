@@ -1,7 +1,9 @@
 package automationconfig
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -335,6 +337,29 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 	for _, process := range ac.Processes {
 		assert.Equal(t, 27017, process.Args26.Get("net.port").Data())
 	}
+}
+
+func TestPortsAfterMarshalling(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetMembers(1).
+		SetPort(1234).
+		Build()
+	assert.NoError(t, err)
+
+	// ac built in-memory has ports stored as ints
+	assert.Equal(t, 1234, ac.Processes[0].Args26.Get("net.port").Int())
+	assert.Equal(t, 1234, ac.Processes[0].GetPort())
+
+	bytes, err := json.Marshal(&ac)
+	require.NoError(t, err)
+	acDeserialized := AutomationConfig{}
+	require.NoError(t, json.Unmarshal(bytes, &acDeserialized))
+
+	require.Len(t, acDeserialized.Processes, 1)
+	// ac after deserialization has ports stored as float64
+	assert.Equal(t, 1234., acDeserialized.Processes[0].Args26.Get("net.port").Float64())
+	assert.Equal(t, 1234, acDeserialized.Processes[0].GetPort())
 }
 
 func TestModifications(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -294,6 +295,88 @@ func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
+}
+
+func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
+	mdb := newTestReplicaSet()
+
+	const oldPort = automationconfig.DefaultDBPort
+	const newPort = 8000
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts := appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), mdb.NamespacedName(), &sts)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(3), sts.Status.ReadyReplicas)
+	assert.Equal(t, int32(3), sts.Status.UpdatedReplicas)
+
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: sts.Name, Namespace: mdb.Namespace}, &sts)
+
+	mdb.Spec.AdditionalMongodConfig = mdbv1.NewMongodConfiguration()
+	mdb.Spec.AdditionalMongodConfig.SetDBPort(newPort)
+
+	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	assert.NoError(t, err)
+
+	// in unit tests stateful set is managed manually
+	setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
+
+	// port changes should be performed one at a time
+	// should set port #0 to new one
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assert.True(t, res.Requeue)
+	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	require.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+	assert.Equal(t, oldPort, currentAc.Processes[1].Args26.Get("net.port").Int())
+	assert.Equal(t, oldPort, currentAc.Processes[2].Args26.Get("net.port").Int())
+
+	// should set port #1 to new one
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assert.True(t, res.Requeue)
+	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	require.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, newPort, currentAc.Processes[0].Args26.Get("net.port").Int())
+	assert.Equal(t, newPort, currentAc.Processes[1].Args26.Get("net.port").Int())
+	assert.Equal(t, oldPort, currentAc.Processes[2].Args26.Get("net.port").Int())
+
+	// not all ports are changed, so there are still two ports in the service
+	svc := corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, svc.Spec.Selector["app"], mdb.ServiceName())
+	assert.Len(t, svc.Spec.Ports, 2)
+
+	portMap := map[int32]corev1.ServicePort{}
+	for _, port := range svc.Spec.Ports {
+		portMap[port.Port] = port
+	}
+
+	assert.Equal(t, portMap[int32(automationconfig.DefaultDBPort)], corev1.ServicePort{Port: int32(oldPort), Name: "mongodb"})
+	assert.Equal(t, portMap[newPort], corev1.ServicePort{Port: newPort, Name: "mongodb_new"})
+
+	setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+	// should set port #2 to new one
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assert.True(t, res.Requeue)
+	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	require.Len(t, currentAc.Processes, 3)
+	assert.Equal(t, newPort, currentAc.Processes[0].Args26.Get("net.port").Int())
+	assert.Equal(t, newPort, currentAc.Processes[1].Args26.Get("net.port").Int())
+	assert.Equal(t, newPort, currentAc.Processes[2].Args26.Get("net.port").Int())
+
+	// all the ports are changed
+	svc = corev1.Service{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	assert.NoError(t, err)
+	assert.Len(t, svc.Spec.Ports, 1)
+	require.Contains(t, portMap, newPort)
+	assert.Equal(t, portMap[newPort], corev1.ServicePort{Port: newPort, Name: "mongodb"})
 }
 
 func TestService_configuresPrometheusCustomPorts(t *testing.T) {
