@@ -354,7 +354,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
 // The returned boolean indicates whether or not that Agents have all reached goal state.
-func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
+func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity, states []agent.PodState) (bool, error) {
 	r.log.Infof("Creating/Updating AutomationConfig")
 
 	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
@@ -427,10 +427,10 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 // deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
-func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
+func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunity, podStates []agent.PodState) (bool, error) {
 	return functions.RunSequentially(r.shouldRunInOrder(mdb),
 		func() (bool, error) {
-			return r.deployAutomationConfig(mdb)
+			return r.deployAutomationConfig(mdb, podStates)
 		},
 		func() (bool, error) {
 			return r.deployStatefulSet(mdb)

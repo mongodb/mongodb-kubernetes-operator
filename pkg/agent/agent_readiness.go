@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
 	"github.com/spf13/cast"
 	"go.uber.org/zap"
@@ -18,25 +17,28 @@ const (
 	podAnnotationAgentVersion = "agent.mongodb.com/version"
 )
 
-// AllReachedGoalState returns whether or not the agents associated with a given StatefulSet have reached goal state.
+type PodState struct {
+	PodName          types.NamespacedName
+	Found            bool
+	ReachedGoalState bool
+}
+
+// AllReachedGoalState returns whether the agents associated with a given StatefulSet have reached goal state.
 // it achieves this by reading the Pod annotations and checking to see if they have reached the expected config versions.
 func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) (bool, error) {
+	podStates, err := GetAllPodsGoalState(sts, podGetter, desiredMemberCount, targetConfigVersion, log)
+	if err != nil {
+		return false, err
+	}
+
 	var podsNotFound []string
-
-	for _, podName := range statefulSetPodNames(sts, desiredMemberCount) {
-		p, err := podGetter.GetPod(types.NamespacedName{Name: podName, Namespace: sts.Namespace})
-		if err != nil {
-			if apiErrors.IsNotFound(err) {
-				podsNotFound = append(podsNotFound, podName)
-				continue
-			}
-			return false, err
+	for _, podState := range podStates {
+		if !podState.Found {
+			podsNotFound = append(podsNotFound, podState.PodName.Name)
 		}
-
-		if reachedGoalState := ReachedGoalState(p, targetConfigVersion, log); !reachedGoalState {
+		if !podState.ReachedGoalState {
 			return false, nil
 		}
-
 	}
 
 	if len(podsNotFound) == desiredMemberCount {
@@ -51,6 +53,34 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 
 	log.Infof("All %d Agents have reached Goal state", desiredMemberCount)
 	return true, nil
+}
+
+func GetAllPodsGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
+	var podStates []PodState
+
+	for _, podName := range statefulSetPodNames(sts, desiredMemberCount) {
+		podNamespacedName := types.NamespacedName{Name: podName, Namespace: sts.Namespace}
+		podState := PodState{
+			PodName:          podNamespacedName,
+			Found:            true,
+			ReachedGoalState: false,
+		}
+
+		p, err := podGetter.GetPod(podNamespacedName)
+		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				podState.Found = false
+				continue
+			}
+
+			return nil, err
+		}
+
+		podState.ReachedGoalState = ReachedGoalState(p, targetConfigVersion, log)
+		podStates = append(podStates, podState)
+	}
+
+	return podStates, nil
 }
 
 // ReachedGoalState checks if a single Agent has reached the goal state. To do this it reads the Pod annotation

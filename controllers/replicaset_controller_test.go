@@ -332,17 +332,17 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	require.Len(t, currentAc.Processes, 3)
 	assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
-	assert.Equal(t, oldPort, currentAc.Processes[1].Args26.Get("net.port").Int())
-	assert.Equal(t, oldPort, currentAc.Processes[2].Args26.Get("net.port").Int())
+	assert.Equal(t, oldPort, currentAc.Processes[1].GetPort())
+	assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
 
 	// should set port #1 to new one
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assert.True(t, res.Requeue)
 	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	require.Len(t, currentAc.Processes, 3)
-	assert.Equal(t, newPort, currentAc.Processes[0].Args26.Get("net.port").Int())
-	assert.Equal(t, newPort, currentAc.Processes[1].Args26.Get("net.port").Int())
-	assert.Equal(t, oldPort, currentAc.Processes[2].Args26.Get("net.port").Int())
+	assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+	assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
+	assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
 
 	// not all ports are changed, so there are still two ports in the service
 	svc := corev1.Service{}
