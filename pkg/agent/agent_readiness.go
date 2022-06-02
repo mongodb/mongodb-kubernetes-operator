@@ -55,6 +55,26 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 	return true, nil
 }
 
+func GetAllDesiredPodsMap(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount int) (map[string]*corev1.Pod, error) {
+	var podsMap map[string]*corev1.Pod
+	for _, podName := range statefulSetPodNames(sts, desiredMemberCount) {
+		p, err := podGetter.GetPod(types.NamespacedName{Name: podName, Namespace: sts.Namespace})
+		if err != nil {
+			if apiErrors.IsNotFound(err) {
+				podsMap[podName] = nil
+			}
+			return nil, err
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	return pods, nil
+}
+
 func GetAllPodsGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
 	var podStates []PodState
 

@@ -76,6 +76,10 @@ func TestReachedGoalState(t *testing.T) {
 	})
 }
 
+func TestGetAllPods(t *testing.T) {
+
+}
+
 func createPodWithAgentAnnotation(versionStr string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

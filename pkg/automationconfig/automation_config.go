@@ -34,6 +34,16 @@ type AutomationConfig struct {
 	Roles              []CustomRole           `json:"roles,omitempty"`
 }
 
+func (ac *AutomationConfig) GetProcessByName(name string) *Process {
+	for i := 0; i < len(ac.Processes); i++ {
+		if ac.Processes[i].Name == name {
+			return &ac.Processes[i]
+		}
+	}
+
+	return nil
+}
+
 type BackupVersion struct {
 	BaseUrl string `json:"baseUrl"`
 }

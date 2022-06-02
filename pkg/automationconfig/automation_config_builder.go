@@ -20,6 +20,7 @@ const (
 )
 
 type Modification func(*AutomationConfig)
+type ProcessModification func(int, *Process)
 
 func NOOP() Modification {
 	return func(config *AutomationConfig) {}
@@ -43,7 +44,7 @@ type Builder struct {
 	backupVersions       []BackupVersion
 	monitoringVersions   []MonitoringVersion
 	options              Options
-	processModifications []func(int, *Process)
+	processModifications []ProcessModification
 	modifications        []Modification
 	auth                 *Auth
 	cafilePath           string
@@ -61,7 +62,7 @@ func NewBuilder() *Builder {
 		modifications:        []Modification{},
 		backupVersions:       []BackupVersion{},
 		monitoringVersions:   []MonitoringVersion{},
-		processModifications: []func(int, *Process){},
+		processModifications: []ProcessModification{},
 		port:                 DefaultDBPort,
 		tlsConfig:            nil,
 		sslConfig:            nil,
@@ -180,8 +181,16 @@ func (b *Builder) SetAuth(auth Auth) *Builder {
 	return b
 }
 
+// Deprecated: use AddProcessModifications instead
 func (b *Builder) AddProcessModification(f func(int, *Process)) *Builder {
-	b.processModifications = append(b.processModifications, f)
+	b.AddProcessModifications(f)
+	return b
+}
+
+func (b *Builder) AddProcessModifications(processModifications ...ProcessModification) *Builder {
+	for _, processModification := range processModifications {
+		b.processModifications = append(b.processModifications, processModification)
+	}
 	return b
 }
 
@@ -273,7 +282,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			AuthSchemaVersion:           5,
 		}
 
-		process.SetPort(b.port)
 		process.SetStoragePath(dataDir)
 		process.SetReplicaSetName(b.name)
 

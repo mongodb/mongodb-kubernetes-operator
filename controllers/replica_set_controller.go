@@ -354,7 +354,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bo
 
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
 // The returned boolean indicates whether or not that Agents have all reached goal state.
-func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity, states []agent.PodState) (bool, error) {
+func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Infof("Creating/Updating AutomationConfig")
 
 	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
@@ -502,7 +502,7 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity)
 	)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications []automationconfig.Modification, processModifications []automationconfig.ProcessModification) (automationconfig.AutomationConfig, error) {
 	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
 	arbiterDomain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
 
@@ -531,7 +531,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetPort(mdb.GetMongodConfiguration().GetDBPort()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
-		Build()
+		AddProcessModifications()
+	Build()
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -627,6 +628,8 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		}
 	}
 
+	processPortsModification := r.getProcessPortsModification(mdb.Spec.AdditionalMongodConfig.GetDBPort(), podStates)
+
 	automationConfig, err := buildAutomationConfig(
 		mdb,
 		auth,
@@ -635,6 +638,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		customRolesModification,
 		prometheusModification,
 	)
+
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
 	}
@@ -644,6 +648,55 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	return automationConfig, nil
+}
+
+func (r ReplicaSetReconciler) getProcessPortsModification(expectedPort int, podStates []agent.PodState) automationconfig.Modification {
+	return func(config *automationconfig.AutomationConfig) {
+		// set ports for processes for which pods are not created yet (first deployment or scale up)
+		for _, podState := range podStates {
+			process := config.GetProcessByName(podState.PodName.Name)
+			if !podState.Found && process != nil {
+				// do not log if this is the first config deployment (port won't be set) or port is not changed
+				if process.GetPort() != 0 && process.GetPort() != expectedPort {
+					r.log.Debugf("Pod %s is not created yet, setting its process port in config from %d to %d", podState.PodName.Name, process.GetPort(), expectedPort)
+				}
+				process.SetPort(expectedPort)
+			}
+		}
+
+		allPodsReachedGoalState := true
+		for _, podState := range podStates {
+			allPodsReachedGoalState = allPodsReachedGoalState && podState.ReachedGoalState
+		}
+
+		portChangeRequired := false
+		for _, podState := range podStates {
+			process := config.GetProcessByName(podState.PodName.Name)
+			if process != nil && process.GetPort() != expectedPort {
+				portChangeRequired = true
+				break
+			}
+		}
+
+		if !portChangeRequired {
+			return
+		}
+
+		if !allPodsReachedGoalState {
+			r.log.Debugf("Port change required but not all pods reached goal state, abandoning port change")
+			return
+		}
+
+		// change port only in the first process as the agent cannot handle simultaneous port changes in multiple processes
+		for _, podState := range podStates {
+			process := config.GetProcessByName(podState.PodName.Name)
+			if process != nil && process.GetPort() != expectedPort {
+				r.log.Debugf("Changing port in process %s from %d to %d", process.Name, process.GetPort(), expectedPort)
+				process.SetPort(expectedPort)
+				break
+			}
+		}
+	}
 }
 
 // overrideToAutomationConfig turns an automation config ovverride from the resource spec into an automation config
