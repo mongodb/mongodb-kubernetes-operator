@@ -276,7 +276,7 @@ func TestPemSupport(t *testing.T) {
 
 		err = r.ensureTLSResources(mdb)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `If all of "tls.crt", "tls.key" and "tls.pem" are present in the secret, the entry for "tls.pem" must be equal to the concatenation of "tls.crt" with "tls.key"`)
+		assert.Contains(t, err.Error(), `if all of "tls.crt", "tls.key" and "tls.pem" are present in the secret, the entry for "tls.pem" must be equal to the concatenation of "tls.crt" with "tls.key"`)
 
 	})
 }

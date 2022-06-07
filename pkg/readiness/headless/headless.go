@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	acVerionPath string = "/var/lib/automation/config/acVersion/version"
+	acVersionPath string = "/var/lib/automation/config/acVersion/version"
 )
 
 // performCheckHeadlessMode validates if the Agent has reached the correct goal state
@@ -31,8 +31,8 @@ func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, e
 	if err != nil {
 		// this file is expected to be present in case of AppDB, there is no point trying to access it in
 		// community, it masks the underlying error
-		if _, pathErr := os.Stat(acVerionPath); !os.IsNotExist(pathErr) {
-			file, err := os.Open(acVerionPath)
+		if _, pathErr := os.Stat(acVersionPath); !os.IsNotExist(pathErr) {
+			file, err := os.Open(acVersionPath)
 			if err != nil {
 				return false, err
 			}
