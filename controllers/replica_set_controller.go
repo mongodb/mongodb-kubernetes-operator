@@ -442,23 +442,51 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 // The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
 // will be created for the arbiters Statefulset.
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	name := mdb.ServiceName()
+	processPortManager, err := r.createProcessPortManager(mdb)
+	if err != nil {
+		return err
+	}
 
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: mdb.Namespace}}
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: mdb.ServiceName(), Namespace: mdb.Namespace}}
 	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.client, svc, func() error {
 		resourceVersion := svc.ResourceVersion // Save resourceVersion for later
-		*svc = buildService(mdb)
+		*svc = r.buildService(mdb, processPortManager)
 		svc.ResourceVersion = resourceVersion
 		return nil
 	})
 	if err != nil {
-		r.log.Infof("Cloud not create or patch the service: %s", err)
+		r.log.Errorf("Cloud not create or patch the service: %s", err)
 		return nil
 	}
 
 	r.log.Infow("Create/Update operation succeeded", "operation", op)
 
 	return err
+}
+
+func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommunity) (*ReplicaSetPortManager, error) {
+	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	if err != nil {
+		return nil, errors.Errorf("could not read existing automation config: %s", err)
+	}
+
+	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if err != nil {
+		if !apiErrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get StatefulSet: %s", err)
+		}
+
+		// sts's name is needed for GetAllDesiredMembersPodState logic
+		sts.Namespace = mdb.Namespace
+		sts.Name = mdb.Name
+	}
+
+	currentPodStates, err := agent.GetAllDesiredMembersPodState(sts, r.client, mdb.StatefulSetReplicasThisReconciliation(), currentAC.Version, r.log)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
+	}
+
+	return NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC), nil
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
@@ -528,7 +556,6 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
-		SetPort(mdb.GetMongodConfiguration().GetDBPort()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
@@ -536,13 +563,13 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
+func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portManager *ReplicaSetPortManager) corev1.Service {
 	label := make(map[string]string)
 	name := mdb.ServiceName()
 
 	label["app"] = name
 
-	return service.Builder().
+	serviceBuilder := service.Builder().
 		SetName(name).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
@@ -550,19 +577,15 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPublishNotReadyAddresses(true).
-		SetOwnerReferences(mdb.GetOwnerReferences()).
-		AddPort(mongoDBPort(mdb)).
-		AddPort(prometheusPort(mdb)).
-		Build()
-}
+		SetOwnerReferences(mdb.GetOwnerReferences())
 
-// mongoDBPort returns a `corev1.ServicePort` to be configured in the StatefulSet
-// for this MongoDB resource.
-func mongoDBPort(mdb mdbv1.MongoDBCommunity) *corev1.ServicePort {
-	return &corev1.ServicePort{
-		Port: int32(mdb.GetMongodConfiguration().GetDBPort()),
-		Name: "mongodb",
+	for _, servicePort := range portManager.GetServicePorts() {
+		serviceBuilder.AddPort(&servicePort)
 	}
+
+	serviceBuilder.AddPort(prometheusPort(mdb))
+
+	return serviceBuilder.Build()
 }
 
 // validateSpec checks if the MongoDB resource Spec is valid.
@@ -627,6 +650,11 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		}
 	}
 
+	processPortManager, err := r.createProcessPortManager(mdb)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
+	}
+
 	automationConfig, err := buildAutomationConfig(
 		mdb,
 		auth,
@@ -634,7 +662,9 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		tlsModification,
 		customRolesModification,
 		prometheusModification,
+		processPortManager.GetPortsModification(),
 	)
+
 	if err != nil {
 		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
 	}
@@ -646,7 +676,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	return automationConfig, nil
 }
 
-// overrideToAutomationConfig turns an automation config ovverride from the resource spec into an automation config
+// overrideToAutomationConfig turns an automation config override from the resource spec into an automation config
 // which can be used to merge.
 func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
 	var processes []automationconfig.Process

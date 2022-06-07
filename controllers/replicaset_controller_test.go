@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"testing"
 	"time"
 
@@ -296,6 +300,177 @@ func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
 	assertReconciliationSuccessful(t, res, err)
 }
 
+func createOrUpdatePodsWithVersions(t *testing.T, c k8sClient.Client, name types.NamespacedName, versions []string) {
+	for i, version := range versions {
+		createPodWithAgentAnnotation(t, c, types.NamespacedName{
+			Namespace: name.Namespace,
+			Name:      fmt.Sprintf("%s-%d", name.Name, i),
+		}, version)
+	}
+}
+
+func createPodWithAgentAnnotation(t *testing.T, c k8sClient.Client, name types.NamespacedName, versionStr string) {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name.Name,
+			Namespace: name.Namespace,
+			Annotations: map[string]string{
+				"agent.mongodb.com/version": versionStr,
+			},
+		},
+	}
+
+	err := c.Create(context.TODO(), &pod)
+
+	if err != nil && apiErrors.IsAlreadyExists(err) {
+		err = c.Update(context.TODO(), &pod)
+		assert.NoError(t, err)
+	}
+
+	assert.NoError(t, err)
+}
+
+func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
+	mdb := newTestReplicaSet()
+	namespacedName := mdb.NamespacedName()
+
+	const oldPort = automationconfig.DefaultDBPort
+	const newPort = 8000
+
+	mgr := client.NewManager(&mdb)
+
+	r := NewReconciler(mgr)
+
+	t.Run("Prepare cluster and change port", func(t *testing.T) {
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		assertReconciliationSuccessful(t, res, err)
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+		})
+		_ = assertAutomationConfigVersion(t, mgr.Client, mdb, 1)
+		assertStatefulsetReady(t, mgr, namespacedName, 3)
+
+		mdb.Spec.AdditionalMongodConfig = mdbv1.NewMongodConfiguration()
+		mdb.Spec.AdditionalMongodConfig.SetDBPort(newPort)
+
+		err = mgr.GetClient().Update(context.TODO(), &mdb)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Port should be changed only in the process #0", func(t *testing.T) {
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"1", "1", "1"})
+		// port changes should be performed one at a time
+		// should set port #0 to new one
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		require.NoError(t, err)
+		assert.True(t, res.Requeue)
+
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 2)
+		require.Len(t, currentAc.Processes, 3)
+		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[1].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
+
+		// not all ports are changed, so there are still two ports in the service
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+			newPort: "mongodb-new",
+		})
+	})
+
+	t.Run("Ports should be changed in processes #0,#1", func(t *testing.T) {
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"2", "2", "2"})
+
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		require.NoError(t, err)
+		assert.True(t, res.Requeue)
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 3)
+		require.Len(t, currentAc.Processes, 3)
+		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
+
+		// not all ports are changed, so there are still two ports in the service
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+			newPort: "mongodb-new",
+		})
+	})
+
+	t.Run("Ports should be changed in all processes", func(t *testing.T) {
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"3", "3", "3"})
+
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+		assert.NoError(t, err)
+		assert.True(t, res.Requeue)
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
+		require.Len(t, currentAc.Processes, 3)
+		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[2].GetPort())
+
+		// all the ports are changed but there are still two service ports for old and new port until the next reconcile
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+			newPort: "mongodb-new",
+		})
+	})
+
+	t.Run("At the end there should be only new port in the service", func(t *testing.T) {
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"4", "4", "4"})
+
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		assert.NoError(t, err)
+		// no need to requeue, port change is finished
+		assert.False(t, res.Requeue)
+		// there should not be any changes in config anymore
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
+		require.Len(t, currentAc.Processes, 3)
+		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[2].GetPort())
+
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			newPort: "mongodb",
+		})
+	})
+}
+
+func assertServicePorts(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, expectedServicePorts map[int]string) {
+	svc := corev1.Service{}
+
+	err := c.Get(context.TODO(), types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}, &svc)
+	require.NoError(t, err)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+	assert.Equal(t, mdb.ServiceName(), svc.Spec.Selector["app"])
+	assert.Len(t, svc.Spec.Ports, len(expectedServicePorts))
+
+	actualServicePorts := map[int]string{}
+	for _, servicePort := range svc.Spec.Ports {
+		actualServicePorts[int(servicePort.Port)] = servicePort.Name
+	}
+
+	assert.Equal(t, expectedServicePorts, actualServicePorts)
+}
+
+func assertAutomationConfigVersion(t *testing.T, c client.Client, mdb mdbv1.MongoDBCommunity, expectedVersion int) automationconfig.AutomationConfig {
+	ac, err := automationconfig.ReadFromSecret(c, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	require.NoError(t, err)
+	assert.Equal(t, expectedVersion, ac.Version)
+	return ac
+}
+
+func assertStatefulsetReady(t *testing.T, mgr manager.Manager, name types.NamespacedName, expectedReplicas int) {
+	sts := appsv1.StatefulSet{}
+	err := mgr.GetClient().Get(context.TODO(), name, &sts)
+	require.NoError(t, err)
+	assert.True(t, statefulset.IsReady(sts, expectedReplicas))
+}
+
 func TestService_configuresPrometheusCustomPorts(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mdb.Spec.Prometheus = &mdbv1.Prometheus{
@@ -373,9 +548,9 @@ func TestService_configuresPrometheus(t *testing.T) {
 
 func TestCustomNetPort_Configuration(t *testing.T) {
 	svc, _ := performReconciliationAndGetService(t, "specify_net_port.yaml")
-	assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 	assert.Len(t, svc.Spec.Ports, 1)
-	assert.Equal(t, svc.Spec.Ports[0], corev1.ServicePort{Port: 40333, Name: "mongodb"})
+	assert.Equal(t, corev1.ServicePort{Port: 40333, Name: "mongodb"}, svc.Spec.Ports[0])
 }
 
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {

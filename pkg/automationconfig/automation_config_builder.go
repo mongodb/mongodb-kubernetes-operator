@@ -62,7 +62,6 @@ func NewBuilder() *Builder {
 		backupVersions:       []BackupVersion{},
 		monitoringVersions:   []MonitoringVersion{},
 		processModifications: []func(int, *Process){},
-		port:                 DefaultDBPort,
 		tlsConfig:            nil,
 		sslConfig:            nil,
 	}
@@ -123,6 +122,7 @@ func (b *Builder) SetDataDir(dataDir string) *Builder {
 	return b
 }
 
+// Deprecated: ports should be set via ProcessModification or Modification
 func (b *Builder) SetPort(port int) *Builder {
 	b.port = port
 	return b
@@ -273,13 +273,23 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			AuthSchemaVersion:           5,
 		}
 
-		process.SetPort(b.port)
+		// ports should be change via ProcessModification or Modification
+		// left for backwards compatibility, to be removed in the future
+		if b.port != 0 {
+			process.SetPort(b.port)
+		}
 		process.SetStoragePath(dataDir)
 		process.SetReplicaSetName(b.name)
 
 		for _, mod := range b.processModifications {
 			mod(i, process)
 		}
+
+		// ensure it has port set
+		if process.GetPort() == 0 {
+			process.SetPort(DefaultDBPort)
+		}
+
 		processes[i] = *process
 
 		var horizon ReplicaSetHorizons
@@ -353,6 +363,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	if !areEqual {
 		currentAc.Version++
 	}
+
 	return currentAc, nil
 }
 
