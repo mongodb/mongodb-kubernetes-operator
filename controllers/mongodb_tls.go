@@ -142,7 +142,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 	certKey := getCertAndKey(getter, mdb, secretName)
 	pem := getPem(getter, mdb, secretName)
 	if certKey == "" && pem == "" {
-		return "", fmt.Errorf(`Neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf(`neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	if certKey == "" {
 		return pem, nil
@@ -151,7 +151,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 		return certKey, nil
 	}
 	if certKey != pem {
-		return "", fmt.Errorf(`If all of "%s", "%s" and "%s" are present in the secret, the entry for "%s" must be equal to the concatenation of "%s" with "%s"`, tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf(`if all of "%s", "%s" and "%s" are present in the secret, the entry for "%s" must be equal to the concatenation of "%s" with "%s"`, tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	return certKey, nil
 }

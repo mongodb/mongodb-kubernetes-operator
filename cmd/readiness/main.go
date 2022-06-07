@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/headless"

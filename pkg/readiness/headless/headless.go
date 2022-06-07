@@ -1,6 +1,7 @@
 package headless
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -12,6 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	acVerionPath string = "/var/lib/automation/config/acVersion/version"
+)
+
 // performCheckHeadlessMode validates if the Agent has reached the correct goal state
 // The state is fetched from K8s automation config Secret directly to avoid flakiness of mounting process
 // Dev note: there is an alternative way to get current namespace: to read from
@@ -21,23 +26,29 @@ import (
 func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, error) {
 	var targetVersion int64
 	var err error
+
 	targetVersion, err = secret.ReadAutomationConfigVersionFromSecret(conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
 	if err != nil {
-		file, err := os.Open("/var/lib/automation/config/acVersion/version")
-		if err != nil {
-			return false, err
-		}
-		defer file.Close()
-		data, err := ioutil.ReadAll(file)
+		// this file is expected to be present in case of AppDB, there is no point trying to access it in
+		// community, it masks the underlying error
+		if _, pathErr := os.Stat(acVerionPath); !os.IsNotExist(pathErr) {
+			file, err := os.Open(acVerionPath)
+			if err != nil {
+				return false, err
+			}
+			defer file.Close()
 
-		if err != nil {
-			return false, err
-		}
+			data, err := ioutil.ReadAll(file)
+			if err != nil {
+				return false, err
+			}
 
-		targetVersion, err = strconv.ParseInt(string(data), 10, 64)
-
-		if err != nil {
-			return false, err
+			targetVersion, err = strconv.ParseInt(string(data), 10, 64)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			return false, fmt.Errorf("failed to fetch automation-config secret name: %s, err: %s", conf.AutomationConfigSecretName, err)
 		}
 	}
 
