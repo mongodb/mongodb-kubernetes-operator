@@ -1,7 +1,6 @@
-package controllers
+package agent
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -10,11 +9,11 @@ import (
 type ReplicaSetPortManager struct {
 	log              *zap.SugaredLogger
 	expectedPort     int
-	currentPodStates []agent.PodState
+	currentPodStates []PodState
 	currentAC        automationconfig.AutomationConfig
 }
 
-func NewReplicaSetPortManager(log *zap.SugaredLogger, expectedPort int, currentPodStates []agent.PodState, currentAC automationconfig.AutomationConfig) *ReplicaSetPortManager {
+func NewReplicaSetPortManager(log *zap.SugaredLogger, expectedPort int, currentPodStates []PodState, currentAC automationconfig.AutomationConfig) *ReplicaSetPortManager {
 	return &ReplicaSetPortManager{log: log, expectedPort: expectedPort, currentPodStates: currentPodStates, currentAC: currentAC}
 }
 

@@ -1,8 +1,7 @@
-package controllers
+package agent
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 
 func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 	type input struct {
-		currentPodStates []agent.PodState
+		currentPodStates []PodState
 		expectedPort     int
 		currentAC        automationconfig.AutomationConfig
 	}
@@ -25,7 +24,6 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 	}
 
 	type testCase struct {
-		name           string
 		in             input
 		expectedOutput output
 	}
@@ -57,11 +55,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 		return portMap
 	}
 
-	testCases := []testCase{
-		{
-			name: "No ports are changed if there is existing config and pods are not ready",
+	testCases := map[string]testCase{
+		"No ports are changed if there is existing config and pods are not ready": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: false, ReachedGoalState: false},
 					{PodName: podName(1), Found: false, ReachedGoalState: false},
 					{PodName: podName(2), Found: false, ReachedGoalState: false},
@@ -75,10 +72,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            1000,
 			},
 		},
-		{
-			name: "No ports are changed when not all pods reached goal state",
+		"No ports are changed when not all pods reached goal state": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: true},
 					{PodName: podName(1), Found: true, ReachedGoalState: false},
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
@@ -92,10 +88,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            1000,
 			},
 		},
-		{
-			name: "All ports set to expected when there are no processes in config yet",
+		"All ports set to expected when there are no processes in config yet": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: false},
 					{PodName: podName(1), Found: true, ReachedGoalState: false},
 					{PodName: podName(2), Found: true, ReachedGoalState: false},
@@ -109,10 +104,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            2000,
 			},
 		},
-		{
-			name: "Only one port changed when all pods are ready",
+		"Only one port changed when all pods are ready": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: true},
 					{PodName: podName(1), Found: true, ReachedGoalState: true},
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
@@ -126,10 +120,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            1000,
 			},
 		},
-		{
-			name: "No port changes required when all ports changed but not all pods reached goal state",
+		"No port changes required when all ports changed but not all pods reached goal state": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: true},
 					{PodName: podName(1), Found: true, ReachedGoalState: true},
 					{PodName: podName(2), Found: true, ReachedGoalState: false},
@@ -143,10 +136,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            2000,
 			},
 		},
-		{
-			name: "No port changes when scaling down and there are more processes in config than current pod states",
+		"No port changes when scaling down and there are more processes in config than current pod states": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: true},
 					{PodName: podName(1), Found: true, ReachedGoalState: true},
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
@@ -160,10 +152,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 				oldPort:            2000,
 			},
 		},
-		{
-			name: "No port changes when scaling up and there are less processes in config than current pod states",
+		"No port changes when scaling up and there are less processes in config than current pod states": {
 			in: input{
-				currentPodStates: []agent.PodState{
+				currentPodStates: []PodState{
 					{PodName: podName(0), Found: true, ReachedGoalState: true},
 					{PodName: podName(1), Found: true, ReachedGoalState: true},
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
@@ -180,8 +171,8 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
 			portManager := NewReplicaSetPortManager(zap.S(), tc.in.expectedPort, tc.in.currentPodStates, tc.in.currentAC)
 			portMap, portChangeRequired, oldPort := portManager.calculateExpectedPorts()
 			actualOutput := output{

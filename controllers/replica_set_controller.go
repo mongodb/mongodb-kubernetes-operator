@@ -464,7 +464,7 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	return err
 }
 
-func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommunity) (*ReplicaSetPortManager, error) {
+func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommunity) (*agent.ReplicaSetPortManager, error) {
 	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		return nil, errors.Errorf("could not read existing automation config: %s", err)
@@ -486,7 +486,7 @@ func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommuni
 		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
 	}
 
-	return NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC), nil
+	return agent.NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC), nil
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
@@ -563,7 +563,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portManager *ReplicaSetPortManager) corev1.Service {
+func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portManager *agent.ReplicaSetPortManager) corev1.Service {
 	label := make(map[string]string)
 	name := mdb.ServiceName()
 
