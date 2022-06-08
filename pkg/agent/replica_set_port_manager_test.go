@@ -173,7 +173,7 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			portManager := NewReplicaSetPortManager(zap.S(), tc.in.expectedPort, tc.in.currentPodStates, tc.in.currentAC)
+			portManager := NewReplicaSetPortManager(zap.S(), tc.in.expectedPort, tc.in.currentPodStates, tc.in.currentAC.Processes)
 			portMap, portChangeRequired, oldPort := portManager.calculateExpectedPorts()
 			actualOutput := output{
 				portMap:            portMap,

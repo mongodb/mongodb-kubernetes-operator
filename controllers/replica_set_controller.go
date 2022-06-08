@@ -478,7 +478,7 @@ func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommuni
 		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
 	}
 
-	return agent.NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC), nil
+	return agent.NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC.Processes), nil
 }
 
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
