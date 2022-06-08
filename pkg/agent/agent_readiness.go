@@ -26,7 +26,10 @@ type PodState struct {
 // AllReachedGoalState returns whether the agents associated with a given StatefulSet have reached goal state.
 // it achieves this by reading the Pod annotations and checking to see if they have reached the expected config versions.
 func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) (bool, error) {
-	podStates, err := GetAllDesiredMembersPodState(sts, podGetter, desiredMemberCount, targetConfigVersion, log)
+	podStates, err := GetAllDesiredMembersPodState(types.NamespacedName{
+		Namespace: sts.Namespace,
+		Name:      sts.Name,
+	}, podGetter, desiredMemberCount, targetConfigVersion, log)
 	if err != nil {
 		return false, err
 	}
@@ -54,11 +57,14 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 	return true, nil
 }
 
-func GetAllDesiredMembersPodState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
-	var podStates []PodState
+// GetAllDesiredMembersPodState returns states of all desired pods in a replica set.
+// Pod names to search for are calculated using desiredMemberCount. Each pod is then checked if it exists
+// or if it reached goal state vs targetConfigVersion.
+func GetAllDesiredMembersPodState(namespacedName types.NamespacedName, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
+	podStates := make([]PodState, desiredMemberCount)
 
-	for _, podName := range statefulSetPodNames(sts, desiredMemberCount) {
-		podNamespacedName := types.NamespacedName{Name: podName, Namespace: sts.Namespace}
+	for i, podName := range statefulSetPodNames(namespacedName.Name, desiredMemberCount) {
+		podNamespacedName := types.NamespacedName{Name: podName, Namespace: namespacedName.Namespace}
 		podState := PodState{
 			PodName:          podNamespacedName,
 			Found:            true,
@@ -75,7 +81,7 @@ func GetAllDesiredMembersPodState(sts appsv1.StatefulSet, podGetter pod.Getter, 
 		}
 
 		podState.ReachedGoalState = ReachedGoalState(p, targetConfigVersion, log)
-		podStates = append(podStates, podState)
+		podStates[i] = podState
 	}
 
 	return podStates, nil
@@ -98,10 +104,10 @@ func ReachedGoalState(pod corev1.Pod, targetConfigVersion int, log *zap.SugaredL
 
 // statefulSetPodNames returns a slice of names for a subset of the StatefulSet pods.
 // we need a subset in the case of scaling up/down.
-func statefulSetPodNames(sts appsv1.StatefulSet, currentMembersCount int) []string {
+func statefulSetPodNames(name string, currentMembersCount int) []string {
 	names := make([]string, currentMembersCount)
 	for i := 0; i < currentMembersCount; i++ {
-		names[i] = fmt.Sprintf("%s-%d", sts.Name, i)
+		names[i] = fmt.Sprintf("%s-%d", name, i)
 	}
 	return names
 }

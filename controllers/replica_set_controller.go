@@ -455,7 +455,7 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 		return nil
 	})
 	if err != nil {
-		r.log.Errorf("Cloud not create or patch the service: %s", err)
+		r.log.Errorf("Could not create or patch the service: %s", err)
 		return nil
 	}
 
@@ -464,24 +464,16 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	return err
 }
 
+// createProcessPortManager is a helper method for creating new ReplicaSetPortManager.
+// ReplicaSetPortManager needs current automation config and current pod state and the code for getting them
+// was extracted here as it is used in ensureService and buildAutomationConfig.
 func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommunity) (*agent.ReplicaSetPortManager, error) {
 	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
 		return nil, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
-	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get StatefulSet: %s", err)
-		}
-
-		// sts's name is needed for GetAllDesiredMembersPodState logic
-		sts.Namespace = mdb.Namespace
-		sts.Name = mdb.Name
-	}
-
-	currentPodStates, err := agent.GetAllDesiredMembersPodState(sts, r.client, mdb.StatefulSetReplicasThisReconciliation(), currentAC.Version, r.log)
+	currentPodStates, err := agent.GetAllDesiredMembersPodState(mdb.NamespacedName(), r.client, mdb.StatefulSetReplicasThisReconciliation(), currentAC.Version, r.log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
 	}
