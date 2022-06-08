@@ -7,10 +7,18 @@ import (
 )
 
 // ReplicaSetPortManager is used to determine which ports should be set in pods (mongod processes) and in the service.
+// It is used for the two use cases:
+//
+// * Determining the port values for the initial automation config and service when the cluster is not created yet.
+//
+// * Determining the next port to be changed (next stage in the process of the port change) when there is a need of changing the port of running cluster.
+//
+// It does not depend on K8S API, and it is deterministic for the given parameters in the NewReplicaSetPortManager constructor.
+//
 // When the replica set is initially configured (no pods/processes are created yet), it works by simply setting desired port to all processes.
 // When the replica set is created and running, it orchestrates port changes as mongodb-agent does not allow changing ports in more than one process at a time.
 // For the running cluster, it changes ports only when all pods reached goal state and changes the ports one by one.
-// For the whole process of port change, the service has both port exposed: old and new. After it finishes, only the new port is in the service.
+// For the whole process of port change, the service has both ports exposed: old and new. After it finishes, only the new port is in the service.
 type ReplicaSetPortManager struct {
 	log                *zap.SugaredLogger
 	expectedPort       int
@@ -78,23 +86,29 @@ func (r *ReplicaSetPortManager) getProcessByName(name string) *automationconfig.
 	return nil
 }
 
-func (r *ReplicaSetPortManager) calculateExpectedPorts() (map[string]int, bool, int) {
-	portMap := map[string]int{}
+// calculateExpectedPorts is a helper function to calculate what should be the current ports set in all replica set pods.
+// It's working deterministically using currentACProcesses from automation config and currentPodStates.
+func (r *ReplicaSetPortManager) calculateExpectedPorts() (processPortMap map[string]int, portChangeRequired bool, oldPort int) {
+	processPortMap = map[string]int{}
 
-	// populate portMap with ports
+	// populate processPortMap with current ports
+	// it also populates entries for not existing pods yet
 	for _, podState := range r.currentPodStates {
 		process := r.getProcessByName(podState.PodName.Name)
 		if process == nil || process.GetPort() == 0 {
 			// new processes are configured with correct port from the start
-			portMap[podState.PodName.Name] = r.expectedPort
+			processPortMap[podState.PodName.Name] = r.expectedPort
 		} else {
-			portMap[podState.PodName.Name] = process.GetPort()
+			processPortMap[podState.PodName.Name] = process.GetPort()
 		}
 	}
 
-	portChangeRequired := false
-	oldPort := r.expectedPort
-	for _, port := range portMap {
+	// check if there is a need to perform port change
+	portChangeRequired = false
+	// This is the only place we could get the old port value
+	// As soon as the port is changed on the MongoDB resource we lose the old value.
+	oldPort = r.expectedPort
+	for _, port := range processPortMap {
 		if port != r.expectedPort {
 			portChangeRequired = true
 			oldPort = port
@@ -102,27 +116,32 @@ func (r *ReplicaSetPortManager) calculateExpectedPorts() (map[string]int, bool, 
 		}
 	}
 
+	// If there are no port changes we just return initial config.
+	// This way this ReplicaSetPortManager is used also for setting the initial port values for all processes.
 	if !portChangeRequired {
 		r.log.Debugf("No port change required")
-		return portMap, false, oldPort
+		return processPortMap, false, oldPort
 	}
 
+	// We only perform port change if all pods reached goal states.
+	// That will guarantee, that we will not change more than one process' port at a time.
 	for _, podState := range r.currentPodStates {
 		if !podState.ReachedGoalState {
 			r.log.Debugf("Port change required but not all pods reached goal state, abandoning port change")
-			return portMap, portChangeRequired, oldPort
+			return processPortMap, portChangeRequired, oldPort
 		}
 	}
 
-	// change port only in the first eligible process as the agent cannot handle simultaneous port changes in multiple processes
+	// change the port only in the first eligible process as the agent cannot handle simultaneous port changes in multiple processes
+	// We have guaranteed here that all pods are created and have reached the goal state.
 	for _, podState := range r.currentPodStates {
 		podName := podState.PodName.Name
-		if portMap[podName] != r.expectedPort {
-			r.log.Debugf("Changing port in process %s from %d to %d", podName, portMap[podName], r.expectedPort)
-			portMap[podName] = r.expectedPort
+		if processPortMap[podName] != r.expectedPort {
+			r.log.Debugf("Changing port in process %s from %d to %d", podName, processPortMap[podName], r.expectedPort)
+			processPortMap[podName] = r.expectedPort
 			break
 		}
 	}
 
-	return portMap, portChangeRequired, oldPort
+	return processPortMap, portChangeRequired, oldPort
 }
