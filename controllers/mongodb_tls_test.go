@@ -313,3 +313,13 @@ func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string,
 	s := sBuilder.Build()
 	return c.Create(context.TODO(), &s)
 }
+
+func createUserPasswordSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, userPasswordSecretName string, password string) error {
+	sBuilder := secret.Builder().
+		SetName(userPasswordSecretName).
+		SetNamespace(mdb.Namespace).
+		SetField("password", password)
+
+	s := sBuilder.Build()
+	return c.Create(context.TODO(), &s)
+}

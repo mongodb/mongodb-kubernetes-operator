@@ -331,7 +331,13 @@ func createPodWithAgentAnnotation(t *testing.T, c k8sClient.Client, name types.N
 }
 
 func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
-	mdb := newTestReplicaSet()
+	mdb := newScramReplicaSet(mdbv1.MongoDBUser{
+		Name: "testuser",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "password-secret-name",
+		},
+		ScramCredentialsSecretName: "scram-credentials",
+	})
 	namespacedName := mdb.NamespacedName()
 
 	const oldPort = automationconfig.DefaultDBPort
@@ -342,6 +348,9 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 	r := NewReconciler(mgr)
 
 	t.Run("Prepare cluster and change port", func(t *testing.T) {
+		err := createUserPasswordSecret(mgr.Client, mdb, "password-secret-name", "pass")
+		assert.NoError(t, err)
+
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		assertReconciliationSuccessful(t, res, err)
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
@@ -354,6 +363,14 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 		mdb.Spec.AdditionalMongodConfig.SetDBPort(newPort)
 
 		err = mgr.GetClient().Update(context.TODO(), &mdb)
+		assert.NoError(t, err)
+
+		secret := corev1.Secret{}
+		scramUsers := mdb.GetScramUsers()
+		require.Len(t, scramUsers, 1)
+		secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: mdb.Namespace}
+		err = mgr.GetClient().Get(context.TODO(), secretNamespacedName, &secret)
+
 		assert.NoError(t, err)
 	})
 
@@ -443,6 +460,7 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 	mdb := newTestReplicaSet()
 	namespacedName := mdb.NamespacedName()
+	arbiterNamespacedName := mdb.ArbiterNamespacedName()
 
 	const oldPort = automationconfig.DefaultDBPort
 	const newPort = 8000
@@ -451,16 +469,28 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 	r := NewReconciler(mgr)
 
-	t.Run("Prepare cluster and change port", func(t *testing.T) {
-		mdb.Spec.Arbiters = 2
-
+	t.Run("Prepare cluster with arbiters and change port", func(t *testing.T) {
+		mdb.Spec.Arbiters = 1
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		assertReconciliationSuccessful(t, res, err)
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			oldPort: "mongodb",
 		})
 		_ = assertAutomationConfigVersion(t, mgr.Client, mdb, 1)
+
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"1", "1", "1"})
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), arbiterNamespacedName, []string{"1"})
+
+		res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		assertReconciliationSuccessful(t, res, err)
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+		})
+		_ = assertAutomationConfigVersion(t, mgr.Client, mdb, 1)
 		assertStatefulsetReady(t, mgr, namespacedName, 3)
+		assertStatefulsetReady(t, mgr, arbiterNamespacedName, 1)
 
 		mdb.Spec.AdditionalMongodConfig = mdbv1.NewMongodConfiguration()
 		mdb.Spec.AdditionalMongodConfig.SetDBPort(newPort)
@@ -470,8 +500,6 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 	})
 
 	t.Run("Port should be changed only in the process #0", func(t *testing.T) {
-		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
-		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"1", "1", "1"})
 		// port changes should be performed one at a time
 		// should set port #0 to new one
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
@@ -479,10 +507,11 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		assert.True(t, res.Requeue)
 
 		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 2)
-		require.Len(t, currentAc.Processes, 5)
+		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, oldPort, currentAc.Processes[1].GetPort())
 		assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[3].GetPort())
 
 		// not all ports are changed, so there are still two ports in the service
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
@@ -493,16 +522,42 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 	t.Run("Ports should be changed in processes #0,#1", func(t *testing.T) {
 		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
 		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"2", "2", "2"})
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), arbiterNamespacedName, []string{"2"})
 
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		require.NoError(t, err)
 		assert.True(t, res.Requeue)
 		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 3)
-		require.Len(t, currentAc.Processes, 3)
+		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
 		assert.Equal(t, oldPort, currentAc.Processes[2].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[3].GetPort())
+
+		// not all ports are changed, so there are still two ports in the service
+		assertServicePorts(t, mgr.Client, mdb, map[int]string{
+			oldPort: "mongodb",
+			newPort: "mongodb-new",
+		})
+	})
+
+	t.Run("Ports should be changed in processes #0,#1,#2", func(t *testing.T) {
+		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
+		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"3", "3", "3"})
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), arbiterNamespacedName, []string{"3"})
+
+		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
+		require.NoError(t, err)
+		assert.True(t, res.Requeue)
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
+		require.Len(t, currentAc.Processes, 4)
+		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[2].GetPort())
+		assert.Equal(t, oldPort, currentAc.Processes[3].GetPort())
 
 		// not all ports are changed, so there are still two ports in the service
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
@@ -513,16 +568,19 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 	t.Run("Ports should be changed in all processes", func(t *testing.T) {
 		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
-		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"3", "3", "3"})
+		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"4", "4", "4"})
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), arbiterNamespacedName, []string{"4"})
 
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 		assert.NoError(t, err)
 		assert.True(t, res.Requeue)
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
-		require.Len(t, currentAc.Processes, 3)
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 5)
+		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[2].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[3].GetPort())
 
 		// all the ports are changed but there are still two service ports for old and new port until the next reconcile
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
@@ -533,18 +591,21 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 	t.Run("At the end there should be only new port in the service", func(t *testing.T) {
 		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
-		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"4", "4", "4"})
+		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), namespacedName, []string{"5", "5", "5"})
+		createOrUpdatePodsWithVersions(t, mgr.GetClient(), arbiterNamespacedName, []string{"5"})
 
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		assert.NoError(t, err)
 		// no need to requeue, port change is finished
 		assert.False(t, res.Requeue)
 		// there should not be any changes in config anymore
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
-		require.Len(t, currentAc.Processes, 3)
+		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 5)
+		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[2].GetPort())
+		assert.Equal(t, newPort, currentAc.Processes[3].GetPort())
 
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			newPort: "mongodb",
@@ -1161,6 +1222,16 @@ func setStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.Mon
 	assert.NoError(t, err)
 	sts.Status.ReadyReplicas = int32(readyReplicas)
 	sts.Status.UpdatedReplicas = int32(mdb.StatefulSetReplicasThisReconciliation())
+	err = c.Update(context.TODO(), &sts)
+	assert.NoError(t, err)
+}
+
+func setArbiterStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, readyReplicas int) {
+	sts := appsv1.StatefulSet{}
+	err := c.Get(context.TODO(), mdb.ArbiterNamespacedName(), &sts)
+	assert.NoError(t, err)
+	sts.Status.ReadyReplicas = int32(readyReplicas)
+	sts.Status.UpdatedReplicas = int32(mdb.StatefulSetArbitersThisReconciliation())
 	err = c.Update(context.TODO(), &sts)
 	assert.NoError(t, err)
 }

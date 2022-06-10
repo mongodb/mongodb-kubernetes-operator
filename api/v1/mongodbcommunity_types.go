@@ -776,6 +776,10 @@ func (m MongoDBCommunity) ServiceName() string {
 	return m.Name + "-svc"
 }
 
+func (m MongoDBCommunity) ArbiterNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: m.Namespace, Name: m.Name + "-arb"}
+}
+
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }

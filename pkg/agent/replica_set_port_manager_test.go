@@ -32,6 +32,9 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 	podName := func(i int) types.NamespacedName {
 		return types.NamespacedName{Namespace: "mongodb", Name: fmt.Sprintf("%s-%d", name, i)}
 	}
+	arbiterPodName := func(i int) types.NamespacedName {
+		return types.NamespacedName{Namespace: "mongodb", Name: fmt.Sprintf("%s-arb-%d", name, i)}
+	}
 
 	generateConfig := func(ports ...int) automationconfig.AutomationConfig {
 		builder := automationconfig.NewBuilder()
@@ -47,10 +50,36 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 		return ac
 	}
 
+	generateConfigWithArbiters := func(ports []int, arbiterPorts []int) automationconfig.AutomationConfig {
+		builder := automationconfig.NewBuilder()
+		builder.SetMembers(len(ports))
+		builder.SetArbiters(len(arbiterPorts))
+		builder.SetName(name)
+		builder.AddProcessModification(func(i int, process *automationconfig.Process) {
+			if i < len(ports) {
+				process.SetPort(ports[i])
+			}
+		})
+		ac, err := builder.Build()
+		require.NoError(t, err)
+		return ac
+	}
+
 	generatePortMap := func(ports ...int) map[string]int {
 		portMap := map[string]int{}
 		for i, port := range ports {
 			portMap[podName(i).Name] = port
+		}
+		return portMap
+	}
+
+	generatePortMapWithArbiters := func(ports []int, arbiterPorts []int) map[string]int {
+		portMap := map[string]int{}
+		for i, port := range ports {
+			portMap[podName(i).Name] = port
+		}
+		for i, port := range arbiterPorts {
+			portMap[arbiterPodName(i+len(ports)).Name] = port
 		}
 		return portMap
 	}
@@ -132,6 +161,24 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 			},
 			expectedOutput: output{
 				portMap:            generatePortMap(2000, 2000, 2000),
+				portChangeRequired: false,
+				oldPort:            2000,
+			},
+		},
+		"No port changes required when all ports changed but only arbiter is not in a goal state": {
+			in: input{
+				currentPodStates: []PodState{
+					{PodName: podName(0), Found: true, ReachedGoalState: true},
+					{PodName: podName(1), Found: true, ReachedGoalState: true},
+					{PodName: podName(2), Found: true, ReachedGoalState: true},
+					{PodName: arbiterPodName(3), Found: true, ReachedGoalState: true},
+					{PodName: arbiterPodName(4), Found: true, ReachedGoalState: false},
+				},
+				expectedPort: 2000,
+				currentAC:    generateConfigWithArbiters([]int{2000, 2000, 2000}, []int{2000, 2000}),
+			},
+			expectedOutput: output{
+				portMap:            generatePortMapWithArbiters([]int{2000, 2000, 2000}, []int{2000, 2000}),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},

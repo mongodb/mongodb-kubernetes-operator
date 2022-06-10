@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -101,10 +102,12 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) err
 	_, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
 		if SecretNotExist(err) {
+			fmt.Printf("creating secret: %+v\n", secret)
 			return getUpdateCreator.CreateSecret(secret)
 		}
 		return err
 	}
+	fmt.Printf("updating secret: %+v\n", secret)
 	return getUpdateCreator.UpdateSecret(secret)
 }
 

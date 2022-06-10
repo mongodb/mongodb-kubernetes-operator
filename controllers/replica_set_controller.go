@@ -473,7 +473,7 @@ func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommuni
 		return nil, errors.Errorf("could not read existing automation config: %s", err)
 	}
 
-	currentPodStates, err := agent.GetAllDesiredMembersPodState(mdb.NamespacedName(), r.client, mdb.StatefulSetReplicasThisReconciliation(), currentAC.Version, r.log)
+	currentPodStates, err := agent.GetAllDesiredMembersAndArbitersPodState(mdb.NamespacedName(), r.client, mdb.StatefulSetReplicasThisReconciliation(), mdb.StatefulSetArbitersThisReconciliation(), currentAC.Version, r.log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
 	}
@@ -486,7 +486,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 
 	name := mdb.NamespacedName()
 	if isArbiter {
-		name.Name = name.Name + "-arb"
+		name = mdb.ArbiterNamespacedName()
 	}
 
 	err := r.client.Get(context.TODO(), name, &set)
@@ -725,7 +725,7 @@ func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.M
 	return statefulset.Apply(
 		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
 		statefulset.WithServiceName(mdb.ServiceName()),
-		statefulset.WithName(mdb.Name+"-arb"),
+		statefulset.WithName(mdb.ArbiterNamespacedName().Name),
 	)
 }
 

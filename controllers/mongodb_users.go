@@ -66,6 +66,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 			SetOwnerReferences(mdb.GetOwnerReferences()).
 			Build()
 
+		fmt.Printf("updating connection string secrets\n")
 		if err := secret.CreateOrUpdate(r.client, connectionStringSecret); err != nil {
 			return err
 		}

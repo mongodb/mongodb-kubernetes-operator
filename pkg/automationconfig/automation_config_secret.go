@@ -2,7 +2,6 @@ package automationconfig
 
 import (
 	"encoding/json"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
