@@ -4,7 +4,9 @@
 
 - Bug fixes
   - The names of connection string secrets generated for configured users are RFC1123 validated.
-
+- Changes
+  - Support for changing port number in running cluster.
+  
 ## MongoDBCommunity Resource
 
 - Changes
