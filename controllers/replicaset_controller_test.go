@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/stretchr/testify/require"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 
@@ -514,6 +515,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 		err = mgr.GetClient().Update(context.TODO(), &mdb)
 		assert.NoError(t, err)
+
 		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 

@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestReplicaSetMongodPortChange(t *testing.T) {
+func TestReplicaSetMongodPortChangeWithArbiters(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
@@ -44,7 +44,7 @@ func TestReplicaSetMongodPortChange(t *testing.T) {
 		t.Run("Test Basic Connectivity with generated connection string secret",
 			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
 
-		// FIXME after port change in the service mongodb+srv connection stopped working
+		// FIXME after port change in the service mongodb+srv connection stopped working!
 		//t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		//t.Run("Test SRV Connectivity with generated connection string secret",
 		//	tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))

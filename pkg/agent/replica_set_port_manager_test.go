@@ -2,12 +2,13 @@ package agent
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 )
 
 func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
@@ -36,21 +37,7 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 		return types.NamespacedName{Namespace: "mongodb", Name: fmt.Sprintf("%s-arb-%d", name, i)}
 	}
 
-	generateConfig := func(ports ...int) automationconfig.AutomationConfig {
-		builder := automationconfig.NewBuilder()
-		builder.SetMembers(len(ports))
-		builder.SetName(name)
-		builder.AddProcessModification(func(i int, process *automationconfig.Process) {
-			if i < len(ports) {
-				process.SetPort(ports[i])
-			}
-		})
-		ac, err := builder.Build()
-		require.NoError(t, err)
-		return ac
-	}
-
-	generateConfigWithArbiters := func(ports []int, arbiterPorts []int) automationconfig.AutomationConfig {
+	generateConfig := func(ports []int, arbiterPorts []int) automationconfig.AutomationConfig {
 		builder := automationconfig.NewBuilder()
 		builder.SetMembers(len(ports))
 		builder.SetArbiters(len(arbiterPorts))
@@ -65,15 +52,7 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 		return ac
 	}
 
-	generatePortMap := func(ports ...int) map[string]int {
-		portMap := map[string]int{}
-		for i, port := range ports {
-			portMap[podName(i).Name] = port
-		}
-		return portMap
-	}
-
-	generatePortMapWithArbiters := func(ports []int, arbiterPorts []int) map[string]int {
+	generatePortMap := func(ports []int, arbiterPorts []int) map[string]int {
 		portMap := map[string]int{}
 		for i, port := range ports {
 			portMap[podName(i).Name] = port
@@ -93,10 +72,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: false, ReachedGoalState: false},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(1000, 1000, 1000),
+				currentAC:    generateConfig([]int{1000, 1000, 1000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(1000, 1000, 1000),
+				portMap:            generatePortMap([]int{1000, 1000, 1000}, nil),
 				portChangeRequired: true,
 				oldPort:            1000,
 			},
@@ -109,10 +88,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(1000, 1000, 1000),
+				currentAC:    generateConfig([]int{1000, 1000, 1000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(1000, 1000, 1000),
+				portMap:            generatePortMap([]int{1000, 1000, 1000}, nil),
 				portChangeRequired: true,
 				oldPort:            1000,
 			},
@@ -125,10 +104,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: true, ReachedGoalState: false},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(),
+				currentAC:    generateConfig(nil, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(2000, 2000, 2000),
+				portMap:            generatePortMap([]int{2000, 2000, 2000}, nil),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},
@@ -141,10 +120,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(1000, 1000, 1000),
+				currentAC:    generateConfig([]int{1000, 1000, 1000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(2000, 1000, 1000),
+				portMap:            generatePortMap([]int{2000, 1000, 1000}, nil),
 				portChangeRequired: true,
 				oldPort:            1000,
 			},
@@ -157,10 +136,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: true, ReachedGoalState: false},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(2000, 2000, 2000),
+				currentAC:    generateConfig([]int{2000, 2000, 2000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(2000, 2000, 2000),
+				portMap:            generatePortMap([]int{2000, 2000, 2000}, nil),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},
@@ -175,10 +154,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: arbiterPodName(4), Found: true, ReachedGoalState: false},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfigWithArbiters([]int{2000, 2000, 2000}, []int{2000, 2000}),
+				currentAC:    generateConfig([]int{2000, 2000, 2000}, []int{2000, 2000}),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMapWithArbiters([]int{2000, 2000, 2000}, []int{2000, 2000}),
+				portMap:            generatePortMap([]int{2000, 2000, 2000}, []int{2000, 2000}),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},
@@ -191,10 +170,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(2), Found: true, ReachedGoalState: true},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(2000, 2000, 2000, 2000, 2000),
+				currentAC:    generateConfig([]int{2000, 2000, 2000, 2000, 2000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(2000, 2000, 2000),
+				portMap:            generatePortMap([]int{2000, 2000, 2000}, nil),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},
@@ -208,10 +187,10 @@ func TestReplicaSetPortManagerCalculateExpectedPorts(t *testing.T) {
 					{PodName: podName(3), Found: false, ReachedGoalState: false},
 				},
 				expectedPort: 2000,
-				currentAC:    generateConfig(2000, 2000, 2000),
+				currentAC:    generateConfig([]int{2000, 2000, 2000}, nil),
 			},
 			expectedOutput: output{
-				portMap:            generatePortMap(2000, 2000, 2000, 2000),
+				portMap:            generatePortMap([]int{2000, 2000, 2000, 2000}, nil),
 				portChangeRequired: false,
 				oldPort:            2000,
 			},

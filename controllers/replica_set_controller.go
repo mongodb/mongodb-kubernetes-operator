@@ -572,7 +572,8 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 		SetOwnerReferences(mdb.GetOwnerReferences())
 
 	for _, servicePort := range portManager.GetServicePorts() {
-		serviceBuilder.AddPort(&servicePort)
+		tmpServicePort := servicePort
+		serviceBuilder.AddPort(&tmpServicePort)
 	}
 
 	serviceBuilder.AddPort(prometheusPort(mdb))

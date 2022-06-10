@@ -1,7 +1,6 @@
 package secret
 
 import (
-	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -67,7 +66,7 @@ func (b *builder) SetDataType(dataType corev1.SecretType) *builder {
 }
 
 func (b builder) Build() corev1.Secret {
-	secret := corev1.Secret{
+	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            b.name,
 			Namespace:       b.namespace,
@@ -77,13 +76,6 @@ func (b builder) Build() corev1.Secret {
 		Data: b.data,
 		Type: b.dataType,
 	}
-
-	fmt.Printf("built secret: %+v\n", secret)
-	for _, v := range secret.Data {
-		fmt.Printf("secret data: %s\n", string(v))
-	}
-
-	return secret
 }
 
 func Builder() *builder {
