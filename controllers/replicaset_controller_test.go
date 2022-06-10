@@ -330,6 +330,8 @@ func createPodWithAgentAnnotation(t *testing.T, c k8sClient.Client, name types.N
 	assert.NoError(t, err)
 }
 
+// TestService_changesMongodPortOnRunningCluster is intentionally similar to TestService_changesMongodPortOnRunningClusterWithArbiters.
+// Any changes not related to arbiters should be synchronized between those two tests.
 func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 	mdb := newScramReplicaSet(mdbv1.MongoDBUser{
 		Name: "testuser",
@@ -365,13 +367,7 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 		err = mgr.GetClient().Update(context.TODO(), &mdb)
 		assert.NoError(t, err)
 
-		secret := corev1.Secret{}
-		scramUsers := mdb.GetScramUsers()
-		require.Len(t, scramUsers, 1)
-		secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: mdb.Namespace}
-		err = mgr.GetClient().Get(context.TODO(), secretNamespacedName, &secret)
-
-		assert.NoError(t, err)
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Port should be changed only in the process #0", func(t *testing.T) {
@@ -394,6 +390,8 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Ports should be changed in processes #0,#1", func(t *testing.T) {
@@ -414,6 +412,8 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Ports should be changed in all processes", func(t *testing.T) {
@@ -434,6 +434,8 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("At the end there should be only new port in the service", func(t *testing.T) {
@@ -454,11 +456,23 @@ func TestService_changesMongodPortOnRunningCluster(t *testing.T) {
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			newPort: "mongodb",
 		})
+
+		// only at the end, when all pods are ready we have updated connection strings
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, newPort, oldPort)
 	})
 }
 
+// TestService_changesMongodPortOnRunningClusterWithArbiters is intentionally similar to TestService_changesMongodPortOnRunningCluster.
+// Any changes not related to arbiters should be synchronized between those two tests.
 func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
-	mdb := newTestReplicaSet()
+	mdb := newScramReplicaSet(mdbv1.MongoDBUser{
+		Name: "testuser",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "password-secret-name",
+		},
+		ScramCredentialsSecretName: "scram-credentials",
+	})
+
 	namespacedName := mdb.NamespacedName()
 	arbiterNamespacedName := mdb.ArbiterNamespacedName()
 
@@ -470,6 +484,9 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 	r := NewReconciler(mgr)
 
 	t.Run("Prepare cluster with arbiters and change port", func(t *testing.T) {
+		err := createUserPasswordSecret(mgr.Client, mdb, "password-secret-name", "pass")
+		assert.NoError(t, err)
+
 		mdb.Spec.Arbiters = 1
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		assertReconciliationSuccessful(t, res, err)
@@ -497,6 +514,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 		err = mgr.GetClient().Update(context.TODO(), &mdb)
 		assert.NoError(t, err)
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Port should be changed only in the process #0", func(t *testing.T) {
@@ -518,6 +536,8 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Ports should be changed in processes #0,#1", func(t *testing.T) {
@@ -541,6 +561,8 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Ports should be changed in processes #0,#1,#2", func(t *testing.T) {
@@ -564,6 +586,8 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("Ports should be changed in all processes", func(t *testing.T) {
@@ -587,6 +611,8 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 			oldPort: "mongodb",
 			newPort: "mongodb-new",
 		})
+
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, oldPort, newPort)
 	})
 
 	t.Run("At the end there should be only new port in the service", func(t *testing.T) {
@@ -610,7 +636,23 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			newPort: "mongodb",
 		})
+
+		// only at the end, when all pods are ready we have updated connection strings
+		assertConnectionStringSecretPorts(t, mgr.GetClient(), mdb, newPort, oldPort)
 	})
+}
+
+// assertConnectionStringSecretPorts checks that connection string secret has expectedPort and does not have notExpectedPort.
+func assertConnectionStringSecretPorts(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, expectedPort int, notExpectedPort int) {
+	connectionStringSecret := corev1.Secret{}
+	scramUsers := mdb.GetScramUsers()
+	require.Len(t, scramUsers, 1)
+	secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: mdb.Namespace}
+	err := c.Get(context.TODO(), secretNamespacedName, &connectionStringSecret)
+	require.NoError(t, err)
+	require.Contains(t, connectionStringSecret.Data, "connectionString.standard")
+	assert.Contains(t, string(connectionStringSecret.Data["connectionString.standard"]), fmt.Sprintf("%d", expectedPort))
+	assert.NotContains(t, string(connectionStringSecret.Data["connectionString.standard"]), fmt.Sprintf("%d", notExpectedPort))
 }
 
 func assertServicePorts(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, expectedServicePorts map[int]string) {

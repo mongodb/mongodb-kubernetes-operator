@@ -75,7 +75,7 @@ func (p *Process) GetPort() int {
 		return 0
 	}
 
-	// Args26 map could be manipulated in memory, e.g. via SetPort - then it will be as int,
+	// Args26 map could be manipulated from the code, e.g. via SetPort (e.g. in unit tests) - then it will be as int,
 	// or it could be deserialized from JSON and then integer in an untyped map will be deserialized as float64.
 	// It's behavior of https://pkg.go.dev/encoding/json#Unmarshal that is converting JSON integers as float64.
 	netPortValue := p.Args26.Get("net.port")

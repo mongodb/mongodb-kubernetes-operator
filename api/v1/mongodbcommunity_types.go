@@ -354,7 +354,7 @@ func (m MongodConfiguration) GetDBDataDir() string {
 func (m MongodConfiguration) GetDBPort() int {
 	portValue := objx.New(m.Object).Get("net.port")
 
-	// Underlying map could be manipulated in memory, e.g. via SetDBPort - then it will be as int,
+	// Underlying map could be manipulated in code, e.g. via SetDBPort (e.g. in unit tests) - then it will be as int,
 	// or it could be deserialized from JSON and then integer in an untyped map will be deserialized as float64.
 	// It's behavior of https://pkg.go.dev/encoding/json#Unmarshal that is converting JSON integers as float64.
 	if portValue.IsInt() {
