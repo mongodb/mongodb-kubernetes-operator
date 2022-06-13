@@ -141,7 +141,7 @@ func waitForStatefulSetConditionWithSpecificSts(t *testing.T, mdb *mdbv1.MongoDB
 	sts := appsv1.StatefulSet{}
 	name := mdb.NamespacedName()
 	if statefulSetType == ArbitersStatefulSet {
-		name = types.NamespacedName{Name: mdb.Name + "-arb", Namespace: mdb.Namespace}
+		name = mdb.ArbiterNamespacedName()
 	}
 	return wait.Poll(waitOpts.RetryInterval, waitOpts.Timeout, func() (done bool, err error) {
 		err = e2eutil.TestClient.Get(context.TODO(), name, &sts)

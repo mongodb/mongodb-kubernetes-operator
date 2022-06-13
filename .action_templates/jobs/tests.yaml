@@ -54,3 +54,5 @@ tests:
           distro: ubi
         - test-name: replica_set_mount_connection_string
           distro: ubi
+        - test-name: replica_set_mongod_port_change_with_arbiters
+          distro: ubi

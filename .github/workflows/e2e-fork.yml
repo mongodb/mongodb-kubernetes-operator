@@ -136,6 +136,8 @@ jobs:
           distro: ubi
         - test-name: replica_set_mount_connection_string
           distro: ubi
+        - test-name: replica_set_mongod_port_change_with_arbiters
+          distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs

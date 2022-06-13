@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"encoding/json"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,6 +44,25 @@ func TestMongodConfiguration(t *testing.T) {
 			"dbPath": "/other/data/path",
 		},
 	})
+}
+
+func TestMongodConfigurationWithNestedMapsAfterUnmarshalling(t *testing.T) {
+	jsonStr := `
+		{
+			"net.port": 40333,
+			"storage.dbPath": "/other/data/path"
+		}
+	`
+	mc := NewMongodConfiguration()
+	require.NoError(t, json.Unmarshal([]byte(jsonStr), &mc))
+	assert.Equal(t, map[string]interface{}{
+		"net": map[string]interface{}{
+			"port": 40333.,
+		},
+		"storage": map[string]interface{}{
+			"dbPath": "/other/data/path",
+		},
+	}, mc.Object)
 }
 
 func TestGetScramCredentialsSecretName(t *testing.T) {

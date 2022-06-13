@@ -311,7 +311,20 @@ func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
 		m.Object = map[string]interface{}{}
 	}
 
-	return json.Unmarshal(data, &m.Object)
+	// Handle keys like net.port to be set as nested maps.
+	// Without this after unmarshalling there is just key "net.port" which is not
+	// a nested map and methods like GetPort() cannot access the value.
+	tmpMap := map[string]interface{}{}
+	err := json.Unmarshal(data, &tmpMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range tmpMap {
+		m.SetOption(k, v)
+	}
+
+	return nil
 }
 
 func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
@@ -339,8 +352,24 @@ func (m MongodConfiguration) GetDBDataDir() string {
 // GetDBPort returns the port that should be used for the mongod process.
 // If port is not specified, the default port of 27017 will be used.
 func (m MongodConfiguration) GetDBPort() int {
-	// When passed as a number "net.port" is unmarshalled into a float64
-	return int(objx.New(m.Object).Get("net.port").Float64(float64(automationconfig.DefaultDBPort)))
+	portValue := objx.New(m.Object).Get("net.port")
+
+	// Underlying map could be manipulated in code, e.g. via SetDBPort (e.g. in unit tests) - then it will be as int,
+	// or it could be deserialized from JSON and then integer in an untyped map will be deserialized as float64.
+	// It's behavior of https://pkg.go.dev/encoding/json#Unmarshal that is converting JSON integers as float64.
+	if portValue.IsInt() {
+		return portValue.Int(automationconfig.DefaultDBPort)
+	} else if portValue.IsFloat64() {
+		return int(portValue.Float64(float64(automationconfig.DefaultDBPort)))
+	}
+
+	return automationconfig.DefaultDBPort
+}
+
+// SetDBPort ensures that port is stored as float64
+func (m MongodConfiguration) SetDBPort(port int) MongodConfiguration {
+	m.SetOption("net.port", float64(port))
+	return m
 }
 
 type MongoDBUser struct {
@@ -745,6 +774,10 @@ func (m MongoDBCommunity) ServiceName() string {
 		return serviceName
 	}
 	return m.Name + "-svc"
+}
+
+func (m MongoDBCommunity) ArbiterNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: m.Namespace, Name: m.Name + "-arb"}
 }
 
 func (m MongoDBCommunity) AutomationConfigSecretName() string {
