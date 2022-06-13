@@ -115,7 +115,7 @@ python -m pip install -r requirements.txt
 
 * create a python environment and install dependencies.
 ```bash
-pipenv install
+pipenv install -r requirements.txt
 ```
 
 * activate the python environment.
