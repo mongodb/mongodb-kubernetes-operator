@@ -163,7 +163,7 @@ controller-gen:
 ifeq (ok,$(shell test -f "$$(which helm)" && echo ok))
     HELM=$(shell which helm)
 else
-    HELM=/usr/bin/local/helm
+    HELM=/usr/local/bin/helm
 endif
 
 # Download helm locally if necessary
