@@ -6,7 +6,7 @@
   - The names of connection string secrets generated for configured users are RFC1123 validated.
 - Changes
   - Support for changing port number in running cluster.
-  
+
 ## MongoDBCommunity Resource
 
 - Changes
@@ -17,9 +17,9 @@
 
 ## Updated Image Tags
 
-- mongodb-kubernetes-operator:0.7.3
+- mongodb-kubernetes-operator:0.7.4
 - mongodb-agent:11.12.0.7388-1
-- mongodb-kubernetes-readinessprobe:1.0.8
+- mongodb-kubernetes-readinessprobe:1.0.9
 - mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.4
 
 _All the images can be found in:_
