@@ -38,8 +38,8 @@ func TestReplicaSetArbiter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check status for case 1", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, desiredStatus))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Check status for case 1", mongodbtests.StatefulSetMessageIsReceived(ctx, &mdb, desiredStatus))
 
 	// Invalid case 2
 	numberArbiters = -1
@@ -52,8 +52,8 @@ func TestReplicaSetArbiter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check status for case 2", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, desiredStatus))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Check status for case 2", mongodbtests.StatefulSetMessageIsReceived(ctx, &mdb, desiredStatus))
 
 	numberArbiters = 0
 	numberMembers = 3
@@ -65,29 +65,29 @@ func TestReplicaSetArbiter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
-	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, numberArbiters))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(ctx, &mdb, wait.Timeout(20*time.Minute)))
+	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(ctx, &mdb, numberArbiters))
 
 	// Arbiters need to be less than regular members
-	t.Run("Scale MongoDB Up to 2 Arbiters", mongodbtests.ScaleArbiters(&mdb, 2))
-	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+	t.Run("Scale MongoDB Up to 2 Arbiters", mongodbtests.ScaleArbiters(ctx, &mdb, 2))
+	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(ctx, &mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 
 	t.Run("Test SRV Connectivity with generated connection string secret", func(t *testing.T) {
-		tester, err := FromResource(t, mdb)
+		tester, err := FromResource(ctx, mdb)
 		if err != nil {
 			t.Fatal(err)
 		}
 		scramUser := mdb.GetScramUsers()[0]
 		expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=mdb2&ssl=false", mdb.Name, pwd, mdb.Name, mdb.Namespace)
-		cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
+		cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser)
 		assert.Equal(t, expectedCnxStr, cnxStrSrv)
 		tester.ConnectivitySucceeds(WithURI(cnxStrSrv))
 	})
 
-	t.Run("Scale MongoDB Up to 0 Arbiters", mongodbtests.ScaleArbiters(&mdb, 0))
-	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, 0))
+	t.Run("Scale MongoDB Up to 0 Arbiters", mongodbtests.ScaleArbiters(ctx, &mdb, 0))
+	t.Run("Arbiters Stateful Set Scaled Up Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(ctx, &mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
+	t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(ctx, &mdb, 0))
 }

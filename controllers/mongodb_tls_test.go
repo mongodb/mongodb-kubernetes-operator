@@ -82,6 +82,8 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 }
 
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+	ctx := context.Background()
+
 	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 		client := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
 		err := createTLSSecret(client, mdb, "CERT", "KEY", "")
@@ -89,7 +91,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 		err = createTLSConfigMap(client, mdb)
 		assert.NoError(t, err)
 
-		tlsModification, err := getTLSConfigModification(client, client, mdb)
+		tlsModification, err := getTLSConfigModification(ctx, client, client, mdb)
 		assert.NoError(t, err)
 		ac, err := buildAutomationConfig(mdb, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
 		assert.NoError(t, err)
@@ -152,6 +154,8 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 }
 
 func TestTLSOperatorSecret(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
@@ -162,13 +166,13 @@ func TestTLSOperatorSecret(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(c))
 
-		err = r.ensureTLSResources(mdb)
+		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(ctx, c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
@@ -187,18 +191,18 @@ func TestTLSOperatorSecret(t *testing.T) {
 			SetNamespace(mdb.TLSOperatorSecretNamespacedName().Namespace).
 			SetField(tlsOperatorSecretFileName(""), "").
 			Build()
-		err = k8sclient.CreateSecret(s)
+		err = k8sclient.CreateSecret(ctx, s)
 		assert.NoError(t, err)
 
 		r := NewReconciler(client.NewManagerWithClient(k8sclient))
 
-		err = r.ensureTLSResources(mdb)
+		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been updated with the concatenated
 		// certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(k8sclient, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(ctx, k8sclient, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
@@ -224,6 +228,8 @@ func TestCombineCertificateAndKey(t *testing.T) {
 }
 
 func TestPemSupport(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Success if only pem is provided", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		c := mdbClient.NewClient(client.NewManager(&mdb).GetClient())
@@ -234,13 +240,13 @@ func TestPemSupport(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(c))
 
-		err = r.ensureTLSResources(mdb)
+		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(ctx, c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
@@ -254,13 +260,13 @@ func TestPemSupport(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(c))
 
-		err = r.ensureTLSResources(mdb)
+		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
 
 		// Operator-managed secret should have been created and contains the
 		// concatenated certificate and key.
 		expectedCertificateKey := "CERT\nKEY"
-		certificateKey, err := secret.ReadKey(c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
+		certificateKey, err := secret.ReadKey(ctx, c, tlsOperatorSecretFileName(expectedCertificateKey), mdb.TLSOperatorSecretNamespacedName())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedCertificateKey, certificateKey)
 	})
@@ -274,7 +280,7 @@ func TestPemSupport(t *testing.T) {
 
 		r := NewReconciler(client.NewManagerWithClient(c))
 
-		err = r.ensureTLSResources(mdb)
+		err = r.ensureTLSResources(ctx, mdb)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `if all of "tls.crt", "tls.key" and "tls.pem" are present in the secret, the entry for "tls.pem" must be equal to the concatenation of "tls.crt" with "tls.key"`)
 

@@ -1,6 +1,7 @@
 package automationconfig
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 )
 
 func TestEnsureSecret(t *testing.T) {
+	ctx := context.Background()
+
 	secretNsName := types.NamespacedName{Name: "ac-secret", Namespace: "test-namespace"}
 	desiredAutomationConfig, err := newAutomationConfig()
 	assert.NoError(t, err)
@@ -27,11 +30,11 @@ func TestEnsureSecret(t *testing.T) {
 
 		secretGetUpdateCreator := &mockSecretGetUpdateCreator{secret: &s}
 
-		ac, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig)
+		ac, err := EnsureSecret(ctx, secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig)
 		assert.NoError(t, err)
 		assert.Equal(t, desiredAutomationConfig, ac, "The config should be returned if there is not one currently.")
 
-		acSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
+		acSecret, err := secretGetUpdateCreator.GetSecret(ctx, secretNsName)
 		assert.NoError(t, err)
 
 		assert.Contains(t, acSecret.Data, ConfigKey, "The secret of the given name should have been updated with the config.")
@@ -50,7 +53,7 @@ func TestEnsureSecret(t *testing.T) {
 		newAc, err := newAutomationConfigBuilder().SetDomain("different-domain").Build()
 		assert.NoError(t, err)
 
-		res, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, newAc)
+		res, err := EnsureSecret(ctx, secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, newAc)
 		assert.NoError(t, err)
 		assert.Equal(t, newAc, res)
 
@@ -83,7 +86,7 @@ type mockSecretGetUpdateCreator struct {
 	secret *corev1.Secret
 }
 
-func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
+func (m *mockSecretGetUpdateCreator) GetSecret(ctx context.Context, objectKey client.ObjectKey) (corev1.Secret, error) {
 	if m.secret != nil {
 		if objectKey.Name == m.secret.Name && objectKey.Namespace == m.secret.Namespace {
 			return *m.secret, nil
@@ -92,12 +95,12 @@ func (m *mockSecretGetUpdateCreator) GetSecret(objectKey client.ObjectKey) (core
 	return corev1.Secret{}, notFoundError()
 }
 
-func (m *mockSecretGetUpdateCreator) UpdateSecret(secret corev1.Secret) error {
+func (m *mockSecretGetUpdateCreator) UpdateSecret(ctx context.Context, secret corev1.Secret) error {
 	m.secret = &secret
 	return nil
 }
 
-func (m *mockSecretGetUpdateCreator) CreateSecret(secret corev1.Secret) error {
+func (m *mockSecretGetUpdateCreator) CreateSecret(ctx context.Context, secret corev1.Secret) error {
 	if m.secret == nil {
 		m.secret = &secret
 		return nil

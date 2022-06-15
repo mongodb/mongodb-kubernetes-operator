@@ -332,6 +332,8 @@ func createPodWithAgentAnnotation(t *testing.T, c k8sClient.Client, name types.N
 }
 
 func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newScramReplicaSet(mdbv1.MongoDBUser{
 		Name: "testuser",
 		PasswordSecretRef: mdbv1.SecretKeyReference{
@@ -360,7 +362,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			oldPort: "mongodb",
 		})
-		_ = assertAutomationConfigVersion(t, mgr.Client, mdb, 1)
+		_ = assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 1)
 
 		setStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 3)
 		setArbiterStatefulSetReadyReplicas(t, mgr.GetClient(), mdb, 1)
@@ -372,7 +374,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		assertServicePorts(t, mgr.Client, mdb, map[int]string{
 			oldPort: "mongodb",
 		})
-		_ = assertAutomationConfigVersion(t, mgr.Client, mdb, 1)
+		_ = assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 1)
 		assertStatefulsetReady(t, mgr, namespacedName, 3)
 		assertStatefulsetReady(t, mgr, arbiterNamespacedName, 1)
 
@@ -392,7 +394,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, res.Requeue)
 
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 2)
+		currentAc := assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 2)
 		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, oldPort, currentAc.Processes[1].GetPort())
@@ -417,7 +419,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		require.NoError(t, err)
 		assert.True(t, res.Requeue)
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 3)
+		currentAc := assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 3)
 		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
@@ -442,7 +444,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: namespacedName})
 		require.NoError(t, err)
 		assert.True(t, res.Requeue)
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 4)
+		currentAc := assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 4)
 		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
@@ -467,7 +469,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 		assert.NoError(t, err)
 		assert.True(t, res.Requeue)
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 5)
+		currentAc := assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 5)
 		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
@@ -494,7 +496,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 		// no need to requeue, port change is finished
 		assert.False(t, res.Requeue)
 		// there should not be any changes in config anymore
-		currentAc := assertAutomationConfigVersion(t, mgr.Client, mdb, 5)
+		currentAc := assertAutomationConfigVersion(t, ctx, mgr.Client, mdb, 5)
 		require.Len(t, currentAc.Processes, 4)
 		assert.Equal(t, newPort, currentAc.Processes[0].GetPort())
 		assert.Equal(t, newPort, currentAc.Processes[1].GetPort())
@@ -540,8 +542,8 @@ func assertServicePorts(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommu
 	assert.Equal(t, expectedServicePorts, actualServicePorts)
 }
 
-func assertAutomationConfigVersion(t *testing.T, c client.Client, mdb mdbv1.MongoDBCommunity, expectedVersion int) automationconfig.AutomationConfig {
-	ac, err := automationconfig.ReadFromSecret(c, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+func assertAutomationConfigVersion(t *testing.T, ctx context.Context, c client.Client, mdb mdbv1.MongoDBCommunity, expectedVersion int) automationconfig.AutomationConfig {
+	ac, err := automationconfig.ReadFromSecret(ctx, c, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	require.NoError(t, err)
 	assert.Equal(t, expectedVersion, ac.Version)
 	return ac
@@ -555,6 +557,8 @@ func assertStatefulsetReady(t *testing.T, mgr manager.Manager, name types.Namesp
 }
 
 func TestService_configuresPrometheusCustomPorts(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 	mdb.Spec.Prometheus = &mdbv1.Prometheus{
 		Username: "username",
@@ -569,7 +573,7 @@ func TestService_configuresPrometheusCustomPorts(t *testing.T) {
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	mgr := client.NewManager(&mdb)
-	err := secret.CreateOrUpdate(mgr.Client,
+	err := secret.CreateOrUpdate(ctx, mgr.Client,
 		secret.Builder().
 			SetName("secret").
 			SetNamespace(mdb.Namespace).
@@ -598,6 +602,8 @@ func TestService_configuresPrometheusCustomPorts(t *testing.T) {
 }
 
 func TestService_configuresPrometheus(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 	mdb.Spec.Prometheus = &mdbv1.Prometheus{
 		Username: "username",
@@ -607,7 +613,7 @@ func TestService_configuresPrometheus(t *testing.T) {
 	}
 
 	mgr := client.NewManager(&mdb)
-	err := secret.CreateOrUpdate(mgr.Client,
+	err := secret.CreateOrUpdate(ctx, mgr.Client,
 		secret.Builder().
 			SetName("secret").
 			SetNamespace(mdb.Namespace).
@@ -637,14 +643,16 @@ func TestCustomNetPort_Configuration(t *testing.T) {
 }
 
 func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
-	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, currentAc.Version)
 
@@ -655,39 +663,43 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err = automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, currentAc.Version)
 }
 
 func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
-	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err = automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Equal(t, currentAc.Version, 1)
 }
 
 func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Len(t, currentAc.Processes, 3)
 	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
@@ -699,7 +711,7 @@ func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err = automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err = automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.Len(t, currentAc.Processes, 3)
 	assert.Equal(t, currentAc.Processes[0].FeatureCompatibilityVersion, "4.2")
@@ -707,6 +719,8 @@ func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T
 }
 
 func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newTestReplicaSet()
 
 	mongodConfig := objx.New(map[string]interface{}{})
@@ -720,7 +734,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 
 	for _, p := range currentAc.Processes {
@@ -738,13 +752,15 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 }
 
 func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
+	ctx := context.Background()
+
 	mdb := newScramReplicaSet()
 	mgr := client.NewManager(&mdb)
 
 	c := mgr.Client
 
 	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
-	err := secret.CreateOrUpdate(c,
+	err := secret.CreateOrUpdate(ctx, c,
 		secret.Builder().
 			SetName(keyFileNsName.Name).
 			SetNamespace(keyFileNsName.Namespace).
@@ -754,7 +770,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	assert.NoError(t, err)
 
 	passwordNsName := mdb.GetAgentPasswordSecretNamespacedName()
-	err = secret.CreateOrUpdate(c,
+	err = secret.CreateOrUpdate(ctx, c,
 		secret.Builder().
 			SetName(passwordNsName.Name).
 			SetNamespace(passwordNsName.Namespace).
@@ -767,7 +783,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
 	assert.False(t, currentAc.Auth.Disabled)
@@ -779,11 +795,11 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 }
 
 func TestScramIsConfigured(t *testing.T) {
-	assertReplicaSetIsConfiguredWithScram(t, newScramReplicaSet())
+	assertReplicaSetIsConfiguredWithScram(t, context.Background(), newScramReplicaSet())
 }
 
 func TestScramIsConfiguredWhenNotSpecified(t *testing.T) {
-	assertReplicaSetIsConfiguredWithScram(t, newTestReplicaSet())
+	assertReplicaSetIsConfiguredWithScram(t, context.Background(), newTestReplicaSet())
 }
 
 func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testing.T) {
@@ -918,12 +934,14 @@ func TestAnnotationsAreAppliedToResource(t *testing.T) {
 // assertAuthoritativeSet asserts that a reconciliation of the given MongoDBCommunity resource
 // results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
 func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
+	ctx := context.Background()
+
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
-	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	s, err := mgr.Client.GetSecret(types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	s, err := mgr.Client.GetSecret(ctx, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 
 	bytes := s.Data[automationconfig.ConfigKey]
@@ -933,13 +951,13 @@ func assertAuthoritativeSet(t *testing.T, mdb mdbv1.MongoDBCommunity, expectedVa
 	assert.Equal(t, expectedValue, ac.Auth.AuthoritativeSet)
 }
 
-func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommunity) {
+func assertReplicaSetIsConfiguredWithScram(t *testing.T, ctx context.Context, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
-	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	currentAc, err := automationconfig.ReadFromSecret(ctx, mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	t.Run("Automation Config is configured with SCRAM", func(t *testing.T) {
 		assert.NotEmpty(t, currentAc.Auth.Key)
 		assert.NoError(t, err)
@@ -949,14 +967,14 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 	})
 	t.Run("Secret with password was created", func(t *testing.T) {
 		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()
-		s, err := mgr.Client.GetSecret(secretNsName)
+		s, err := mgr.Client.GetSecret(ctx, secretNsName)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
 
 	t.Run("Secret with keyfile was created", func(t *testing.T) {
 		secretNsName := mdb.GetAgentKeyfileSecretNamespacedName()
-		s, err := mgr.Client.GetSecret(secretNsName)
+		s, err := mgr.Client.GetSecret(ctx, secretNsName)
 		assert.NoError(t, err)
 		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
 	})
@@ -977,7 +995,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 }
 
 func TestVolumeClaimTemplates_Configuration(t *testing.T) {
-	sts, _ := performReconciliationAndGetStatefulSet(t, "volume_claim_templates_mdb.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, context.Background(), "volume_claim_templates_mdb.yaml")
 
 	assert.Len(t, sts.Spec.VolumeClaimTemplates, 3)
 
@@ -992,7 +1010,7 @@ func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 }
 
 func TestChangeDataVolume_Configuration(t *testing.T) {
-	sts, _ := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, context.Background(), "change_data_volume.yaml")
 	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
@@ -1005,7 +1023,7 @@ func TestChangeDataVolume_Configuration(t *testing.T) {
 }
 
 func TestCustomStorageClass_Configuration(t *testing.T) {
-	sts, _ := performReconciliationAndGetStatefulSet(t, "custom_storage_class.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, context.Background(), "custom_storage_class.yaml")
 
 	dataVolume := sts.Spec.VolumeClaimTemplates[0]
 
@@ -1021,7 +1039,7 @@ func TestCustomStorageClass_Configuration(t *testing.T) {
 }
 
 func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
-	sts, _ := performReconciliationAndGetStatefulSet(t, "tolerations_example.yaml")
+	sts, _ := performReconciliationAndGetStatefulSet(t, context.Background(), "tolerations_example.yaml")
 
 	assert.Len(t, sts.Spec.Template.Spec.Tolerations, 2)
 	assert.Equal(t, "example-key", sts.Spec.Template.Spec.Tolerations[0].Key)
@@ -1034,7 +1052,9 @@ func TestCustomTaintsAndTolerations_Configuration(t *testing.T) {
 }
 
 func TestCustomDataDir_Configuration(t *testing.T) {
-	sts, c := performReconciliationAndGetStatefulSet(t, "specify_data_dir.yaml")
+	ctx := context.Background()
+
+	sts, c := performReconciliationAndGetStatefulSet(t, ctx, "specify_data_dir.yaml")
 
 	agentContainer := container.GetByName("mongodb-agent", sts.Spec.Template.Spec.Containers)
 	assert.NotNil(t, agentContainer)
@@ -1046,7 +1066,7 @@ func TestCustomDataDir_Configuration(t *testing.T) {
 	lastCommand := mongoContainer.Command[len(agentContainer.Command)-1]
 	assert.Contains(t, lastCommand, "/some/path/db", "startup command should be using the newly specified path")
 
-	ac, err := automationconfig.ReadFromSecret(c, types.NamespacedName{Name: "example-mongodb-config", Namespace: "test-ns"})
+	ac, err := automationconfig.ReadFromSecret(ctx, c, types.NamespacedName{Name: "example-mongodb-config", Namespace: "test-ns"})
 	assert.NoError(t, err)
 
 	for _, p := range ac.Processes {
@@ -1065,7 +1085,7 @@ func assertVolumeMountPath(t *testing.T, mounts []corev1.VolumeMount, name, path
 	t.Fatalf("volume with name %s was not present!", name)
 }
 
-func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) (appsv1.StatefulSet, client.Client) {
+func performReconciliationAndGetStatefulSet(t *testing.T, ctx context.Context, filePath string) (appsv1.StatefulSet, client.Client) {
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)
 	mgr := client.NewManager(&mdb)
@@ -1074,25 +1094,29 @@ func performReconciliationAndGetStatefulSet(t *testing.T, filePath string) (apps
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 
-	sts, err := mgr.Client.GetStatefulSet(mdb.NamespacedName())
+	sts, err := mgr.Client.GetStatefulSet(ctx, mdb.NamespacedName())
 	assert.NoError(t, err)
 	return sts, mgr.Client
 }
 
 func performReconciliationAndGetService(t *testing.T, filePath string) (corev1.Service, client.Client) {
+	ctx := context.Background()
+
 	mdb, err := loadTestFixture(filePath)
 	assert.NoError(t, err)
 	mgr := client.NewManager(&mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(mdb, mgr.Client))
 	r := NewReconciler(mgr)
-	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: mdb.NamespacedName()})
+	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
-	svc, err := mgr.Client.GetService(types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
+	svc, err := mgr.Client.GetService(ctx, types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
 	assert.NoError(t, err)
 	return svc, mgr.Client
 }
 
 func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) error {
+	ctx := context.Background()
+
 	for _, user := range mdb.Spec.Users {
 
 		key := "password"
@@ -1106,7 +1130,7 @@ func generatePasswordsForAllUsers(mdb mdbv1.MongoDBCommunity, c client.Client) e
 			SetField(key, "GAGTQK2ccRRaxJFudI5y").
 			Build()
 
-		if err := c.CreateSecret(passwordSecret); err != nil {
+		if err := c.CreateSecret(ctx, passwordSecret); err != nil {
 			return err
 		}
 	}

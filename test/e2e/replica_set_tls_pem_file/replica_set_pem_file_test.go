@@ -35,26 +35,26 @@ func TestReplicaSetTLS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
-		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
-		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls(mdb)))
-		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithTls(mdb)))
+		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls(ctx, mdb)))
+		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls(ctx, mdb)))
+		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithTls(ctx, mdb)))
 		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
-			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(ctx, mdb, scramUser)), WithTls(ctx, mdb)))
 		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
-			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser)), WithTls(ctx, mdb)))
 		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
-		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls(mdb)))
+		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls(ctx, mdb)))
 	})
-	t.Run("TLS is disabled", mongodbtests.DisableTLS(&mdb))
-	t.Run("MongoDB Reaches Failed Phase", mongodbtests.MongoDBReachesFailedPhase(&mdb))
-	t.Run("TLS is enabled", mongodbtests.EnableTLS(&mdb))
-	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+	t.Run("TLS is disabled", mongodbtests.DisableTLS(ctx, &mdb))
+	t.Run("MongoDB Reaches Failed Phase", mongodbtests.MongoDBReachesFailedPhase(ctx, &mdb))
+	t.Run("TLS is enabled", mongodbtests.EnableTLS(ctx, &mdb))
+	t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 }

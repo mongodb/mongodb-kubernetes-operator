@@ -34,9 +34,9 @@ func GetAnnotation(object client.Object, key string) string {
 	return value
 }
 
-func SetAnnotations(object client.Object, annotations map[string]string, kubeClient client.Client) error {
+func SetAnnotations(ctx context.Context, object client.Object, annotations map[string]string, kubeClient client.Client) error {
 	currentObject := object
-	err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: object.GetName(), Namespace: object.GetNamespace()}, currentObject)
+	err := kubeClient.Get(ctx, types.NamespacedName{Name: object.GetName(), Namespace: object.GetNamespace()}, currentObject)
 	if err != nil {
 		return err
 	}
@@ -67,13 +67,13 @@ func SetAnnotations(object client.Object, annotations map[string]string, kubeCli
 	}
 
 	patch := client.RawPatch(types.JSONPatchType, data)
-	return kubeClient.Patch(context.TODO(), object, patch)
+	return kubeClient.Patch(ctx, object, patch)
 }
 
-func UpdateLastAppliedMongoDBVersion(mdb Versioned, kubeClient client.Client) error {
+func UpdateLastAppliedMongoDBVersion(ctx context.Context, mdb Versioned, kubeClient client.Client) error {
 	annotations := map[string]string{
 		LastAppliedMongoDBVersion: mdb.GetMongoDBVersionForAnnotation(),
 	}
 
-	return SetAnnotations(mdb, annotations, kubeClient)
+	return SetAnnotations(ctx, mdb, annotations, kubeClient)
 }

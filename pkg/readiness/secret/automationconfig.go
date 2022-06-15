@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/spf13/cast"
@@ -11,9 +12,9 @@ const (
 	automationConfigKey = "cluster-config.json"
 )
 
-func ReadAutomationConfigVersionFromSecret(namespace string, clientSet kubernetes.Interface, automationConfigMap string) (int64, error) {
+func ReadAutomationConfigVersionFromSecret(ctx context.Context, namespace string, clientSet kubernetes.Interface, automationConfigMap string) (int64, error) {
 	secretReader := newKubernetesSecretReader(clientSet)
-	theSecret, err := secretReader.ReadSecret(namespace, automationConfigMap)
+	theSecret, err := secretReader.ReadSecret(ctx, namespace, automationConfigMap)
 	if err != nil {
 		return -1, err
 	}

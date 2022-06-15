@@ -37,17 +37,17 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	customServiceName := "database"
 	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName = customServiceName
 
-	tester, err := mongotester.FromResource(t, mdb)
+	tester, err := mongotester.FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Test setting Service Name", mongodbtests.ServiceWithNameExists(customServiceName, mdb.Namespace))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
+	t.Run("Test setting Service Name", mongodbtests.ServiceWithNameExists(ctx, customServiceName, mdb.Namespace))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(ctx, &mdb, "mongodb-agent", func(container corev1.Container) bool {
 		return container.ReadinessProbe.TimeoutSeconds == 100
 	}))
 }

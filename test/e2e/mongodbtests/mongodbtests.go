@@ -1,7 +1,6 @@
 package mongodbtests
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -33,43 +32,43 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 
 // StatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
-func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func StatefulSetBecomesReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
 		wait.Timeout(time.Minute * 20),
 	}
 	defaultOpts = append(defaultOpts, opts...)
-	return statefulSetIsReady(mdb, defaultOpts...)
+	return statefulSetIsReady(ctx, mdb, defaultOpts...)
 }
 
 // ArbitersStatefulSetBecomesReady ensures that the underlying stateful set
 // reaches the running state.
-func ArbitersStatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func ArbitersStatefulSetBecomesReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
 		wait.Timeout(time.Minute * 20),
 	}
 	defaultOpts = append(defaultOpts, opts...)
-	return arbitersStatefulSetIsReady(mdb, defaultOpts...)
+	return arbitersStatefulSetIsReady(ctx, mdb, defaultOpts...)
 }
 
 // StatefulSetBecomesUnready ensures the underlying stateful set reaches
 // the unready state.
-func StatefulSetBecomesUnready(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func StatefulSetBecomesUnready(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
 		wait.Timeout(time.Minute * 15),
 	}
 	defaultOpts = append(defaultOpts, opts...)
-	return statefulSetIsNotReady(mdb, defaultOpts...)
+	return statefulSetIsNotReady(ctx, mdb, defaultOpts...)
 }
 
 // StatefulSetIsReadyAfterScaleDown ensures that a replica set is scaled down correctly
 // note: scaling down takes considerably longer than scaling up due the readiness probe
 // failure threshold being high
-func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func StatefulSetIsReadyAfterScaleDown(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeReadyAfterScaleDown(t, mdb, wait.RetryInterval(time.Second*60), wait.Timeout(time.Minute*45))
+		err := wait.ForStatefulSetToBeReadyAfterScaleDown(ctx, mdb, wait.RetryInterval(time.Second*60), wait.Timeout(time.Minute*45))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,9 +78,9 @@ func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testi
 
 // statefulSetIsReady ensures that the underlying stateful set
 // reaches the running state.
-func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func statefulSetIsReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeReady(t, mdb, opts...)
+		err := wait.ForStatefulSetToBeReady(ctx, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,9 +90,9 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration)
 
 // arbitersStatefulSetIsReady ensures that the underlying stateful set
 // reaches the running state.
-func arbitersStatefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func arbitersStatefulSetIsReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForArbitersStatefulSetToBeReady(t, mdb, opts...)
+		err := wait.ForArbitersStatefulSetToBeReady(ctx, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,9 +101,9 @@ func arbitersStatefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Config
 }
 
 // statefulSetIsNotReady ensures that the underlying stateful set reaches the unready state.
-func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
+func statefulSetIsNotReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeUnready(t, mdb, opts...)
+		err := wait.ForStatefulSetToBeUnready(ctx, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -112,11 +111,11 @@ func statefulSetIsNotReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configurati
 	}
 }
 
-func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+func StatefulSetHasOwnerReference(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		stsNamespacedName := types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}
 		sts := appsv1.StatefulSet{}
-		err := e2eutil.TestClient.Get(context.TODO(), stsNamespacedName, &sts)
+		err := e2eutil.TestClient.Get(ctx, stsNamespacedName, &sts)
 
 		if err != nil {
 			t.Fatal(err)
@@ -126,20 +125,20 @@ func StatefulSetHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRefe
 }
 
 // StatefulSetIsDeleted ensures that the underlying stateful set is deleted
-func StatefulSetIsDeleted(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func StatefulSetIsDeleted(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToBeDeleted(mdb.Name, time.Second*10, time.Minute*1, mdb.Namespace)
+		err := wait.ForStatefulSetToBeDeleted(ctx, mdb.Name, time.Second*10, time.Minute*1, mdb.Namespace)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 
-func ServiceHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+func ServiceHasOwnerReference(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
 		srv := corev1.Service{}
-		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &srv)
+		err := e2eutil.TestClient.Get(ctx, serviceNamespacedName, &srv)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -147,11 +146,11 @@ func ServiceHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReferenc
 	}
 }
 
-func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) func(t *testing.T) {
+func ServiceUsesCorrectPort(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedPort int32) func(t *testing.T) {
 	return func(t *testing.T) {
 		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
 		svc := corev1.Service{}
-		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &svc)
+		err := e2eutil.TestClient.Get(ctx, serviceNamespacedName, &svc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,10 +159,10 @@ func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) fun
 	}
 }
 
-func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+func AgentSecretsHaveOwnerReference(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	checkSecret := func(t *testing.T, resourceNamespacedName types.NamespacedName) {
 		secret := corev1.Secret{}
-		err := e2eutil.TestClient.Get(context.TODO(), resourceNamespacedName, &secret)
+		err := e2eutil.TestClient.Get(ctx, resourceNamespacedName, &secret)
 
 		assert.NoError(t, err)
 		assertEqualOwnerReference(t, "Secret", resourceNamespacedName, secret.GetOwnerReferences(), expectedOwnerReference)
@@ -177,12 +176,12 @@ func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRe
 
 // ConnectionStringSecretsAreConfigured verifies that secrets storing the connection string were generated for all scram users
 // and that they have the expected owner reference
-func ConnectionStringSecretsAreConfigured(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
+func ConnectionStringSecretsAreConfigured(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
 		for _, user := range mdb.GetScramUsers() {
 			secret := corev1.Secret{}
 			secretNamespacedName := types.NamespacedName{Name: user.ConnectionStringSecretName, Namespace: mdb.Namespace}
-			err := e2eutil.TestClient.Get(context.TODO(), secretNamespacedName, &secret)
+			err := e2eutil.TestClient.Get(ctx, secretNamespacedName, &secret)
 
 			assert.NoError(t, err)
 			assertEqualOwnerReference(t, "Secret", secretNamespacedName, secret.GetOwnerReferences(), expectedOwnerReference)
@@ -192,9 +191,9 @@ func ConnectionStringSecretsAreConfigured(mdb *mdbv1.MongoDBCommunity, expectedO
 
 // StatefulSetHasUpdateStrategy verifies that the StatefulSet holding this MongoDB
 // resource has the correct Update Strategy
-func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
+func StatefulSetHasUpdateStrategy(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, strategy appsv1.StatefulSetUpdateStrategyType) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForStatefulSetToHaveUpdateStrategy(t, mdb, strategy, wait.RetryInterval(time.Second*15), wait.Timeout(time.Minute*8))
+		err := wait.ForStatefulSetToHaveUpdateStrategy(ctx, mdb, strategy, wait.RetryInterval(time.Second*15), wait.Timeout(time.Minute*8))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -203,8 +202,8 @@ func StatefulSetHasUpdateStrategy(mdb *mdbv1.MongoDBCommunity, strategy appsv1.S
 }
 
 // GetPersistentVolumes returns all persistent volumes on the cluster
-func getPersistentVolumesList() (*corev1.PersistentVolumeList, error) {
-	return e2eutil.TestClient.CoreV1Client.PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+func getPersistentVolumesList(ctx *e2eutil.Context) (*corev1.PersistentVolumeList, error) {
+	return e2eutil.TestClient.CoreV1Client.PersistentVolumes().List(ctx.Ctx, metav1.ListOptions{})
 }
 
 func containsVolume(volumes []corev1.PersistentVolume, volumeName string) bool {
@@ -215,9 +214,9 @@ func containsVolume(volumes []corev1.PersistentVolume, volumeName string) bool {
 	}
 	return false
 }
-func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *testing.T) {
+func HasExpectedPersistentVolumes(ctx *e2eutil.Context, volumes []corev1.PersistentVolume) func(t *testing.T) {
 	return func(t *testing.T) {
-		volumeList, err := getPersistentVolumesList()
+		volumeList, err := getPersistentVolumesList(ctx)
 		actualVolumes := volumeList.Items
 		assert.NoError(t, err)
 		assert.Len(t, actualVolumes, len(volumes),
@@ -230,9 +229,9 @@ func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *tes
 }
 
 // MongoDBReachesPendingPhase ensures the MongoDB resources gets to the Pending phase
-func MongoDBReachesPendingPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func MongoDBReachesPendingPhase(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Pending, time.Second*15, time.Minute*2)
+		err := wait.ForMongoDBToReachPhase(ctx, mdb, mdbv1.Pending, time.Second*15, time.Minute*2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,9 +240,9 @@ func MongoDBReachesPendingPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) 
 }
 
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
-func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func MongoDBReachesRunningPhase(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*12)
+		err := wait.ForMongoDBToReachPhase(ctx, mdb, mdbv1.Running, time.Second*15, time.Minute*12)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -252,9 +251,9 @@ func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) 
 }
 
 // MongoDBReachesFailed ensure the MongoDB resource reaches the Failed phase.
-func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func MongoDBReachesFailedPhase(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Failed, time.Second*15, time.Minute*5)
+		err := wait.ForMongoDBToReachPhase(ctx, mdb, mdbv1.Failed, time.Second*15, time.Minute*5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -262,9 +261,9 @@ func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	}
 }
 
-func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+func AutomationConfigSecretExists(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		s, err := wait.ForSecretToExist(mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1, mdb.Namespace)
+		s, err := wait.ForSecretToExist(ctx, mdb.AutomationConfigSecretName(), time.Second*5, time.Minute*1, mdb.Namespace)
 		assert.NoError(t, err)
 
 		t.Logf("Secret %s/%s was successfully created", mdb.Namespace, mdb.AutomationConfigSecretName())
@@ -274,10 +273,10 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 	}
 }
 
-func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
+func getAutomationConfig(t *testing.T, ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 	currentSecret := corev1.Secret{}
 	currentAc := automationconfig.AutomationConfig{}
-	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
+	err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
 	assert.NoError(t, err)
 	err = json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc)
 	assert.NoError(t, err)
@@ -285,17 +284,17 @@ func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationco
 }
 
 // AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
-func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, expectedVersion int) func(t *testing.T) {
+func AutomationConfigVersionHasTheExpectedVersion(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := getAutomationConfig(t, ctx, mdb)
 		assert.Equal(t, expectedVersion, currentAc.Version)
 	}
 }
 
 // AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
-func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
+func AutomationConfigReplicaSetsHaveExpectedArbiters(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := getAutomationConfig(t, ctx, mdb)
 		lsRs := currentAc.ReplicaSets
 		for _, rs := range lsRs {
 			arbiters := 0
@@ -310,17 +309,17 @@ func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity
 }
 
 // AutomationConfigHasTheExpectedCustomRoles verifies that the automation config has the expected custom roles.
-func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, roles []automationconfig.CustomRole) func(t *testing.T) {
+func AutomationConfigHasTheExpectedCustomRoles(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, roles []automationconfig.CustomRole) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := getAutomationConfig(t, ctx, mdb)
 		assert.ElementsMatch(t, roles, currentAc.Roles)
 	}
 }
 
 // CreateMongoDBResource creates the MongoDB resource
-func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) func(*testing.T) {
+func CreateMongoDBResource(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
-		if err := e2eutil.TestClient.Create(context.TODO(), mdb, &e2eutil.CleanupOptions{TestContext: ctx}); err != nil {
+		if err := e2eutil.TestClient.Create(ctx, mdb, &e2eutil.CleanupOptions{}); err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
@@ -328,21 +327,21 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 }
 
 // GetConnectionStringSecret returnes the secret generated by the operator that is storing the connection string for a specific user
-func GetConnectionStringSecret(mdb mdbv1.MongoDBCommunity, user scram.User) corev1.Secret {
+func GetConnectionStringSecret(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity, user scram.User) corev1.Secret {
 	secret := corev1.Secret{}
 	secretNamespacedName := types.NamespacedName{Name: user.ConnectionStringSecretName, Namespace: mdb.Namespace}
-	_ = e2eutil.TestClient.Get(context.TODO(), secretNamespacedName, &secret)
+	_ = e2eutil.TestClient.Get(ctx, secretNamespacedName, &secret)
 	return secret
 }
 
 // GetConnectionStringForUser returns the mongodb standard connection string for a user
-func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) string {
-	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standard"])
+func GetConnectionStringForUser(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity, user scram.User) string {
+	return string(GetConnectionStringSecret(ctx, mdb, user).Data["connectionString.standard"])
 }
 
 // GetConnectionStringForUser returns the mongodb service connection string for a user
-func GetSrvConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) string {
-	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standardSrv"])
+func GetSrvConnectionStringForUser(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity, user scram.User) string {
+	return string(GetConnectionStringSecret(ctx, mdb, user).Data["connectionString.standardSrv"])
 }
 
 func getOwnerReference(mdb *mdbv1.MongoDBCommunity) metav1.OwnerReference {
@@ -353,19 +352,19 @@ func getOwnerReference(mdb *mdbv1.MongoDBCommunity) metav1.OwnerReference {
 	})
 }
 
-func BasicFunctionality(mdb *mdbv1.MongoDBCommunity, skipStatusCheck ...bool) func(*testing.T) {
+func BasicFunctionality(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, skipStatusCheck ...bool) func(*testing.T) {
 	return func(t *testing.T) {
 		mdbOwnerReference := getOwnerReference(mdb)
-		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
-		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
-		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
-		t.Run("Stateful Set Has OwnerReference", StatefulSetHasOwnerReference(mdb, mdbOwnerReference))
-		t.Run("Service Set Has OwnerReference", ServiceHasOwnerReference(mdb, mdbOwnerReference))
-		t.Run("Agent Secrets Have OwnerReference", AgentSecretsHaveOwnerReference(mdb, mdbOwnerReference))
-		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(mdb, mdbOwnerReference))
+		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(ctx, mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(ctx, mdb))
+		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(ctx, mdb))
+		t.Run("Stateful Set Has OwnerReference", StatefulSetHasOwnerReference(ctx, mdb, mdbOwnerReference))
+		t.Run("Service Set Has OwnerReference", ServiceHasOwnerReference(ctx, mdb, mdbOwnerReference))
+		t.Run("Agent Secrets Have OwnerReference", AgentSecretsHaveOwnerReference(ctx, mdb, mdbOwnerReference))
+		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(ctx, mdb, mdbOwnerReference))
 		// TODO: this is temporary, remove the need for skipStatuscheck after 0.7.4 operator release
 		if len(skipStatusCheck) > 0 && !skipStatusCheck[0] {
-			t.Run("Test Status Was Updated", Status(mdb,
+			t.Run("Test Status Was Updated", Status(ctx, mdb,
 				mdbv1.MongoDBCommunityStatus{
 					MongoURI:                   mdb.MongoURI(""),
 					Phase:                      mdbv1.Running,
@@ -378,11 +377,11 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity, skipStatusCheck ...bool) fu
 }
 
 // ServiceWithNameExists checks whether a service with the name serviceName exists
-func ServiceWithNameExists(serviceName string, namespace string) func(t *testing.T) {
+func ServiceWithNameExists(ctx *e2eutil.Context, serviceName string, namespace string) func(t *testing.T) {
 	return func(t *testing.T) {
 		serviceNamespacedName := types.NamespacedName{Name: serviceName, Namespace: namespace}
 		srv := corev1.Service{}
-		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &srv)
+		err := e2eutil.TestClient.Get(ctx, serviceNamespacedName, &srv)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -391,10 +390,10 @@ func ServiceWithNameExists(serviceName string, namespace string) func(t *testing
 }
 
 // DeletePod will delete a pod that belongs to this MongoDB resource's StatefulSet
-func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
+func DeletePod(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		if err := e2eutil.TestClient.Delete(context.TODO(), &pod); err != nil {
+		if err := e2eutil.TestClient.Delete(ctx, &pod); err != nil {
 			t.Fatal(err)
 		}
 
@@ -403,7 +402,7 @@ func DeletePod(mdb *mdbv1.MongoDBCommunity, podNum int) func(*testing.T) {
 }
 
 // DeleteStatefulSet provides a wrapper to delete appsv1.StatefulSet types
-func DeleteStatefulSet(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func DeleteStatefulSet(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -411,7 +410,7 @@ func DeleteStatefulSet(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 				Namespace: mdb.Namespace,
 			},
 		}
-		if err := e2eutil.TestClient.Delete(context.TODO(), &sts); err != nil {
+		if err := e2eutil.TestClient.Delete(ctx, &sts); err != nil {
 			t.Fatal(err)
 		}
 
@@ -420,9 +419,9 @@ func DeleteStatefulSet(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 }
 
 // Status compares the given status to the actual status of the MongoDB resource
-func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunityStatus) func(t *testing.T) {
+func Status(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunityStatus) func(t *testing.T) {
 	return func(t *testing.T) {
-		if err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
+		if err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, mdb); err != nil {
 			t.Fatalf("error getting MongoDB resource: %s", err)
 		}
 		assert.Equal(t, expectedStatus, mdb.Status)
@@ -430,10 +429,10 @@ func Status(mdb *mdbv1.MongoDBCommunity, expectedStatus mdbv1.MongoDBCommunitySt
 }
 
 // Scale update the MongoDB with a new number of members and updates the resource.
-func Scale(mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
+func Scale(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newMembers)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Members = newMembers
 		})
 		if err != nil {
@@ -443,10 +442,10 @@ func Scale(mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
 }
 
 // Scale update the MongoDB with a new number of arbiters and updates the resource.
-func ScaleArbiters(mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T) {
+func ScaleArbiters(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newArbiters)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Arbiters = newArbiters
 		})
 		if err != nil {
@@ -456,20 +455,20 @@ func ScaleArbiters(mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T
 }
 
 // DisableTLS changes the tls.enabled attribute to false.
-func DisableTLS(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
-	return tls(mdb, false)
+func DisableTLS(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return tls(ctx, mdb, false)
 }
 
 // EnableTLS changes the tls.enabled attribute to true.
-func EnableTLS(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
-	return tls(mdb, true)
+func EnableTLS(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return tls(ctx, mdb, true)
 }
 
 // tls function configures the security.tls.enabled attribute.
-func tls(mdb *mdbv1.MongoDBCommunity, enabled bool) func(*testing.T) {
+func tls(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, enabled bool) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Setting security.tls.enabled to %t", enabled)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Security.TLS.Enabled = enabled
 		})
 		if err != nil {
@@ -478,10 +477,10 @@ func tls(mdb *mdbv1.MongoDBCommunity, enabled bool) func(*testing.T) {
 	}
 }
 
-func ChangeVersion(mdb *mdbv1.MongoDBCommunity, newVersion string) func(*testing.T) {
+func ChangeVersion(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, newVersion string) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Changing versions from: %s to %s", mdb.Spec.Version, newVersion)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Version = newVersion
 		})
 		if err != nil {
@@ -490,10 +489,10 @@ func ChangeVersion(mdb *mdbv1.MongoDBCommunity, newVersion string) func(*testing
 	}
 }
 
-func ChangePort(mdb *mdbv1.MongoDBCommunity, newPort int) func(*testing.T) {
+func ChangePort(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, newPort int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Changing port from: %d to %d", mdb.GetMongodConfiguration().GetDBPort(), newPort)
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.AdditionalMongodConfig.SetDBPort(newPort)
 		})
 		if err != nil {
@@ -502,10 +501,10 @@ func ChangePort(mdb *mdbv1.MongoDBCommunity, newPort int) func(*testing.T) {
 	}
 }
 
-func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(c corev1.Container) bool) func(*testing.T) {
+func StatefulSetContainerConditionIsTrue(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, containerName string, condition func(c corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
-		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -522,18 +521,18 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 }
 
 // PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes not ready.
-func PodContainerBecomesNotReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
+func PodContainerBecomesNotReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		assert.NoError(t, wait.ForPodReadiness(t, false, containerName, time.Minute*10, pod))
+		assert.NoError(t, wait.ForPodReadiness(ctx, false, containerName, time.Minute*10, pod))
 	}
 }
 
 // PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes ready.
-func PodContainerBecomesReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
+func PodContainerBecomesReady(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		assert.NoError(t, wait.ForPodReadiness(t, true, containerName, time.Minute*3, pod))
+		assert.NoError(t, wait.ForPodReadiness(ctx, true, containerName, time.Minute*3, pod))
 	}
 }
 
@@ -546,9 +545,9 @@ func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, com
 }
 
 // StatefulSetMessageIsReceived waits (up to 5 minutes) to get desiredMessageStatus as a mongodb message status or returns a fatal error.
-func StatefulSetMessageIsReceived(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context, desiredMessageStatus string) func(t *testing.T) {
+func StatefulSetMessageIsReceived(ctx *e2eutil.Context, mdb *mdbv1.MongoDBCommunity, desiredMessageStatus string) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForMongoDBMessageStatus(t, mdb, time.Second*15, time.Minute*5, desiredMessageStatus)
+		err := wait.ForMongoDBMessageStatus(ctx, mdb, time.Second*15, time.Minute*5, desiredMessageStatus)
 		if err != nil {
 			t.Fatal(err)
 		}

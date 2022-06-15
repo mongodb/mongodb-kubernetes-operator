@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -10,19 +11,19 @@ import (
 )
 
 type Getter interface {
-	GetService(objectKey client.ObjectKey) (corev1.Service, error)
+	GetService(ctx context.Context, objectKey client.ObjectKey) (corev1.Service, error)
 }
 
 type Updater interface {
-	UpdateService(service corev1.Service) error
+	UpdateService(ctx context.Context, service corev1.Service) error
 }
 
 type Creator interface {
-	CreateService(service corev1.Service) error
+	CreateService(ctx context.Context, service corev1.Service) error
 }
 
 type Deleter interface {
-	DeleteService(objectKey client.ObjectKey) error
+	DeleteService(ctx context.Context, objectKey client.ObjectKey) error
 }
 
 type GetDeleter interface {
@@ -48,8 +49,8 @@ type GetUpdateCreateDeleter interface {
 	Deleter
 }
 
-func DeleteServiceIfItExists(getterDeleter GetDeleter, serviceName types.NamespacedName) error {
-	_, err := getterDeleter.GetService(serviceName)
+func DeleteServiceIfItExists(ctx context.Context, getterDeleter GetDeleter, serviceName types.NamespacedName) error {
+	_, err := getterDeleter.GetService(ctx, serviceName)
 	if err != nil {
 		// If it is not found return
 		if apiErrors.IsNotFound(err) {
@@ -58,7 +59,7 @@ func DeleteServiceIfItExists(getterDeleter GetDeleter, serviceName types.Namespa
 		// Otherwise we got an error when trying to get it
 		return fmt.Errorf("can't get service %s: %s", serviceName, err)
 	}
-	return getterDeleter.DeleteService(serviceName)
+	return getterDeleter.DeleteService(ctx, serviceName)
 }
 
 // Merge merges `source` into `dest`. Both arguments will remain unchanged
@@ -95,13 +96,13 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 }
 
 // CreateOrUpdateService will create or update a service in Kubernetes.
-func CreateOrUpdateService(getUpdateCreator GetUpdateCreator, desiredService corev1.Service) error {
+func CreateOrUpdateService(ctx context.Context, getUpdateCreator GetUpdateCreator, desiredService corev1.Service) error {
 	namespacedName := types.NamespacedName{Namespace: desiredService.ObjectMeta.Namespace, Name: desiredService.ObjectMeta.Name}
-	existingService, err := getUpdateCreator.GetService(namespacedName)
+	existingService, err := getUpdateCreator.GetService(ctx, namespacedName)
 
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			err = getUpdateCreator.CreateService(desiredService)
+			err = getUpdateCreator.CreateService(ctx, desiredService)
 			if err != nil {
 				return err
 			}
@@ -110,7 +111,7 @@ func CreateOrUpdateService(getUpdateCreator GetUpdateCreator, desiredService cor
 		}
 	} else {
 		mergedService := Merge(existingService, desiredService)
-		err = getUpdateCreator.UpdateService(mergedService)
+		err = getUpdateCreator.UpdateService(ctx, mergedService)
 		if err != nil {
 			return err
 		}

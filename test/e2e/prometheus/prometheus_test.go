@@ -27,35 +27,35 @@ func TestPrometheus(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", testConfig.Namespace)
-	mdb.Spec.Prometheus = e2eutil.NewPrometheusConfig(mdb.Namespace)
+	mdb.Spec.Prometheus = e2eutil.NewPrometheusConfig(ctx, mdb.Namespace)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 
 	t.Run("Test Prometheus endpoint is active", tester.PrometheusEndpointIsReachable("prom-user", "prom-password", false))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 
 	t.Run("Enabling HTTPS on the Prometheus endpoint", func(t *testing.T) {
-		err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *v1.MongoDBCommunity) {
+		err = e2eutil.UpdateMongoDBResource(ctx, &mdb, func(mdb *v1.MongoDBCommunity) {
 			mdb.Spec.Prometheus.TLSSecretRef.Name = "tls-certificate"
 		})
 		assert.NoError(t, err)
 
-		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 		t.Run("Test Prometheus HTTPS endpoint is active", tester.PrometheusEndpointIsReachable("prom-user", "prom-password", true))
 	})
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 2))
 }

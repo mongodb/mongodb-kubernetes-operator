@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -32,7 +33,7 @@ const (
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
-func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bool, error) {
+func (r *ReplicaSetReconciler) validateTLSConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity) (bool, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return true, nil
 	}
@@ -40,7 +41,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	r.log.Info("Ensuring TLS is correctly configured")
 
 	// Ensure CA cert is configured
-	_, err := getCaCrt(r.client, r.client, mdb)
+	_, err := getCaCrt(ctx, r.client, r.client, mdb)
 
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
@@ -52,7 +53,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 	}
 
 	// Ensure Secret exists
-	_, err = secret.ReadStringData(r.client, mdb.TLSSecretNamespacedName())
+	_, err = secret.ReadStringData(ctx, r.client, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			r.log.Warnf(`Secret "%s" not found`, mdb.TLSSecretNamespacedName())
@@ -64,7 +65,7 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 	// validate whether the secret contains "tls.crt" and "tls.key", or it contains "tls.pem"
 	// if it contains all three, then the pem entry should be equal to the concatenation of crt and key
-	_, err = getPemOrConcatenatedCrtAndKey(r.client, mdb, mdb.TLSSecretNamespacedName())
+	_, err = getPemOrConcatenatedCrtAndKey(ctx, r.client, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		r.log.Warnf(err.Error())
 		return false, nil
@@ -86,17 +87,17 @@ func (r *ReplicaSetReconciler) validateTLSConfig(mdb mdbv1.MongoDBCommunity) (bo
 
 // getTLSConfigModification creates a modification function which enables TLS in the automation config.
 // It will also ensure that the combined cert-key secret is created.
-func getTLSConfigModification(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
+func getTLSConfigModification(ctx context.Context, cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	if !mdb.Spec.Security.TLS.Enabled {
 		return automationconfig.NOOP(), nil
 	}
 
-	caCert, err := getCaCrt(cmGetter, secretGetter, mdb)
+	caCert, err := getCaCrt(ctx, cmGetter, secretGetter, mdb)
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
 
-	certKey, err := getPemOrConcatenatedCrtAndKey(secretGetter, mdb, mdb.TLSSecretNamespacedName())
+	certKey, err := getPemOrConcatenatedCrtAndKey(ctx, secretGetter, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return automationconfig.NOOP(), err
 	}
@@ -105,13 +106,13 @@ func getTLSConfigModification(cmGetter configmap.Getter, secretGetter secret.Get
 }
 
 // getCertAndKey will fetch the certificate and key from the user-provided Secret.
-func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
-	cert, err := secret.ReadKey(getter, tlsSecretCertName, secretName)
+func getCertAndKey(ctx context.Context, getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
+	cert, err := secret.ReadKey(ctx, getter, tlsSecretCertName, secretName)
 	if err != nil {
 		return ""
 	}
 
-	key, err := secret.ReadKey(getter, tlsSecretKeyName, secretName)
+	key, err := secret.ReadKey(ctx, getter, tlsSecretKeyName, secretName)
 	if err != nil {
 		return ""
 	}
@@ -120,8 +121,8 @@ func getCertAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName 
 }
 
 // getPem will fetch the pem from the user-provided secret
-func getPem(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
-	pem, err := secret.ReadKey(getter, tlsSecretPemName, secretName)
+func getPem(ctx context.Context, getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) string {
+	pem, err := secret.ReadKey(ctx, getter, tlsSecretPemName, secretName)
 	if err != nil {
 		return ""
 	}
@@ -138,9 +139,9 @@ func combineCertificateAndKey(cert, key string) string {
 // This is either the tls.pem entry in the given secret, or the concatenation
 // of tls.crt and tls.key
 // It performs a basic validation on the entries.
-func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) (string, error) {
-	certKey := getCertAndKey(getter, mdb, secretName)
-	pem := getPem(getter, mdb, secretName)
+func getPemOrConcatenatedCrtAndKey(ctx context.Context, getter secret.Getter, mdb mdbv1.MongoDBCommunity, secretName types.NamespacedName) (string, error) {
+	certKey := getCertAndKey(ctx, getter, mdb, secretName)
+	pem := getPem(ctx, getter, mdb, secretName)
 	if certKey == "" && pem == "" {
 		return "", fmt.Errorf(`neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
@@ -156,16 +157,16 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 	return certKey, nil
 }
 
-func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
+func getCaCrt(ctx context.Context, cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.MongoDBCommunity) (string, error) {
 	var caResourceName types.NamespacedName
 	var caData map[string]string
 	var err error
 	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
-		caData, err = secret.ReadStringData(secretGetter, caResourceName)
+		caData, err = secret.ReadStringData(ctx, secretGetter, caResourceName)
 	} else {
 		caResourceName = mdb.TLSConfigMapNamespacedName()
-		caData, err = configmap.ReadData(cmGetter, caResourceName)
+		caData, err = configmap.ReadData(ctx, cmGetter, caResourceName)
 	}
 	if err != nil {
 		return "", err
@@ -180,8 +181,8 @@ func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.M
 
 // ensureCASecret will create or update the operator managed Secret containing
 // the CA certficate from the user provided Secret or ConfigMap.
-func ensureCASecret(cmGetter configmap.Getter, secretGetter secret.Getter, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	cert, err := getCaCrt(cmGetter, secretGetter, mdb)
+func ensureCASecret(ctx context.Context, cmGetter configmap.Getter, secretGetter secret.Getter, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	cert, err := getCaCrt(ctx, cmGetter, secretGetter, mdb)
 	if err != nil {
 		return err
 	}
@@ -195,13 +196,13 @@ func ensureCASecret(cmGetter configmap.Getter, secretGetter secret.Getter, getUp
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 
-	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+	return secret.CreateOrUpdate(ctx, getUpdateCreator, operatorSecret)
 }
 
 // ensureTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
-func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
+func ensureTLSSecret(ctx context.Context, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	certKey, err := getPemOrConcatenatedCrtAndKey(ctx, getUpdateCreator, mdb, mdb.TLSSecretNamespacedName())
 	if err != nil {
 		return err
 	}
@@ -215,13 +216,13 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 
-	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+	return secret.CreateOrUpdate(ctx, getUpdateCreator, operatorSecret)
 }
 
 // ensurePrometheusTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
-func ensurePrometheusTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
-	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.DeepCopy().PrometheusTLSSecretNamespacedName())
+func ensurePrometheusTLSSecret(ctx context.Context, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	certKey, err := getPemOrConcatenatedCrtAndKey(ctx, getUpdateCreator, mdb, mdb.DeepCopy().PrometheusTLSSecretNamespacedName())
 	if err != nil {
 		return err
 	}
@@ -235,7 +236,7 @@ func ensurePrometheusTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 		SetOwnerReferences(mdb.GetOwnerReferences()).
 		Build()
 
-	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
+	return secret.CreateOrUpdate(ctx, getUpdateCreator, operatorSecret)
 }
 
 // tlsOperatorSecretFileName calculates the file name to use for the mounted

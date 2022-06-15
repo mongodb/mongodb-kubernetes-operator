@@ -1,6 +1,7 @@
 package headless
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -23,11 +24,11 @@ const (
 // /var/run/secrets/kubernetes.io/serviceaccount/namespace file (see
 // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod)
 // though passing the namespace as an environment variable makes the code simpler for testing and saves an IO operation
-func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, error) {
+func PerformCheckHeadlessMode(ctx context.Context, health health.Status, conf config.Config) (bool, error) {
 	var targetVersion int64
 	var err error
 
-	targetVersion, err = secret.ReadAutomationConfigVersionFromSecret(conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
+	targetVersion, err = secret.ReadAutomationConfigVersionFromSecret(ctx, conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
 	if err != nil {
 		// this file is expected to be present in case of AppDB, there is no point trying to access it in
 		// community, it masks the underlying error

@@ -52,22 +52,22 @@ type OptionApplier interface {
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
 // and the hosts from the resource.
-func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
+func FromResource(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
 	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
 
-	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
+	ctx.T.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		user := users[0]
 		passwordSecret := corev1.Secret{}
-		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
+		err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
 		if err != nil {
 			return nil, err
 		}
-		t.Logf("Configuring SCRAM username: %s and password from secret %s for MongoDB: %s", user.Name, user.PasswordSecretRef.Name, mdb.NamespacedName())
+		ctx.T.Logf("Configuring SCRAM username: %s and password from secret %s for MongoDB: %s", user.Name, user.PasswordSecretRef.Name, mdb.NamespacedName())
 		clientOpts = WithScram(user.Name, string(passwordSecret.Data[user.PasswordSecretRef.Key])).ApplyOption(clientOpts...)
 	}
 
@@ -130,11 +130,11 @@ type CustomRolesResult struct {
 	Roles []automationconfig.CustomRole
 }
 
-func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries int, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) VerifyRoles(ctx *e2eutil.Context, expectedRoles []automationconfig.CustomRole, tries int, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminCommandResult(func(t *testing.T) bool {
 		var result CustomRolesResult
 		err := m.mongoClient.Database("admin").
-			RunCommand(context.TODO(),
+			RunCommand(ctx.Ctx,
 				bson.D{
 					{Key: "rolesInfo", Value: 1},
 					{Key: "showPrivileges", Value: true},
@@ -232,9 +232,9 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 	}
 }
 
-func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCertSerialNumber *big.Int) func(*testing.T) {
+func (m *Tester) WaitForRotatedCertificate(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity, initialCertSerialNumber *big.Int) func(*testing.T) {
 	return func(t *testing.T) {
-		tls, err := getClientTLSConfig(mdb)
+		tls, err := getClientTLSConfig(ctx, mdb)
 		assert.NoError(t, err)
 
 		// Reject all server certificates that don't have the expected serial number
@@ -300,8 +300,8 @@ func bsonToMap(m bson.M) map[string]interface{} {
 
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
 // with the defined interval. A cancel function is returned, which can be called to stop testing connectivity.
-func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration, opts ...OptionApplier) func() {
-	ctx, cancel := context.WithCancel(context.Background())
+func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, e2eCtx *e2eutil.Context, interval time.Duration, opts ...OptionApplier) func() {
+	ctx, cancel := context.WithCancel(e2eCtx.Ctx)
 	t.Logf("Starting background connectivity test")
 
 	// start a go routine which will periodically check basic MongoDB connectivity
@@ -441,8 +441,8 @@ func WithHosts(hosts []string) OptionApplier {
 }
 
 // WithTls configures the client to use tls
-func WithTls(mdb mdbv1.MongoDBCommunity) OptionApplier {
-	tlsConfig, err := getClientTLSConfig(mdb)
+func WithTls(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity) OptionApplier {
+	tlsConfig, err := getClientTLSConfig(ctx, mdb)
 	if err != nil {
 		panic(errors.Errorf("could not retrieve TLS config: %s", err))
 	}
@@ -484,10 +484,10 @@ func WithReplicaSet(rsname string) OptionApplier {
 }
 
 // getClientTLSConfig reads in the tls fixtures
-func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
+func getClientTLSConfig(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 	caSecret := corev1.Secret{}
 	caSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: mdb.Namespace}
-	if err := e2eutil.TestClient.Get(context.TODO(), caSecretName, &caSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, caSecretName, &caSecret); err != nil {
 		return nil, err
 	}
 	caPEM := caSecret.Data["ca.crt"]
@@ -500,10 +500,10 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 }
 
 // GetClientCert reads the client key certificate
-func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+func GetClientCert(ctx *e2eutil.Context, mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: mdb.Namespace}
-	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, certSecretName, &certSecret); err != nil {
 		return nil, err
 	}
 	block, _ := pem.Decode(certSecret.Data["tls.crt"])

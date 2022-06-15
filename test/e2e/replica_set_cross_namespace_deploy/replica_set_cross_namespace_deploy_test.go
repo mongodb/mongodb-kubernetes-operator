@@ -1,7 +1,6 @@
 package replica_set_cross_namespace_deploy
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -41,7 +40,7 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createDatabaseServiceAccountRoleAndRoleBinding(t, namespace); err != nil {
+	if err := createDatabaseServiceAccountRoleAndRoleBinding(ctx, namespace); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,62 +51,62 @@ func TestCrossNamespaceDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 }
 
 // createDatabaseServiceAccountRoleAndRoleBinding creates the ServiceAccount, Role and RoleBinding required
 // for the database StatefulSet in the other namespace.
-func createDatabaseServiceAccountRoleAndRoleBinding(t *testing.T, namespace string) error {
+func createDatabaseServiceAccountRoleAndRoleBinding(ctx *e2eutil.Context, namespace string) error {
 	sa := corev1.ServiceAccount{}
-	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &sa)
+	err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &sa)
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 
 	sa.Namespace = namespace
 	sa.ObjectMeta.ResourceVersion = ""
 
-	err = e2eutil.TestClient.Create(context.TODO(), &sa, &e2eutil.CleanupOptions{})
+	err = e2eutil.TestClient.Create(ctx, &sa, &e2eutil.CleanupOptions{})
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 
 	role := rbacv1.Role{}
-	err = e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &role)
+	err = e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &role)
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 
 	role.Namespace = namespace
 	role.ObjectMeta.ResourceVersion = ""
 
-	err = e2eutil.TestClient.Create(context.TODO(), &role, &e2eutil.CleanupOptions{})
+	err = e2eutil.TestClient.Create(ctx, &role, &e2eutil.CleanupOptions{})
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 
 	rolebinding := rbacv1.RoleBinding{}
-	err = e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &rolebinding)
+	err = e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: "mongodb-database", Namespace: e2eutil.OperatorNamespace}, &rolebinding)
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 
 	rolebinding.Namespace = namespace
 	rolebinding.ObjectMeta.ResourceVersion = ""
 
-	err = e2eutil.TestClient.Create(context.TODO(), &rolebinding, &e2eutil.CleanupOptions{})
+	err = e2eutil.TestClient.Create(ctx, &rolebinding, &e2eutil.CleanupOptions{})
 	if err != nil {
-		t.Fatal(err)
+		ctx.T.Fatal(err)
 	}
 	return nil
 }

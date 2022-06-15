@@ -1,6 +1,7 @@
 package statefulset
 
 import (
+	"context"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,19 +18,19 @@ const (
 )
 
 type Getter interface {
-	GetStatefulSet(objectKey client.ObjectKey) (appsv1.StatefulSet, error)
+	GetStatefulSet(ctx context.Context, objectKey client.ObjectKey) (appsv1.StatefulSet, error)
 }
 
 type Updater interface {
-	UpdateStatefulSet(sts appsv1.StatefulSet) (appsv1.StatefulSet, error)
+	UpdateStatefulSet(ctx context.Context, sts appsv1.StatefulSet) (appsv1.StatefulSet, error)
 }
 
 type Creator interface {
-	CreateStatefulSet(sts appsv1.StatefulSet) error
+	CreateStatefulSet(ctx context.Context, sts appsv1.StatefulSet) error
 }
 
 type Deleter interface {
-	DeleteStatefulSet(objectKey client.ObjectKey) error
+	DeleteStatefulSet(ctx context.Context, objectKey client.ObjectKey) error
 }
 
 type GetUpdater interface {
@@ -52,26 +53,26 @@ type GetUpdateCreateDeleter interface {
 
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
-func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
-	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
+func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
+	_, err := getUpdateCreator.GetStatefulSet(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(sts)
+			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(ctx, sts)
 		}
 		return appsv1.StatefulSet{}, err
 	}
-	return getUpdateCreator.UpdateStatefulSet(sts)
+	return getUpdateCreator.UpdateStatefulSet(ctx, sts)
 }
 
 // GetAndUpdate applies the provided function to the most recent version of the object
-func GetAndUpdate(getUpdater GetUpdater, nsName types.NamespacedName, updateFunc func(*appsv1.StatefulSet)) (appsv1.StatefulSet, error) {
-	sts, err := getUpdater.GetStatefulSet(nsName)
+func GetAndUpdate(ctx context.Context, getUpdater GetUpdater, nsName types.NamespacedName, updateFunc func(*appsv1.StatefulSet)) (appsv1.StatefulSet, error) {
+	sts, err := getUpdater.GetStatefulSet(ctx, nsName)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
 	// apply the function on the most recent version of the resource
 	updateFunc(&sts)
-	return getUpdater.UpdateStatefulSet(sts)
+	return getUpdater.UpdateStatefulSet(ctx, sts)
 }
 
 // VolumeMountData contains values required for the MountVolume function
@@ -326,13 +327,13 @@ func VolumeMountWithNameExists(mounts []corev1.VolumeMount, volumeName string) b
 
 // ResetUpdateStrategy resets the statefulset update strategy to RollingUpdate.
 // If a version change is in progress, it doesn't do anything.
-func ResetUpdateStrategy(mdb annotations.Versioned, kubeClient GetUpdater) error {
+func ResetUpdateStrategy(ctx context.Context, mdb annotations.Versioned, kubeClient GetUpdater) error {
 	if !mdb.IsChangingVersion() {
 		return nil
 	}
 
 	// if we changed the version, we need to reset the UpdatePolicy back to OnUpdate
-	_, err := GetAndUpdate(kubeClient, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
+	_, err := GetAndUpdate(ctx, kubeClient, mdb.NamespacedName(), func(sts *appsv1.StatefulSet) {
 		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	})
 	return err

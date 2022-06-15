@@ -53,7 +53,10 @@ type Context struct {
 	cleanupFuncs []func() error
 
 	// t is the testing.T which will be used for the duration of the test.
-	t *testing.T
+	T *testing.T
+
+	// Cancellation context
+	Ctx context.Context
 }
 
 // NewContext creates a context.
@@ -63,7 +66,15 @@ func NewContext(t *testing.T, performCleanup bool) (*Context, error) {
 		return nil, err
 	}
 
-	return &Context{t: t, ExecutionId: testId, shouldPerformCleanup: performCleanup}, nil
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	t.Cleanup(cancelFunc)
+
+	return &Context{
+		T:                    t,
+		ExecutionId:          testId,
+		shouldPerformCleanup: performCleanup,
+		Ctx:                  ctx,
+	}, nil
 }
 
 // Teardown is called at the end of a test.
@@ -112,8 +123,8 @@ func newE2ETestClient(config *rest.Config, scheme *runtime.Scheme) (*E2ETestClie
 }
 
 // Create wraps client.Create to provide post-test cleanup functionality.
-func (c *E2ETestClient) Create(ctx context.Context, obj client.Object, cleanupOptions *CleanupOptions) error {
-	err := c.Client.Create(ctx, obj)
+func (c *E2ETestClient) Create(ctx *Context, obj client.Object, cleanupOptions *CleanupOptions) error {
+	err := c.Client.Create(ctx.Ctx, obj)
 	if err != nil {
 		return err
 	}
@@ -134,18 +145,18 @@ func (c *E2ETestClient) Create(ctx context.Context, obj client.Object, cleanupOp
 }
 
 // Delete wraps client.Delete.
-func (c *E2ETestClient) Delete(ctx context.Context, obj client.Object) error {
-	return c.Client.Delete(ctx, obj)
+func (c *E2ETestClient) Delete(ctx *Context, obj client.Object) error {
+	return c.Client.Delete(ctx.Ctx, obj)
 }
 
 // Update wraps client.Update.
-func (c *E2ETestClient) Update(ctx context.Context, obj client.Object) error {
-	return c.Client.Update(ctx, obj)
+func (c *E2ETestClient) Update(ctx *Context, obj client.Object) error {
+	return c.Client.Update(ctx.Ctx, obj)
 }
 
 // Get wraps client.Get.
-func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object) error {
-	return c.Client.Get(ctx, key, obj)
+func (c *E2ETestClient) Get(ctx *Context, key types.NamespacedName, obj client.Object) error {
+	return c.Client.Get(ctx.Ctx, key, obj)
 }
 
 func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (string, error) {

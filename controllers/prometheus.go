@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,13 +21,13 @@ const (
 )
 
 // PrometheusModification adds Prometheus configuration to AutomationConfig.
-func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
+func getPrometheusModification(ctx context.Context, getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
 	if mdb.Spec.Prometheus == nil {
 		return automationconfig.NOOP(), nil
 	}
 
 	secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
-	password, err := secret.ReadKey(getUpdateCreator, mdb.Spec.Prometheus.GetPasswordKey(), secretNamespacedName)
+	password, err := secret.ReadKey(ctx, getUpdateCreator, mdb.Spec.Prometheus.GetPasswordKey(), secretNamespacedName)
 	if err != nil {
 		return automationconfig.NOOP(), errors.Errorf("could not configure Prometheus modification: %s", err)
 	}
@@ -36,7 +37,7 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 	var scheme string
 
 	if mdb.Spec.Prometheus.TLSSecretRef.Name != "" {
-		certKey, err = getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.PrometheusTLSSecretNamespacedName())
+		certKey, err = getPemOrConcatenatedCrtAndKey(ctx, getUpdateCreator, mdb, mdb.PrometheusTLSSecretNamespacedName())
 		if err != nil {
 			return automationconfig.NOOP(), err
 		}

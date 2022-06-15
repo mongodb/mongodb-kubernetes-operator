@@ -36,30 +36,30 @@ func TestReplicaSetTLSRotateDeleteSts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	clientCert, err := GetClientCert(mdb)
+	clientCert, err := GetClientCert(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 	initialCertSerialNumber := clientCert.SerialNumber
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
-	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
-	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls(mdb)))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
+	t.Run("Wait for TLS to be enabled", tester.HasTlsMode("requireSSL", 60, WithTls(ctx, mdb)))
+	t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(ctx, mdb)))
+	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3, WithTls(ctx, mdb)))
 	t.Run("Test TLS required", tester.ConnectivityFails(WithoutTls()))
 
 	t.Run("MongoDB is reachable while certificate is rotated", func(t *testing.T) {
-		t.Run("Delete Statefulset", mongodbtests.DeleteStatefulSet(&mdb))
-		t.Run("Update certificate secret", tlstests.RotateCertificate(&mdb))
-		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(mdb, initialCertSerialNumber))
-		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(&mdb))
-		t.Run("Wait for MongoDB to reach Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(mdb)))
+		t.Run("Delete Statefulset", mongodbtests.DeleteStatefulSet(ctx, &mdb))
+		t.Run("Update certificate secret", tlstests.RotateCertificate(ctx, &mdb))
+		t.Run("Wait for certificate to be rotated", tester.WaitForRotatedCertificate(ctx, mdb, initialCertSerialNumber))
+		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(ctx, &mdb))
+		t.Run("Wait for MongoDB to reach Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
+		t.Run("Test Basic TLS Connectivity", tester.ConnectivitySucceeds(WithTls(ctx, mdb)))
 	})
 }

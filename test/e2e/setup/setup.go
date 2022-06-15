@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -36,34 +35,20 @@ const (
 )
 
 func SetupWithDefaultOperator(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	config := LoadTestConfigFromEnv()
-	if err := DeployOperator(config, "mdb", false, true); err != nil {
-		t.Fatal(err)
-	}
-	return ctx
+	context, _ := setup(t, "mdb", false, true)
+	return context
 }
 
 func Setup(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	config := LoadTestConfigFromEnv()
-	if err := DeployOperator(config, "mdb", false, false); err != nil {
-		t.Fatal(err)
-	}
-
-	return ctx
+	context, _ := setup(t, "mdb", false, false)
+	return context
 }
 
 func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConfig) {
+	return setup(t, resourceName, true, false)
+}
+
+func setup(t *testing.T, testConfig string, resourceName bool, withTLS bool) (*e2eutil.Context, TestConfig) {
 	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
 	if err != nil {
@@ -75,7 +60,7 @@ func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConf
 		t.Fatal(err)
 	}
 
-	if err := DeployOperator(config, resourceName, true, false); err != nil {
+	if err := DeployOperator(ctx, config, testConfig, resourceName, withTLS); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,7 +91,7 @@ func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, names
 		SetLabels(e2eutil.TestLabels()).
 		Build()
 
-	return password, e2eutil.TestClient.Create(context.TODO(), &passwordSecret, &e2eutil.CleanupOptions{TestContext: ctx})
+	return password, e2eutil.TestClient.Create(ctx, &passwordSecret, &e2eutil.CleanupOptions{})
 }
 
 // extractRegistryNameAndVersion splits a full image string and returns the individual components.
@@ -166,7 +151,7 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 }
 
 // DeployOperator installs all resources required by the operator using helm.
-func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaultOperator bool) error {
+func DeployOperator(ctx *e2eutil.Context, config TestConfig, resourceName string, withTLS bool, defaultOperator bool) error {
 	e2eutil.OperatorNamespace = config.Namespace
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
 	watchNamespace := config.Namespace
@@ -194,7 +179,7 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 		return err
 	}
 
-	dep, err := waite2e.ForDeploymentToExist("mongodb-kubernetes-operator", time.Second*10, time.Minute*1, e2eutil.OperatorNamespace)
+	dep, err := waite2e.ForDeploymentToExist(ctx, "mongodb-kubernetes-operator", time.Second*10, time.Minute*1, e2eutil.OperatorNamespace)
 	if err != nil {
 		return err
 	}
@@ -208,12 +193,12 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 		cont.Resources.Requests["cpu"] = quantityCPU
 	}
 
-	err = e2eutil.TestClient.Update(context.TODO(), &dep)
+	err = e2eutil.TestClient.Update(ctx, &dep)
 	if err != nil {
 		return err
 	}
 
-	if err := wait.PollImmediate(time.Second, 60*time.Second, hasDeploymentRequiredReplicas(&dep)); err != nil {
+	if err := wait.PollImmediate(time.Second, 60*time.Second, hasDeploymentRequiredReplicas(ctx, &dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
@@ -241,9 +226,9 @@ func deployCertManager(config TestConfig) error {
 
 // hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
 // currently has the required amount of replicas in the ready state as specified in spec.replicas
-func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
+func hasDeploymentRequiredReplicas(ctx *e2eutil.Context, dep *appsv1.Deployment) wait.ConditionFunc {
 	return func() (bool, error) {
-		err := e2eutil.TestClient.Get(context.TODO(),
+		err := e2eutil.TestClient.Get(ctx,
 			types.NamespacedName{Name: dep.Name,
 				Namespace: e2eutil.OperatorNamespace},
 			dep)

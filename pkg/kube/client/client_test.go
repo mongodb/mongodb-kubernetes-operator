@@ -13,13 +13,15 @@ import (
 )
 
 func TestChangingName_CreatesNewObject(t *testing.T) {
+	ctx := context.Background()
+
 	cm := configmap.Builder().
 		SetName("some-name").
 		SetNamespace("some-namespace").
 		Build()
 
 	client := NewClient(NewMockedClient())
-	err := configmap.CreateOrUpdate(client, cm)
+	err := configmap.CreateOrUpdate(ctx, client, cm)
 	assert.NoError(t, err)
 
 	newCm := corev1.ConfigMap{}
@@ -35,49 +37,53 @@ func TestChangingName_CreatesNewObject(t *testing.T) {
 	newCm.Name = "new-name"
 
 	objectKey = k8sClient.ObjectKeyFromObject(&newCm)
-	_ = configmap.CreateOrUpdate(client, newCm)
+	_ = configmap.CreateOrUpdate(ctx, client, newCm)
 
-	_ = client.Get(context.TODO(), objectKey, &newCm)
+	_ = client.Get(ctx, objectKey, &newCm)
 
 	assert.Equal(t, newCm.Name, "new-name")
 	assert.Equal(t, newCm.Namespace, "some-namespace")
 }
 
 func TestAddingDataField_ModifiesExistingObject(t *testing.T) {
+	ctx := context.Background()
+
 	cm := configmap.Builder().
 		SetName("some-name").
 		SetNamespace("some-namespace").
 		Build()
 
 	client := NewClient(NewMockedClient())
-	err := configmap.CreateOrUpdate(client, cm)
+	err := configmap.CreateOrUpdate(ctx, client, cm)
 	assert.NoError(t, err)
 
 	cm.Data["new-field"] = "value"
-	_ = configmap.CreateOrUpdate(client, cm)
+	_ = configmap.CreateOrUpdate(ctx, client, cm)
 
 	newCm := corev1.ConfigMap{}
 	objectKey := k8sClient.ObjectKeyFromObject(&newCm)
 	assert.NoError(t, err)
-	_ = client.Get(context.TODO(), objectKey, &newCm)
+	_ = client.Get(ctx, objectKey, &newCm)
 
 	assert.Contains(t, cm.Data, "new-field")
 	assert.Equal(t, cm.Data["new-field"], "value")
 }
 
 func TestDeleteConfigMap(t *testing.T) {
+	ctx := context.Background()
+
 	cm := configmap.Builder().
 		SetName("config-map").
 		SetNamespace("default").
 		Build()
 
 	client := NewClient(NewMockedClient())
-	err := client.CreateConfigMap(cm)
+	err := client.CreateConfigMap(ctx, cm)
 	assert.NoError(t, err)
 
-	err = client.DeleteConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
+	err = client.DeleteConfigMap(ctx, types.NamespacedName{Name: "config-map", Namespace: "default"})
 	assert.NoError(t, err)
 
-	_, err = client.GetConfigMap(types.NamespacedName{Name: "config-map", Namespace: "default"})
+	_, err = client.GetConfigMap(ctx, types.NamespacedName{Name: "config-map", Namespace: "default"})
 	assert.Equal(t, err, notFoundError())
 }

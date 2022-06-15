@@ -1,7 +1,6 @@
 package replica_set_mount_connection_string
 
 import (
-	"context"
 	"fmt"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 	"github.com/stretchr/testify/assert"
@@ -73,38 +72,34 @@ func TestMountConnectionString(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet((mdb.Name))))
 	t.Run("Test Basic Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Test SRV Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 
 	t.Run("Application Pod can connect to MongoDB using the generated standard connection string.", func(t *testing.T) {
 		testPod := createPythonTestPod(0, mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standard")
-		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
-			TestContext: ctx,
-		})
+		err := e2eutil.TestClient.Create(ctx, &testPod, &e2eutil.CleanupOptions{})
 		assert.NoError(t, err)
-		assert.NoError(t, wait.ForPodPhase(t, time.Minute*5, testPod, corev1.PodSucceeded))
+		assert.NoError(t, wait.ForPodPhase(ctx, time.Minute*5, testPod, corev1.PodSucceeded))
 	})
 
 	t.Run("Application Pod can connect to MongoDB using the generated secret SRV connection string", func(t *testing.T) {
 		testPod := createPythonTestPod(1, mdb.Namespace, fmt.Sprintf("%s-admin-%s", mdb.Name, user.Name), "connectionString.standardSrv")
-		err := e2eutil.TestClient.Create(context.TODO(), &testPod, &e2eutil.CleanupOptions{
-			TestContext: ctx,
-		})
+		err := e2eutil.TestClient.Create(ctx, &testPod, &e2eutil.CleanupOptions{})
 		assert.NoError(t, err)
-		assert.NoError(t, wait.ForPodPhase(t, time.Minute*5, testPod, corev1.PodSucceeded))
+		assert.NoError(t, wait.ForPodPhase(ctx, time.Minute*5, testPod, corev1.PodSucceeded))
 	})
 }

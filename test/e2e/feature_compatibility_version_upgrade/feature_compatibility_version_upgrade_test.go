@@ -39,21 +39,21 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongotester.FromResource(t, mdb)
+	tester, err := mongotester.FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("Test FeatureCompatibilityVersion is 4.0", tester.HasFCV("4.0", 3))
 
 	// Upgrade version to 4.2.6 while keeping the FCV set to 4.0
 	t.Run("MongoDB is reachable", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
-		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
+		defer tester.StartBackgroundConnectivityTest(t, ctx, time.Second*10)()
+		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(ctx, &mdb, "4.2.6"))
+		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(ctx, &mdb, wait.Timeout(20*time.Minute)))
 		t.Run("Test Basic Connectivity after upgrade has completed", tester.ConnectivitySucceeds())
 	})
 
@@ -61,13 +61,13 @@ func TestFeatureCompatibilityVersionUpgrade(t *testing.T) {
 
 	t.Run("MongoDB is reachable", func(t *testing.T) {
 		t.Run("Test FCV can be upgraded", func(t *testing.T) {
-			err := e2eutil.UpdateMongoDBResource(&mdb, func(db *mdbv1.MongoDBCommunity) {
+			err := e2eutil.UpdateMongoDBResource(ctx, &mdb, func(db *mdbv1.MongoDBCommunity) {
 				db.Spec.FeatureCompatibilityVersion = "4.2"
 			})
 			assert.NoError(t, err)
 		})
-		t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
-		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Stateful Set Reaches Ready State", mongodbtests.StatefulSetBecomesReady(ctx, &mdb, wait.Timeout(20*time.Minute)))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 	})
 	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.2", tester.HasFCV("4.2", 3))
 }

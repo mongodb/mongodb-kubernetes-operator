@@ -34,27 +34,27 @@ func TestReplicaSetRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tester, err := mongotester.FromResource(t, mdb)
+	tester, err := mongotester.FromResource(ctx, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
 	t.Run("MongoDB is reachable", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
+		defer tester.StartBackgroundConnectivityTest(t, ctx, time.Second*10)()
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(mdb.Spec.Members)))
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Run("Delete Random Pod", mongodbtests.DeletePod(&mdb, int(n.Int64())))
-		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(&mdb))
-		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+		t.Run("Delete Random Pod", mongodbtests.DeletePod(ctx, &mdb, int(n.Int64())))
+		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(ctx, &mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
+		t.Run("Test Status Was Updated", mongodbtests.Status(ctx, &mdb,
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,

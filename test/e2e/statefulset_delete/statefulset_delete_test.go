@@ -30,14 +30,14 @@ func TestStatefulSetDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(ctx, &mdb))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 
 	t.Run("Operator recreates StatefulSet", func(t *testing.T) {
-		t.Run("Delete Statefulset", mongodbtests.DeleteStatefulSet(&mdb))
-		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(&mdb))
-		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		t.Run("Test Status Was Updated", mongodbtests.Status(&mdb,
+		t.Run("Delete Statefulset", mongodbtests.DeleteStatefulSet(ctx, &mdb))
+		t.Run("Test Replica Set Recovers", mongodbtests.StatefulSetBecomesReady(ctx, &mdb))
+		t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
+		t.Run("Test Status Was Updated", mongodbtests.Status(ctx, &mdb,
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:              mdb.MongoURI(""),
 				Phase:                 mdbv1.Running,
