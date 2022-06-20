@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from typing import Dict
 
 from ghat.template import template_github_action
