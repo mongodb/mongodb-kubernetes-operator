@@ -194,11 +194,6 @@ func AutomationAgentCommand() []string {
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -206,7 +201,6 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		securityContext,
 		container.WithCommand(AutomationAgentCommand()),
 		container.WithEnvs(
 			corev1.EnvVar{
@@ -309,12 +303,6 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
-
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
@@ -327,7 +315,5 @@ exec mongod -f %s;
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
-
-		securityContext,
 	)
 }
