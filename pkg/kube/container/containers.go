@@ -183,12 +183,3 @@ func WithSecurityContext(context *corev1.SecurityContext) Modification {
 		container.SecurityContext = context
 	}
 }
-
-// DefaultSecurityContext returns the default security context for containers.
-// It sets RunAsUser = 2000 and RunAsNonRoot = true
-func DefaultSecurityContext() *corev1.SecurityContext {
-	runAsNonRoot := true
-	runAsUser := int64(2000)
-
-	return &corev1.SecurityContext{RunAsUser: &runAsUser, RunAsNonRoot: &runAsNonRoot}
-}
