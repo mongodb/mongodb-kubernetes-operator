@@ -13,7 +13,6 @@ images:
       - agent_image
       - agent_image_dev
 
-    platform: linux/amd64
     stages:
       - name: agent-ubuntu-context
         task_type: docker_build
@@ -22,7 +21,7 @@ images:
         buildargs:
           agent_version: $(inputs.params.agent_version)
           tools_version: $(inputs.params.tools_version)
-          agent_distro: linux_x86_64
+          agent_distro: amzn2_aarch64
           tools_distro: ubuntu1604-x86_64
 
         labels:
@@ -78,7 +77,7 @@ images:
         buildargs:
           agent_version: $(inputs.params.agent_version)
           tools_version: $(inputs.params.tools_version)
-          agent_distro: linux_x86_64
+          agent_distro: amzn2_aarch64
           tools_distro: ubuntu1604-x86_64
 
         labels:

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongodb-agent
+spec:
+  containers:
+    - name: mongodb-agent
+      image: localhost:5000/mongodb-agent-dev:latest
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2000
+
