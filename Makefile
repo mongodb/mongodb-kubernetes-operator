@@ -124,7 +124,10 @@ e2e-gh:
 	scripts/dev/run_e2e_gh.sh $(test)
 
 cleanup-e2e:
-	kubectl delete mdbc,all -l e2e-test=true -n ${TEST_NAMESPACE} | true
+	kubectl delete mdbc,all,secrets -l e2e-test=true -n ${TEST_NAMESPACE} || true
+	# Most of the tests use StatefulSets, which in turn use stable storage. In order to
+	# avoid interleaving tests with each other, we need to drop them all.
+	kubectl delete pvc --all || true
 
 # Generate code
 generate: controller-gen

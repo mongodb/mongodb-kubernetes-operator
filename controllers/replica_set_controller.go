@@ -405,6 +405,10 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
 	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
+		if scale.HasZeroReplicas(mdb) {
+			r.log.Debug("Scaling up the ReplicaSet when there is no replicas, the Automation Config must be updated first")
+			return true
+		}
 		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
 		return false
 	}
