@@ -298,10 +298,6 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additio
 # wait for config and keyfile to be created by the agent
  while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
 
-# with mongod configured to append logs, we need to provide them to stdout as
-# mongod does not write to stdout and a log file
-tail -F /var/log/mongodb-mms-automation/mongodb.log > /dev/stdout &
-
 # start mongod with this configuration
 exec mongod -f %s;
 
