@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -1150,7 +1149,7 @@ func setArbiterStatefulSetReadyReplicas(t *testing.T, c k8sClient.Client, mdb md
 func loadTestFixture(yamlFileName string) (mdbv1.MongoDBCommunity, error) {
 	testPath := fmt.Sprintf("testdata/%s", yamlFileName)
 	mdb := mdbv1.MongoDBCommunity{}
-	data, err := ioutil.ReadFile(testPath)
+	data, err := os.ReadFile(testPath)
 	if err != nil {
 		return mdb, errors.Errorf("error reading file: %s", err)
 	}

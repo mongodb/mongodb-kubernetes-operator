@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"k8s.io/client-go/kubernetes"
 )

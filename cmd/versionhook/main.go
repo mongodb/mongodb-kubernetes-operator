@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -142,7 +141,7 @@ func getAgentHealthStatus() (agent.Health, error) {
 // io.Reader
 func readAgentHealthStatus(reader io.Reader) (agent.Health, error) {
 	var h agent.Health
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return h, err
 	}
@@ -234,7 +233,7 @@ func inClusterClient() (client.Client, error) {
 }
 
 func getNamespace() (string, error) {
-	data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", err
 	}

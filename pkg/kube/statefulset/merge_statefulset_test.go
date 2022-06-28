@@ -1,9 +1,10 @@
 package statefulset
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	"reflect"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
