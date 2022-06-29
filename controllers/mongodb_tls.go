@@ -7,7 +7,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -172,7 +171,7 @@ func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.M
 	}
 
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		return "", errors.Errorf(`CA certificate resource "%s" should have a CA certificate in field "%s"`, caResourceName, tlsCACertName)
+		return "", fmt.Errorf(`CA certificate resource "%s" should have a CA certificate in field "%s"`, caResourceName, tlsCACertName)
 	} else {
 		return cert, nil
 	}

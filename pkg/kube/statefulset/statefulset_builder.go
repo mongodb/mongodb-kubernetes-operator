@@ -1,9 +1,8 @@
 package statefulset
 
 import (
+	"fmt"
 	"sort"
-
-	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-multierror"
 	appsv1 "k8s.io/api/apps/v1"
@@ -114,7 +113,7 @@ func (s Builder) GetContainerIndexByName(containerName string) (int, error) {
 			return i, nil
 		}
 	}
-	return -1, errors.Errorf("no container with name [%s] found", containerName)
+	return -1, fmt.Errorf("no container with name [%s] found", containerName)
 }
 
 func (s *Builder) AddVolumeAndMount(volumeMountData VolumeMountData, containerNames ...string) *Builder {
@@ -146,7 +145,7 @@ func (s Builder) buildPodTemplateSpec() (corev1.PodTemplateSpec, error) {
 		for _, volumeMount := range volumeMounts {
 			if prevMount, seen := existingVolumeMounts[volumeMount.MountPath]; seen {
 				// Volume with the same path already mounted
-				errs = multierror.Append(errs, errors.Errorf("Volume %v already mounted as %v", volumeMount, prevMount))
+				errs = multierror.Append(errs, fmt.Errorf("Volume %v already mounted as %v", volumeMount, prevMount))
 				continue
 			}
 			podTemplateSpec.Spec.Containers[idx].VolumeMounts = append(podTemplateSpec.Spec.Containers[idx].VolumeMounts, volumeMount)

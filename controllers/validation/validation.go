@@ -1,12 +1,12 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-	"github.com/pkg/errors"
 )
 
 // ValidateInitalSpec checks if the resource's initial Spec is valid.
@@ -77,12 +77,12 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 
 	}
 	if len(nameCollisions) > 0 {
-		return errors.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
+		return fmt.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
 			strings.Join(nameCollisions, ", "))
 	}
 
 	if len(scramSecretNameCollisions) > 0 {
-		return errors.Errorf("scram credential secret names collision, update at least one of the users: %s",
+		return fmt.Errorf("scram credential secret names collision, update at least one of the users: %s",
 			strings.Join(scramSecretNameCollisions, ", "))
 	}
 

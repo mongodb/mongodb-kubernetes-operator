@@ -1,12 +1,12 @@
 package status
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -16,7 +16,7 @@ type errorOption struct{}
 func (e errorOption) ApplyOption(_ *mdbv1.MongoDBCommunity) {}
 
 func (e errorOption) GetResult() (reconcile.Result, error) {
-	return reconcile.Result{}, errors.Errorf("error")
+	return reconcile.Result{}, fmt.Errorf("error")
 }
 
 type successOption struct{}

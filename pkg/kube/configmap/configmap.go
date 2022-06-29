@@ -1,9 +1,8 @@
 package configmap
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,7 +59,7 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 	if val, ok := data[key]; ok {
 		return val, nil
 	}
-	return "", errors.Errorf("key \"%s\" not present in ConfigMap %s/%s", key, objectKey.Namespace, objectKey.Name)
+	return "", fmt.Errorf("key \"%s\" not present in ConfigMap %s/%s", key, objectKey.Namespace, objectKey.Name)
 }
 
 // ReadData extracts the contents of the Data field in a given config map
@@ -102,7 +101,7 @@ func filelikePropertiesToMap(s string) (map[string]string, error) {
 	for _, keyValPair := range strings.Split(s, lineSeparator) {
 		splittedPair := strings.Split(keyValPair, keyValueSeparator)
 		if len(splittedPair) != 2 {
-			return nil, errors.Errorf("%s is not a valid key-value pair", keyValPair)
+			return nil, fmt.Errorf("%s is not a valid key-value pair", keyValPair)
 		}
 		keyValPairs[splittedPair[0]] = splittedPair[1]
 	}
@@ -117,7 +116,7 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	}
 	mappingString, ok := cmData[externalKey]
 	if !ok {
-		return "", errors.Errorf("key %s is not present in ConfigMap %s", externalKey, objectKey)
+		return "", fmt.Errorf("key %s is not present in ConfigMap %s", externalKey, objectKey)
 	}
 	mapping, err := filelikePropertiesToMap(mappingString)
 	if err != nil {
@@ -125,7 +124,7 @@ func ReadFileLikeField(getter Getter, objectKey client.ObjectKey, externalKey st
 	}
 	value, ok := mapping[internalKey]
 	if !ok {
-		return "", errors.Errorf("key %s is not present in the %s field of ConfigMap %s", internalKey, externalKey, objectKey)
+		return "", fmt.Errorf("key %s is not present in the %s field of ConfigMap %s", internalKey, externalKey, objectKey)
 	}
 	return value, nil
 }

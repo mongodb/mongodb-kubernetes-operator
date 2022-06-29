@@ -1,11 +1,11 @@
 package secret
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
-	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +56,7 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 	if val, ok := data[key]; ok {
 		return val, nil
 	}
-	return "", errors.Errorf(`key "%s" not present in the Secret %s/%s`, key, objectKey.Namespace, objectKey.Name)
+	return "", fmt.Errorf(`key "%s" not present in the Secret %s/%s`, key, objectKey.Namespace, objectKey.Name)
 }
 
 // ReadByteData reads the Data field of the secret with the given objectKey
