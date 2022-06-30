@@ -5,24 +5,27 @@ function usage() {
   echo "Deploy local registry and create kind cluster configured to use this registry. Local Docker registry is deployed at localhost:5000.
 
 Usage:
-  setup_kind_cluster.sh [-n <cluster_name>]
+  setup_kind_cluster.sh [-n <cluster_name>] [-r]
   setup_kind_cluster.sh [-h]
-  setup_kind_cluster.sh [-n <cluster_name>] [-e]
+  setup_kind_cluster.sh [-n <cluster_name>] [-e] [-r]
 
 Options:
   -n <cluster_name>   (optional) Set kind cluster name to <cluster_name>. Creates kubeconfig in ~/.kube/<cluster_name>. The default name is 'kind' if not set.
   -e                  (optional) Export newly created kind cluster's credentials to ~/.kube/<cluster_name> and set current kubectl context.
   -h                  (optional) Shows this screen.
+  -r                  (optional) Recreate cluster if needed
 "
   exit 0
 }
 
 cluster_name=${CLUSTER_NAME:-"kind"}
 export_kubeconfig=0
-while getopts ':n:he' opt; do
+recreate=0
+while getopts ':n:her' opt; do
     case $opt in
       (n)   cluster_name=$OPTARG;;
       (e)   export_kubeconfig=1;;
+      (r)   recreate=1;;
       (h)   usage;;
       (*)   usage;;
     esac
@@ -43,6 +46,10 @@ reg_port='5000'
 running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
 if [ "${running}" != 'true' ]; then
   docker run -d --restart=always -p "127.0.0.1:${reg_port}:5000" --name "${reg_name}" registry:2
+fi
+
+if [ "${recreate}" != 0 ]; then
+  kind delete cluster --name "${cluster_name}" || true
 fi
 
 # create a cluster with the local registry enabled in containerd
