@@ -3,13 +3,14 @@ package replica_set_mount_connection_string
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"testing"
-	"time"
 
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 

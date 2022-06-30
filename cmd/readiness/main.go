@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
-
-	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/headless"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/health"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -190,7 +188,7 @@ func kubernetesClientset() (kubernetes.Interface, error) {
 
 func parseHealthStatus(reader io.Reader) (health.Status, error) {
 	var health health.Status
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return health, err
 	}
