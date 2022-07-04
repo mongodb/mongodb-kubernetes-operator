@@ -1,6 +1,8 @@
 package construct
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"reflect"
 	"testing"
@@ -60,6 +62,21 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 	})
 }
 
+func TestManagedSecurityContext(t *testing.T) {
+	_ = os.Setenv(MongodbRepoUrl, "repo")
+	_ = os.Setenv(MongodbImageEnv, "mongo")
+	_ = os.Setenv(AgentImageEnv, "agent-image")
+	_ = os.Setenv(ManagedSecurityContextEnv, "true")
+
+	mdb := newTestReplicaSet()
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
+
+	sts := &appsv1.StatefulSet{}
+	stsFunc(sts)
+
+	assertStatefulSetIsBuiltCorrectly(t, mdb, sts)
+}
+
 func TestMongod_Container(t *testing.T) {
 	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
 
@@ -88,6 +105,14 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	if !managedSecurityContext {
+		assert.NotNil(t, sts.Spec.Template.Spec.SecurityContext)
+		assert.Equal(t, podtemplatespec.DefaultPodSecurityContext(), *sts.Spec.Template.Spec.SecurityContext)
+	} else {
+		assert.Nil(t, sts.Spec.Template.Spec.SecurityContext)
+	}
+
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, "agent-image", agentContainer.Image)
 	probe := agentContainer.ReadinessProbe
@@ -95,6 +120,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Equal(t, probes.New(DefaultReadiness()).FailureThreshold, probe.FailureThreshold)
 	assert.Len(t, agentContainer.VolumeMounts, 6)
 	assert.NotNil(t, agentContainer.ReadinessProbe)
+	assert.Nil(t, agentContainer.SecurityContext)
 
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "agent-scripts")
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "automation-config")
@@ -106,6 +132,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	mongodContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
 	assert.Len(t, mongodContainer.VolumeMounts, 5)
+	assert.Nil(t, mongodContainer.SecurityContext)
 
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "data-volume")
 	assertContainsVolumeMountWithName(t, mongodContainer.VolumeMounts, "healthstatus")
