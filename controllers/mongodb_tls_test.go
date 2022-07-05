@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"k8s.io/utils/pointer"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,7 +133,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 	t.Run("With TLS enabled and optional, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		mdb.Spec.Security.TLS.Optional = true
+		mdb.Spec.Security.TLS.Optional = pointer.Bool(true)
 		ac := createAC(mdb)
 
 		assert.Equal(t, &automationconfig.TLS{
@@ -220,6 +221,31 @@ func TestCombineCertificateAndKey(t *testing.T) {
 	for _, test := range tests {
 		combined := combineCertificateAndKey(test.Cert, test.Key)
 		assert.Equal(t, test.Expected, combined)
+	}
+}
+
+func TestTlsOptional(t *testing.T) {
+	tests := map[string]struct {
+		OptionalTlsFlag                 *bool
+		ExpectedAutomationConfigSetting automationconfig.TLSMode
+	}{
+		"TLS enforced by default": {
+			OptionalTlsFlag:                 nil,
+			ExpectedAutomationConfigSetting: automationconfig.TLSModeRequired,
+		},
+		"TLS enabled explicitly by a user": {
+			OptionalTlsFlag:                 pointer.Bool(false),
+			ExpectedAutomationConfigSetting: automationconfig.TLSModeRequired,
+		},
+		"TLS disabled explicitly by a user": {
+			OptionalTlsFlag:                 pointer.Bool(true),
+			ExpectedAutomationConfigSetting: automationconfig.TLSModePreferred,
+		},
+	}
+	for testName, _ := range tests {
+		testConfiguration := tests[testName]
+		tlsAutomationSetting := tlsOptionalSetting(testConfiguration.OptionalTlsFlag)
+		assert.Equal(t, testConfiguration.ExpectedAutomationConfigSetting, tlsAutomationSetting)
 	}
 }
 

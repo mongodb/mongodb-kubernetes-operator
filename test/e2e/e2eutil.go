@@ -3,6 +3,7 @@ package e2eutil
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -149,7 +150,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	return mdbv1.TLS{
 		Enabled:  true,
-		Optional: optional,
+		Optional: pointer.BoolPtr(optional),
 		CertificateKeySecret: mdbv1.LocalObjectReference{
 			Name: "tls-certificate",
 		},

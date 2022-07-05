@@ -481,7 +481,7 @@ type TLS struct {
 
 	// Optional configures if TLS should be required or optional for connections
 	// +optional
-	Optional bool `json:"optional"`
+	Optional *bool `json:"optional"`
 
 	// CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS.
 	// The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt".

@@ -249,16 +249,21 @@ func tlsOperatorSecretFileName(certKey string) string {
 	return fmt.Sprintf("%x.pem", hash)
 }
 
+func tlsOptionalSetting(tlsOptional *bool) automationconfig.TLSMode {
+	mode := automationconfig.TLSModeRequired
+	if tlsOptional != nil && *tlsOptional {
+		// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
+		mode = automationconfig.TLSModePreferred
+	}
+	return mode
+}
+
 // tlsConfigModification will enable TLS in the automation config.
 func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey, caCert string) automationconfig.Modification {
 	caCertificatePath := tlsCAMountPath + tlsOperatorSecretFileName(caCert)
 	certificateKeyPath := tlsOperatorSecretMountPath + tlsOperatorSecretFileName(certKey)
 
-	mode := automationconfig.TLSModeRequired
-	if mdb.Spec.Security.TLS.Optional {
-		// TLSModePreferred requires server-server connections to use TLS but makes it optional for clients.
-		mode = automationconfig.TLSModePreferred
-	}
+	mode := tlsOptionalSetting(mdb.Spec.Security.TLS.Optional)
 
 	return func(config *automationconfig.AutomationConfig) {
 		// Configure CA certificate for agent
