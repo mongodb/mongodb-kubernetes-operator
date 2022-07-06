@@ -103,4 +103,38 @@ To secure connections to MongoDBCommunity resources using TLS:
    - If `spec.security.tls.optional` is true, clients can establish TLS or
      non-TLS connections to the MongoDB servers in the replica set.
 
+<<<<<<< HEAD
    See the documentation for your connection method to learn how to establish a TLS connection to a MongoDB server.
+=======
+1. Create a TLS-secured MongoDBCommunity resource:
+
+   ```
+   helm upgrade community-operator mongodb/community-operator --namespace cko-namespace --set resource.tls.useCertManager=true --set createResource=true --set resource.tls.enabled=true
+   ```
+
+  This creates a resource secured with TLS and generates the necessary
+  certificates with `cert-manager` according to the values specified in
+  the `values.yaml` file in the Community Kubernetes Operator 
+  [chart repository](https://github.com/mongodb/helm-charts/tree/main/charts/community-operator).
+  
+
+
+1. Test your connection over TLS by 
+
+   - Connecting to a `mongod` container using `kubectl`:
+
+   ```
+   kubectl exec -it mongodb-replica-set -c mongod -- bash
+   ```
+
+   Where `mongodb-replica-set` is the name of your MongoDBCommunity resource
+
+   - Then, use `mongo` to connect over TLS:
+
+   ```
+   mongo --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile /var/lib/tls/server/*.pem --host <mongodb-replica-set>.<mongodb-replica-set>-svc.<namespace>.svc.cluster.local
+   ```
+
+   Where `mongodb-replica-set` is the name of your MongoDBCommunity 
+   resource and `namespace` is the namespace of your deployment.
+>>>>>>> d460014 ((DOCSP-18367) Wording change.)
