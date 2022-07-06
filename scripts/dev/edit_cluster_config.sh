@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# This script is intended for editing the raw cluster configuration that is used by the automation agents.
+# For example if we want to test new features implemented by the automation agent, we can check its behavior by configuring new settings directly in the raw cluster config.
+# Steps to do that:
+# 1. Deploy replica set, named here "my-replica-set" in "mongodb" namespace.
+# 2. Stop the operator, e.g. by scaling operator deployment to 0. Without this step the operator will overwrite any changes made to the cluster config in the secret.
+# 3. Edit the cluster config by running: ./edit_cluster_config.sh mongodb my-replica-set, or EDITOR=my-editor ./edit_cluster_config.sh mongodb my-replica-set (if you don't want to use vim)
+# 4. It will download the cluster config from the secret and open it in the editor.
+# 5. Make some changes to the cluster config, e.g. add new settings. Remember to increment version field, otherwise the changes won't be applied.
+# 6. Save the changes and exit the editor. The config will be checked if it's correct json and will be uploaded to the secret.
+# 8. Observe the changes made by the mongodb-agent. Be aware, that starting the operator again will overwrite the changes.
+
 namespace=$1
 replicaset_name=$2
 secret_name=${replicaset_name}-config
@@ -12,6 +23,7 @@ if [[ "${namespace}" == "" || "${replicaset_name}" == "" ]]; then
   echo "Usage:"
   printf "\t%s <namespace> <replicaset_name>\n" "$(basename "$0")"
   printf "\tEDITOR=<custom editor> %s <namespace> <replicaset_name> to edit cluster config with a different editor.\n" "$(basename "$0")"
+
   exit 1
 fi
 
