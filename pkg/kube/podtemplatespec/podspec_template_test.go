@@ -36,6 +36,7 @@ func TestPodTemplateSpec(t *testing.T) {
 			RunAsGroup: &runAsGroup,
 			FSGroup:    &fsGroup,
 		}),
+		WithAutomountServiceAccountToken(false),
 		WithImagePullSecrets("pull-secrets"),
 		WithInitContainerByIndex(0, container.Apply(
 			container.WithName("init-container-0"),
@@ -66,6 +67,8 @@ func TestPodTemplateSpec(t *testing.T) {
 	assert.Equal(t, &expectedRunAsUser, p.Spec.SecurityContext.RunAsUser)
 	assert.Equal(t, &expectedRunAsGroup, p.Spec.SecurityContext.RunAsGroup)
 	assert.Equal(t, &expectedFsGroup, p.Spec.SecurityContext.FSGroup)
+
+	assert.False(t, *p.Spec.AutomountServiceAccountToken)
 
 	assert.Len(t, p.Spec.ImagePullSecrets, 1)
 	assert.Equal(t, "pull-secrets", p.Spec.ImagePullSecrets[0].Name)

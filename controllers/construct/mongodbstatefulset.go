@@ -177,6 +177,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(scriptsVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
+				podtemplatespec.WithAutomountServiceAccountToken(false),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),

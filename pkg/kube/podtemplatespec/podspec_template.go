@@ -4,6 +4,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 type Modification func(*corev1.PodTemplateSpec)
@@ -104,6 +105,13 @@ func WithPodLabels(labels map[string]string) Modification {
 func WithServiceAccount(serviceAccountName string) Modification {
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
 		podTemplateSpec.Spec.ServiceAccountName = serviceAccountName
+	}
+}
+
+// WithAutomountServiceAccountToken sets the PodTemplateSpec's automountServiceAccountToken flag
+func WithAutomountServiceAccountToken(enabled bool) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		podTemplateSpec.Spec.AutomountServiceAccountToken = pointer.Bool(enabled)
 	}
 }
 
