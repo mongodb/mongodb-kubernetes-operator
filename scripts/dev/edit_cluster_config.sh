@@ -8,8 +8,8 @@
 # 3. Edit the cluster config by running: ./edit_cluster_config.sh mongodb my-replica-set, or EDITOR=my-editor ./edit_cluster_config.sh mongodb my-replica-set (if you don't want to use vim)
 # 4. It will download the cluster config from the secret and open it in the editor.
 # 5. Make some changes to the cluster config, e.g. add new settings. Remember to increment version field, otherwise the changes won't be applied.
-# 6. Save the changes and exit the editor. The config will be checked if it's correct json and will be uploaded to the secret.
-# 8. Observe the changes made by the mongodb-agent. Be aware, that starting the operator again will overwrite the changes.
+# 6. Save the changes and exit the editor. The config will be checked if it's a correct json and will be uploaded to the secret.
+# 7. Observe the changes made by the mongodb-agent. Be aware, that starting the operator again will overwrite the changes.
 
 namespace=$1
 replicaset_name=$2
