@@ -39,19 +39,33 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
 1. Install `cert-manager`:
 
    ```
-   helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+   helm install cert-manager jetstack/cert-manager --namespace cert-manager \ 
+   --create-namespace --set installCRDs=true
    ```
 
 1. Create a TLS-secured MongoDBCommunity resource:
 
    ```
-   helm upgrade community-operator mongodb/community-operator --namespace cko-namespace --set resource.tls.useCertManager=true --set createResource=true --set resource.tls.enabled=true
+   helm upgrade community-operator mongodb/community-operator \
+   --namespace cko-namespace --set resource.tls.useCertManager=true \
+   --set createResource=true --set resource.tls.enabled=true
    ```
 
   This creates a resource secured with TLS and generates the necessary
   certificates with `cert-manager` according to the values specified in
   the `values.yaml` file in the Community Kubernetes Operator 
   [chart repository](https://github.com/mongodb/helm-charts/tree/main/charts/community-operator).
+
+  `cert-manager` automatically reissues certificates according to the
+  value of `resource.tls.certManager.renewCertBefore`. To alter the 
+  reissuance interval, either: 
+  
+  - Set `resource.tls.certManager.renewCertBefore` in `values.yaml` to 
+     the desired interval in hours before running `helm upgrade`
+
+  - Set `spec.renewBefore` in the Certificate resource file generated
+     by `cert-manager` to the desired interval in hours after running 
+     `helm upgrade`
   
 
 
@@ -65,10 +79,12 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
 
    Where `mongodb-replica-set` is the name of your MongoDBCommunity resource
 
-   - Then, use `mongo` to connect over TLS:
+   - Then, use `mongosh` to connect over TLS:
 
    ```
-   mongo --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile /var/lib/tls/server/*.pem --host <mongodb-replica-set>.<mongodb-replica-set>-svc.<namespace>.svc.cluster.local
+   mongo --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile \
+   /var/lib/tls/server/*.pem \ 
+   --host <mongodb-replica-set>.<mongodb-replica-set>-svc.<namespace>.svc.cluster.local
    ```
 
    Where `mongodb-replica-set` is the name of your MongoDBCommunity 
