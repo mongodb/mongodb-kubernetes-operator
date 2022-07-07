@@ -97,7 +97,7 @@ func arbitersStatefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Config
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+		t.Logf("Arbiters StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
 	}
 }
 
@@ -324,6 +324,16 @@ func CreateMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 			t.Fatal(err)
 		}
 		t.Logf("Created MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
+	}
+}
+
+// DeleteMongoDBResource deletes the MongoDB resource
+func DeleteMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) func(*testing.T) {
+	return func(t *testing.T) {
+		if err := e2eutil.TestClient.Delete(context.TODO(), mdb); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Deleted MongoDB resource %s/%s", mdb.Name, mdb.Namespace)
 	}
 }
 
