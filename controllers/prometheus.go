@@ -8,7 +8,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/pkg/errors"
 
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -28,7 +27,7 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 	secretNamespacedName := types.NamespacedName{Name: mdb.Spec.Prometheus.PasswordSecretRef.Name, Namespace: mdb.Namespace}
 	password, err := secret.ReadKey(getUpdateCreator, mdb.Spec.Prometheus.GetPasswordKey(), secretNamespacedName)
 	if err != nil {
-		return automationconfig.NOOP(), errors.Errorf("could not configure Prometheus modification: %s", err)
+		return automationconfig.NOOP(), fmt.Errorf("could not configure Prometheus modification: %s", err)
 	}
 
 	var certKey string

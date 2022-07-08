@@ -19,8 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 
-	"github.com/pkg/errors"
-
 	"github.com/stretchr/objx"
 
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -176,7 +174,7 @@ func getVolumeByName(sts appsv1.StatefulSet, volumeName string) (corev1.Volume, 
 			return v, nil
 		}
 	}
-	return corev1.Volume{}, errors.Errorf("volume with name %s, not found", volumeName)
+	return corev1.Volume{}, fmt.Errorf("volume with name %s, not found", volumeName)
 }
 
 func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
@@ -1151,11 +1149,11 @@ func loadTestFixture(yamlFileName string) (mdbv1.MongoDBCommunity, error) {
 	mdb := mdbv1.MongoDBCommunity{}
 	data, err := os.ReadFile(testPath)
 	if err != nil {
-		return mdb, errors.Errorf("error reading file: %s", err)
+		return mdb, fmt.Errorf("error reading file: %s", err)
 	}
 
 	if err := marshalRuntimeObjectFromYAMLBytes(data, &mdb); err != nil {
-		return mdb, errors.Errorf("error converting yaml bytes to service account: %s", err)
+		return mdb, fmt.Errorf("error converting yaml bytes to service account: %s", err)
 	}
 
 	return mdb, nil

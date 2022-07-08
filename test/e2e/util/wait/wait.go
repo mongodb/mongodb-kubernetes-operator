@@ -2,13 +2,14 @@ package wait
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -135,7 +136,7 @@ func ForStatefulSetToBeReadyAfterScaleDown(t *testing.T, mdb *mdbv1.MongoDBCommu
 func waitForStatefulSetConditionWithSpecificSts(t *testing.T, mdb *mdbv1.MongoDBCommunity, statefulSetType StatefulSetType, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
 	_, err := ForStatefulSetToExist(mdb.Name, waitOpts.RetryInterval, waitOpts.Timeout, mdb.Namespace)
 	if err != nil {
-		return errors.Errorf("error waiting for stateful set to be created: %s", err)
+		return fmt.Errorf("error waiting for stateful set to be created: %s", err)
 	}
 
 	sts := appsv1.StatefulSet{}

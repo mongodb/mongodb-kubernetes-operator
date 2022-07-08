@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
 )
@@ -199,12 +198,12 @@ func (b *Builder) setFeatureCompatibilityVersionIfUpgradeIsHappening() error {
 		previousFCV := b.previousAC.Processes[0].FeatureCompatibilityVersion
 		previousFCVsemver, err := semver.Make(fmt.Sprintf("%s.0", previousFCV))
 		if err != nil {
-			return errors.Errorf("can't compute semver version from previous FeatureCompatibilityVersion %s", previousFCV)
+			return fmt.Errorf("can't compute semver version from previous FeatureCompatibilityVersion %s", previousFCV)
 		}
 
 		currentVersionSemver, err := semver.Make(b.mongodbVersion)
 		if err != nil {
-			return errors.Errorf("current MongoDB version is not a valid semver version: %s", b.mongodbVersion)
+			return fmt.Errorf("current MongoDB version is not a valid semver version: %s", b.mongodbVersion)
 		}
 
 		// We would increase FCV here.
@@ -235,7 +234,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	processes := make([]Process, b.members+b.arbiters)
 
 	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
-		return AutomationConfig{}, errors.Errorf("can't build the automation config: %s", err)
+		return AutomationConfig{}, fmt.Errorf("can't build the automation config: %s", err)
 	}
 
 	dataDir := DefaultMongoDBDataDir
