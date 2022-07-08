@@ -94,6 +94,12 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 	return p.SetArgs26Field("replication.replSetName", replSetName)
 }
 
+func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
+	return p.SetArgs26Field("systemLog.path", systemLog.Path).
+		SetArgs26Field("systemLog.destination", systemLog.Destination).
+		SetArgs26Field("systemLog.logAppend", systemLog.LogAppend)
+}
+
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
 	if cacheSizeGb == nil {
 		return p
