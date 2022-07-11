@@ -7,13 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/fahedouch/go-logrotate"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/headless"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/health"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -197,7 +196,7 @@ func parseHealthStatus(reader io.Reader) (health.Status, error) {
 	return health, err
 }
 
-func initLogger(l *lumberjack.Logger) {
+func initLogger(l *logrotate.Logger) {
 	log := zap.New(zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 		zapcore.AddSync(l),

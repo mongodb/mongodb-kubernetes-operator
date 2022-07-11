@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/natefinch/lumberjack.v2"
-
+	"github.com/fahedouch/go-logrotate"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -21,8 +20,9 @@ const (
 	logPathEnv                       = "LOG_FILE_PATH"
 	hostNameEnv                      = "HOSTNAME"
 	readinessProbeLoggerBackups      = "READINESS_PROBE_LOGGER_BACKUPS"
-	readinessProbeLoggerMaxSize      = "READINESS_PROBE_LOGGER_MAX_SIZE"
+	readinessProbeLoggerMaxBytes     = "READINESS_PROBE_LOGGER_MAX_SIZE"
 	readinessProbeLoggerMaxAge       = "READINESS_PROBE_LOGGER_MAX_AGE"
+	backupTimeFormat                 = "2006-01-02T15-04-05.000"
 )
 
 type Config struct {
@@ -32,7 +32,7 @@ type Config struct {
 	AutomationConfigSecretName string
 	HealthStatusReader         io.Reader
 	LogFilePath                string
-	Logger                     *lumberjack.Logger
+	Logger                     *logrotate.Logger
 }
 
 func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Config, error) {
@@ -56,11 +56,12 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 		}
 	}
 
-	logger := &lumberjack.Logger{
-		Filename:   readinessProbeLogFilePath(),
-		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
-		MaxSize:    readInt(readinessProbeLoggerMaxSize),
-		MaxAge:     readInt(readinessProbeLoggerMaxAge),
+	logger := &logrotate.Logger{
+		Filename:           readinessProbeLogFilePath(),
+		FilenameTimeFormat: backupTimeFormat,
+		MaxBackups:         readIntOrDefault(readinessProbeLoggerBackups, 5),
+		MaxBytes:           int64(readInt(readinessProbeLoggerMaxBytes)),
+		MaxAge:             readInt(readinessProbeLoggerMaxAge),
 	}
 
 	// Note, that we shouldn't close the file here - it will be closed very soon by the 'ioutil.ReadAll'

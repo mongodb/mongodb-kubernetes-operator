@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/fahedouch/go-logrotate v0.1.1
 	github.com/go-logr/logr v1.2.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.13
@@ -13,7 +14,6 @@ require (
 	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.9.1
 	go.uber.org/zap v1.21.0
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/api v0.23.6
 	k8s.io/apimachinery v0.23.6
 	k8s.io/client-go v0.23.6
@@ -26,6 +26,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/djherbis/times v1.5.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
