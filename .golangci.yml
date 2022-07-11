@@ -23,6 +23,8 @@ linters:
     - staticcheck
     - unused
     - gosimple
+    - gofmt
+    - goimports
     - structcheck
     - varcheck
     - ineffassign
