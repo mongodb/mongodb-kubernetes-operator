@@ -12,6 +12,7 @@ REGISTRY := $(shell jq -r .repo_url < $(MONGODB_COMMUNITY_CONFIG))
 AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < $(MONGODB_COMMUNITY_CONFIG))
 
 HELM_CHART ?= ./helm-charts/charts/community-operator
+HELM_CHART_CRDs ?= ./helm-charts/charts/community-operator-crds/templates
 
 STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=latest,readinessProbe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
 
@@ -87,7 +88,7 @@ undeploy: uninstall-chart uninstall-crd
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crd/bases
-	cp config/crd/bases/* $(HELM_CHART)/crds
+	cp config/crd/bases/* $(HELM_CHART_CRDs)/
 
 # Run go fmt against code
 fmt:
