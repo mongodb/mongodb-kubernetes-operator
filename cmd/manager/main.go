@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
+	mongodbcommunityv1alpha1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1alpha1"
 	"os"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -14,6 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 )
 
 var (
@@ -28,6 +30,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(mdbv1.AddToScheme(scheme))
+	utilruntime.Must(mongodbcommunityv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -98,6 +101,13 @@ func main() {
 	// Setup Controller.
 	if err = controllers.NewReconciler(mgr).SetupWithManager(mgr); err != nil {
 		log.Sugar().Fatalf("Unable to create controller: %v", err)
+	}
+	if err = (&controllers.SimpleMongoDBCommunityReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		log.Sugar().Fatalf("unable to create controller %v", err)
+		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 

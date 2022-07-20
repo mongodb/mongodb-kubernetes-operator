@@ -1,0 +1,24 @@
+# permissions for end users to edit simplemongodbcommunities.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: simplemongodbcommunity-editor-role
+rules:
+- apiGroups:
+  - mongodbcommunity.mongodb.com
+  resources:
+  - simplemongodbcommunities
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mongodbcommunity.mongodb.com
+  resources:
+  - simplemongodbcommunities/status
+  verbs:
+  - get
