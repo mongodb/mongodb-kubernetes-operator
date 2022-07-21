@@ -18,9 +18,13 @@ package controllers
 
 import (
 	"context"
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
 	"go.uber.org/zap"
+	v12 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,8 +57,8 @@ type SimpleMongoDBCommunityReconciler struct {
 func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	mdb := mongodbcommunityv1alpha1.SimpleMongoDBCommunity{}
-	err := r.Get(context.TODO(), req.NamespacedName, &mdb)
+	simpleMongoDBCommunity := mongodbcommunityv1alpha1.SimpleMongoDBCommunity{}
+	err := r.Get(context.TODO(), req.NamespacedName, &simpleMongoDBCommunity)
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			return result.OK()
@@ -63,10 +67,91 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 		return result.Failed()
 	}
 
-	numberOfReplicas, err := calculateNumberOfReplicas(r.Client, mdb.Spec.Expectations.Data.Size)
+	numberOfReplicas, err := calculateNumberOfReplicas(r.Client, simpleMongoDBCommunity.Spec.Expectations.Data.Size)
+	if err != nil {
+		r.Log.Error(err)
+		return result.Failed()
+	}
 	r.Log.Infof("Number of replicas %v", numberOfReplicas)
 
-	// TODO(user): your logic here
+	passwordSecretName := simpleMongoDBCommunity.Name + "-password"
+	passwordKeyName := "password"
+	userPassword := v12.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      passwordSecretName,
+			Namespace: req.Namespace,
+		},
+		StringData: map[string]string{
+			//TODO: Secure Random!!!
+			passwordKeyName: "password",
+		},
+	}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      passwordSecretName,
+	}, &userPassword)
+	if apiErrors.IsNotFound(err) {
+		err = r.Create(context.TODO(), &userPassword)
+		if err != nil {
+			r.Log.Error(err)
+			return result.Failed()
+		}
+	}
+
+	mdb := v1.MongoDBCommunity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      simpleMongoDBCommunity.Name,
+			Namespace: req.Namespace,
+		},
+		Spec: v1.MongoDBCommunitySpec{
+			Members: numberOfReplicas,
+			Version: "5.0.9",
+			Type:    v1.ReplicaSet,
+			Users: []v1.MongoDBUser{
+				{
+					Name: simpleMongoDBCommunity.Name,
+					DB:   "admin",
+					PasswordSecretRef: v1.SecretKeyReference{
+						Name: passwordSecretName,
+						Key:  passwordKeyName,
+					},
+					Roles: []v1.Role{
+						{
+							DB:   "admin",
+							Name: "clusterAdmin",
+						},
+						{
+							DB:   "admin",
+							Name: "userAdminAnyDatabase",
+						},
+					},
+					ScramCredentialsSecretName: simpleMongoDBCommunity.Name,
+				},
+			},
+			Security: v1.Security{
+				Authentication: v1.Authentication{
+					Modes: []v1.AuthMode{"SCRAM"},
+				},
+			},
+		},
+	}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      mdb.ObjectMeta.Name,
+	}, &mdb)
+	if apiErrors.IsNotFound(err) {
+		err = r.Create(context.TODO(), &mdb)
+		if err != nil {
+			r.Log.Error(err)
+			return result.Failed()
+		}
+	} else {
+		err = r.Update(context.TODO(), &mdb)
+		if err != nil {
+			r.Log.Error(err)
+			return result.Failed()
+		}
+	}
 
 	return ctrl.Result{}, nil
 }

@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func calculateNumberOfReplicas(c client.Client, size resource.Quantity) (uint8, error) {
+func calculateNumberOfReplicas(c client.Client, size resource.Quantity) (int, error) {
 	nodes := &v1.NodeList{}
 	if err := c.List(context.TODO(), nodes); err != nil {
 		return 0, err
@@ -36,5 +36,5 @@ func calculateNumberOfReplicas(c client.Client, size resource.Quantity) (uint8, 
 		return 7, nil
 	}
 
-	return uint8(maxNumberOfPods), nil
+	return int(maxNumberOfPods), nil
 }

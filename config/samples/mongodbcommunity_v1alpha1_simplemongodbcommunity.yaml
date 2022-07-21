@@ -1,7 +1,7 @@
 apiVersion: mongodbcommunity.mongodb.com/v1alpha1
 kind: SimpleMongoDBCommunity
 metadata:
-  name: simplemongodbcommunity-sample
+  name: mongo-prod
 spec:
   environment: "production"
   expectations:
