@@ -3,4 +3,7 @@ kind: SimpleMongoDBCommunity
 metadata:
   name: simplemongodbcommunity-sample
 spec:
-  # TODO(user): Add fields here
+  environment: "production"
+  expectations:
+    data:
+      size: 2Gi

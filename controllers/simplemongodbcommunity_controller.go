@@ -63,7 +63,7 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 		return result.Failed()
 	}
 
-	numberOfReplicas, err := calculateNumberOfReplicas(r.Client)
+	numberOfReplicas, err := calculateNumberOfReplicas(r.Client, mdb.Spec.Expectations.Data.Size)
 	r.Log.Infof("Number of replicas %v", numberOfReplicas)
 
 	// TODO(user): your logic here

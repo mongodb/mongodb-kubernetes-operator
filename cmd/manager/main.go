@@ -85,7 +85,8 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: watchNamespace,
+		Namespace:          watchNamespace,
+		MetricsBindAddress: "0",
 	})
 	if err != nil {
 		log.Sugar().Fatalf("Unable to create manager: %v", err)
