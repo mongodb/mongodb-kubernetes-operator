@@ -37,14 +37,32 @@ spec:
           spec:
             description: SimpleMongoDBCommunitySpec defines the desired state of SimpleMongoDBCommunity
             properties:
-              foo:
-                description: Foo is an example field of SimpleMongoDBCommunity. Edit
-                  simplemongodbcommunity_types.go to remove/update
+              environment:
                 type: string
+              expectations:
+                properties:
+                  data:
+                    properties:
+                      size:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
             type: object
           status:
             description: SimpleMongoDBCommunityStatus defines the observed state of
               SimpleMongoDBCommunity
+            properties:
+              phase:
+                type: string
+              spec:
+                type: string
+            required:
+            - phase
+            - spec
             type: object
         type: object
     served: true
