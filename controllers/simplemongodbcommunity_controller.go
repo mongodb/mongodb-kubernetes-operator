@@ -25,6 +25,7 @@ import (
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -107,6 +108,7 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 			Members: numberOfReplicas,
 			Version: "5.0.9",
 			Type:    v1.ReplicaSet,
+
 			Users: []v1.MongoDBUser{
 				{
 					Name: simpleMongoDBCommunity.Name,
@@ -153,7 +155,56 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
-	return ctrl.Result{}, nil
+	externalService := v12.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      simpleMongoDBCommunity.Name + "-external",
+			Namespace: req.Namespace,
+		},
+		Spec: v12.ServiceSpec{
+			Selector: map[string]string{
+				"app": simpleMongoDBCommunity.Name + "-svc",
+			},
+			Type: v12.ServiceTypeNodePort,
+			Ports: []v12.ServicePort{
+				{
+					Name:     "mongodb",
+					Protocol: "TCP",
+					Port:     27017,
+				},
+			},
+		},
+	}
+	err = r.Get(context.TODO(), types.NamespacedName{
+		Namespace: externalService.ObjectMeta.Namespace,
+		Name:      externalService.ObjectMeta.Name,
+	}, &externalService)
+	if apiErrors.IsNotFound(err) {
+		err = r.Create(context.TODO(), &externalService)
+		if err != nil {
+			r.Log.Error(err)
+			return result.Failed()
+		}
+	} else {
+		err = r.Update(context.TODO(), &externalService)
+		if err != nil {
+			r.Log.Error(err)
+			return result.Failed()
+		}
+	}
+
+	if len(mdb.Status.MongoURI) > 0 {
+		simpleMongoDBCommunity.Status.Message = "Log in using " + mdb.Status.MongoURI
+		err = r.Status().Update(context.TODO(), &simpleMongoDBCommunity)
+		if err != nil {
+			//not a big problem
+			r.Log.Error(err)
+		}
+	}
+
+	//let it spin!
+	return ctrl.Result{
+		RequeueAfter: 5 * time.Second,
+	}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
