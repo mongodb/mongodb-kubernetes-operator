@@ -97,6 +97,9 @@ func main() {
 	if err := mdbv1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Sugar().Fatalf("Unable to add mdbv1 to scheme: %v", err)
 	}
+	if err := mongodbcommunityv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Sugar().Fatalf("Unable to add mongodbcommunityv1alpha1 to scheme: %v", err)
+	}
 
 	// Setup Controller.
 	if err = controllers.NewReconciler(mgr).SetupWithManager(mgr); err != nil {
@@ -105,6 +108,7 @@ func main() {
 	if err = (&controllers.SimpleMongoDBCommunityReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Log:    zap.S(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Sugar().Fatalf("unable to create controller %v", err)
 		os.Exit(1)

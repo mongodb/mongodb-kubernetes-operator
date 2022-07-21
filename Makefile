@@ -53,7 +53,7 @@ debug: install install-rbac
 install: manifests helm install-crd
 
 install-crd:
-	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
+	kubectl apply -f config/crd/bases/
 
 install-chart:
 	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) $(HELM_CHART)

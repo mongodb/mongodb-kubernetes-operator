@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
+	"go.uber.org/zap"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,6 +33,7 @@ import (
 // SimpleMongoDBCommunityReconciler reconciles a SimpleMongoDBCommunity object
 type SimpleMongoDBCommunityReconciler struct {
 	client.Client
+	Log    *zap.SugaredLogger
 	Scheme *runtime.Scheme
 }
 
@@ -47,7 +51,20 @@ type SimpleMongoDBCommunityReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+
+	mdb := mongodbcommunityv1alpha1.SimpleMongoDBCommunity{}
+	err := r.Get(context.TODO(), req.NamespacedName, &mdb)
+	if err != nil {
+		if apiErrors.IsNotFound(err) {
+			return result.OK()
+		}
+		logger.Error(err, "Error reconciling MongoDB resource: %s", req.Name)
+		return result.Failed()
+	}
+
+	numberOfReplicas, err := calculateNumberOfReplicas(r.Client)
+	r.Log.Infof("Number of replicas %v", numberOfReplicas)
 
 	// TODO(user): your logic here
 
