@@ -1,9 +1,6 @@
 apiVersion: mongodbcommunity.mongodb.com/v1alpha1
 kind: SimpleMongoDBCommunity
 metadata:
-  name: mongo-prod
+  name: mongo-dev
 spec:
-  environment: "production"
-  expectations:
-    data:
-      size: 2Gi
+  environment: "development"

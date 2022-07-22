@@ -69,6 +69,7 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	numberOfReplicas, err := calculateNumberOfReplicas(r.Client, simpleMongoDBCommunity.Spec.Expectations.Data.Size)
+	numberOfReplicas = 1
 	if err != nil {
 		r.Log.Error(err)
 		return result.Failed()
@@ -164,7 +165,7 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 			Selector: map[string]string{
 				"app": simpleMongoDBCommunity.Name + "-svc",
 			},
-			Type: v12.ServiceTypeNodePort,
+			Type: v12.ServiceTypeLoadBalancer,
 			Ports: []v12.ServicePort{
 				{
 					Name:     "mongodb",
@@ -193,7 +194,8 @@ func (r *SimpleMongoDBCommunityReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	if len(mdb.Status.MongoURI) > 0 {
-		simpleMongoDBCommunity.Status.Message = "Log in using " + mdb.Status.MongoURI
+		// mongodb://mongo-dev-0.mongo-dev-svc.mongodb.svc.cluster.local:27017/?replicaSet=mongo-dev
+		simpleMongoDBCommunity.Status.Message = "Log in using mongodb://" + externalService.Status.LoadBalancer.Ingress[0].IP + ":27017/?loadBalanced=true"
 		err = r.Status().Update(context.TODO(), &simpleMongoDBCommunity)
 		if err != nil {
 			//not a big problem
