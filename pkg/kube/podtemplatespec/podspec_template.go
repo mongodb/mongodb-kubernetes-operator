@@ -2,6 +2,7 @@ package podtemplatespec
 
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -107,30 +108,25 @@ func WithServiceAccount(serviceAccountName string) Modification {
 	}
 }
 
-// WithVolumes appends the given volumes to the existing volume, it ensures not
-// to override existing volumes
+// WithVolumes ensures given volume is present in the PodTemplateSpec. It merges the volumes with existing ones.
 func WithVolumes(volumes []corev1.Volume) Modification {
 	return func(template *corev1.PodTemplateSpec) {
-		present := make(map[string]struct{})
-		for _, v := range template.Spec.Volumes {
-			present[v.Name] = struct{}{}
-		}
-		for _, v := range volumes {
-			if _, ok := present[v.Name]; !ok {
-				template.Spec.Volumes = append(template.Spec.Volumes, v)
-			}
+		for _, volume := range volumes {
+			WithVolume(volume)(template)
 		}
 	}
 }
 
-// WithVolume ensures the given volume exists
+// WithVolume ensures given volume is present in the PodTemplateSpec. It merges the volume if it already exists.
 func WithVolume(volume corev1.Volume) Modification {
 	return func(template *corev1.PodTemplateSpec) {
-		for _, v := range template.Spec.Volumes {
-			if v.Name == volume.Name {
+		for i := range template.Spec.Volumes {
+			if template.Spec.Volumes[i].Name == volume.Name {
+				template.Spec.Volumes[i] = merge.Volume(template.Spec.Volumes[i], volume)
 				return
 			}
 		}
+
 		template.Spec.Volumes = append(template.Spec.Volumes, volume)
 	}
 }

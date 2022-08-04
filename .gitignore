@@ -99,3 +99,4 @@ diagnostics
 
 Pipfile
 Pipfile.lock
+.community-operator-dev

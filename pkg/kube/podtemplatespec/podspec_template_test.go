@@ -369,9 +369,9 @@ func TestAddVolumes(t *testing.T) {
 
 	p := New(volumeModification, volumesModification)
 	assert.Len(t, p.Spec.Volumes, 2)
-	assert.Equal(t, p.Spec.Volumes[0].Name, "new-volume")
-	assert.Equal(t, p.Spec.Volumes[1].Name, "new-volume-2")
-
+	assert.Equal(t, "new-volume", p.Spec.Volumes[0].Name)
+	assert.Equal(t, "new-volume-2", p.Spec.Volumes[1].Name)
+	assert.Equal(t, "new-host-path", p.Spec.Volumes[0].VolumeSource.HostPath.Path)
 }
 
 func int64Ref(i int64) *int64 {
