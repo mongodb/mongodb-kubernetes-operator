@@ -12,6 +12,8 @@ If above conditions are met, it is strongly advised to upgrade the MongoDB Kuber
 - Bug fixes
   - Fixed ignoring changes to existing volumes in the StatefulSet, i.e. changes of the volumes' underlying secret. This could cause that TLS enabled MongoDB deployment was not able to locate TLS certificates when upgrading the operator to versions 0.7.3 or 0.7.4.   
 
+- Security fixes
+  - The operator, readiness and versionhook binaries are now built with 1.18.5 which addresses security issues.
 
 # MongoDB Kubernetes Operator 0.7.4
 
