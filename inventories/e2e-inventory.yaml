@@ -8,6 +8,7 @@ images:
       template_context: scripts/dev/templates
     inputs:
       - e2e_image
+    platform: linux/amd64
     stages:
       - name: e2e-template
         task_type: dockerfile_template
