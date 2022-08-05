@@ -1,3 +1,18 @@
+# MongoDB Kubernetes Operator 0.7.5
+
+## Upgrade breaking change notice
+Versions 0.7.3, 0.7.4 have an issue that breaks deployment of MongoDB replica set when:
+* TLS is enabled
+* Replica set was deployed using the operator with version <=0.7.2
+
+If above conditions are met, it is strongly advised to upgrade the MongoDB Kubernetes Operator to version 0.7.5 or higher.
+
+## Kubernetes Operator
+
+- Bug fixes
+  - Fixed ignoring changes to existing volumes in the StatefulSet, i.e. changes of the volumes' underlying secret. This could cause that TLS enabled MongoDB deployment was not able to locate TLS certificates when upgrading the operator to versions 0.7.3 or 0.7.4.   
+
+
 # MongoDB Kubernetes Operator 0.7.4
 
 ## Kubernetes Operator

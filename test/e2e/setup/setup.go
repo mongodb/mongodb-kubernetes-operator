@@ -83,6 +83,26 @@ func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConf
 	return ctx, config
 }
 
+func SetupWithTestConfig(t *testing.T, testConfig TestConfig, withTLS bool, resourceName string) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if withTLS {
+		if err := deployCertManager(testConfig); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := DeployOperator(testConfig, resourceName, withTLS, false); err != nil {
+		t.Fatal(err)
+	}
+
+	return ctx
+}
+
 // GeneratePasswordForUser will create a secret with a password for the given user
 func GeneratePasswordForUser(ctx *e2eutil.Context, mdbu mdbv1.MongoDBUser, namespace string) (string, error) {
 	passwordKey := mdbu.PasswordSecretRef.Key
