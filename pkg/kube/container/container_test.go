@@ -20,7 +20,7 @@ func TestContainer(t *testing.T) {
 		WithImage("image"),
 		WithImagePullPolicy(corev1.PullAlways),
 		WithPorts([]corev1.ContainerPort{{Name: "port-1", ContainerPort: int32(1000)}}),
-		WithSecurityContext(&corev1.SecurityContext{
+		WithSecurityContext(corev1.SecurityContext{
 			RunAsGroup:   int64Ref(100),
 			RunAsNonRoot: boolRef(true),
 		}),
