@@ -19,7 +19,7 @@ DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
 RELEASE_NAME_HELM ?= mongodb-kubernetes-operator
-TEST_NAMESPACE ?= mongodb
+TEST_NAMESPACE ?= $(NAMESPACE)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -124,7 +124,7 @@ cleanup-e2e:
 	kubectl delete mdbc,all,secrets -l e2e-test=true -n ${TEST_NAMESPACE} || true
 	# Most of the tests use StatefulSets, which in turn use stable storage. In order to
 	# avoid interleaving tests with each other, we need to drop them all.
-	kubectl delete pvc --all || true
+	kubectl delete pvc --all -n $(NAMESPACE) || true
 
 # Generate code
 generate: controller-gen
