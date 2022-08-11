@@ -34,7 +34,13 @@ kubectl config current-context
 kubectl get nodes
 ```
 
-4. Build and deploy the operator:
+4. If you didn't clone the repository with `--recurse-submodules` flag you will need to download the helm-chart submodule locally by running the following command:
+```sh
+git submodule update --init
+```
+
+
+5. Build and deploy the operator:
 
 ```sh
 # builds all required images and then deploys the operator
@@ -43,6 +49,6 @@ make all-images deploy
 
 Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
 
-5. Change the `image` field in the [manager.yaml](../config/manager/manager.yaml) file to have the image you just built
+6. Change the `image` field in the [manager.yaml](../config/manager/manager.yaml) file to have the image you just built
 
-6. You can now deploy your resources following the [docs](../docs/README.md)
+7. You can now deploy your resources following the [docs](../docs/README.md)
