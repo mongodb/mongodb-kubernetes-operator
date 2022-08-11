@@ -30,7 +30,7 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
         "PERFORM_CLEANUP": "true" if cleanup else "false",
         "WATCH_NAMESPACE": dev_config.namespace,
         "MONGODB_IMAGE": "mongo",
-        "MONGODB_REPO_URL": "docker.io",
+        "MONGODB_REPO_URL": "localhost:5000",
         "HELM_CHART_PATH": os.path.abspath("./helm-charts/charts/community-operator"),
     }
 
