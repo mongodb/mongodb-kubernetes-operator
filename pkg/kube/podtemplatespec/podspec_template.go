@@ -2,6 +2,7 @@ package podtemplatespec
 
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,7 +11,8 @@ import (
 type Modification func(*corev1.PodTemplateSpec)
 
 const (
-	notFound = -1
+	notFound                  = -1
+	ManagedSecurityContextEnv = "MANAGED_SECURITY_CONTEXT"
 )
 
 func New(templateMods ...Modification) corev1.PodTemplateSpec {
@@ -265,4 +267,16 @@ func FindContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *
 	}
 
 	return nil
+}
+
+func WithDefaultSecurityContextsModifications() (Modification, container.Modification) {
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	configureContainerSecurityContext := container.NOOP()
+	configurePodSpecSecurityContext := NOOP()
+	if !managedSecurityContext {
+		configurePodSpecSecurityContext = WithSecurityContext(DefaultPodSecurityContext())
+		configureContainerSecurityContext = container.WithSecurityContext(container.DefaultSecurityContext())
+	}
+
+	return configurePodSpecSecurityContext, configureContainerSecurityContext
 }

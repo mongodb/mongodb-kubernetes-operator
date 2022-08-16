@@ -2,7 +2,6 @@ package construct
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/securitycontext"
 	"os"
 	"strings"
 
@@ -153,7 +152,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		singleModeVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 	}
 
-	podSecurityContext, _ := securitycontext.WithDefaultSecurityContextsModifications()
+	podSecurityContext, _ := podtemplatespec.WithDefaultSecurityContextsModifications()
 
 	return statefulset.Apply(
 		statefulset.WithName(mdb.GetName()),
@@ -194,7 +193,7 @@ func AutomationAgentCommand() []string {
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	_, containerSecurityContext := securitycontext.WithDefaultSecurityContextsModifications()
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -231,7 +230,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 }
 
 func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
-	_, containerSecurityContext := securitycontext.WithDefaultSecurityContextsModifications()
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
@@ -269,7 +268,7 @@ func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 // readinessProbeInit returns a modification function which will add the readiness probe container.
 // this container will copy the readiness probe binary into the /opt/scripts directory.
 func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
-	_, containerSecurityContext := securitycontext.WithDefaultSecurityContextsModifications()
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(ReadinessProbeContainerName),
 		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
@@ -309,7 +308,7 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
-	_, containerSecurityContext := securitycontext.WithDefaultSecurityContextsModifications()
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 
 	return container.Apply(
 		container.WithName(MongodbName),

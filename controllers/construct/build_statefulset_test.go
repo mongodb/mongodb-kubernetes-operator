@@ -3,7 +3,6 @@ package construct
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/securitycontext"
 	"os"
 	"reflect"
 	"testing"
@@ -67,7 +66,7 @@ func TestManagedSecurityContext(t *testing.T) {
 	_ = os.Setenv(MongodbRepoUrl, "repo")
 	_ = os.Setenv(MongodbImageEnv, "mongo")
 	_ = os.Setenv(AgentImageEnv, "agent-image")
-	_ = os.Setenv(securitycontext.ManagedSecurityContextEnv, "true")
+	_ = os.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
 
 	mdb := newTestReplicaSet()
 	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
@@ -106,7 +105,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
-	managedSecurityContext := envvar.ReadBool(securitycontext.ManagedSecurityContextEnv)
+	managedSecurityContext := envvar.ReadBool(podtemplatespec.ManagedSecurityContextEnv)
 	if !managedSecurityContext {
 		assert.NotNil(t, sts.Spec.Template.Spec.SecurityContext)
 		assert.Equal(t, podtemplatespec.DefaultPodSecurityContext(), *sts.Spec.Template.Spec.SecurityContext)
