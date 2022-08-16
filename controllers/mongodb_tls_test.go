@@ -41,7 +41,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 }
 
 func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string) {
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 7)
+	assert.Len(t, sts.Spec.Template.Spec.Volumes, 8)
 	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",

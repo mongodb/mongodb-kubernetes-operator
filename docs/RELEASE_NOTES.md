@@ -23,6 +23,8 @@ If above conditions are met, it is strongly advised to upgrade the MongoDB Kuber
   - The names of connection string secrets generated for configured users are RFC1123 validated.
 - Changes
   - Support for changing port number in running cluster.
+  - Security Context is now defined on pod level (previously was on container level)
+  - Our containers now use the `readOnlyRootFilesystem` setting.
 
 ## MongoDBCommunity Resource
 

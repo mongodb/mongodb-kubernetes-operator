@@ -41,15 +41,18 @@ func TestPodTemplateSpec(t *testing.T) {
 			container.WithName("init-container-0"),
 			container.WithImage("init-image"),
 			container.WithVolumeMounts([]corev1.VolumeMount{volumeMount1}),
+			container.WithSecurityContext(container.DefaultSecurityContext()),
 		)),
 		WithContainerByIndex(0, container.Apply(
 			container.WithName("container-0"),
 			container.WithImage("image"),
 			container.WithVolumeMounts([]corev1.VolumeMount{volumeMount1}),
+			container.WithSecurityContext(container.DefaultSecurityContext()),
 		)),
 		WithContainerByIndex(1, container.Apply(
 			container.WithName("container-1"),
 			container.WithImage("image"),
+			container.WithSecurityContext(container.DefaultSecurityContext()),
 		)),
 		WithVolumeMounts("init-container-0", volumeMount2),
 		WithVolumeMounts("container-0", volumeMount2),
@@ -74,16 +77,19 @@ func TestPodTemplateSpec(t *testing.T) {
 	assert.Equal(t, "init-container-0", p.Spec.InitContainers[0].Name)
 	assert.Equal(t, "init-image", p.Spec.InitContainers[0].Image)
 	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.InitContainers[0].VolumeMounts)
+	assert.Equal(t, container.DefaultSecurityContext(), *p.Spec.InitContainers[0].SecurityContext)
 
 	assert.Len(t, p.Spec.Containers, 2)
 
 	assert.Equal(t, "container-0", p.Spec.Containers[0].Name)
 	assert.Equal(t, "image", p.Spec.Containers[0].Image)
 	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.Containers[0].VolumeMounts)
+	assert.Equal(t, container.DefaultSecurityContext(), *p.Spec.Containers[0].SecurityContext)
 
 	assert.Equal(t, "container-1", p.Spec.Containers[1].Name)
 	assert.Equal(t, "image", p.Spec.Containers[1].Image)
-	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.Containers[0].VolumeMounts)
+	assert.Equal(t, []corev1.VolumeMount{volumeMount1, volumeMount2}, p.Spec.Containers[1].VolumeMounts)
+	assert.Equal(t, container.DefaultSecurityContext(), *p.Spec.Containers[1].SecurityContext)
 }
 
 func TestPodTemplateSpec_MultipleEditsToContainer(t *testing.T) {
