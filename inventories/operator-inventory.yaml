@@ -11,6 +11,8 @@ images:
       - operator_image
       - operator_image_dev
 
+    platform: linux/amd64
+
     stages:
       - name: operator-template-ubi
         task_type: dockerfile_template
