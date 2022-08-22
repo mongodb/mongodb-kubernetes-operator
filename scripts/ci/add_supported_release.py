@@ -8,14 +8,19 @@ import logging
 import os
 import subprocess
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pymongo
 
 LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
 logging.basicConfig(level=LOGLEVEL)
 
-VALID_IMAGES = frozenset(["mongodb-agent"])
+VALID_IMAGES = frozenset(
+    [
+        "mongodb-agent",
+        "mongodb-kubernetes-operator",
+    ]
+)
 
 
 def get_repo_root() -> str:
@@ -38,7 +43,7 @@ def mongo_client() -> pymongo.MongoClient:
     return pymongo.MongoClient(cnx_str)
 
 
-def add_release_version(image: str, version: str) -> None:
+def add_release_version(image: str, version: str, variants: List[str]) -> None:
     client = mongo_client()
 
     database = os.environ["ATLAS_DATABASE"]
@@ -57,7 +62,7 @@ def add_release_version(image: str, version: str) -> None:
             "version": version,
             "supported": True,
             "eol": year_from_now,
-            "variants": ["ubi", "ubuntu"],
+            "variants": variants,
         }
     )
 
@@ -71,7 +76,16 @@ def main() -> int:
     parser.add_argument(
         "--image-name", help="image to add a new supported version", type=str
     )
+    parser.add_argument(
+        "--variants",
+        help="supported variants, comma-separated, e.g. 'ubi,ubuntu', default=ubi",
+        type=str,
+        default="ubi",
+    )
+
     args = parser.parse_args()
+
+    variants = args.variants.split(",")
 
     if args.image_name not in VALID_IMAGES:
         print(
@@ -82,12 +96,24 @@ def main() -> int:
         return 0
 
     # for now, there is just one version to add as a supported release.
-    version = get_release()[args.image_name]["version"]
-    logging.info("Adding new release: {} {}".format(args.image_name, version))
+    version = get_release_version(args.image_name)
+    logging.info(
+        "Adding new release: {} {}, {}".format(args.image_name, version, variants)
+    )
 
-    add_release_version(args.image_name, version)
+    add_release_version(args.image_name, version, variants)
 
     return 0
+
+
+# get_release_version gets image version from release.json handling both
+# version embedded in the object (for mongodb-agent) and set as a simple string (for other images).
+def get_release_version(image_name: str) -> str:
+    release_obj = get_release()[image_name]
+    if isinstance(release_obj, str):
+        return release_obj
+
+    return release_obj["version"]
 
 
 if __name__ == "__main__":

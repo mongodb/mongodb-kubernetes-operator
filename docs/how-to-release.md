@@ -14,6 +14,7 @@
     * Create a PR with the title `Release MongoDB Kubernetes Operator v<operator-version>` (the title must match this pattern).
     * Wait for the tests to pass and merge the PR.
       * Upon approval, all new images for this release will be built and released, and a GitHub release draft will be created.
+        * Dockerfiles for mongodb-kubernetes-operator and mongodb-agent will be uploaded to S3 to be used by daily rebuild process in the enterprise repo.
       * Review and publish the new GitHub release draft, that was prepared
     * Merge helm-charts PR and update submodule to the latest commit on `main` branch.
     * Create a new PR with only bump to the helm-chart submodule.

@@ -1,4 +1,5 @@
-FROM golang:1.18.5-alpine as builder
+ARG builder_image
+FROM ${builder_image} as builder
 
 COPY ./cmd/readiness /build/
 COPY ./pkg /build/pkg

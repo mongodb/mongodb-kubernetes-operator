@@ -135,7 +135,6 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
             tag: $(inputs.params.version_id)-context
 
-
       - name: agent-template-ubi
         task_type: dockerfile_template
         distro: ubi
@@ -143,7 +142,6 @@ images:
 
         output:
           - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
-
 
       - name: agent-ubi-build
         task_type: docker_build
@@ -224,6 +222,9 @@ images:
         labels:
           quay.expires-after: 48h
 
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
+
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: $(inputs.params.version_id)-context
@@ -245,7 +246,6 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: latest
 
-
       - name: readiness-init-context-release
         task_type: docker_build
         dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
@@ -254,13 +254,15 @@ images:
         labels:
           quay.expires-after: Never
 
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
+
         inputs:
           - release_version
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)-context
-
 
       - name: readiness-init-build-release
         task_type: docker_build
@@ -280,7 +282,6 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)
 
-
   - name: version-post-start-hook-init
     vars:
       context: .
@@ -294,6 +295,9 @@ images:
         task_type: docker_build
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
         tags: ["post-start-hook"]
+
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
 
         labels:
           quay.expires-after: 48h
@@ -318,7 +322,6 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: latest
 
-
       - name: version-post-start-hook-init-context-release
         task_type: docker_build
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
@@ -327,13 +330,15 @@ images:
         labels:
           quay.expires-after: Never
 
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
+
         inputs:
           - release_version
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.release_version)-context
-
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build
