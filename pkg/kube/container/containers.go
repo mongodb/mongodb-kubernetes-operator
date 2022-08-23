@@ -188,5 +188,6 @@ func WithSecurityContext(context corev1.SecurityContext) Modification {
 // - readOnlyRootFilesystem set to true
 func DefaultSecurityContext() corev1.SecurityContext {
 	readOnlyRootFilesystem := true
-	return corev1.SecurityContext{ReadOnlyRootFilesystem: &readOnlyRootFilesystem}
+	allowPrivilegeEscalation := false
+	return corev1.SecurityContext{ReadOnlyRootFilesystem: &readOnlyRootFilesystem, AllowPrivilegeEscalation: &allowPrivilegeEscalation}
 }
