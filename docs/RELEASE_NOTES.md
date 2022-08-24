@@ -1,5 +1,8 @@
 # MongoDB Kubernetes Operator 0.7.5
 
+- Changes
+  - The Operator uses now `allowPrivilegeEscalation` set to `false` for all containers.
+
 ## Upgrade breaking change notice
 Versions 0.7.3, 0.7.4 have an issue that breaks deployment of MongoDB replica set when:
 * TLS is enabled
