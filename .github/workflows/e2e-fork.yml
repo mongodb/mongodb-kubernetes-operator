@@ -43,14 +43,14 @@ jobs:
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.0
+      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
-        ref: ${{github.event.pull_request.head.ref}}
+        ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
         submodules: true
     # template: .action_templates/steps/setup-and-install-python.yaml
@@ -141,14 +141,14 @@ jobs:
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.0
+      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
-        ref: ${{github.event.pull_request.head.ref}}
+        ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
         submodules: true
     # template: .action_templates/steps/set-run-status.yaml
