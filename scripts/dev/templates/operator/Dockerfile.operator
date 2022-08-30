@@ -4,7 +4,7 @@ FROM ${imagebase} AS builder
 FROM {{base_image}}
 
 ENV OPERATOR=manager \
-    USER_UID=1001 \
+    USER_UID=2000 \
     USER_NAME=mongodb-kubernetes-operator
 
 WORKDIR /

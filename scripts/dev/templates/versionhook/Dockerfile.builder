@@ -1,18 +1,13 @@
 ARG builder_image
 FROM ${builder_image} as builder
 
-ENV GO111MODULE=on
-ENV GOFLAGS="-mod=vendor"
-ENV GOPATH ""
+RUN mkdir /workspace
+WORKDIR /workspace
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY . .
 
-ADD . .
-
-RUN go mod vendor && \
-    go build -o build/_output/version-upgrade-hook -mod=vendor github.com/mongodb/mongodb-kubernetes-operator/cmd/versionhook
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o version-upgrade-hook cmd/versionhook/main.go
 
 FROM busybox
 
-COPY --from=builder /go/build/_output/version-upgrade-hook /version-upgrade-hook
+COPY --from=builder /workspace/version-upgrade-hook /version-upgrade-hook
