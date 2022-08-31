@@ -1,14 +1,13 @@
-FROM golang:1.18.5-alpine as builder
+ARG builder_image
+FROM ${builder_image} as builder
 
-COPY ./cmd/readiness /build/
-COPY ./pkg /build/pkg
-COPY ./api /build/api
-COPY ./go.mod /build/
-COPY ./go.sum /build/
+RUN mkdir /workspace
+WORKDIR /workspace
 
-WORKDIR /build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -i -o readinessprobe .
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o readinessprobe cmd/readiness/main.go
 
 FROM busybox
 
-COPY --from=builder /build/readinessprobe /probes/
+COPY --from=builder /workspace/readinessprobe /probes/

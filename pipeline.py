@@ -18,7 +18,6 @@ VALID_IMAGE_NAMES = frozenset(
     ]
 )
 
-GOLANG_TAG = "1.18.5"
 DEFAULT_IMAGE_TYPE = "ubuntu"
 DEFAULT_NAMESPACE = "default"
 
@@ -82,6 +81,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
             "release_version": release["readiness-probe"],
             "readiness_probe_image": config.readiness_probe_image,
             "readiness_probe_image_dev": config.readiness_probe_image_dev,
+            "builder_image": release["golang-builder-image"],
         },
     )
 
@@ -98,6 +98,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
             "release_version": release["version-upgrade-hook"],
             "version_post_start_hook_image": config.version_upgrade_hook_image,
             "version_post_start_hook_image_dev": config.version_upgrade_hook_image_dev,
+            "builder_image": release["golang-builder-image"],
         },
     )
 
@@ -111,23 +112,25 @@ def build_operator_ubi_image(config: DevConfig) -> None:
         args={
             "registry": config.repo_url,
             "builder": "true",
-            "builder_image": f"golang:{GOLANG_TAG}",
+            "builder_image": release["golang-builder-image"],
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "operator_image": config.operator_image,
             "operator_image_dev": config.operator_image_dev,
             "release_version": release["mongodb-kubernetes-operator"],
+            "s3_bucket": config.s3_bucket,
         },
         inventory="inventories/operator-inventory.yaml",
     )
 
 
 def build_e2e_image(config: DevConfig) -> None:
+    release = _load_release()
     sonar_build_image(
         "e2e",
         config,
         args={
             "registry": config.repo_url,
-            "base_image": f"golang:{GOLANG_TAG}",
+            "base_image": release["golang-builder-image"],
             "e2e_image": config.e2e_image,
         },
         inventory="inventories/e2e-inventory.yaml",

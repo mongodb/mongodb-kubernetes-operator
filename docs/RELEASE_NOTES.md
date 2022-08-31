@@ -1,3 +1,10 @@
+# MongoDB Kubernetes Operator 0.7.6
+
+## Kubernetes Operator
+
+* Changes
+  * `mongodb-kubernetes-operator` image is now rebuilt daily, incorporating updates to system packages and security fixes. The operator binary is built only once during the release process and used without changes in daily rebuilt  
+
 # MongoDB Kubernetes Operator 0.7.5
 
 - Changes
