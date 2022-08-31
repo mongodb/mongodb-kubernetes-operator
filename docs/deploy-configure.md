@@ -38,12 +38,18 @@ To deploy your first replica set:
    | `<auth-db>` | [Authentication database](https://www.mongodb.com/docs/manual/core/security-users/#std-label-user-authentication-database) where you defined the database user. | `admin` |
    | `<username>` | Username of the database user. | `my-user` |
 
+   **NOTE**: Alternatively, you can specify an optional 
+   `users[i].connectionStringSecretName` field in the 
+   ``MongoDBCommunity`` custom resource to specify 
+   the name of the connection string secret that the 
+   Community Kubernetes Operator creates.
+   
    Update the variables in the following command, then run it to retrieve a user's connection strings to the replica set from the secret:
 
    **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
 
    ```sh
-   kubectl get secret <metadata.name>-<auth-db>-<username> -n <my-namespace> \ 
+   kubectl get secret <connection-string-secret-name> -n <my-namespace> \ 
    -o json | jq -r '.data | with_entries(.value |= @base64d)'
    ```
 
