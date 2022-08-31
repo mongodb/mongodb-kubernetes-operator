@@ -39,7 +39,8 @@ To deploy your first replica set:
    | `<username>` | Username of the database user. | `my-user` |
 
    **NOTE**: Alternatively, you can specify an optional 
-   `users[i].connectionStringSecretName` field to specify 
+   `users[i].connectionStringSecretName` field in the 
+   ``MongoDBCommunity`` custom resource to specify 
    the name of the connection string secret that the 
    Community Kubernetes Operator creates.
    
@@ -48,7 +49,7 @@ To deploy your first replica set:
    **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
 
    ```sh
-   kubectl get secret <metadata.name>-<auth-db>-<username> -n <my-namespace> \ 
+   kubectl get secret <connection-string-secret-name> -n <my-namespace> \ 
    -o json | jq -r '.data | with_entries(.value |= @base64d)'
    ```
 
