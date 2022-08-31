@@ -21,13 +21,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetOperatorUpgrade(t *testing.T) {
-	ctx := setup.SetupWithDefaultOperator(t)
+	resourceName := "mdb0"
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	scramUser := mdb.GetScramUsers()[0]
+	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
+	mdb.Spec.Arbiters = 1
+	mdb.Spec.Members = 2
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +52,17 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
+		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
+		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls(mdb)))
+		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithTls(mdb)))
+		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
+		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls(mdb)))
+	})
 
 	// upgrade the operator to master
 	config := setup.LoadTestConfigFromEnv()

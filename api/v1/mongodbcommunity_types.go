@@ -505,8 +505,9 @@ type TLS struct {
 
 // LocalObjectReference is a reference to another Kubernetes object by name.
 // TODO: Replace with a type from the K8s API. CoreV1 has an equivalent
-// 	"LocalObjectReference" type but it contains a TODO in its
-// 	description that we don't want in our CRD.
+//
+//	"LocalObjectReference" type but it contains a TODO in its
+//	description that we don't want in our CRD.
 type LocalObjectReference struct {
 	Name string `json:"name"`
 }

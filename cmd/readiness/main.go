@@ -99,7 +99,7 @@ func hasDeadlockedSteps(health health.Status) bool {
 // there and find the last step which has "Started" non nil
 // (indeed this is not the perfect logic as sometimes the agent doesn't update the 'Started' as well - see
 // 'health-status-ok.json', but seems it works for finding deadlocks still
-//noinspection GoNilness
+// noinspection GoNilness
 func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *health.StepStatus {
 	var currentPlan *health.PlanStatus
 	if len(processStatuses) == 0 {
