@@ -21,13 +21,18 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetOperatorUpgrade(t *testing.T) {
-	ctx := setup.SetupWithDefaultOperator(t)
+	resourceName := "mdb0"
+	testConfig := setup.LoadTestConfigFromEnv()
+	ctx := setup.SetupWithTestConfig(t, testConfig, true, true, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	scramUser := mdb.GetScramUsers()[0]
+	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
+	mdb.Spec.Arbiters = 1
+	mdb.Spec.Members = 2
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,19 +44,22 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb, true))
-	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
-	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
-	t.Run("Test Basic Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
-	t.Run("Test SRV Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
-	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
+		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
+		t.Run("Basic Connectivity Succeeds", tester.ConnectivitySucceeds(WithTls(mdb)))
+		t.Run("SRV Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithTls(mdb)))
+		t.Run("Basic Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+		t.Run("SRV Connectivity With Generated Connection String Secret Succeeds",
+			tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)), WithTls(mdb)))
+		t.Run("Connectivity Fails", tester.ConnectivityFails(WithoutTls()))
+		t.Run("Ensure authentication is configured", tester.EnsureAuthenticationIsConfigured(3, WithTls(mdb)))
+	})
 
 	// upgrade the operator to master
 	config := setup.LoadTestConfigFromEnv()
-	err = setup.DeployOperator(config, "mdb", false, false)
+	err = setup.DeployOperator(config, resourceName, true, false)
 	assert.NoError(t, err)
 
 	// Perform the basic tests
@@ -71,7 +79,7 @@ func TestReplicaSetOperatorUpgradeFrom0_7_2(t *testing.T) {
 	testConfig.ReadinessProbeImage = "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.6"
 	testConfig.AgentImage = "quay.io/mongodb/mongodb-agent:11.0.5.6963-1"
 
-	ctx := setup.SetupWithTestConfig(t, testConfig, true, resourceName)
+	ctx := setup.SetupWithTestConfig(t, testConfig, true, false, resourceName)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, "")
