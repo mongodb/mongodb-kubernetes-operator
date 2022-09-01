@@ -22,7 +22,8 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetOperatorUpgrade(t *testing.T) {
 	resourceName := "mdb0"
-	ctx, testConfig := setup.SetupWithDefaultOperator(t, resourceName, true)
+	testConfig := setup.LoadTestConfigFromEnv()
+	ctx := setup.SetupWithTestConfig(t, testConfig, true, true, resourceName)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
@@ -78,7 +79,7 @@ func TestReplicaSetOperatorUpgradeFrom0_7_2(t *testing.T) {
 	testConfig.ReadinessProbeImage = "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.6"
 	testConfig.AgentImage = "quay.io/mongodb/mongodb-agent:11.0.5.6963-1"
 
-	ctx := setup.SetupWithTestConfig(t, testConfig, true, resourceName)
+	ctx := setup.SetupWithTestConfig(t, testConfig, true, false, resourceName)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, "")
