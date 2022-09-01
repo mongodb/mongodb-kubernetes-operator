@@ -22,16 +22,16 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetOperatorUpgrade(t *testing.T) {
 	resourceName := "mdb0"
-	ctx := setup.SetupWithDefaultOperator(t)
+	ctx, testConfig := setup.SetupWithDefaultOperator(t, resourceName, true)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
 	scramUser := mdb.GetScramUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 	mdb.Spec.Arbiters = 1
 	mdb.Spec.Members = 2
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,14 +43,6 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb, true))
-	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
-	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
-	t.Run("Test Basic Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
-	t.Run("Test SRV Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
-	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	mongodbtests.SkipTestIfLocal(t, "Ensure MongoDB TLS Configuration", func(t *testing.T) {
 		t.Run("Has TLS Mode", tester.HasTlsMode("requireSSL", 60, WithTls(mdb)))
@@ -66,7 +58,7 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 
 	// upgrade the operator to master
 	config := setup.LoadTestConfigFromEnv()
-	err = setup.DeployOperator(config, "mdb", false, false)
+	err = setup.DeployOperator(config, "mdb", true, false)
 	assert.NoError(t, err)
 
 	// Perform the basic tests

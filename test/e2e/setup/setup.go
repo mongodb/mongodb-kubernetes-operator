@@ -36,17 +36,22 @@ const (
 	Pem               tlsSecretType = "PEM"
 )
 
-func SetupWithDefaultOperator(t *testing.T) *e2eutil.Context {
+func SetupWithDefaultOperator(t *testing.T, resourceName string, withTLS bool) (*e2eutil.Context, TestConfig) {
 	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
 
 	if err != nil {
 		t.Fatal(err)
 	}
 	config := LoadTestConfigFromEnv()
-	if err := DeployOperator(config, "mdb", false, true); err != nil {
+	if withTLS {
+		if err := deployCertManager(config); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := DeployOperator(config, resourceName, withTLS, true); err != nil {
 		t.Fatal(err)
 	}
-	return ctx
+	return ctx, config
 }
 
 func Setup(t *testing.T) *e2eutil.Context {
