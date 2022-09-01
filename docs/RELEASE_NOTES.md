@@ -2,8 +2,10 @@
 
 ## Kubernetes Operator
 
-* Changes
-  * `mongodb-kubernetes-operator` image is now rebuilt daily, incorporating updates to system packages and security fixes. The operator binary is built only once during the release process and used without changes in daily rebuilt  
+- Changes
+  - `mongodb-kubernetes-operator` image is now rebuilt daily, incorporating updates to system packages and security fixes. The operator binary is built only once during the release process and used without changes in daily rebuilt
+  - Improved security by introducing `readOnlyRootFilesystem` property to all deployed containers. This change also introduces a few additional volumes and volume mounts.
+  - Improved security by introducing `allowPrivilegeEscalation` set to `false` for all containers.
 
 # MongoDB Kubernetes Operator 0.7.5
 
