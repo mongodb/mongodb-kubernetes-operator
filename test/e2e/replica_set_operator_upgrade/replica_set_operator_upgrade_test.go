@@ -58,7 +58,7 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 
 	// upgrade the operator to master
 	config := setup.LoadTestConfigFromEnv()
-	err = setup.DeployOperator(config, "mdb", true, false)
+	err = setup.DeployOperator(config, resourceName, true, false)
 	assert.NoError(t, err)
 
 	// Perform the basic tests
