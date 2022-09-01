@@ -22,16 +22,16 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetOperatorUpgrade(t *testing.T) {
 	resourceName := "mdb0"
-	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
+	ctx := setup.SetupWithDefaultOperator(t)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, "")
 	scramUser := mdb.GetScramUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 	mdb.Spec.Arbiters = 1
 	mdb.Spec.Members = 2
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
