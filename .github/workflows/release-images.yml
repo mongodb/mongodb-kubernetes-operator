@@ -56,6 +56,8 @@ jobs:
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
+          AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
 
       - name: Add Supported Release
         if: steps.release_status.outputs.OUTPUT == 'unreleased'
