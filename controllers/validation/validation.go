@@ -36,6 +36,10 @@ func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
+	if err := validateTLSSpec(mdb); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -115,6 +119,15 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 	if len(mapModes) != len(allModes) {
 		return fmt.Errorf("some authentication modes are declared twice or more")
+	}
+
+	return nil
+}
+
+// Validate TLS specification
+func validateTLSSpec(mdb mdbv1.MongoDBCommunity) error {
+	if mdb.Spec.Security.TLS.Enabled && mdb.Spec.Security.TLS.CaConfigMap == nil && mdb.Spec.Security.TLS.CaCertificateSecret == nil {
+		return fmt.Errorf("CaCertificateSecretRef/CaConfigMapRef not found.")
 	}
 
 	return nil
