@@ -237,6 +237,18 @@ func (b *Builder) Build() (AutomationConfig, error) {
 	members := make([]ReplicaSetMember, b.members+b.arbiters)
 	processes := make([]Process, b.members+b.arbiters)
 
+	if b.fcv != "" {
+		_, err := semver.Make(fmt.Sprintf("%s.0", b.fcv))
+
+		if err != nil {
+			return AutomationConfig{}, fmt.Errorf("invalid feature compatibility version: %s", err)
+		}
+	}
+
+	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
+		return AutomationConfig{}, fmt.Errorf("can't build the automation config: %s", err)
+	}
+
 	dataDir := DefaultMongoDBDataDir
 	if b.dataDir != "" {
 		dataDir = b.dataDir
