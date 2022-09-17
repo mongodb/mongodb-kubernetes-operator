@@ -328,7 +328,69 @@ func TestPemSupport(t *testing.T) {
 		err = r.ensureTLSResources(mdb)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `if all of "tls.crt", "tls.key" and "tls.pem" are present in the secret, the entry for "tls.pem" must be equal to the concatenation of "tls.crt" with "tls.key"`)
+	})
+}
 
+func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
+	t.Run("Success if reference to CA cert provided via secret", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLSCaCertificateReferences(&mdbv1.LocalObjectReference{
+			Name: "certificateKeySecret"}, nil)
+
+		mgr := kubeClient.NewManager(&mdb)
+		cli := mdbClient.NewClient(mgr.GetClient())
+		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
+
+		assert.NoError(t, err)
+
+		r := NewReconciler(mgr)
+
+		_, err = r.validateTLSConfig(mdb)
+		assert.Nil(t, err)
+	})
+	t.Run("Success if reference to CA cert provided via config map", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLSCaCertificateReferences(nil, &mdbv1.LocalObjectReference{
+			Name: "caConfigMap"})
+
+		mgr := kubeClient.NewManager(&mdb)
+		cli := mdbClient.NewClient(mgr.GetClient())
+		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
+
+		assert.NoError(t, err)
+
+		r := NewReconciler(mgr)
+
+		_, err = r.validateTLSConfig(mdb)
+		assert.Nil(t, err)
+	})
+	t.Run("Succes if reference to CA cert provided both via secret and configMap", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLSCaCertificateReferences(&mdbv1.LocalObjectReference{
+			Name: "certificateKeySecret"}, &mdbv1.LocalObjectReference{
+			Name: "caConfigMap"})
+		mgr := kubeClient.NewManager(&mdb)
+		cli := mdbClient.NewClient(mgr.GetClient())
+		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
+
+		assert.NoError(t, err)
+
+		r := NewReconciler(mgr)
+
+		_, err = r.validateTLSConfig(mdb)
+		assert.Nil(t, err)
+	})
+	t.Run("Failure if reference to CA cert is missing", func(t *testing.T) {
+		mdb := newTestReplicaSetWithTLSCaCertificateReferences(nil, nil)
+
+		mgr := kubeClient.NewManager(&mdb)
+		cli := mdbClient.NewClient(mgr.GetClient())
+		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
+
+		assert.NoError(t, err)
+
+		r := NewReconciler(mgr)
+
+		_, err = r.validateTLSConfig(mdb)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present")
 	})
 }
 
