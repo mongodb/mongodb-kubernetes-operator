@@ -330,6 +330,19 @@ exec mongod -f %s;
 	)
 }
 
+// replaceImageTag returns the image with the tag or digest replaced to given version
+func replaceImageTagOrDigest(image string, newVersion string) string {
+	if strings.Contains(image, "sha256:") {
+		imageSplit := strings.Split(image, "@")
+		imageSplit[len(imageSplit)-1] = newVersion
+		return strings.Join(imageSplit, ":")
+	} else {
+		imageSplit := strings.Split(image, ":")
+		imageSplit[len(imageSplit)-1] = newVersion
+		return strings.Join(imageSplit, ":")
+	}
+}
+
 // ContainerImage builds container image using image environment variable imageURLEnv and version.
 // It handles image digests when running in disconnected environment in OpenShift, where images
 // are referenced by sha256 digest instead of tags.
@@ -340,9 +353,19 @@ func ContainerImage(imageURLEnv string, version string) string {
 	versionSuffix = strings.ReplaceAll(versionSuffix, "-", "_")
 	relatedImageEnv := fmt.Sprintf("RELATED_IMAGE_%s_%s", imageURLEnv, versionSuffix)
 
-	relatedImage := os.Getenv(relatedImageEnv)
-	if relatedImage != "" {
+	if relatedImage := os.Getenv(relatedImageEnv); relatedImage != "" {
 		return relatedImage
+	}
+
+	imageURL := os.Getenv(imageURLEnv)
+	if strings.Contains(imageURL, ":") {
+		// imageURL is not a host only but also with version or digest
+		// in that case we need to replace the version/digest.
+		// This is case for e.g. with AGENT_IMAGE env variable which is provided as a full URL with version
+		// and not as a pair of host and version.
+		// In case AGENT_IMAGE is full URL with digest it will be replaced to given tag version,
+		// but most probably if it has digest there is also RELATED_IMAGE defined, which will be picked up first.
+		return replaceImageTagOrDigest(imageURL, version)
 	}
 
 	return fmt.Sprintf("%s:%s", os.Getenv(imageURLEnv), version)
