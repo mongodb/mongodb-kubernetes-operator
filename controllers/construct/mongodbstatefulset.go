@@ -325,3 +325,26 @@ exec mongod -f %s;
 		container.WithVolumeMounts(volumeMounts),
 	)
 }
+
+// ContainerImage builds container image using image environment variable imageURLEnv and version.
+// It handles image digests when running in disconnected environment in OpenShift, where images
+// are referenced by sha256 digest instead of tags.
+// It works by convention by looking up RELATED_IMAGE_{imageURLEnv}_<version_underscored>.
+// RELATED_IMAGE_* env variables are set in Helm chart for OpenShift.
+func ContainerImage(imageURLEnv string, version string) string {
+	versionSuffix := strings.ReplaceAll(version, ".", "_")
+	versionSuffix = strings.ReplaceAll(versionSuffix, "-", "_")
+	relatedImageEnv := fmt.Sprintf("RELATED_IMAGE_%s_%s", imageURLEnv, versionSuffix)
+
+	relatedImage := os.Getenv(relatedImageEnv)
+	if relatedImage != "" {
+		return relatedImage
+	}
+
+	imageURL := os.Getenv(imageURLEnv)
+	if imageURL == "" {
+		panic(fmt.Sprintf("%s environment variable is not set!", imageURLEnv))
+	}
+
+	return fmt.Sprintf("%s:%s", imageURL, version)
+}

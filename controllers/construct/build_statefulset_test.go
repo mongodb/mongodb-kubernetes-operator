@@ -1,11 +1,13 @@
 package construct
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
@@ -171,4 +173,18 @@ func assertContainsVolumeMountWithName(t *testing.T, mounts []corev1.VolumeMount
 		}
 	}
 	assert.True(t, found, "Mounts should have contained a mount with name %s, but didn't. Actual mounts: %v", name, mounts)
+}
+
+func TestContainerImage(t *testing.T) {
+	os.Setenv(MongodbImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator")
+	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_1_0_0", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:608daf56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd")
+	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_12_0_4_7554_1", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:b631ee886bb49ba8d7b90bb003fe66051dadecbc2ac126ac7351221f4a7c377c")
+	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_2_0_0_b20220912000000", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:f1a7f49cd6533d8ca9425f25cdc290d46bb883997f07fac83b66cc799313adad")
+	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator:0.0.1", ContainerImage(MongodbImageEnv, "0.0.1"))
+	// for 10.2.25.6008-1 there is no RELATED_IMAGE variable set, so we use version instead of digest
+	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator:10.2.25.6008-1", ContainerImage(MongodbImageEnv, "10.2.25.6008-1"))
+	// for following versions we set RELATED_IMAGE_MONGODB_IMAGE_* env variables to sha256 digest
+	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator@sha256:608daf56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd", ContainerImage(MongodbImageEnv, "1.0.0"))
+	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator@sha256:b631ee886bb49ba8d7b90bb003fe66051dadecbc2ac126ac7351221f4a7c377c", ContainerImage(MongodbImageEnv, "12.0.4.7554-1"))
+	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator@sha256:f1a7f49cd6533d8ca9425f25cdc290d46bb883997f07fac83b66cc799313adad", ContainerImage(MongodbImageEnv, "2.0.0-b20220912000000"))
 }
