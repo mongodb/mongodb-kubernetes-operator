@@ -97,6 +97,20 @@ func TestMongod_Container(t *testing.T) {
 	})
 }
 
+func TestMongod_ContainerWithDigests(t *testing.T) {
+	_ = os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_4_3", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:1234af56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd")
+
+	c := container.New(mongodbContainer("4.3", []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
+
+	t.Run("Image is from RELATED_IMAGE env var", func(t *testing.T) {
+		assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator@sha256:1234af56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd", c.Image)
+	})
+
+	t.Run("Resource requirements are correct", func(t *testing.T) {
+		assert.Equal(t, resourcerequirements.Defaults(), c.Resources)
+	})
+}
+
 func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity, sts *appsv1.StatefulSet) {
 	assert.Len(t, sts.Spec.Template.Spec.Containers, 2)
 	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
@@ -176,10 +190,10 @@ func assertContainsVolumeMountWithName(t *testing.T, mounts []corev1.VolumeMount
 }
 
 func TestContainerImage(t *testing.T) {
-	os.Setenv(MongodbImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator")
-	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_1_0_0", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:608daf56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd")
-	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_12_0_4_7554_1", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:b631ee886bb49ba8d7b90bb003fe66051dadecbc2ac126ac7351221f4a7c377c")
-	os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_2_0_0_b20220912000000", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:f1a7f49cd6533d8ca9425f25cdc290d46bb883997f07fac83b66cc799313adad")
+	_ = os.Setenv(MongodbImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator")
+	_ = os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_1_0_0", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:608daf56296c10c9bd02cc85bb542a849e9a66aff0697d6359b449540696b1fd")
+	_ = os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_12_0_4_7554_1", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:b631ee886bb49ba8d7b90bb003fe66051dadecbc2ac126ac7351221f4a7c377c")
+	_ = os.Setenv(fmt.Sprintf("RELATED_IMAGE_%s_2_0_0_b20220912000000", MongodbImageEnv), "quay.io/mongodb/mongodb-kubernetes-operator@sha256:f1a7f49cd6533d8ca9425f25cdc290d46bb883997f07fac83b66cc799313adad")
 	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator:0.0.1", ContainerImage(MongodbImageEnv, "0.0.1"))
 	// for 10.2.25.6008-1 there is no RELATED_IMAGE variable set, so we use version instead of digest
 	assert.Equal(t, "quay.io/mongodb/mongodb-kubernetes-operator:10.2.25.6008-1", ContainerImage(MongodbImageEnv, "10.2.25.6008-1"))

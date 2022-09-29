@@ -284,8 +284,12 @@ func getMongoDBImage(version string) string {
 	if strings.HasSuffix(repoUrl, "/") {
 		repoUrl = strings.TrimRight(repoUrl, "/")
 	}
-	mongoImageName := os.Getenv(MongodbImageEnv)
-	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
+	mongoImageName := ContainerImage(MongodbImageEnv, version)
+	if strings.Contains(mongoImageName, "@sha256:") {
+		return mongoImageName
+	}
+
+	return fmt.Sprintf("%s/%s", repoUrl, mongoImageName)
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
@@ -341,10 +345,5 @@ func ContainerImage(imageURLEnv string, version string) string {
 		return relatedImage
 	}
 
-	imageURL := os.Getenv(imageURLEnv)
-	if imageURL == "" {
-		panic(fmt.Sprintf("%s environment variable is not set!", imageURLEnv))
-	}
-
-	return fmt.Sprintf("%s:%s", imageURL, version)
+	return fmt.Sprintf("%s:%s", os.Getenv(imageURLEnv), version)
 }
