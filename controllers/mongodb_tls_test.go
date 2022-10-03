@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -332,66 +333,55 @@ func TestPemSupport(t *testing.T) {
 }
 
 func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
-	t.Run("Success if reference to CA cert provided via secret", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLSCaCertificateReferences(&mdbv1.LocalObjectReference{
-			Name: "certificateKeySecret"}, nil)
+	type args struct {
+		caConfigMap         *mdbv1.LocalObjectReference
+		caCertificateSecret *mdbv1.LocalObjectReference
+		expectedError       error
+	}
+	tests := map[string]args{
+		"Success if reference to CA cert provided via secret": {
+			caConfigMap: &mdbv1.LocalObjectReference{
+				Name: "ccertificateKeySecret"},
+			caCertificateSecret: nil,
+		},
+		"Success if reference to CA cert provided via config map": {
+			caConfigMap: nil,
+			caCertificateSecret: &mdbv1.LocalObjectReference{
+				Name: "caConfigMap"},
+		},
+		"Succes if reference to CA cert provided both via secret and configMap": {
+			caConfigMap: &mdbv1.LocalObjectReference{
+				Name: "certificateKeySecret"},
+			caCertificateSecret: &mdbv1.LocalObjectReference{
+				Name: "caConfigMap"},
+		},
+		"Failure if reference to CA cert is missing": {
+			caConfigMap:         nil,
+			caCertificateSecret: nil,
+			expectedError:       errors.New("TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present"),
+		},
+	}
+	for testName, tc := range tests {
+		t.Run(testName, func(t *testing.T) {
+			mdb := newTestReplicaSetWithTLSCaCertificateReferences(tc.caConfigMap, tc.caCertificateSecret)
 
-		mgr := kubeClient.NewManager(&mdb)
-		cli := mdbClient.NewClient(mgr.GetClient())
-		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
+			mgr := kubeClient.NewManager(&mdb)
+			cli := mdbClient.NewClient(mgr.GetClient())
+			err := createTLSSecret(cli, mdb, "cert", "key", "pem")
 
-		assert.NoError(t, err)
+			assert.NoError(t, err)
 
-		r := NewReconciler(mgr)
+			r := NewReconciler(mgr)
 
-		_, err = r.validateTLSConfig(mdb)
-		assert.Nil(t, err)
-	})
-	t.Run("Success if reference to CA cert provided via config map", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLSCaCertificateReferences(nil, &mdbv1.LocalObjectReference{
-			Name: "caConfigMap"})
+			_, err = r.validateTLSConfig(mdb)
+			if tc.expectedError != nil {
+				assert.EqualError(t, err, tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 
-		mgr := kubeClient.NewManager(&mdb)
-		cli := mdbClient.NewClient(mgr.GetClient())
-		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
-
-		assert.NoError(t, err)
-
-		r := NewReconciler(mgr)
-
-		_, err = r.validateTLSConfig(mdb)
-		assert.Nil(t, err)
-	})
-	t.Run("Succes if reference to CA cert provided both via secret and configMap", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLSCaCertificateReferences(&mdbv1.LocalObjectReference{
-			Name: "certificateKeySecret"}, &mdbv1.LocalObjectReference{
-			Name: "caConfigMap"})
-		mgr := kubeClient.NewManager(&mdb)
-		cli := mdbClient.NewClient(mgr.GetClient())
-		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
-
-		assert.NoError(t, err)
-
-		r := NewReconciler(mgr)
-
-		_, err = r.validateTLSConfig(mdb)
-		assert.Nil(t, err)
-	})
-	t.Run("Failure if reference to CA cert is missing", func(t *testing.T) {
-		mdb := newTestReplicaSetWithTLSCaCertificateReferences(nil, nil)
-
-		mgr := kubeClient.NewManager(&mdb)
-		cli := mdbClient.NewClient(mgr.GetClient())
-		err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
-
-		assert.NoError(t, err)
-
-		r := NewReconciler(mgr)
-
-		_, err = r.validateTLSConfig(mdb)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present")
-	})
 }
 
 func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
