@@ -371,7 +371,7 @@ func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			r := NewReconciler(kubeClient.NewManagerWithClient(cli))
+			r := NewReconciler(mgr)
 
 			_, err = r.validateTLSConfig(mdb)
 			if tc.expectedError != nil {
