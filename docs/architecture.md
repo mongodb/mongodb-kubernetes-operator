@@ -28,7 +28,7 @@ You create and update MongoDBCommunity resources by defining a MongoDBCommunity 
    - `automation-config` which is mounted from the previously generated `Secret` to both the server and agent. Only lives as long as the pod.
    - `healthstatus` which contains the agent's current status. This is shared with the `mongod` container where it's used by the pre-stop hook. Only lives as long as the pod.
 
-1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDBCommunity resource definition](../deploy/crds/mongodb.com_v1_mongodbcommunity_cr.yaml).
+1. Initiates the MongoDB Agent, which in turn creates the database configuration and launches the `mongod` process according to your [MongoDBCommunity resource definition](../config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml).
 
 <!--
 <img src="" alt="Architecure diagram of the MongoDB Community Kubernetes Operator">
