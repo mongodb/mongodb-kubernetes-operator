@@ -341,7 +341,7 @@ func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
 	tests := map[string]args{
 		"Success if reference to CA cert provided via secret": {
 			caConfigMap: &mdbv1.LocalObjectReference{
-				Name: "ccertificateKeySecret"},
+				Name: "certificateKeySecret"},
 			caCertificateSecret: nil,
 		},
 		"Success if reference to CA cert provided via config map": {
@@ -371,7 +371,7 @@ func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			r := NewReconciler(mgr)
+			r := NewReconciler(kubeClient.NewManagerWithClient(cli))
 
 			_, err = r.validateTLSConfig(mdb)
 			if tc.expectedError != nil {
@@ -401,7 +401,8 @@ func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 func createTLSSecretWithNamespaceAndName(c k8sClient.Client, namespace string, name string, crt string, key string, pem string) error {
 	sBuilder := secret.Builder().
 		SetName(name).
-		SetNamespace(namespace)
+		SetNamespace(namespace).
+		SetField(tlsCACertName, "CERT")
 
 	if crt != "" {
 		sBuilder.SetField(tlsSecretCertName, crt)
