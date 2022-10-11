@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [Prerequisites](#prerequisites)
 - [Install the Operator](#install-the-operator)
   - [Understand Deployment Scopes](#understand-deployment-scopes)
     - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
@@ -16,6 +17,10 @@
      - [Procedure using kubectl](#procedure-using-kubectl)
 - [Upgrade the Operator](#upgrade-the-operator)
 - [Rotating TLS certificate for the MongoDB deployment](#rotating-tls-certificate-for-the-mongodb-deployment)
+
+## Prerequisites
+
+- A Kubernetes cluster with nodes with x86-64/AMD64 processors (either all, or a separate node pool)
 
 ## Install the Operator
 
