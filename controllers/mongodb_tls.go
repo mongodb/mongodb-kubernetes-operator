@@ -162,12 +162,17 @@ func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.M
 	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
 		caData, err = secret.ReadStringData(secretGetter, caResourceName)
-	} else {
+	} else if mdb.Spec.Security.TLS.CaConfigMap != nil {
 		caResourceName = mdb.TLSConfigMapNamespacedName()
 		caData, err = configmap.ReadData(cmGetter, caResourceName)
 	}
+
 	if err != nil {
 		return "", err
+	}
+
+	if caData == nil {
+		return "", fmt.Errorf("TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present")
 	}
 
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {

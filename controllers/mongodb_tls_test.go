@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -328,8 +329,59 @@ func TestPemSupport(t *testing.T) {
 		err = r.ensureTLSResources(mdb)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `if all of "tls.crt", "tls.key" and "tls.pem" are present in the secret, the entry for "tls.pem" must be equal to the concatenation of "tls.crt" with "tls.key"`)
-
 	})
+}
+
+func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
+	type args struct {
+		caConfigMap         *mdbv1.LocalObjectReference
+		caCertificateSecret *mdbv1.LocalObjectReference
+		expectedError       error
+	}
+	tests := map[string]args{
+		"Success if reference to CA cert provided via secret": {
+			caConfigMap: &mdbv1.LocalObjectReference{
+				Name: "certificateKeySecret"},
+			caCertificateSecret: nil,
+		},
+		"Success if reference to CA cert provided via config map": {
+			caConfigMap: nil,
+			caCertificateSecret: &mdbv1.LocalObjectReference{
+				Name: "caConfigMap"},
+		},
+		"Succes if reference to CA cert provided both via secret and configMap": {
+			caConfigMap: &mdbv1.LocalObjectReference{
+				Name: "certificateKeySecret"},
+			caCertificateSecret: &mdbv1.LocalObjectReference{
+				Name: "caConfigMap"},
+		},
+		"Failure if reference to CA cert is missing": {
+			caConfigMap:         nil,
+			caCertificateSecret: nil,
+			expectedError:       errors.New("TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present"),
+		},
+	}
+	for testName, tc := range tests {
+		t.Run(testName, func(t *testing.T) {
+			mdb := newTestReplicaSetWithTLSCaCertificateReferences(tc.caConfigMap, tc.caCertificateSecret)
+
+			mgr := kubeClient.NewManager(&mdb)
+			cli := mdbClient.NewClient(mgr.GetClient())
+			err := createTLSSecret(cli, mdb, "cert", "key", "pem")
+
+			assert.NoError(t, err)
+
+			r := NewReconciler(mgr)
+
+			_, err = r.validateTLSConfig(mdb)
+			if tc.expectedError != nil {
+				assert.EqualError(t, err, tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
 }
 
 func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
@@ -349,7 +401,8 @@ func createTLSConfigMap(c k8sClient.Client, mdb mdbv1.MongoDBCommunity) error {
 func createTLSSecretWithNamespaceAndName(c k8sClient.Client, namespace string, name string, crt string, key string, pem string) error {
 	sBuilder := secret.Builder().
 		SetName(name).
-		SetNamespace(namespace)
+		SetNamespace(namespace).
+		SetField(tlsCACertName, "CERT")
 
 	if crt != "" {
 		sBuilder.SetField(tlsSecretCertName, crt)
