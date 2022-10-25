@@ -7,23 +7,24 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
+	"go.uber.org/zap"
 )
 
 // ValidateInitalSpec checks if the resource's initial Spec is valid.
-func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
-	return validateSpec(mdb)
+func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	return validateSpec(mdb, log)
 }
 
 // ValidateUpdate validates that the new Spec, corresponding to the existing one, is still valid.
-func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySpec) error {
+func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySpec, log *zap.SugaredLogger) error {
 	if oldSpec.Security.TLS.Enabled && !mdb.Spec.Security.TLS.Enabled {
 		return errors.New("TLS can't be set to disabled after it has been enabled")
 	}
-	return validateSpec(mdb)
+	return validateSpec(mdb, log)
 }
 
 // validateSpec validates the specs of the given resource definition.
-func validateSpec(mdb mdbv1.MongoDBCommunity) error {
+func validateSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	if err := validateUsers(mdb); err != nil {
 		return err
 	}
@@ -32,7 +33,7 @@ func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	if err := validateAuthModeSpec(mdb); err != nil {
+	if err := validateAuthModeSpec(mdb, log); err != nil {
 		return err
 	}
 
@@ -102,8 +103,13 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 }
 
 // validateAuthModeSpec checks that the list of modes does not contain duplicates.
-func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
+func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	allModes := mdb.Spec.Security.Authentication.Modes
+
+	// Issue warning if Modes array is empty
+	if len(allModes) == 0 {
+		log.Warnf("Modes array is empty")
+	}
 
 	// Check that no auth is defined more than once
 	mapModes := make(map[mdbv1.AuthMode]struct{})
