@@ -108,7 +108,7 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) er
 
 	// Issue warning if Modes array is empty
 	if len(allModes) == 0 {
-		log.Warnf("Modes array is empty")
+		log.Warnf("An empty Modes array has been provided. The default mode (SCRAM-SHA-256) will be used.")
 	}
 
 	// Check that no auth is defined more than once
