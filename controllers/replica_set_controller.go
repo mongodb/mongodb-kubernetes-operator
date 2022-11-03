@@ -589,7 +589,7 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
-		return validation.ValidateInitalSpec(mdb)
+		return validation.ValidateInitalSpec(mdb, r.log)
 	}
 
 	lastSpec := mdbv1.MongoDBCommunitySpec{}
@@ -598,7 +598,7 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	return validation.ValidateUpdate(mdb, lastSpec)
+	return validation.ValidateUpdate(mdb, lastSpec, r.log)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {

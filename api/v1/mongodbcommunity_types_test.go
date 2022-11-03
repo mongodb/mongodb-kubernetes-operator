@@ -66,6 +66,17 @@ func TestMongodConfigurationWithNestedMapsAfterUnmarshalling(t *testing.T) {
 	}, mc.Object)
 }
 
+func TestGetScramOptions(t *testing.T) {
+	t.Run("Default AutoAuthMechanism set if modes array empty", func(t *testing.T) {
+		mdb := newModesArray(nil, "empty-modes-array", "my-namespace")
+
+		options := mdb.GetScramOptions()
+
+		assert.EqualValues(t, defaultMode, options.AutoAuthMechanism)
+		assert.EqualValues(t, []string{}, options.AutoAuthMechanisms)
+	})
+}
+
 func TestGetScramCredentialsSecretName(t *testing.T) {
 	testusers := []struct {
 		in  MongoDBUser
@@ -189,6 +200,24 @@ func newReplicaSet(members int, name, namespace string) MongoDBCommunity {
 		},
 		Spec: MongoDBCommunitySpec{
 			Members: members,
+		},
+	}
+}
+
+func newModesArray(modes []AuthMode, name, namespace string) MongoDBCommunity {
+	return MongoDBCommunity{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: MongoDBCommunitySpec{
+			Security: Security{
+				Authentication: Authentication{
+					Modes:              modes,
+					IgnoreUnknownUsers: nil,
+				},
+			},
 		},
 	}
 }

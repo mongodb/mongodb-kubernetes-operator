@@ -602,7 +602,6 @@ func (m MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
 func (m MongoDBCommunity) GetScramOptions() scram.Options {
-
 	ignoreUnknownUsers := true
 	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
@@ -610,15 +609,20 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 
 	authModes := m.Spec.Security.Authentication.Modes
 	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
-	autoAuthMechanism := ConvertAuthModeToAuthMechanism(authModes[0])
-
+	var autoAuthMechanism string
 	authMechanisms := make([]string, len(authModes))
 
-	for i, authMode := range authModes {
-		if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
-			authMechanisms[i] = authMech
-			if authMech == defaultAuthMechanism {
-				autoAuthMechanism = defaultAuthMechanism
+	if len(authModes) == 0 {
+		autoAuthMechanism = defaultAuthMechanism
+	} else {
+		autoAuthMechanism = ConvertAuthModeToAuthMechanism(authModes[0])
+
+		for i, authMode := range authModes {
+			if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
+				authMechanisms[i] = authMech
+				if authMech == defaultAuthMechanism {
+					autoAuthMechanism = defaultAuthMechanism
+				}
 			}
 		}
 	}
