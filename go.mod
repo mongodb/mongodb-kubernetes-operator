@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/objx v0.4.0
 	github.com/stretchr/testify v1.8.0
 	github.com/xdg/stringprep v1.0.3
-	go.mongodb.org/mongo-driver v1.10.2
+	go.mongodb.org/mongo-driver v1.11.0
 	go.uber.org/zap v1.23.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/api v0.24.3
