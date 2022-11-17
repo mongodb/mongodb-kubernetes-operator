@@ -1,6 +1,6 @@
 module github.com/mongodb/mongodb-kubernetes-operator
 
-go 1.18
+go 1.19
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
@@ -11,12 +11,12 @@ require (
 	github.com/stretchr/objx v0.4.0
 	github.com/stretchr/testify v1.8.0
 	github.com/xdg/stringprep v1.0.3
-	go.mongodb.org/mongo-driver v1.10.2
+	go.mongodb.org/mongo-driver v1.11.0
 	go.uber.org/zap v1.23.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	k8s.io/api v0.24.3
-	k8s.io/apimachinery v0.24.3
-	k8s.io/client-go v0.24.3
+	k8s.io/api v0.24.8
+	k8s.io/apimachinery v0.24.8
+	k8s.io/client-go v0.24.8
 	sigs.k8s.io/controller-runtime v0.12.3
 	sigs.k8s.io/yaml v1.3.0
 )
