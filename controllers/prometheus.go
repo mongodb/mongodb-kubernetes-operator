@@ -39,7 +39,7 @@ func getPrometheusModification(getUpdateCreator secret.GetUpdateCreator, mdb mdb
 		if err != nil {
 			return automationconfig.NOOP(), err
 		}
-		tlsPEMPath = tlsOperatorSecretMountPath + tlsOperatorSecretFileName(certKey)
+		tlsPEMPath = tlsPrometheusSecretMountPath + tlsOperatorSecretFileName(certKey)
 		scheme = "https"
 	} else {
 		scheme = "http"

@@ -38,11 +38,17 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name)
+	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "")
 }
 
-func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string) {
-	assert.Len(t, sts.Spec.Template.Spec.Volumes, 8)
+func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string, expectedPromTLSSecretName string) {
+	prometheusTLSEnabled := expectedPromTLSSecretName != ""
+
+	if prometheusTLSEnabled {
+		assert.Len(t, sts.Spec.Template.Spec.Volumes, 9)
+	} else {
+		assert.Len(t, sts.Spec.Template.Spec.Volumes, 8)
+	}
 	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
@@ -62,6 +68,17 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 			},
 		},
 	})
+	if prometheusTLSEnabled {
+		assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "prom-tls-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  expectedPromTLSSecretName,
+					DefaultMode: &permission,
+				},
+			},
+		})
+	}
 
 	tlsSecretVolumeMount := corev1.VolumeMount{
 		Name:      "tls-secret",
@@ -73,16 +90,70 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 		ReadOnly:  true,
 		MountPath: tlsCAMountPath,
 	}
+	tlsPrometheusSecretVolumeMount := corev1.VolumeMount{
+		Name:      "prom-tls-secret",
+		ReadOnly:  true,
+		MountPath: tlsPrometheusSecretMountPath,
+	}
 
 	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Contains(t, agentContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, agentContainer.VolumeMounts, tlsCAVolumeMount)
+	if prometheusTLSEnabled {
+		assert.Contains(t, agentContainer.VolumeMounts, tlsPrometheusSecretVolumeMount)
+	}
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
+	if prometheusTLSEnabled {
+		assert.Contains(t, mongodbContainer.VolumeMounts, tlsPrometheusSecretVolumeMount)
+	}
+}
+
+func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Prometheus = &mdbv1.Prometheus{
+		Username: "username",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "prom-password-secret",
+		},
+		Port: 4321,
+		TLSSecretRef: mdbv1.SecretKeyReference{
+			Name: "prom-secret-cert",
+		},
+	}
+
+	mgr := kubeClient.NewManager(&mdb)
+	cli := mdbClient.NewClient(mgr.GetClient())
+
+	err := secret.CreateOrUpdate(mgr.Client,
+		secret.Builder().
+			SetName("prom-password-secret").
+			SetNamespace(mdb.Namespace).
+			SetField("password", "my-password").
+			Build(),
+	)
+	assert.NoError(t, err)
+	err = createTLSSecret(cli, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createPrometheusTLSSecret(cli, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+
+	err = createTLSConfigMap(cli, mdb)
+	assert.NoError(t, err)
+
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts := appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
 }
 
 func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
@@ -110,7 +181,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name)
+	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
 
 	// updating sts tls-ca volume directly to simulate changing of underlying volume's secret
 	for i := range sts.Spec.Template.Spec.Volumes {
@@ -122,7 +193,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Update(context.TODO(), &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name)
+	assertStatefulsetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -130,7 +201,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	sts = appsv1.StatefulSet{}
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name)
+	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
 }
 
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
@@ -420,6 +491,10 @@ func createTLSSecretWithNamespaceAndName(c k8sClient.Client, namespace string, n
 
 func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Security.TLS.CertificateKeySecret.Name, crt, key, pem)
+}
+
+func createPrometheusTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Prometheus.TLSSecretRef.Name, crt, key, pem)
 }
 
 func createUserPasswordSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, userPasswordSecretName string, password string) error {

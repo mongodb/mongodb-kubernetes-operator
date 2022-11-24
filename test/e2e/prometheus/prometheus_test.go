@@ -23,13 +23,16 @@ func TestMain(m *testing.M) {
 }
 
 func TestPrometheus(t *testing.T) {
-	ctx, testConfig := setup.SetupWithTLS(t, "")
+	resourceName := "mdb0"
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", testConfig.Namespace)
+	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
+
+	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 	mdb.Spec.Prometheus = e2eutil.NewPrometheusConfig(mdb.Namespace)
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)
 	if err != nil {
 		t.Fatal(err)
 	}
