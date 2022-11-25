@@ -4,7 +4,7 @@
   "version-upgrade-hook": "1.0.6",
   "readiness-probe": "1.0.12",
   "mongodb-agent": {
-    "version": "12.0.10.7591-1",
-    "tools_version": "100.5.3"
+    "version": "12.0.14.7630-1",
+    "tools_version": "100.6.0"
   }
 }

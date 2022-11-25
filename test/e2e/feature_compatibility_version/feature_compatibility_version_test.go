@@ -29,8 +29,8 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	mdb.Spec.Version = "4.0.6"
-	mdb.Spec.FeatureCompatibilityVersion = "4.0"
+	mdb.Spec.Version = "4.2.23"
+	mdb.Spec.FeatureCompatibilityVersion = "4.2"
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
@@ -45,24 +45,24 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("Test FeatureCompatibilityVersion is 4.0", tester.HasFCV("4.0", 3))
+	t.Run("Test FeatureCompatibilityVersion is 4.2", tester.HasFCV("4.2", 3))
 
 	// Upgrade version to 4.2.6 while keeping the FCV set to 4.0
 	t.Run("MongoDB is reachable while version is upgraded", func(t *testing.T) {
-		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.2.6"))
+		defer tester.StartBackgroundConnectivityTest(t, time.Second*20)()
+		t.Run("Test Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.4.11"))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	})
 
 	t.Run("Test Basic Connectivity after upgrade has completed", tester.ConnectivitySucceeds())
-	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.0", tester.HasFCV("4.0", 3))
+	t.Run("Test FeatureCompatibilityVersion, after upgrade, is 4.2", tester.HasFCV("4.2", 3))
 
 	// Downgrade version back to 4.0.6, checks that the FeatureCompatibilityVersion stayed at 4.0
 	t.Run("MongoDB is reachable while version is downgraded", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.0.6"))
+		t.Run("Test Version can be downgraded", mongodbtests.ChangeVersion(&mdb, "4.2.23"))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
 	})
 
-	t.Run("Test FeatureCompatibilityVersion, after downgrade, is 4.0", tester.HasFCV("4.0", 3))
+	t.Run("Test FeatureCompatibilityVersion, after downgrade, is 4.2", tester.HasFCV("4.2", 3))
 }
