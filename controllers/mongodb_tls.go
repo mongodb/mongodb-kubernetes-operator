@@ -22,12 +22,13 @@ import (
 )
 
 const (
-	tlsCAMountPath             = "/var/lib/tls/ca/"
-	tlsCACertName              = "ca.crt"
-	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
-	tlsSecretCertName          = "tls.crt"              //nolint
-	tlsSecretKeyName           = "tls.key"
-	tlsSecretPemName           = "tls.pem"
+	tlsCAMountPath               = "/var/lib/tls/ca/"
+	tlsCACertName                = "ca.crt"
+	tlsOperatorSecretMountPath   = "/var/lib/tls/server/"     //nolint
+	tlsPrometheusSecretMountPath = "/var/lib/tls/prometheus/" //nolint
+	tlsSecretCertName            = "tls.crt"
+	tlsSecretKeyName             = "tls.key"
+	tlsSecretPemName             = "tls.pem"
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
@@ -316,8 +317,7 @@ func buildTLSPrometheus(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification
 	// The same key-certificate pair is used for all servers
 	tlsSecretVolume := statefulset.CreateVolumeFromSecret("prom-tls-secret", mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
 
-	// TODO: Is it ok to use the same `tlsOperatorSecretMountPath`
-	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsPrometheusSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
 	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key
