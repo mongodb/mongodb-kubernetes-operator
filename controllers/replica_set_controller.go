@@ -390,16 +390,10 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(mdb mdbv1.MongoDBCommunity
 // functions should be sequential or not. A value of false indicates they will run in reversed order.
 func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool {
 	// The only case when we push the StatefulSet first is when we are ensuring TLS for the already existing ReplicaSet
-	sts, err := r.client.GetStatefulSet(mdb.NamespacedName())
-	if !statefulset.IsReady(sts, mdb.StatefulSetReplicasThisReconciliation()) && mdb.Spec.Security.TLS.Enabled {
-		r.log.Debug("Enabling TLS on a deployment with a StatefulSet that is not Ready, the Automation Config must be updated first")
+	_, err := r.client.GetStatefulSet(mdb.NamespacedName())
+	if err != nil && errors.IsNotFound(err) {
 		return true
 	}
-	if err == nil && mdb.Spec.Security.TLS.Enabled {
-		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
-		return false
-	}
-
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
 	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
 		if scale.HasZeroReplicas(mdb) {
@@ -422,9 +416,13 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 		return false
 	}
 
+	if err == nil && mdb.Spec.Security.TLS.Enabled {
+		r.log.Debug("Enabling TLS on an existing deployment, the StatefulSet must be updated first")
+		return false
+	}
+
 	return true
 }
-
 // deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
