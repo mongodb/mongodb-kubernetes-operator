@@ -2,9 +2,6 @@
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-### v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
-
-
 This is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) which deploys MongoDB Community into Kubernetes clusters.
 
 If you are a MongoDB Enterprise customer, or need Enterprise features such as Backup, you can use the [MongoDB Enterprise Operator for Kubernetes](https://github.com/mongodb/mongodb-enterprise-kubernetes).
