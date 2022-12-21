@@ -8,8 +8,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.13
 	github.com/spf13/cast v1.5.0
-	github.com/stretchr/objx v0.4.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/objx v0.5.0
+	github.com/stretchr/testify v1.8.1
 	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.11.0
 	go.uber.org/zap v1.23.0
