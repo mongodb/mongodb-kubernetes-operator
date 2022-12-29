@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
@@ -489,27 +490,18 @@ type TLS struct {
 	// Alternatively, an entry tls.pem, containing the concatenation of cert and key, can be provided.
 	// If all of tls.pem, tls.crt and tls.key are present, the tls.pem one needs to be equal to the concatenation of tls.crt and tls.key
 	// +optional
-	CertificateKeySecret LocalObjectReference `json:"certificateKeySecretRef"`
+	CertificateKeySecret corev1.LocalObjectReference `json:"certificateKeySecretRef"`
 
 	// CaCertificateSecret is a reference to a Secret containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// +optional
-	CaCertificateSecret *LocalObjectReference `json:"caCertificateSecretRef,omitempty"`
+	CaCertificateSecret *corev1.LocalObjectReference `json:"caCertificateSecretRef,omitempty"`
 
 	// CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
 	// The certificate is expected to be available under the key "ca.crt"
 	// This field is ignored when CaCertificateSecretRef is configured
 	// +optional
-	CaConfigMap *LocalObjectReference `json:"caConfigMapRef,omitempty"`
-}
-
-// LocalObjectReference is a reference to another Kubernetes object by name.
-// TODO: Replace with a type from the K8s API. CoreV1 has an equivalent
-//
-//	"LocalObjectReference" type but it contains a TODO in its
-//	description that we don't want in our CRD.
-type LocalObjectReference struct {
-	Name string `json:"name"`
+	CaConfigMap *corev1.LocalObjectReference `json:"caConfigMapRef,omitempty"`
 }
 
 type Authentication struct {

@@ -405,25 +405,25 @@ func TestPemSupport(t *testing.T) {
 
 func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
 	type args struct {
-		caConfigMap         *mdbv1.LocalObjectReference
-		caCertificateSecret *mdbv1.LocalObjectReference
+		caConfigMap         *corev1.LocalObjectReference
+		caCertificateSecret *corev1.LocalObjectReference
 		expectedError       error
 	}
 	tests := map[string]args{
 		"Success if reference to CA cert provided via secret": {
-			caConfigMap: &mdbv1.LocalObjectReference{
+			caConfigMap: &corev1.LocalObjectReference{
 				Name: "certificateKeySecret"},
 			caCertificateSecret: nil,
 		},
 		"Success if reference to CA cert provided via config map": {
 			caConfigMap: nil,
-			caCertificateSecret: &mdbv1.LocalObjectReference{
+			caCertificateSecret: &corev1.LocalObjectReference{
 				Name: "caConfigMap"},
 		},
 		"Succes if reference to CA cert provided both via secret and configMap": {
-			caConfigMap: &mdbv1.LocalObjectReference{
+			caConfigMap: &corev1.LocalObjectReference{
 				Name: "certificateKeySecret"},
-			caCertificateSecret: &mdbv1.LocalObjectReference{
+			caCertificateSecret: &corev1.LocalObjectReference{
 				Name: "caConfigMap"},
 		},
 		"Failure if reference to CA cert is missing": {
