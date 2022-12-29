@@ -273,9 +273,9 @@ spec:
                           under the key "ca.crt"
                         properties:
                           name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
-                        required:
-                        - name
                         type: object
                       caConfigMapRef:
                         description: CaConfigMap is a reference to a ConfigMap containing
@@ -285,9 +285,9 @@ spec:
                           is configured
                         properties:
                           name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
-                        required:
-                        - name
                         type: object
                       certificateKeySecretRef:
                         description: CertificateKeySecret is a reference to a Secret
@@ -302,9 +302,9 @@ spec:
                           and tls.key
                         properties:
                           name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
-                        required:
-                        - name
                         type: object
                       enabled:
                         type: boolean

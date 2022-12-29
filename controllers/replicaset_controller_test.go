@@ -87,15 +87,15 @@ func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDBCommunity {
 }
 
 func newTestReplicaSetWithTLS() mdbv1.MongoDBCommunity {
-	return newTestReplicaSetWithTLSCaCertificateReferences(&mdbv1.LocalObjectReference{
+	return newTestReplicaSetWithTLSCaCertificateReferences(&corev1.LocalObjectReference{
 		Name: "caConfigMap",
 	},
-		&mdbv1.LocalObjectReference{
+		&corev1.LocalObjectReference{
 			Name: "certificateKeySecret",
 		})
 }
 
-func newTestReplicaSetWithTLSCaCertificateReferences(caConfigMap, caCertificateSecret *mdbv1.LocalObjectReference) mdbv1.MongoDBCommunity {
+func newTestReplicaSetWithTLSCaCertificateReferences(caConfigMap, caCertificateSecret *corev1.LocalObjectReference) mdbv1.MongoDBCommunity {
 	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
@@ -113,7 +113,7 @@ func newTestReplicaSetWithTLSCaCertificateReferences(caConfigMap, caCertificateS
 					Enabled:             true,
 					CaConfigMap:         caConfigMap,
 					CaCertificateSecret: caCertificateSecret,
-					CertificateKeySecret: mdbv1.LocalObjectReference{
+					CertificateKeySecret: corev1.LocalObjectReference{
 						Name: "certificateKeySecret",
 					},
 				},
