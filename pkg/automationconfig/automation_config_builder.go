@@ -217,29 +217,34 @@ func (b *Builder) setFeatureCompatibilityVersionIfUpgradeIsHappening() error {
 }
 
 func (b *Builder) Build() (AutomationConfig, error) {
-	hostnames := make([]string, b.members+b.arbiters)
+	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
+		return AutomationConfig{}, fmt.Errorf("can't build the automation config: %s", err)
+	}
+
+	hostnames := make([]string, 0, b.members+b.arbiters)
 
 	// Create hostnames for data-bearing nodes. They start from 0
 	for i := 0; i < b.members; i++ {
-		hostnames[i] = fmt.Sprintf("%s-%d.%s", b.name, i, b.domain)
+		hostnames = append(hostnames, fmt.Sprintf("%s-%d.%s", b.name, i, b.domain))
 	}
 
 	// Create hostnames for arbiters. They are added right after the regular members
-	for i := b.members; i < b.arbiters+b.members; i++ {
+	for i := 0; i < b.arbiters; i++ {
 		// Arbiters will be in b.name-arb-svc service
-		hostnames[i] = fmt.Sprintf("%s-arb-%d.%s", b.name, i-b.members, b.arbiterDomain)
+		hostnames = append(hostnames, fmt.Sprintf("%s-arb-%d.%s", b.name, i, b.arbiterDomain))
 	}
 
 	members := make([]ReplicaSetMember, b.members+b.arbiters)
 	processes := make([]Process, b.members+b.arbiters)
 
-	if err := b.setFeatureCompatibilityVersionIfUpgradeIsHappening(); err != nil {
-		return AutomationConfig{}, fmt.Errorf("can't build the automation config: %s", err)
-	}
-
 	dataDir := DefaultMongoDBDataDir
 	if b.dataDir != "" {
 		dataDir = b.dataDir
+	}
+
+	fcv := versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion)
+	if len(b.fcv) > 0 {
+		fcv = b.fcv
 	}
 
 	for i, h := range hostnames {
@@ -255,11 +260,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			// change indexes, if for instance, they are scaled up and down.
 			//
 			replicaSetIndex = arbitersStartingIndex + processIndex
-		}
-
-		fcv := versions.CalculateFeatureCompatibilityVersion(b.mongodbVersion)
-		if b.fcv != "" {
-			fcv = b.fcv
 		}
 
 		// TODO: Replace with a Builder for Process.
@@ -296,14 +296,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			horizon = b.replicaSetHorizons[i]
 		}
 
-		isVotingMember := true
-		if !isArbiter && i >= (maxVotingMembers-b.arbiters) {
-			// Arbiters can't be non-voting members
-			// If there are more than 7 (maxVotingMembers) members on this Replica Set
-			// those that lose right to vote should be the data-bearing nodes, not the
-			// arbiters.
-			isVotingMember = false
-		}
+		// Arbiters can't be non-voting members
+		// If there are more than 7 (maxVotingMembers) members on this Replica Set
+		// those that lose right to vote should be the data-bearing nodes, not the
+		// arbiters.
+		isVotingMember := isArbiter || i < (maxVotingMembers-b.arbiters)
 
 		// TODO: Replace with a Builder for ReplicaSetMember.
 		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
