@@ -142,8 +142,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
-	_ = os.Setenv(construct.MongodbRepoUrl, "repo")
-	_ = os.Setenv(construct.MongodbImageEnv, "mongo")
+	t.Setenv(construct.MongodbRepoUrl, "repo")
+	t.Setenv(construct.MongodbImageEnv, "mongo")
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
