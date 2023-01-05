@@ -1,14 +1,14 @@
 package construct
 
 import (
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -40,9 +40,9 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
-	_ = os.Setenv(MongodbRepoUrl, "repo")
-	_ = os.Setenv(MongodbImageEnv, "mongo")
-	_ = os.Setenv(AgentImageEnv, "agent-image")
+	t.Setenv(MongodbRepoUrl, "repo")
+	t.Setenv(MongodbImageEnv, "mongo")
+	t.Setenv(AgentImageEnv, "agent-image")
 
 	mdb := newTestReplicaSet()
 	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
@@ -63,10 +63,10 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 }
 
 func TestManagedSecurityContext(t *testing.T) {
-	_ = os.Setenv(MongodbRepoUrl, "repo")
-	_ = os.Setenv(MongodbImageEnv, "mongo")
-	_ = os.Setenv(AgentImageEnv, "agent-image")
-	_ = os.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
+	t.Setenv(MongodbRepoUrl, "repo")
+	t.Setenv(MongodbImageEnv, "mongo")
+	t.Setenv(AgentImageEnv, "agent-image")
+	t.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
 
 	mdb := newTestReplicaSet()
 	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)

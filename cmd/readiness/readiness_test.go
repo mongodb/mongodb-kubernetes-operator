@@ -141,7 +141,7 @@ func TestNoDeadlockForImmediateWaitRs(t *testing.T) {
 // (as Agent doesn't marks all the step statuses finished when it reaches the goal) but this doesn't affect the result
 // as the whole plan is complete already
 func TestHeadlessAgentHasntReachedGoal(t *testing.T) {
-	_ = os.Setenv(headlessAgent, "true")
+	t.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 6))
 	ready, err := isPodReady(c)
@@ -149,14 +149,12 @@ func TestHeadlessAgentHasntReachedGoal(t *testing.T) {
 	assert.NoError(t, err)
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
-
-	os.Unsetenv(headlessAgent)
 }
 
 // TestHeadlessAgentReachedGoal verifies that the probe reports "true" if the config version is equal to the
 // last achieved version of the Agent
 func TestHeadlessAgentReachedGoal(t *testing.T) {
-	_ = os.Setenv(headlessAgent, "true")
+	t.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 5))
 	ready, err := isPodReady(c)
@@ -164,8 +162,6 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 	assert.NoError(t, err)
 	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
-
-	os.Unsetenv(headlessAgent)
 }
 
 func TestPodReadiness(t *testing.T) {
