@@ -19,7 +19,7 @@ This guide assumes that you have already prepared [Python virtual env](contribut
 ./scripts/dev/setup_kind_cluster.sh -n test-cluster
 ```
 
-Alternatively create a local cluster and set current kubectl context to it.
+2. Alternatively create a local cluster and set current kubectl context to it.
 ```sh
 ./scripts/dev/setup_kind_cluster.sh -en test-cluster
 ```
