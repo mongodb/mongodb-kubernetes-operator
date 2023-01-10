@@ -8,7 +8,7 @@ echo "Dumping CRD"
 kubectl get crd mongodbcommunity.mongodbcommunity.mongodb.com -o yaml > diagnostics/crd.yaml
 
 echo "Dumping Pod list"
-kubectl get pods > diagnostics/pod-list.yaml
+kubectl get pods > diagnostics/pod-list.txt
 
 # dump operator deployment information.
 for deployment_name in $(kubectl get deployment -n "${namespace}" --output=jsonpath={.items..metadata.name}); do
