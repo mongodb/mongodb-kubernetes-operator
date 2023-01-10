@@ -1,6 +1,6 @@
 {
   "golang-builder-image": "golang:1.19",
-  "mongodb-kubernetes-operator": "0.7.6",
+  "mongodb-kubernetes-operator": "0.7.7",
   "version-upgrade-hook": "1.0.6",
   "readiness-probe": "1.0.12",
   "mongodb-agent": {

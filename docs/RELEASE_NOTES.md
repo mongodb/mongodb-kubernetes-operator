@@ -1,18 +1,18 @@
-# MongoDB Kubernetes Operator 0.7.6
+# MongoDB Kubernetes Operator 0.7.7
 
 ## Kubernetes Operator
 
 - Changes
-  - `mongodb-kubernetes-operator` image is now rebuilt daily, incorporating updates to system packages and security fixes. The operator binary is built only once during the release process and used without changes in daily rebuild.
-  - Improved security by introducing `readOnlyRootFilesystem` property to all deployed containers. This change also introduces a few additional volumes and volume mounts.
-  - Improved security by introducing `allowPrivilegeEscalation` set to `false` for all containers.
+  - Fix TLS configuration to allow enabling both server encryption and secure Prometheus connections ([#1127](https://github.com/mongodb/mongodb-kubernetes-operator/issues/1127)
+  )
+  - Fix TLS validation to correctly indicate an incomplete configuration
 
 ## Updated Image Tags
 
-- mongodb-kubernetes-operator:0.7.6
-- mongodb-agent:12.0.10.7591-1
-- mongodb-kubernetes-readinessprobe:1.0.11
-- mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.5
+- mongodb-kubernetes-operator:0.7.7
+- mongodb-agent:12.0.15.7646-1
+- mongodb-kubernetes-readinessprobe:1.0.12
+- mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.6
 
 _All the images can be found in:_
 
