@@ -116,7 +116,7 @@ manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 
 # Run e2e tests locally using go build while also setting up a proxy in the shell to allow
 # the test to run as if it were inside the cluster. This enables mongodb connectivity while running locally.
-e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy
+e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy e.g. make e2e-telepresence test=replica_set cleanup=true
 	telepresence connect; \
 	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
