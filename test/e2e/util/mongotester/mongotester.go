@@ -200,6 +200,12 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 
 	connectivityOpts := defaults()
 	return func(t *testing.T) {
+
+		// We can optionally skip connectivity tests locally
+		if testing.Short() {
+			t.Skip()
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
 

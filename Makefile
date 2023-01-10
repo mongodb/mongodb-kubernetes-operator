@@ -43,7 +43,7 @@ generate: controller-gen ## Generate code
 
 TEST ?= ./pkg/... ./api/... ./cmd/... ./controllers/... ./test/e2e/util/mongotester/...
 test: generate fmt vet manifests ## Run unit tests
-	go test $(TEST) -coverprofile cover.out
+	go test $(options) $(TEST) -coverprofile cover.out
 
 manager: generate fmt vet ## Build manager binary
 	go build -o bin/manager ./cmd/manager/main.go
@@ -120,7 +120,7 @@ e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build wh
 	telepresence connect; \
 	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-	go test -v -timeout=30m -failfast ./test/e2e/$(test); \
+	go test -v -timeout=30m -failfast $(options) ./test/e2e/$(test) ; \
 	telepresence quit
 
 e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes.
@@ -128,7 +128,7 @@ e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image i
 
 e2e: cleanup-e2e install ## Run e2e test locally. e.g. make e2e test=replica_set cleanup=true
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
+	go test -v -short -timeout=30m -failfast $(options) ./test/e2e/$(test)
 
 e2e-gh: ## Trigger a Github Action of the given test
 	scripts/dev/run_e2e_gh.sh $(test)
