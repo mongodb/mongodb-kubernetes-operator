@@ -45,14 +45,14 @@ TEST ?= ./pkg/... ./api/... ./cmd/... ./controllers/... ./test/e2e/util/mongotes
 test: generate fmt vet manifests ## Run unit tests
 	go test $(TEST) -coverprofile cover.out
 
-manager: generate fmt vet ## Build manager binary
+manager: generate fmt vet ## Build operator binary
 	go build -o bin/manager ./cmd/manager/main.go
 
-run: install install-rbac ## Run against the configured Kubernetes cluster in ~/.kube/config
+run: install install-rbac ## Run the operator against the configured Kubernetes cluster in ~/.kube/config
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
-debug: install install-rbac
+debug: install install-rbac ## Run the operator in debug mode with dlv
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	dlv debug ./cmd/manager/main.go
 
