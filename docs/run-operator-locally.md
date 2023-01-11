@@ -18,7 +18,7 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 - Run e2e tests locally 
   - **Note:** 
     - If you plan to run the e2e tests, there are sub-steps that will install the following helm-chart: [operator.yaml](helm-charts/charts/community-operator/templates/operator.yaml)
-    - By default, the template chart contains and the operator with `1` replica. This will clash with our local running operator. With this in mind the solution is to set the replicas number to `0` temporarily.
+    - By default, the template chart sets the number of operator replicas to `1`. This will clash with our local running operator. With this in mind the solution is to set the replicas number to `0` temporarily.
 
 ## Steps for Intellij
 - Run the make target creating env file `make generate-env-file`, which creates/updates an env file `local-test.env` in .community-operator-dev/
