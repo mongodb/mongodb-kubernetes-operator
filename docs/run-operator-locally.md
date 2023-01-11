@@ -17,7 +17,7 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 - Run e2e tests locally
 
 ## Running The Operator locally - IntelliJ
-1. Below steps rely on the use of the [EnvFile](https://plugins.jetbrains.com/plugin/7861-envfile) which enables loading `.env` files in `run configurations
+1. Below steps rely on the use of the [EnvFile](https://plugins.jetbrains.com/plugin/7861-envfile) plugin which enables loading `.env` files in `run configurations`
 2. Run the make target creating env file `make generate-env-file`, which creates/updates an env file `local-test.env` in .community-operator-dev/
 3. Use local-test.env file in IntelliJ while running the main of the operator: `cmd/manager/main.go`
 ![img1](images/intellij-run-env.png)
