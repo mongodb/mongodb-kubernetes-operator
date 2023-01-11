@@ -138,6 +138,9 @@ cleanup-e2e: ## Cleans up e2e test env
 	# avoid interleaving tests with each other, we need to drop them all.
 	kubectl delete pvc --all -n $(NAMESPACE) || true
 
+generate-env-file: ## generates a local-test.env for local testing
+	python scripts/dev/get_e2e_env_vars.py  | cut -d' ' -f2 > .community-operator-dev/local-test.env
+
 ##@ Image
 
 operator-image: ## Build and push the operator image
