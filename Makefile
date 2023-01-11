@@ -116,9 +116,8 @@ manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 
 # Run e2e tests locally using go build while also setting up a proxy in the shell to allow
 # the test to run as if it were inside the cluster. This enables mongodb connectivity while running locally.
-e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy
+e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy e.g. make e2e-telepresence test=replica_set cleanup=true
 	telepresence connect; \
-	telepresence status; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go test -v -timeout=30m -failfast ./test/e2e/$(test); \
 	telepresence quit
@@ -133,7 +132,7 @@ e2e: cleanup-e2e install ## Run e2e test locally. e.g. make e2e test=replica_set
 e2e-gh: ## Trigger a Github Action of the given test
 	scripts/dev/run_e2e_gh.sh $(test)
 
-cleanup-e2e:
+cleanup-e2e: ## Cleans up e2e test env
 	kubectl delete mdbc,all,secrets -l e2e-test=true -n ${TEST_NAMESPACE} || true
 	# Most of the tests use StatefulSets, which in turn use stable storage. In order to
 	# avoid interleaving tests with each other, we need to drop them all.
