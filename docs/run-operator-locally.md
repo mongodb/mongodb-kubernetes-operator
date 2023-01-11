@@ -16,6 +16,9 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 ## Goals
 - runs the operator locally as a binary (optionally in debug mode) in with telepresence
 - runs e2e tests locally 
+  - **Note:** 
+    - if you plan to run the e2e tests, there are sub-steps that will install the following helm-chart: [operator.yaml](helm-charts/charts/community-operator/templates/operator.yaml)
+    - by default, the template chart contains and the operator with `1` replica. This will bite with our local running operator. With this in mind the solution is to set the number to `0`
 
 ## Steps for Intellij
 - run the make target creating env file `make generate-env-file` 
