@@ -6,11 +6,9 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -82,7 +80,7 @@ func TestReplicaSetArbiter(t *testing.T) {
 			if len(testConfig.expectedErrorMessage) > 0 {
 				t.Run("Check status", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, testConfig.expectedErrorMessage))
 			} else {
-				t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb, wait.Timeout(20*time.Minute)))
+				t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb))
 				t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, testConfig.numberOfArbiters))
 
 				if testConfig.numberOfArbiters != testConfig.scaleArbitersTo {
