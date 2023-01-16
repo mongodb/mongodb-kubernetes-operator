@@ -122,8 +122,11 @@ e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build wh
 	go test -v -timeout=30m -failfast $(options) ./test/e2e/$(test) ; \
 	telepresence quit
 
-e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes.
-	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes without cleanup of the resources.
+	python scripts/dev/e2e.py --test $(test)
+
+e2e-k8s-cleanup: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes with cleanup of the resources.
+	python scripts/dev/e2e.py --perform-cleanup  --test $(test)
 
 e2e: cleanup-e2e install ## Run e2e test locally. e.g. make e2e test=replica_set cleanup=true
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \

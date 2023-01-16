@@ -227,7 +227,10 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 				t.Logf("Was successfully able to connect, when we should not have been able to!")
 				return false, nil
 			}
-			t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
+			// this information is only useful if we needed more than one attempt.
+			if attempts >= 2 {
+				t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
+			}
 			return true, nil
 		})
 
