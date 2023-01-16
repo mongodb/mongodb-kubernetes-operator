@@ -86,8 +86,8 @@ func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration)
 		if err != nil {
 			t.Fatal(err)
 		}
-		elapsed := time.Since(start)
-		t.Logf("StatefulSet %s/%s is ready! It took %d seconds", mdb.Namespace, mdb.Name, elapsed)
+		elapsed := time.Since(start).Seconds()
+		t.Logf("StatefulSet %s/%s is ready! It took %f seconds", mdb.Namespace, mdb.Name, elapsed)
 	}
 }
 
