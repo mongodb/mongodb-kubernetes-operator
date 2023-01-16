@@ -36,7 +36,7 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 func StatefulSetBecomesReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	defaultOpts := []wait.Configuration{
 		wait.RetryInterval(time.Second * 15),
-		wait.Timeout(time.Minute * 25),
+		wait.Timeout(time.Minute * 20),
 	}
 	defaultOpts = append(defaultOpts, opts...)
 	return statefulSetIsReady(mdb, defaultOpts...)
@@ -81,11 +81,13 @@ func StatefulSetIsReadyAfterScaleDown(mdb *mdbv1.MongoDBCommunity) func(t *testi
 // reaches the running state.
 func statefulSetIsReady(mdb *mdbv1.MongoDBCommunity, opts ...wait.Configuration) func(t *testing.T) {
 	return func(t *testing.T) {
+		start := time.Now()
 		err := wait.ForStatefulSetToBeReady(t, mdb, opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+		elapsed := time.Since(start)
+		t.Logf("StatefulSet %s/%s is ready! It took %d seconds", mdb.Namespace, mdb.Name, elapsed)
 	}
 }
 
@@ -350,7 +352,7 @@ func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) str
 	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standard"])
 }
 
-// GetConnectionStringForUser returns the mongodb service connection string for a user
+// GetSrvConnectionStringForUser returns the mongodb service connection string for a user
 func GetSrvConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) string {
 	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standardSrv"])
 }
@@ -531,7 +533,7 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 	}
 }
 
-// PodContainerBecomesReady waits until the container with 'containerName' in the pod #podNum becomes not ready.
+// PodContainerBecomesNotReady waits until the container with 'containerName' in the pod #podNum becomes not ready.
 func PodContainerBecomesNotReady(mdb *mdbv1.MongoDBCommunity, podNum int, containerName string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
