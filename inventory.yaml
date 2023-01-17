@@ -117,6 +117,7 @@ images:
       - agent_image
       - agent_image_dev
 
+    platform: linux/amd64
     stages:
       - name: agent-ubi-context
         task_type: docker_build
@@ -214,6 +215,7 @@ images:
       - readiness_probe_image
       - readiness_probe_image_dev
 
+    platform: linux/amd64
     stages:
       - name: readiness-init-context-build
         task_type: docker_build
@@ -290,6 +292,7 @@ images:
       - version_post_start_hook_image
       - version_post_start_hook_image_dev
 
+    platform: linux/amd64
     stages:
       - name: version-post-start-hook-init-context-build
         task_type: docker_build
