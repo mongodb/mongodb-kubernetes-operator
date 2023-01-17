@@ -12,6 +12,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
@@ -21,7 +22,8 @@ var (
 )
 
 const (
-	WatchNamespaceEnv = "WATCH_NAMESPACE"
+	WatchNamespaceEnv         = "WATCH_NAMESPACE"
+	HealthProbeBindAddressEnv = "HEALTH_PROBE_ADDRESS"
 )
 
 func init() {
@@ -65,6 +67,13 @@ func main() {
 		log.Sugar().Fatal("No namespace specified to watch")
 	}
 
+	// Get health probe port from environment variable
+	probeAddress, exists := os.LookupEnv(HealthProbeBindAddressEnv)
+	if !exists {
+		// Configure a default port of :9090 for health check probes
+		probeAddress = ":9090"
+	}
+
 	// If namespace is a wildcard use the empty string to represent all namespaces
 	watchNamespace := ""
 	if namespace == "*" {
@@ -82,7 +91,8 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: watchNamespace,
+		Namespace:              watchNamespace,
+		HealthProbeBindAddress: probeAddress,
 	})
 	if err != nil {
 		log.Sugar().Fatalf("Unable to create manager: %v", err)
@@ -102,6 +112,16 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	log.Info("Starting the Cmd.")
+
+	/// Setup healthz probe
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Sugar().Fatalf("Unable to create health check: %v", err)
+	}
+
+	// Setup readyz probe
+	if err := mgr.AddHealthzCheck("readyz", healthz.Ping); err != nil {
+		log.Sugar().Fatalf("Unable to create ready check: %v", err)
+	}
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
