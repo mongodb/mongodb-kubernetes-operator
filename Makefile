@@ -43,7 +43,7 @@ generate: controller-gen ## Generate code
 
 TEST ?= ./pkg/... ./api/... ./cmd/... ./controllers/... ./test/e2e/util/mongotester/...
 test: generate fmt vet manifests ## Run unit tests
-	go test $(TEST) -coverprofile cover.out
+	go test $(options) $(TEST) -coverprofile cover.out
 
 manager: generate fmt vet ## Build operator binary
 	go build -o bin/manager ./cmd/manager/main.go
@@ -85,7 +85,6 @@ install-chart:
 
 install-chart-with-tls-enabled:
 	$(HELM) upgrade --install --set createResource=true $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace
-
 install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml $(HELM_CHART) | kubectl apply -f -
 	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml $(HELM_CHART) | kubectl apply -f -
@@ -119,15 +118,15 @@ manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy e.g. make e2e-telepresence test=replica_set cleanup=true
 	telepresence connect; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-	go test -v -timeout=30m -failfast ./test/e2e/$(test); \
+	go test -v -timeout=30m -failfast $(options) ./test/e2e/$(test) ; \
 	telepresence quit
 
-e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes.
-	python scripts/dev/e2e.py --perform-cleanup --test $(test)
+e2e-k8s: cleanup-e2e install e2e-image ## Run e2e test by deploying test image in kubernetes, you can provide e2e.py flags e.g. make e2e-k8s test=replica_set e2eflags="--perform-cleanup".
+	python scripts/dev/e2e.py $(e2eflags) --test $(test)
 
 e2e: cleanup-e2e install ## Run e2e test locally. e.g. make e2e test=replica_set cleanup=true
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
-	go test -v -short -timeout=30m -failfast ./test/e2e/$(test)
+	go test -v -short -timeout=30m -failfast $(options) ./test/e2e/$(test)
 
 e2e-gh: ## Trigger a Github Action of the given test
 	scripts/dev/run_e2e_gh.sh $(test)
