@@ -59,7 +59,7 @@ func main() {
 		logger.Infof("Pod should be deleted")
 		if err := deletePod(); err != nil {
 			// We should not raise an error if the Pod could not be deleted. It can have even
-			// worst consequences: Pod being restarted with the same version, and the agent
+			// worse consequences: Pod being restarted with the same version, and the agent
 			// killing it immediately after.
 			logger.Errorf("Could not manually trigger restart of this Pod because of: %s", err)
 			logger.Errorf("Make sure the Pod is restarted in order for the upgrade process to continue")
