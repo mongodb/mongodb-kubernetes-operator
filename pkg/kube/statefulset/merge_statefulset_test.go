@@ -159,3 +159,126 @@ func TestMergeSpec(t *testing.T) {
 		})
 	})
 }
+
+func TestMergeSpecLabelSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		original appsv1.StatefulSet
+		override appsv1.StatefulSet
+		expected *metav1.LabelSelector
+	}{
+		{
+			name:     "Empty label selectors in both sources",
+			original: New(WithName("original")),
+			override: New(WithName("override")),
+			expected: nil,
+		},
+		{
+			name:     "Empty original label selector",
+			original: New(WithName("original")),
+			override: New(WithName("override"), WithSelector(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+				},
+			})),
+			expected: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+				},
+			},
+		},
+		{
+			name: "Empty override label selector",
+			original: New(WithName("original"), WithSelector(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+				},
+			})),
+			override: New(WithName("override")),
+			expected: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+				},
+			},
+		},
+		{
+			name: "Merge values label selectors from both resources",
+			original: New(WithName("original"), WithSelector(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "1",
+					"b": "2",
+					"c": "3",
+					"e": "4",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "key-0",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{"A", "B", "C"},
+					},
+					{
+						Key:      "key-2",
+						Operator: metav1.LabelSelectorOpExists,
+						Values:   []string{"F", "D", "E"},
+					},
+				},
+			})),
+			override: New(WithName("override"), WithSelector(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+					"c": "30",
+					"d": "40",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "key-0",
+						Operator: metav1.LabelSelectorOpDoesNotExist,
+						Values:   []string{"Z"},
+					},
+					{
+						Key:      "key-1",
+						Operator: metav1.LabelSelectorOpExists,
+						Values:   []string{"A", "B", "C", "D"},
+					},
+				},
+			})),
+			expected: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"a": "10",
+					"b": "2",
+					"c": "30",
+					"d": "40",
+					"e": "4",
+				},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "key-0",
+						Operator: metav1.LabelSelectorOpDoesNotExist,
+						Values:   []string{"A", "B", "C", "Z"},
+					},
+					{
+						Key:      "key-1",
+						Operator: metav1.LabelSelectorOpExists,
+						Values:   []string{"A", "B", "C", "D"},
+					},
+					{
+						Key:      "key-2",
+						Operator: metav1.LabelSelectorOpExists,
+						Values:   []string{"D", "E", "F"},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mergedSpec := merge.StatefulSets(tt.original, tt.override)
+			assert.Equal(t, tt.expected, mergedSpec.Spec.Selector)
+		})
+	}
+}
