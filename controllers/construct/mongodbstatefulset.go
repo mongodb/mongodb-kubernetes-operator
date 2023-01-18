@@ -76,7 +76,7 @@ type MongoDBStatefulSetOwner interface {
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
 	// HasSeparateDataAndLogsVolumes returns whether or not the volumes for data and logs would need to be different.
 	HasSeparateDataAndLogsVolumes() bool
-	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	// GetAgentKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 	// DataVolumeName returns the name that the data volume should have
 	DataVolumeName() string
@@ -86,7 +86,7 @@ type MongoDBStatefulSetOwner interface {
 	// GetMongodConfiguration returns the MongoDB configuration for each member.
 	GetMongodConfiguration() mdbv1.MongodConfiguration
 
-	// NeedsAutomationConfigVolume returns whether the statefuslet needs to have a volume for the automationconfig.
+	// NeedsAutomationConfigVolume returns whether the statefulset needs to have a volume for the automationconfig.
 	NeedsAutomationConfigVolume() bool
 }
 

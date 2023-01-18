@@ -81,7 +81,11 @@ func GetAllDesiredMembersAndArbitersPodState(namespacedName types.NamespacedName
 		p, err := podGetter.GetPod(podNamespacedName)
 		if err != nil {
 			if apiErrors.IsNotFound(err) {
+				// we can skip below iteration and check for our goal state since the pod is not available yet
 				podState.Found = false
+				podState.ReachedGoalState = false
+				podStates[i] = podState
+				continue
 			} else {
 				return nil, err
 			}
