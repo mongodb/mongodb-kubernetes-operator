@@ -3,6 +3,7 @@ package statefulset
 import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -53,12 +54,15 @@ type GetUpdateCreateDeleter interface {
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
-	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
+	currSts, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(sts)
 		}
 		return appsv1.StatefulSet{}, err
+	}
+	if equality.Semantic.DeepEqual(currSts, sts) {
+		return currSts, nil
 	}
 	return getUpdateCreator.UpdateStatefulSet(sts)
 }
