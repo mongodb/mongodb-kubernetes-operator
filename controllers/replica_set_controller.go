@@ -501,7 +501,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 		buildArbitersModificationFunction(mdb)(&set)
 	}
 
-	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
+	if _, err = statefulset.CreateOrUpdate(r.client, set, mdb); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
