@@ -54,21 +54,12 @@ type GetUpdateCreateDeleter interface {
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
 func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet, mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
-	currSts, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
+	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
 			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(sts)
 		}
 		return appsv1.StatefulSet{}, err
-	}
-
-	// TODO this is a quick hack,
-	// When we are changing versions we need to make sure to do it in 2 steps:
-	// * first change the update strategy to OnDelete so that we do not conflict with the mongodb-agent and make sure the image has not been changed
-	// * once we were able to make sure that our sts is set to OnDelete, then we can continue
-	if mdb.IsChangingVersion() && currSts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
-		currSts.Spec.UpdateStrategy.Type = appsv1.OnDeleteStatefulSetStrategyType
-		return getUpdateCreator.UpdateStatefulSet(currSts)
 	}
 
 	return getUpdateCreator.UpdateStatefulSet(sts)
