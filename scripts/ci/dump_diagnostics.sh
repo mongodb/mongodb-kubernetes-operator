@@ -13,8 +13,8 @@ kubectl get pods > diagnostics/pod-list.txt
 echo "Dumping Event list"
 kubectl get events --sort-by='.lastTimestamp' -owide > diagnostics/events-list.txt
 
-echo "Dumping Describe Event list"
-kubectl describe events > diagnostics/events-describe.txt
+echo "Dumping yaml Event list"
+kubectl  kubectl get events --sort-by='.lastTimestamp'  -oyaml > diagnostics/events-list.yaml
 
 # dump operator deployment information.
 for deployment_name in $(kubectl get deployment -n "${namespace}" --output=jsonpath={.items..metadata.name}); do
