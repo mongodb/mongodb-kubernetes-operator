@@ -253,7 +253,7 @@ func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) 
 	}
 }
 
-// MongoDBReachesFailed ensure the MongoDB resource reaches the Failed phase.
+// MongoDBReachesFailedPhase ensure the MongoDB resource reaches the Failed phase.
 func MongoDBReachesFailedPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
 		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Failed, time.Second*15, time.Minute*5)
@@ -294,7 +294,7 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, e
 	}
 }
 
-// AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
+// AutomationConfigReplicaSetsHaveExpectedArbiters verifies that the automation config has the expected version.
 func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(t, mdb)
@@ -454,7 +454,7 @@ func Scale(mdb *mdbv1.MongoDBCommunity, newMembers int) func(*testing.T) {
 	}
 }
 
-// Scale update the MongoDB with a new number of arbiters and updates the resource.
+// ScaleArbiters update the MongoDB with a new number of arbiters and updates the resource.
 func ScaleArbiters(mdb *mdbv1.MongoDBCommunity, newArbiters int) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Logf("Scaling Mongodb %s, to %d members", mdb.Name, newArbiters)

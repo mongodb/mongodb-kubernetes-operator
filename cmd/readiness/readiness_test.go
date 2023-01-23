@@ -27,13 +27,19 @@ func TestDeadlockDetection(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDeadlockDetectionWait(t *testing.T) {
+	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked-with-prev-config.json"))
+	assert.True(t, ready)
+	assert.NoError(t, err)
+}
+
 // TestNoDeadlock verifies that if the agent has started (but not finished) "WaitRsInit" and then there is another
 // started phase ("WaitFeatureCompatibilityVersionCorrect") then no deadlock is found as the latter is considered to
 // be the "current" step
 func TestNoDeadlock(t *testing.T) {
 	health, err := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
 	assert.NoError(t, err)
-	stepStatus := findCurrentStep(health.ProcessPlans)
+	stepStatus := findGivenStep(health.ProcessPlans, false)
 
 	assert.Equal(t, "WaitFeatureCompatibilityVersionCorrect", stepStatus.Step)
 

@@ -501,7 +501,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 		buildArbitersModificationFunction(mdb)(&set)
 	}
 
-	if _, err = statefulset.CreateOrUpdate(r.client, set, mdb); err != nil {
+	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
 		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
@@ -583,7 +583,7 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 }
 
 // validateSpec checks if the MongoDB resource Spec is valid.
-// If there has not yet been a successful configuration, the function runs the intial Spec validations. Otherwise
+// If there has not yet been a successful configuration, the function runs the initial Spec validations. Otherwise,
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
 func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]

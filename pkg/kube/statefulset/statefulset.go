@@ -1,7 +1,6 @@
 package statefulset
 
 import (
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,7 +52,7 @@ type GetUpdateCreateDeleter interface {
 
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
-func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet, mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
+func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
 	_, err := getUpdateCreator.GetStatefulSet(types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
@@ -61,7 +60,6 @@ func CreateOrUpdate(getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet, m
 		}
 		return appsv1.StatefulSet{}, err
 	}
-
 	return getUpdateCreator.UpdateStatefulSet(sts)
 }
 

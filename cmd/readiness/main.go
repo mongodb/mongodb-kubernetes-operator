@@ -31,7 +31,7 @@ var logger *zap.SugaredLogger
 func init() {
 	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit"}
 
-	// By default we log to the output (convenient for tests)
+	// By default, we log to the output (convenient for tests)
 	cfg := zap.NewDevelopmentConfig()
 	log, err := cfg.Build()
 	if err != nil {
@@ -77,7 +77,7 @@ func isPodReady(conf config.Config) (bool, error) {
 		return true, nil
 	}
 
-	// Failback logic: the agent is not in goal state and got stuck in some steps
+	// Fallback logic: the agent is not in goal state and got stuck in some steps
 	if !inGoalState && hasDeadlockedSteps(healthStatus) {
 		return true, nil
 	}
@@ -87,20 +87,26 @@ func isPodReady(conf config.Config) (bool, error) {
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
 func hasDeadlockedSteps(health health.Status) bool {
-	currentStep := findCurrentStep(health.ProcessPlans)
+	currentStep := findGivenStep(health.ProcessPlans, false)
+	firstStep := findGivenStep(health.ProcessPlans, true)
 	if currentStep != nil {
+		// this means we are waiting for external factors before we are able to continue our update. If we expect the node to be up, then we can assume that it is ready.
+		// To match the rest of the code, a more proper way would be to look at all previous steps and
+		if currentStep.Step == "WaitCanUpdate" && currentStep.Started != nil && currentStep.Completed == nil && currentStep.Result == "wait" {
+			return isDeadlocked(firstStep)
+		}
 		return isDeadlocked(currentStep)
 	}
 	return false
 }
 
-// findCurrentStep returns the step which seems to be run by the Agent now. The step is always in the last plan
+// findGivenStep returns the step which seems to be run by the Agent now. The step is always in the last plan
 // (see https://github.com/10gen/ops-manager-kubernetes/pull/401#discussion_r333071555) so we iterate over all the steps
 // there and find the last step which has "Started" non nil
 // (indeed this is not the perfect logic as sometimes the agent doesn't update the 'Started' as well - see
 // 'health-status-ok.json', but seems it works for finding deadlocks still
 // noinspection GoNilness
-func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *health.StepStatus {
+func findGivenStep(processStatuses map[string]health.MmsDirectorStatus, first bool) *health.StepStatus {
 	var currentPlan *health.PlanStatus
 	if len(processStatuses) == 0 {
 		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens
@@ -117,10 +123,14 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 			logger.Errorf("The process %s doesn't contain any plans!", k)
 			return nil
 		}
-		currentPlan = v.Plans[len(v.Plans)-1]
+		if first {
+			currentPlan = v.Plans[0]
+		} else {
+			currentPlan = v.Plans[len(v.Plans)-1]
+		}
 	}
 
-	if currentPlan.Completed != nil {
+	if currentPlan.Completed != nil && !first {
 		logger.Debugf("The Agent hasn't reported working on the new config yet, the last plan finished at %s",
 			currentPlan.Completed.Format(time.RFC3339))
 		return nil
@@ -139,8 +149,8 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 }
 
 func isDeadlocked(status *health.StepStatus) bool {
-	// Some logic behind 15 seconds: the health status file is dumped each 10 seconds so we are sure that if the agent
-	// has been in the the step for 10 seconds - this means it is waiting for the other hosts and they are not available
+	// Some logic behind 15 seconds: the health status file is dumped each 10 seconds, so we are sure that if the agent
+	// has been in the step for 10 seconds - this means it is waiting for the other hosts, and they are not available
 	fifteenSecondsAgo := time.Now().Add(time.Duration(-15) * time.Second)
 	if contains.String(riskySteps, status.Step) && status.Completed == nil && status.Started.Before(fifteenSecondsAgo) {
 		logger.Infof("Indicated a possible deadlock, status: %s, started at %s but hasn't finished "+
