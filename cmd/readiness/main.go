@@ -29,7 +29,7 @@ var riskySteps []string
 var logger *zap.SugaredLogger
 
 func init() {
-	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit", "StartFresh"}
+	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit"}
 
 	// By default, we log to the output (convenient for tests)
 	cfg := zap.NewDevelopmentConfig()
