@@ -87,7 +87,7 @@ func isPodReady(conf config.Config) (bool, error) {
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
 func hasDeadlockedSteps(health health.Status) bool {
-	currentStep := findGivenStep(health.ProcessPlans)
+	currentStep := findCurrentStep(health.ProcessPlans)
 	if currentStep != nil {
 		// this means we are waiting for external factors before we are able to continue our update. If we expect the node to be up, then we can assume that it is ready.
 		// To match the rest of the code, a more proper way would be to look at all previous steps and
@@ -99,13 +99,13 @@ func hasDeadlockedSteps(health health.Status) bool {
 	return false
 }
 
-// findGivenStep returns the step which seems to be run by the Agent now. The step is always in the last plan
+// findCurrentStep returns the step which seems to be run by the Agent now. The step is always in the last plan
 // (see https://github.com/10gen/ops-manager-kubernetes/pull/401#discussion_r333071555) so we iterate over all the steps
 // there and find the last step which has "Started" non nil
 // (indeed this is not the perfect logic as sometimes the agent doesn't update the 'Started' as well - see
 // 'health-status-ok.json', but seems it works for finding deadlocks still
 // noinspection GoNilness
-func findGivenStep(processStatuses map[string]health.MmsDirectorStatus) *health.StepStatus {
+func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *health.StepStatus {
 	var currentPlan *health.PlanStatus
 	if len(processStatuses) == 0 {
 		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens

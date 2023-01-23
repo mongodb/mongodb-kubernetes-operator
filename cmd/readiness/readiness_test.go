@@ -39,7 +39,7 @@ func TestDeadlockDetectionWait(t *testing.T) {
 func TestNoDeadlock(t *testing.T) {
 	health, err := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
 	assert.NoError(t, err)
-	stepStatus := findGivenStep(health.ProcessPlans)
+	stepStatus := findCurrentStep(health.ProcessPlans)
 
 	assert.Equal(t, "WaitFeatureCompatibilityVersionCorrect", stepStatus.Step)
 
