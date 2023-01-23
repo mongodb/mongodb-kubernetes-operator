@@ -47,6 +47,8 @@ const (
 
 	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
 
+	automationAgentLogOptions = " -logFile /var/log/mongodb-mms-automation/automation-agent.log -maxLogFileDurationHrs 24 -logLevel DEBUG"
+
 	MongodbUserCommand = `current_uid=$(id -u)
 AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
 declare -r current_uid
@@ -189,7 +191,7 @@ func BaseAgentCommand() string {
 }
 
 func AutomationAgentCommand() []string {
-	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions}
+	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
