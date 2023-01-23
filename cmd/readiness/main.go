@@ -87,13 +87,12 @@ func isPodReady(conf config.Config) (bool, error) {
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
 func hasDeadlockedSteps(health health.Status) bool {
-	currentStep := findGivenStep(health.ProcessPlans, false)
-	firstStep := findGivenStep(health.ProcessPlans, true)
+	currentStep := findGivenStep(health.ProcessPlans)
 	if currentStep != nil {
 		// this means we are waiting for external factors before we are able to continue our update. If we expect the node to be up, then we can assume that it is ready.
 		// To match the rest of the code, a more proper way would be to look at all previous steps and
 		if currentStep.Step == "WaitCanUpdate" && currentStep.Started != nil && currentStep.Completed == nil && currentStep.Result == "wait" {
-			return isDeadlocked(firstStep)
+			return true
 		}
 		return isDeadlocked(currentStep)
 	}
@@ -106,7 +105,7 @@ func hasDeadlockedSteps(health health.Status) bool {
 // (indeed this is not the perfect logic as sometimes the agent doesn't update the 'Started' as well - see
 // 'health-status-ok.json', but seems it works for finding deadlocks still
 // noinspection GoNilness
-func findGivenStep(processStatuses map[string]health.MmsDirectorStatus, first bool) *health.StepStatus {
+func findGivenStep(processStatuses map[string]health.MmsDirectorStatus) *health.StepStatus {
 	var currentPlan *health.PlanStatus
 	if len(processStatuses) == 0 {
 		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens
@@ -123,14 +122,10 @@ func findGivenStep(processStatuses map[string]health.MmsDirectorStatus, first bo
 			logger.Errorf("The process %s doesn't contain any plans!", k)
 			return nil
 		}
-		if first {
-			currentPlan = v.Plans[0]
-		} else {
-			currentPlan = v.Plans[len(v.Plans)-1]
-		}
+		currentPlan = v.Plans[len(v.Plans)-1]
 	}
 
-	if currentPlan.Completed != nil && !first {
+	if currentPlan.Completed != nil {
 		logger.Debugf("The Agent hasn't reported working on the new config yet, the last plan finished at %s",
 			currentPlan.Completed.Format(time.RFC3339))
 		return nil
