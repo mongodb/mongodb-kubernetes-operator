@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -Eeou pipefail
 
+####
+# This file is copy-pasted from https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/scripts/dev/setup_kind_cluster.sh
+# Do not edit !!!
+####
+
 function usage() {
   echo "Deploy local registry and create kind cluster configured to use this registry. Local Docker registry is deployed at localhost:5000.
 
@@ -10,10 +15,12 @@ Usage:
   setup_kind_cluster.sh [-n <cluster_name>] [-e] [-r]
 
 Options:
-  -n <cluster_name>   (optional) Set kind cluster name to <cluster_name>. Creates kubeconfig in ~/.kube/<cluster_name>. The default name is 'kind' if not set.
-  -e                  (optional) Export newly created kind cluster's credentials to ~/.kube/<cluster_name> and set current kubectl context.
-  -h                  (optional) Shows this screen.
-  -r                  (optional) Recreate cluster if needed
+  -n <cluster_name>    (optional) Set kind cluster name to <cluster_name>. Creates kubeconfig in ~/.kube/<cluster_name>. The default name is 'kind' if not set.
+  -e                   (optional) Export newly created kind cluster's credentials to ~/.kube/<cluster_name> and set current kubectl context.
+  -h                   (optional) Shows this screen.
+  -r                   (optional) Recreate cluster if needed
+  -p <pod network>     (optional) Network reserved for Pods, e.g. 10.244.0.0/16
+  -s <service network> (optional) Network reserved for Services, e.g. 10.96.0.0/16
 "
   exit 0
 }
@@ -21,11 +28,15 @@ Options:
 cluster_name=${CLUSTER_NAME:-"kind"}
 export_kubeconfig=0
 recreate=0
-while getopts ':n:her' opt; do
+pod_network="10.244.0.0/16"
+service_network="10.96.0.0/16"
+while getopts ':p:s:n:her' opt; do
     case $opt in
       (n)   cluster_name=$OPTARG;;
       (e)   export_kubeconfig=1;;
       (r)   recreate=1;;
+      (p)   pod_network=$OPTARG;;
+      (s)   service_network=$OPTARG;;
       (h)   usage;;
       (*)   usage;;
     esac
@@ -56,6 +67,9 @@ fi
 cat <<EOF | kind create cluster --name "${cluster_name}" --kubeconfig "${kubeconfig_path}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  podSubnet: "${pod_network}"
+  serviceSubnet: "${service_network}"
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
