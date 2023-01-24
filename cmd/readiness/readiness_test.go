@@ -27,7 +27,7 @@ func TestDeadlockDetection(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDeadlockDetectionWait(t *testing.T) {
+func TestDeadlockDetectionDuringVersionChange(t *testing.T) {
 	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked-with-prev-config.json"))
 	assert.True(t, ready)
 	assert.NoError(t, err)
