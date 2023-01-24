@@ -29,7 +29,7 @@ var riskySteps []string
 var logger *zap.SugaredLogger
 
 func init() {
-	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit"}
+	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit", "WaitCanUpdate"}
 
 	// By default, we log to the output (convenient for tests)
 	cfg := zap.NewDevelopmentConfig()
@@ -89,10 +89,6 @@ func isPodReady(conf config.Config) (bool, error) {
 func hasDeadlockedSteps(health health.Status) bool {
 	currentStep := findCurrentStep(health.ProcessPlans)
 	if currentStep != nil {
-		// this means we are waiting for external factors before we are able to continue our update. If we expect the node to be up, then we can assume that it is ready.
-		if currentStep.Step == "WaitCanUpdate" && currentStep.Started != nil && currentStep.Completed == nil && currentStep.Result == "wait" {
-			return true
-		}
 		return isDeadlocked(currentStep)
 	}
 	return false
