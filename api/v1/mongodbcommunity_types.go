@@ -583,7 +583,7 @@ func (m *MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.Namespace
 }
 
 func (m *MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
-	ownerReference := *metav1.NewControllerRef(&m, schema.GroupVersionKind{
+	ownerReference := *metav1.NewControllerRef(m, schema.GroupVersionKind{
 		Group:   GroupVersion.Group,
 		Version: GroupVersion.Version,
 		Kind:    m.Kind,
@@ -897,7 +897,7 @@ func (m *MongoDBCommunity) IsChangingVersion() bool {
 
 // GetLastVersion returns the MDB version the statefulset was configured with.
 func (m *MongoDBCommunity) getLastVersion() string {
-	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
+	return annotations.GetAnnotation(m, annotations.LastAppliedMongoDBVersion)
 }
 
 func (m *MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {

@@ -401,8 +401,8 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
-		if scale.HasZeroReplicas(mdb) {
+	if scale.IsScalingUp(&mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
+		if scale.HasZeroReplicas(&mdb) {
 			r.log.Debug("Scaling up the ReplicaSet when there is no replicas, the Automation Config must be updated first")
 			return true
 		}
@@ -410,7 +410,7 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 		return false
 	}
 
-	if scale.IsScalingDown(mdb) {
+	if scale.IsScalingDown(&mdb) {
 		r.log.Debug("Scaling down the ReplicaSet, the Automation Config must be updated first")
 		return true
 	}
@@ -629,7 +629,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	auth := automationconfig.Auth{}
-	if err := scram.Enable(&auth, r.client, mdb); err != nil {
+	if err := scram.Enable(&auth, r.client, &mdb); err != nil {
 		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure scram authentication: %s", err)
 	}
 
@@ -708,7 +708,7 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
