@@ -90,7 +90,6 @@ func hasDeadlockedSteps(health health.Status) bool {
 	currentStep := findCurrentStep(health.ProcessPlans)
 	if currentStep != nil {
 		// this means we are waiting for external factors before we are able to continue our update. If we expect the node to be up, then we can assume that it is ready.
-		// To match the rest of the code, a more proper way would be to look at all previous steps and
 		if currentStep.Step == "WaitCanUpdate" && currentStep.Started != nil && currentStep.Completed == nil && currentStep.Result == "wait" {
 			return true
 		}
