@@ -37,7 +37,7 @@ type Configurable interface {
 	// GetAgentPasswordSecretNamespacedName returns the NamespacedName of the secret which stores the generated password for the agent.
 	GetAgentPasswordSecretNamespacedName() types.NamespacedName
 
-	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	// GetAgentKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
 
 	// NamespacedName returns the NamespacedName for the resource that is being configured.
@@ -142,7 +142,7 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 
 // ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials
 // secret corresponding to user of the given MongoDB deployment.
-func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User, mdbNamespacedName types.NamespacedName) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User, mdbNamespacedName types.NamespacedName, ownerRef []metav1.OwnerReference) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 
 	password, err := secret.ReadKey(getUpdateCreator, user.PasswordSecretKey, types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
@@ -176,7 +176,7 @@ func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User,
 	}
 
 	// create or update our credentials secret for this user
-	if err := createScramCredentialsSecret(getUpdateCreator, mdbNamespacedName, user.ScramCredentialsSecretName, sha1Creds, sha256Creds); err != nil {
+	if err := createScramCredentialsSecret(getUpdateCreator, mdbNamespacedName, ownerRef, user.ScramCredentialsSecretName, sha1Creds, sha256Creds); err != nil {
 		return scramcredentials.ScramCreds{}, scramcredentials.ScramCreds{}, fmt.Errorf("faild to create scram credentials secret %s: %s", user.ScramCredentialsSecretName, err)
 	}
 
@@ -260,7 +260,7 @@ func computeScramShaCredentials(username, password string, sha1Salt, sha256Salt 
 
 // createScramCredentialsSecret will create a Secret that contains all of the fields required to read these credentials
 // back in the future.
-func createScramCredentialsSecret(getUpdateCreator secret.GetUpdateCreator, mdbObjectKey types.NamespacedName, scramCredentialsSecretName string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
+func createScramCredentialsSecret(getUpdateCreator secret.GetUpdateCreator, mdbObjectKey types.NamespacedName, ref []metav1.OwnerReference, scramCredentialsSecretName string, sha1Creds, sha256Creds scramcredentials.ScramCreds) error {
 	scramCredsSecret := secret.Builder().
 		SetName(scramCredentialsSecretName).
 		SetNamespace(mdbObjectKey.Namespace).
@@ -270,6 +270,7 @@ func createScramCredentialsSecret(getUpdateCreator secret.GetUpdateCreator, mdbO
 		SetField(sha256SaltKey, sha256Creds.Salt).
 		SetField(sha256StoredKeyKey, sha256Creds.StoredKey).
 		SetField(sha256ServerKeyKey, sha256Creds.ServerKey).
+		SetOwnerReferences(ref).
 		Build()
 	return secret.CreateOrUpdate(getUpdateCreator, scramCredsSecret)
 }
@@ -307,7 +308,7 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.GetScramUsers() {
-		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), u)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), mdb.GetOwnerReferences(), u)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert scram user %s to Automation Config user: %s", u.Username, err)
 		}
@@ -318,7 +319,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDel
 
 // convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
 // that can be added directly to the AutomationConfig.
-func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, user User) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, ownerRef []metav1.OwnerReference, user User) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Username,
 		Database: user.Database,
@@ -329,7 +330,7 @@ func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secre
 			Database: role.Database,
 		})
 	}
-	sha1Creds, sha256Creds, err := ensureScramCredentials(secretGetUpdateCreateDeleter, user, mdbNsName)
+	sha1Creds, sha256Creds, err := ensureScramCredentials(secretGetUpdateCreateDeleter, user, mdbNsName, ownerRef)
 	if err != nil {
 		return automationconfig.MongoDBUser{}, fmt.Errorf("could not ensure scram credentials: %s", err)
 	}
