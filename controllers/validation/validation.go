@@ -10,8 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// ValidateInitalSpec checks if the resource's initial Spec is valid.
-func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+// ValidateInitialSpec checks if the resource's initial Spec is valid.
+func ValidateInitialSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	return validateSpec(mdb, log)
 }
 
