@@ -2,11 +2,10 @@ package feature_compatibility_version
 
 import (
 	"fmt"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"os"
 	"testing"
 	"time"
-
-	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"

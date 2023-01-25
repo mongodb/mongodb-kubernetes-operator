@@ -10,6 +10,12 @@ kubectl get crd mongodbcommunity.mongodbcommunity.mongodb.com -o yaml > diagnost
 echo "Dumping Pod list"
 kubectl get pods > diagnostics/pod-list.txt
 
+echo "Dumping Event list"
+kubectl get events --sort-by='.lastTimestamp' -owide > diagnostics/events-list.txt
+
+echo "Dumping yaml Event list"
+kubectl  kubectl get events --sort-by='.lastTimestamp'  -oyaml > diagnostics/events-list.yaml
+
 # dump operator deployment information.
 for deployment_name in $(kubectl get deployment -n "${namespace}" --output=jsonpath={.items..metadata.name}); do
   echo "Writing Deployment describe for deployment ${deployment_name}"

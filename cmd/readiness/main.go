@@ -29,9 +29,9 @@ var riskySteps []string
 var logger *zap.SugaredLogger
 
 func init() {
-	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit"}
+	riskySteps = []string{"WaitAllRsMembersUp", "WaitRsInit", "WaitCanUpdate"}
 
-	// By default we log to the output (convenient for tests)
+	// By default, we log to the output (convenient for tests)
 	cfg := zap.NewDevelopmentConfig()
 	log, err := cfg.Build()
 	if err != nil {
@@ -77,7 +77,7 @@ func isPodReady(conf config.Config) (bool, error) {
 		return true, nil
 	}
 
-	// Failback logic: the agent is not in goal state and got stuck in some steps
+	// Fallback logic: the agent is not in goal state and got stuck in some steps
 	if !inGoalState && hasDeadlockedSteps(healthStatus) {
 		return true, nil
 	}
@@ -139,8 +139,8 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 }
 
 func isDeadlocked(status *health.StepStatus) bool {
-	// Some logic behind 15 seconds: the health status file is dumped each 10 seconds so we are sure that if the agent
-	// has been in the the step for 10 seconds - this means it is waiting for the other hosts and they are not available
+	// Some logic behind 15 seconds: the health status file is dumped each 10 seconds, so we are sure that if the agent
+	// has been in the step for 10 seconds - this means it is waiting for the other hosts, and they are not available
 	fifteenSecondsAgo := time.Now().Add(time.Duration(-15) * time.Second)
 	if contains.String(riskySteps, status.Step) && status.Completed == nil && status.Started.Before(fifteenSecondsAgo) {
 		logger.Infof("Indicated a possible deadlock, status: %s, started at %s but hasn't finished "+
