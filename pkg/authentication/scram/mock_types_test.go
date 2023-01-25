@@ -37,6 +37,7 @@ type mockConfigurable struct {
 	opts   Options
 	users  []User
 	nsName types.NamespacedName
+	refs   []metav1.OwnerReference
 }
 
 func (m mockConfigurable) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
@@ -60,5 +61,5 @@ func (m mockConfigurable) NamespacedName() types.NamespacedName {
 }
 
 func (m mockConfigurable) GetOwnerReferences() []metav1.OwnerReference {
-	return nil
+	return m.refs
 }
