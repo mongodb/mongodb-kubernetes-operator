@@ -108,6 +108,14 @@ class DevConfig:
         return self._get_dev_image("readiness_probe_image_dev", "readiness_probe_image")
 
     @property
+    def mongodb_image_name(self) -> str:
+        return self._config.get("mongodb_image_name", "mongo")
+
+    @property
+    def mongodb_image_repo_url(self) -> str:
+        return self._config.get("mongodb_image_repo_url", "docker.io")
+
+    @property
     def agent_dev_image_ubi(self) -> str:
         return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
 
