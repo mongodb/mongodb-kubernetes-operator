@@ -146,38 +146,39 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
         },
     }
     if not k8s_conditions.wait(
-            lambda: corev1.list_namespaced_pod(
-                dev_config.namespace,
-                field_selector=f"metadata.name=={TEST_POD_NAME}",
-            ),
-            lambda pod_list: len(pod_list.items) == 0,
-            timeout=30,
-            sleep_time=0.5,
+        lambda: corev1.list_namespaced_pod(
+            dev_config.namespace,
+            field_selector=f"metadata.name=={TEST_POD_NAME}",
+        ),
+        lambda pod_list: len(pod_list.items) == 0,
+        timeout=30,
+        sleep_time=0.5,
     ):
         raise Exception(
             "Execution timed out while waiting for the existing pod to be deleted"
         )
 
     if not k8s_conditions.call_eventually_succeeds(
-            lambda: corev1.create_namespaced_pod(dev_config.namespace, body=test_pod),
-            sleep_time=10,
-            timeout=60,
-            exceptions_to_ignore=ApiException,
+        lambda: corev1.create_namespaced_pod(dev_config.namespace, body=test_pod),
+        sleep_time=10,
+        timeout=60,
+        exceptions_to_ignore=ApiException,
     ):
         raise Exception("Could not create test pod!")
 
 
 def wait_for_pod_to_be_running(
-        corev1: client.CoreV1Api, name: str, namespace: str
+    corev1: client.CoreV1Api, name: str, namespace: str
 ) -> None:
     print("Waiting for pod to be running")
     if not k8s_conditions.wait(
-            lambda: corev1.read_namespaced_pod(name, namespace),
-            lambda pod: pod.status.phase == "Running",
-            sleep_time=5,
-            timeout=240,
-            exceptions_to_ignore=ApiException,
+        lambda: corev1.read_namespaced_pod(name, namespace),
+        lambda pod: pod.status.phase == "Running",
+        sleep_time=5,
+        timeout=240,
+        exceptions_to_ignore=ApiException,
     ):
+
         pod = corev1.read_namespaced_pod(name, namespace)
         raise Exception("Pod never got into Running state: {}".format(pod))
     print("Pod is running")
@@ -265,7 +266,7 @@ def prepare_and_run_test(args: argparse.Namespace, dev_config: DevConfig) -> Non
 
     # stream all of the pod output as the pod is running
     for line in corev1.read_namespaced_pod_log(
-            TEST_POD_NAME, dev_config.namespace, follow=True, _preload_content=False
+        TEST_POD_NAME, dev_config.namespace, follow=True, _preload_content=False
     ).stream():
         print(line.decode("utf-8").rstrip())
 
@@ -279,11 +280,11 @@ def main() -> int:
 
     corev1 = client.CoreV1Api()
     if not k8s_conditions.wait(
-            lambda: corev1.read_namespaced_pod(TEST_POD_NAME, dev_config.namespace),
-            lambda pod: pod.status.phase == "Succeeded",
-            sleep_time=5,
-            timeout=60,
-            exceptions_to_ignore=ApiException,
+        lambda: corev1.read_namespaced_pod(TEST_POD_NAME, dev_config.namespace),
+        lambda pod: pod.status.phase == "Succeeded",
+        sleep_time=5,
+        timeout=60,
+        exceptions_to_ignore=ApiException,
     ):
         return 1
     _delete_test_environment(args.config_file)
