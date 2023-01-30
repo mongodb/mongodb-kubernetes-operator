@@ -157,6 +157,9 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 		helmArgs["agent.version"] = agentVersion
 		helmArgs["agent.name"] = agentName
 
+		helmArgs["mongodb.name"] = testConfig.MongoDBImage
+		helmArgs["mongodb.repo"] = testConfig.MongoDBRepoUrl
+
 		helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
 		helmArgs["registry.operator"] = operatorRegistry
 		helmArgs["registry.agent"] = agentRegistry
