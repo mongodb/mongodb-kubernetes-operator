@@ -51,7 +51,7 @@ func isPodReady(conf config.Config) (bool, error) {
 	healthStatus, err := parseHealthStatus(conf.HealthStatusReader)
 	if err != nil {
 		logger.Errorf("There was problem parsing health status file: %s", err)
-		return false, err
+		return false, nil
 	}
 
 	// The 'statuses' file can be empty only for OM Agents
