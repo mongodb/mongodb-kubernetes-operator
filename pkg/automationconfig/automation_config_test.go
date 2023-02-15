@@ -468,6 +468,12 @@ func TestAreEqual(t *testing.T) {
 	})
 }
 
+func TestValidateFCV(t *testing.T) {
+	_, err := NewBuilder().SetFCV("4.2.4").Build()
+
+	assert.Error(t, err)
+}
+
 func createAutomationConfig(name, mongodbVersion, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
 	ac, _ := NewBuilder().
 		SetName(name).
