@@ -98,6 +98,10 @@ type MongoDBCommunitySpec struct {
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
 
+	// AgentConfiguration sets options for the MongoDB automation agent
+	// +optional
+	AgentConfiguration AgentConfiguration `json:"agent,omitempty"`
+
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
 	// configuration file: https://www.mongodb.com/docs/manual/reference/configuration-options/
@@ -266,6 +270,20 @@ type OverrideProcess struct {
 type StatefulSetConfiguration struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
+}
+
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelInfo           = "INFO"
+	LogLevelWarn           = "WARN"
+	LogLevelError          = "ERROR"
+	LogLevelFatal          = "FATAL"
+)
+
+type AgentConfiguration struct {
+	LogLevel LogLevel `json:"logLevel"`
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
@@ -918,6 +936,10 @@ func (m MongoDBCommunity) LogsVolumeName() string {
 
 func (m MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 	return true
+}
+
+func (m MongoDBCommunity) GetAgentLogLevel() LogLevel {
+	return m.Spec.AgentConfiguration.LogLevel
 }
 
 type automationConfigReplicasScaler struct {
