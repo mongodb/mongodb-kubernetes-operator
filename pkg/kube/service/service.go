@@ -73,9 +73,9 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 		dest.ObjectMeta.Labels[k] = v
 	}
 
-	var cachedNodePorts []int32
-	for _, nodePort := range dest.Spec.Ports {
-		cachedNodePorts = append(cachedNodePorts, nodePort.NodePort)
+	cachedNodePorts := map[int32]int32{}
+	for _, port := range dest.Spec.Ports {
+		cachedNodePorts[port.Port] = port.NodePort
 	}
 
 	if len(source.Spec.Ports) > 0 {
@@ -83,10 +83,10 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 		copy(portCopy, source.Spec.Ports)
 		dest.Spec.Ports = portCopy
 
-		for i, cachedNodePort := range cachedNodePorts {
+		for i := range dest.Spec.Ports {
 			// Source might not specify NodePort and we shouldn't override existing NodePort value
-			if source.Spec.Ports[i].NodePort == 0 {
-				dest.Spec.Ports[i].NodePort = cachedNodePort
+			if dest.Spec.Ports[i].NodePort == 0 {
+				dest.Spec.Ports[i].NodePort = cachedNodePorts[dest.Spec.Ports[i].Port]
 			}
 		}
 	}
