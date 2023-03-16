@@ -51,7 +51,7 @@ func (b *builder) SetByteData(stringData map[string][]byte) *builder {
 	b.data = newStringDataBytes
 	return b
 }
-func (b *builder) SetStringData(stringData map[string]string) *builder {
+func (b *builder) SetStringMapToData(stringData map[string]string) *builder {
 	newStringDataBytes := make(map[string][]byte, len(stringData))
 	for k, v := range stringData {
 		newStringDataBytes[k] = []byte(v)
