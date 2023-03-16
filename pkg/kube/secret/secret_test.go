@@ -160,39 +160,69 @@ func (c *mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey)
 	}
 }
 
-func TestCreateOrUpdateIfNeeded(t *testing.T) {
+func TestCreateOrUpdateIfNeededCreate(t *testing.T) {
 	mock := &mockSecretGetUpdateCreateDeleter{
-		secrets: map[client.ObjectKey]corev1.Secret{},
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
 	}
+
+	secret := getDefaultSecret()
+
+	// first time it does not exist, we create it
+	err := CreateOrUpdateIfNeeded(mock, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, mock.apiCalls) // 2 calls -> get + creation
+}
+
+func TestCreateOrUpdateIfNeededUpdate(t *testing.T) {
+	mock := &mockSecretGetUpdateCreateDeleter{
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
+	}
+	secret := getDefaultSecret()
+
+	{
+		err := mock.CreateSecret(secret)
+		assert.NoError(t, err)
+		mock.apiCalls = 0
+	}
+
+	{
+		secret.Data = map[string][]byte{"test": {1, 2, 3}}
+		// secret differs -> we update
+		err := CreateOrUpdateIfNeeded(mock, secret)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, mock.apiCalls) // 2 calls -> get + update
+	}
+}
+
+func TestCreateOrUpdateIfNeededEqual(t *testing.T) {
+	mock := &mockSecretGetUpdateCreateDeleter{
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
+	}
+	secret := getDefaultSecret()
+
+	{
+		err := mock.CreateSecret(secret)
+		assert.NoError(t, err)
+		mock.apiCalls = 0
+	}
+
+	{
+		// the secret already exists, so we only call get
+		err := CreateOrUpdateIfNeeded(mock, secret)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, mock.apiCalls) // 1 call -> get
+	}
+}
+
+func getDefaultSecret() corev1.Secret {
 	secret :=
 		Builder().
 			SetName("secret").
 			SetNamespace("mdb.Namespace").
 			SetStringMapToData(map[string]string{"password": "my-password"}).
 			Build()
-
-	// first time it does not exist, we create it
-	err := CreateOrUpdateIfNeeded(mock, secret)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, mock.apiCalls) // 2 calls -> get + creation
-
-	// second time it does exist, we read it, and it is the same, so we do not make changes
-	err = CreateOrUpdateIfNeeded(mock, secret)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, mock.apiCalls) // 1 call -> get
-
-	changedSecret := Builder().
-		SetName("secret").
-		SetNamespace("mdb.Namespace").
-		SetStringMapToData(map[string]string{"password": "my-password-2"}).
-		Build()
-
-	err = CreateOrUpdateIfNeeded(mock, changedSecret)
-	assert.NoError(t, err)
-	assert.Equal(t, 5, mock.apiCalls) // 2 calls -> get + update
-
-	err = CreateOrUpdateIfNeeded(mock, changedSecret)
-	assert.NoError(t, err)
-	assert.Equal(t, 6, mock.apiCalls) // 1 call -> get
-
+	return secret
 }

@@ -188,7 +188,6 @@ func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Sec
 	// Check if the secret exists
 	oldSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
-
 		if apiErrors.IsNotFound(err) {
 			return getUpdateCreator.CreateSecret(secret)
 		}
