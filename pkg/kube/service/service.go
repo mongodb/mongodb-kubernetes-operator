@@ -73,18 +73,25 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 		dest.ObjectMeta.Labels[k] = v
 	}
 
-	var nodePort int32 = 0
-	if len(dest.Spec.Ports) > 0 {
-		// Save the NodePort for later, in case this ServicePort is changed.
-		nodePort = dest.Spec.Ports[0].NodePort
+	for k, v := range source.Spec.Selector {
+		dest.Spec.Selector[k] = v
+	}
+
+	cachedNodePorts := map[int32]int32{}
+	for _, port := range dest.Spec.Ports {
+		cachedNodePorts[port.Port] = port.NodePort
 	}
 
 	if len(source.Spec.Ports) > 0 {
-		dest.Spec.Ports = source.Spec.Ports
+		portCopy := make([]corev1.ServicePort, len(source.Spec.Ports))
+		copy(portCopy, source.Spec.Ports)
+		dest.Spec.Ports = portCopy
 
-		if nodePort > 0 && source.Spec.Ports[0].NodePort == 0 {
-			// There *is* a nodePort defined already, and a new one is not being passed
-			dest.Spec.Ports[0].NodePort = nodePort
+		for i := range dest.Spec.Ports {
+			// Source might not specify NodePort and we shouldn't override existing NodePort value
+			if dest.Spec.Ports[i].NodePort == 0 {
+				dest.Spec.Ports[i].NodePort = cachedNodePorts[dest.Spec.Ports[i].Port]
+			}
 		}
 	}
 
