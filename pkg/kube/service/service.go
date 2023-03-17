@@ -73,6 +73,10 @@ func Merge(dest corev1.Service, source corev1.Service) corev1.Service {
 		dest.ObjectMeta.Labels[k] = v
 	}
 
+	for k, v := range source.Spec.Selector {
+		dest.Spec.Selector[k] = v
+	}
+
 	cachedNodePorts := map[int32]int32{}
 	for _, port := range dest.Spec.Ports {
 		cachedNodePorts[port.Port] = port.NodePort
