@@ -66,8 +66,8 @@ spec:
                 properties:
                   logLevel:
                     type: string
-                required:
-                - logLevel
+                  maxLogFileDurationHours:
+                    type: integer
                 type: object
               arbiters:
                 description: 'Arbiters is the number of arbiters to add to the Replica

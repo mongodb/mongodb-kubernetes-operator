@@ -283,7 +283,10 @@ const (
 )
 
 type AgentConfiguration struct {
+	// +optional
 	LogLevel LogLevel `json:"logLevel"`
+	// +optional
+	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
@@ -940,6 +943,10 @@ func (m MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 
 func (m MongoDBCommunity) GetAgentLogLevel() LogLevel {
 	return m.Spec.AgentConfiguration.LogLevel
+}
+
+func (m MongoDBCommunity) GetAgentMaxLogFileDurationHours() int {
+	return m.Spec.AgentConfiguration.MaxLogFileDurationHours
 }
 
 type automationConfigReplicasScaler struct {
