@@ -13,7 +13,7 @@ require (
 	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.11.3
 	go.uber.org/zap v1.24.0
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	k8s.io/api v0.23.15
 	k8s.io/apimachinery v0.23.15
 	k8s.io/client-go v0.23.15
