@@ -102,7 +102,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Equal(t, mdb.Name, sts.Name)
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
 	assert.Equal(t, mongodbDatabaseServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 6)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
 	managedSecurityContext := envvar.ReadBool(podtemplatespec.ManagedSecurityContextEnv)

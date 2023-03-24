@@ -60,6 +60,15 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              agent:
+                description: AgentConfiguration sets options for the MongoDB automation
+                  agent
+                properties:
+                  logLevel:
+                    type: string
+                  maxLogFileDurationHours:
+                    type: integer
+                type: object
               arbiters:
                 description: 'Arbiters is the number of arbiters to add to the Replica
                   Set. It is not recommended to have more than one arbiter per Replica

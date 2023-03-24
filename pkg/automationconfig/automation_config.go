@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	Mongod                ProcessType = "mongod"
-	DefaultMongoDBDataDir string      = "/data"
-	DefaultDBPort         int         = 27017
-	DefaultAgentLogPath   string      = "/var/log/mongodb-mms-automation"
+	Mongod                              ProcessType = "mongod"
+	DefaultMongoDBDataDir               string      = "/data"
+	DefaultDBPort                       int         = 27017
+	DefaultAgentLogPath                 string      = "/var/log/mongodb-mms-automation"
+	DefaultAgentMaxLogFileDurationHours int         = 24
 )
 
 type AutomationConfig struct {
