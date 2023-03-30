@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"net/url"
 	"strings"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -350,9 +350,13 @@ func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
 }
 
 func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
-	return &MongodConfiguration{
-		Object: runtime.DeepCopyJSON(m.Object),
+	if m != nil && m.Object != nil {
+		return &MongodConfiguration{
+			Object: runtime.DeepCopyJSON(m.Object),
+		}
 	}
+	c := NewMongodConfiguration()
+	return &c
 }
 
 // NewMongodConfiguration returns an empty MongodConfiguration
