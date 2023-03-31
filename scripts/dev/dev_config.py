@@ -143,6 +143,12 @@ class DevConfig:
             return self.agent_dev_image_ubi
         return self.agent_dev_image_ubuntu
 
+    @property
+    def image_type(self) -> str:
+        if self._distro == Distro.UBI:
+            return "ubi8"
+        return "ubuntu-2004"
+
     def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:
             self.skip_tags.append(tag)

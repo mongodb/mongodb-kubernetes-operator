@@ -25,6 +25,8 @@ const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
 
+	DefaultImageType = "ubi8"
+
 	versionUpgradeHookName            = "mongod-posthook"
 	ReadinessProbeContainerName       = "mongodb-agent-readinessprobe"
 	readinessProbePath                = "/opt/scripts/readinessprobe"
@@ -40,6 +42,7 @@ const (
 	automationConfigEnv             = "AUTOMATION_CONFIG_MAP"
 	AgentImageEnv                   = "AGENT_IMAGE"
 	MongodbImageEnv                 = "MONGODB_IMAGE"
+	MongoDBImageType                = "IMAGE_TYPE"
 	VersionUpgradeHookImageEnv      = "VERSION_UPGRADE_HOOK_IMAGE"
 	ReadinessProbeImageEnv          = "READINESS_PROBE_IMAGE"
 	agentLogLevelEnv                = "AGENT_LOG_LEVEL"
@@ -307,11 +310,16 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 
 func getMongoDBImage(version string) string {
 	repoUrl := os.Getenv(MongodbRepoUrl)
+	imageType := os.Getenv(MongoDBImageType)
+	if len(imageType) == 0 {
+		imageType = DefaultImageType
+	}
+
 	if strings.HasSuffix(repoUrl, "/") {
 		repoUrl = strings.TrimRight(repoUrl, "/")
 	}
 	mongoImageName := os.Getenv(MongodbImageEnv)
-	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
+	return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
@@ -341,6 +349,7 @@ exec mongod -f %s;
 		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(containerCommand),
+		container.WithArgs([]string{""}),
 		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{

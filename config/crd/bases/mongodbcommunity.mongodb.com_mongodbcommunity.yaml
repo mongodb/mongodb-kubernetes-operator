@@ -5,12 +5,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
-    service.binding/type: 'mongodb'
-    service.binding/provider: 'community'
-    service.binding: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret'
-    service.binding/connectionString: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv'
-    service.binding/username: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username'
-    service.binding/password: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password'
   creationTimestamp: null
   name: mongodbcommunity.mongodbcommunity.mongodb.com
 spec:

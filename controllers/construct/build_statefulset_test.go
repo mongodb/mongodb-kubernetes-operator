@@ -34,14 +34,14 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
-			Version: "4.2.2",
+			Version: "6.0.5",
 		},
 	}
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
-	t.Setenv(MongodbRepoUrl, "repo")
-	t.Setenv(MongodbImageEnv, "mongo")
+	t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+	t.Setenv(MongodbImageEnv, "mongodb-community-server")
 	t.Setenv(AgentImageEnv, "agent-image")
 
 	mdb := newTestReplicaSet()
@@ -63,8 +63,8 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 }
 
 func TestManagedSecurityContext(t *testing.T) {
-	t.Setenv(MongodbRepoUrl, "repo")
-	t.Setenv(MongodbImageEnv, "mongo")
+	t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+	t.Setenv(MongodbImageEnv, "mongodb-community-server")
 	t.Setenv(AgentImageEnv, "agent-image")
 	t.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
 
@@ -135,7 +135,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-keyfile")
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Equal(t, "repo/mongo:4.2.2", mongodContainer.Image)
+	assert.Equal(t, "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8", mongodContainer.Image)
 	assert.Len(t, mongodContainer.VolumeMounts, 6)
 	if !managedSecurityContext {
 		assert.NotNil(t, sts.Spec.Template.Spec.Containers[1].SecurityContext)
