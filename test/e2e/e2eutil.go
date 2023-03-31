@@ -63,7 +63,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members:  3,
 			Type:     "ReplicaSet",
-			Version:  "4.4.0",
+			Version:  "6.0.5",
 			Arbiters: 0,
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
