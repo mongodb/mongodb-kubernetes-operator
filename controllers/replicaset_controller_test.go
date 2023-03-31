@@ -715,7 +715,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mongodConfig := objx.New(map[string]interface{}{})
-	mongodConfig.Set("net.port", 1000)
+	mongodConfig.Set("net.port", float64(1000))
 	mongodConfig.Set("storage.other", "value")
 	mongodConfig.Set("arbitrary.config.path", "value")
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
