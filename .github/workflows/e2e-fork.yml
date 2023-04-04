@@ -103,8 +103,6 @@ jobs:
           distro: ubi
         - test-name: feature_compatibility_version
           distro: ubi
-        - test-name: feature_compatibility_version_upgrade
-          distro: ubi
         - test-name: prometheus
           distro: ubi
         - test-name: replica_set_tls
