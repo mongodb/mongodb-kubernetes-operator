@@ -12,12 +12,11 @@
       - commit changes to the [helm-charts submodule](https://github.com/mongodb/helm-charts) and create a PR against it ([similar to this one](https://github.com/mongodb/helm-charts/pull/163)).
       - do not merge helm-charts PR until release PR is merged and the images are pushed to quay.io.
     * Commit all changes
-      * This also includes helm-chart submodule update (to the commit pointing in the helm-chart PR)
-          * To perform this step `git add helm-charts`.
     * Create a PR with the title `Release MongoDB Kubernetes Operator v<operator-version>` (the title must match this pattern).
     * Wait for the tests to pass and merge the PR.
       * Upon approval, all new images for this release will be built and released, and a GitHub release draft will be created.
         * Dockerfiles for mongodb-kubernetes-operator and mongodb-agent will be uploaded to S3 to be used by daily rebuild process in the enterprise repo.
       * Review and publish the new GitHub release draft, that was prepared
     * Merge helm-charts PR and update submodule to the latest commit on `main` branch.
-    * Create a new PR with only bump to the helm-chart submodule.
+    * Create a new PR with only bump to the helm-chart submodule, similar to [this](https://github.com/mongodb/mongodb-kubernetes-operator/pull/1210). The commit here should match the master commit in the `helm-charts` repository.
+    * Add the new released operator version to the enterprise [release.json](https://github.com/10gen/ops-manager-kubernetes/blob/master/release.json#L74) file.
