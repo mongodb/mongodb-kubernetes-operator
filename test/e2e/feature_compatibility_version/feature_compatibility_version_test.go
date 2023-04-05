@@ -22,13 +22,18 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// TestFeatureCompatibilityVersion test different scenarios of upgrading both FCV and image version. Note, that
+// 4.4 images are the most convenient for this test as they support both FCV 4.2 and 4.4 and the underlying storage
+// format remains the same. Versions 5 and 6 are one way upgrade only.
+// See: https://www.mongodb.com/docs/manual/reference/command/setFeatureCompatibilityVersion/
 func TestFeatureCompatibilityVersion(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	const lowestMDBVersion = "4.4.18"
-	const highestMDBVersion = "5.0.15"
-	const featureCompatibility = "4.0"
+	// This is the lowest version available for the official images
+	const lowestMDBVersion = "4.4.16"
+	const highestMDBVersion = "4.4.19"
+	const featureCompatibility = "4.2"
 	const upgradedFeatureCompatibility = "4.4"
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
@@ -75,8 +80,9 @@ func TestFeatureCompatibilityVersion(t *testing.T) {
 			db.Spec.FeatureCompatibilityVersion = upgradedFeatureCompatibility
 		})
 		assert.NoError(t, err)
-		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb))
+		t.Run("Stateful Set Reaches Ready State, after Upgrading FeatureCompatibilityVersion", mongodbtests.StatefulSetBecomesReady(&mdb))
+		t.Run("MongoDB Reaches Running Phase, after Upgrading FeatureCompatibilityVersion", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 	})
 
-	t.Run(fmt.Sprintf("Test FeatureCompatibilityVersion, after downgrade, is %s", upgradedFeatureCompatibility), tester.HasFCV(upgradedFeatureCompatibility, 3))
+	t.Run(fmt.Sprintf("Test FeatureCompatibilityVersion, after upgrading FeatureCompatibilityVersion, is %s", upgradedFeatureCompatibility), tester.HasFCV(upgradedFeatureCompatibility, 10))
 }
