@@ -24,12 +24,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetUpgradeVersion(t *testing.T) {
-
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
+	const initialMDBVersion = "4.4.18"
+	const upgradedMDBVersion = "5.0.12"
+	const upgradedWithIncreasedPatchMDBVersion = "5.0.15"
+
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	mdb.Spec.Version = "4.2.0"
+	mdb.Spec.Version = initialMDBVersion
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
@@ -47,10 +50,10 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 
-	// Upgrade minor version to 4.4.0
+	// Upgrade minor version to upgradedMDBVersion
 	t.Run("MongoDB is reachable while minor version is upgraded", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Test Minor Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.4.0"))
+		t.Run("Test Minor Version can be upgraded", mongodbtests.ChangeVersion(&mdb, upgradedMDBVersion))
 		t.Run("StatefulSet has OnDelete update strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 		t.Run("Stateful Set Reaches Ready State, after Upgrading", mongodbtests.StatefulSetBecomesReady(&mdb))
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 2))
@@ -58,10 +61,10 @@ func TestReplicaSetUpgradeVersion(t *testing.T) {
 
 	t.Run("StatefulSet has RollingUpgrade restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.RollingUpdateStatefulSetStrategyType))
 
-	// Upgrade patch version to 4.4.1
+	// Upgrade patch version to upgradedWithIncreasedPatchMDBVersion
 	t.Run("MongoDB is reachable while patch version is upgraded", func(t *testing.T) {
 		defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
-		t.Run("Test Patch Version can be upgraded", mongodbtests.ChangeVersion(&mdb, "4.4.1"))
+		t.Run("Test Patch Version can be upgraded", mongodbtests.ChangeVersion(&mdb, upgradedWithIncreasedPatchMDBVersion))
 		t.Run("StatefulSet has OnDelete restart strategy", mongodbtests.StatefulSetHasUpdateStrategy(&mdb, appsv1.OnDeleteStatefulSetStrategyType))
 		t.Run("Stateful Set Reaches Ready State, after upgrading", mongodbtests.StatefulSetBecomesReady(&mdb))
 		t.Run("AutomationConfig's version has been increased", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 3))

@@ -1,8 +1,8 @@
 {
   "namespace": "default",
   "repo_url": "quay.io/mongodb",
-  "mongodb_image_repo_url": "docker.io",
-  "mongodb_image_name": "mongo",
+  "mongodb_image_repo_url": "docker.io/mongodb",
+  "mongodb_image_name": "mongodb-community-server",
   "operator_image": "mongodb-kubernetes-operator",
   "operator_image_dev": "community-operator-dev",
   "e2e_image": "community-operator-e2e",

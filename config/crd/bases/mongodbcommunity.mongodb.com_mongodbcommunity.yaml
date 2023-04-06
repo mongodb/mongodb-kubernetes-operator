@@ -1,16 +1,15 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
-    service.binding/type: 'mongodb'
-    service.binding/provider: 'community'
-    service.binding: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret'
-    service.binding/connectionString: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv'
-    service.binding/username: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username'
-    service.binding/password: 'path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password'
+    controller-gen.kubebuilder.io/version: v0.11.3
+    service.binding: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret
+    service.binding/connectionString: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv
+    service.binding/password: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password
+    service.binding/provider: community
+    service.binding/type: mongodb
+    service.binding/username: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username
   creationTimestamp: null
   name: mongodbcommunity.mongodbcommunity.mongodb.com
 spec:
@@ -286,6 +285,7 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       caConfigMapRef:
                         description: CaConfigMap is a reference to a ConfigMap containing
                           the certificate for the CA which signed the server certificates
@@ -298,6 +298,7 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       certificateKeySecretRef:
                         description: CertificateKeySecret is a reference to a Secret
                           containing a private key and certificate to use for TLS.
@@ -315,6 +316,7 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       enabled:
                         type: boolean
                       optional:
@@ -443,9 +445,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

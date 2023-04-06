@@ -56,7 +56,7 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 		},
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members: 3,
-			Version: "4.2.2",
+			Version: "6.0.5",
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
 					Modes: []mdbv1.AuthMode{"SCRAM"},
@@ -142,8 +142,8 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 }
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
-	t.Setenv(construct.MongodbRepoUrl, "repo")
-	t.Setenv(construct.MongodbImageEnv, "mongo")
+	t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
+	t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(&mdb)
@@ -165,7 +165,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	mongodbContainer := sts.Spec.Template.Spec.Containers[0]
 	assert.Equal(t, construct.MongodbName, mongodbContainer.Name)
-	assert.Equal(t, "repo/mongo:4.2.2", mongodbContainer.Image)
+	assert.Equal(t, "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8", mongodbContainer.Image)
 
 	assert.Equal(t, resourcerequirements.Defaults(), agentContainer.Resources)
 
@@ -687,6 +687,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 
 func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T) {
 	mdb := newTestReplicaSet()
+	mdb.Spec.Version = "4.2.2"
 	mgr := client.NewManager(&mdb)
 	r := NewReconciler(mgr)
 	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})

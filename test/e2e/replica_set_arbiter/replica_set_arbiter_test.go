@@ -72,6 +72,8 @@ func TestReplicaSetArbiter(t *testing.T) {
 			mdb, user := e2eutil.NewTestMongoDB(ctx, testConfig.resourceName, "")
 			mdb.Spec.Arbiters = testConfig.numberOfArbiters
 			mdb.Spec.Members = testConfig.numberOfMembers
+			// FIXME: This behavior has been changed in 6.x timeline and now the arbiter (nor the RS) can't reach the goal state.
+			mdb.Spec.Version = "4.4.19"
 			pwd, err := setup.GeneratePasswordForUser(ctx, user, "")
 			if err != nil {
 				t.Fatal(err)

@@ -583,6 +583,12 @@ type MongoDBCommunityStatus struct {
 // +kubebuilder:resource:path=mongodbcommunity,scope=Namespaced,shortName=mdbc,singular=mongodbcommunity
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDB deployment"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDB server"
+// +kubebuilder:metadata:annotations="service.binding/type=mongodb"
+// +kubebuilder:metadata:annotations="service.binding/provider=community"
+// +kubebuilder:metadata:annotations="service.binding=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret"
+// +kubebuilder:metadata:annotations="service.binding/connectionString=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv"
+// +kubebuilder:metadata:annotations="service.binding/username=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username"
+// +kubebuilder:metadata:annotations="service.binding/password=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password"
 type MongoDBCommunity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

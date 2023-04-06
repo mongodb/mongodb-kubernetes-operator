@@ -27,6 +27,8 @@ func TestReplicaSetMongodPortChangeWithArbiters(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	// FIXME: This behavior has been changed in 6.x timeline and now the arbiter (nor the RS) can't reach the goal state.
+	mdb.Spec.Version = "4.4.19"
 	scramUser := mdb.GetScramUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")

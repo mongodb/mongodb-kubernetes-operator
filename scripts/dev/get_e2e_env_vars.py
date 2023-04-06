@@ -4,7 +4,7 @@ from typing import Dict
 import os.path
 
 
-from dev_config import load_config, DevConfig
+from dev_config import load_config, DevConfig, Distro
 
 
 def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
@@ -32,13 +32,14 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
         "MONGODB_IMAGE": dev_config.mongodb_image_name,
         "MONGODB_REPO_URL": dev_config.mongodb_image_repo_url,
         "HELM_CHART_PATH": os.path.abspath("./helm-charts/charts/community-operator"),
+        "MDB_IMAGE_TYPE": dev_config.image_type,
     }
 
 
 # convert all values in config.json to env vars.
 # this can be used to provide configuration for e2e tests.
 def main() -> int:
-    dev_config = load_config()
+    dev_config = load_config(distro=Distro.UBI)
     for k, v in _get_e2e_test_envs(dev_config).items():
         print(f"export {k.upper()}={v}")
     return 0
