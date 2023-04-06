@@ -17,7 +17,7 @@ STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGR
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
+CRD_OPTIONS ?= "crd:crdVersions=v1"
 RELEASE_NAME_HELM ?= mongodb-kubernetes-operator
 TEST_NAMESPACE ?= $(NAMESPACE)
 
@@ -58,7 +58,7 @@ debug: install install-rbac ## Run the operator in debug mode with dlv
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3)
 
 # Try to use already installed helm from PATH
 ifeq (ok,$(shell test -f "$$(which helm)" && echo ok))
