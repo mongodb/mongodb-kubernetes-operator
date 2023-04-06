@@ -2,6 +2,7 @@ package construct
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"strconv"
 	"strings"
@@ -35,14 +36,15 @@ const (
 	mongodbDatabaseServiceAccountName = "mongodb-database"
 	agentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	MongodbRepoUrl = "MONGODB_REPO_URL"
+	MongodbRepoUrl         = "MONGODB_REPO_URL"
+	OfficialMongodbRepoUrl = "docker.io/mongodb"
 
 	headlessAgentEnv                = "HEADLESS_AGENT"
 	podNamespaceEnv                 = "POD_NAMESPACE"
 	automationConfigEnv             = "AUTOMATION_CONFIG_MAP"
 	AgentImageEnv                   = "AGENT_IMAGE"
 	MongodbImageEnv                 = "MONGODB_IMAGE"
-	MongoDBImageType                = "IMAGE_TYPE"
+	MongoDBImageType                = "MDB_IMAGE_TYPE"
 	VersionUpgradeHookImageEnv      = "VERSION_UPGRADE_HOOK_IMAGE"
 	ReadinessProbeImageEnv          = "READINESS_PROBE_IMAGE"
 	agentLogLevelEnv                = "AGENT_LOG_LEVEL"
@@ -310,16 +312,17 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 
 func getMongoDBImage(version string) string {
 	repoUrl := os.Getenv(MongodbRepoUrl)
-	imageType := os.Getenv(MongoDBImageType)
-	if len(imageType) == 0 {
-		imageType = DefaultImageType
-	}
+	imageType := envvar.GetEnvOrDefault(MongoDBImageType, DefaultImageType)
 
 	if strings.HasSuffix(repoUrl, "/") {
 		repoUrl = strings.TrimRight(repoUrl, "/")
 	}
 	mongoImageName := os.Getenv(MongodbImageEnv)
-	return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
+	if repoUrl == OfficialMongodbRepoUrl {
+		return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
+	}
+	// This is the old images backwards compatibility code path.
+	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }
 
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
@@ -349,6 +352,8 @@ exec mongod -f %s;
 		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(containerCommand),
+		// The official image provides both CMD and ENTRYPOINT. We're reusing the former and need to replace
+		// the latter with an empty string.
 		container.WithArgs([]string{""}),
 		containerSecurityContext,
 		container.WithEnvs(

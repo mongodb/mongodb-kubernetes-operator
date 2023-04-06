@@ -18,7 +18,7 @@ VALID_IMAGE_NAMES = frozenset(
     ]
 )
 
-DEFAULT_IMAGE_TYPE = "ubuntu"
+DEFAULT_IMAGE_TYPE = "ubi"
 DEFAULT_NAMESPACE = "default"
 
 
