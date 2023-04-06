@@ -5,7 +5,7 @@
 - Changes
   - The Operator now uses the official [MongoDB Community Server images](https://hub.docker.com/r/mongodb/mongodb-community-server).
     It is still possible to use the Docker Inc. images by altering the JSON configuration file:
-    ```asd
+    ```
           mongodb_image_name=mongo
           mongodb_image_repo_url=docker.io
     ```
