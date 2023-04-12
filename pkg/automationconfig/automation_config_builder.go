@@ -37,6 +37,9 @@ type Builder struct {
 	topology           Topology
 	mongodbVersion     string
 	previousAC         AutomationConfig
+	votes              *int
+	priority           *string
+	tags               map[string]string
 	// MongoDB installable versions
 	versions             []MongoDbVersionConfig
 	backupVersions       []BackupVersion
@@ -314,7 +317,12 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		// arbiters.
 		isVotingMember := isArbiter || i < (maxVotingMembers-b.arbiters)
 
-		// TODO: Replace with a Builder for ReplicaSetMember.
+		members[i] = *NewReplicaSetMemeber().
+			SetId(replicaSetIndex).
+			SetArbiterOnly(isArbiter).
+			SetHorizons(horizon).
+			SetVotes(votes)
+
 		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
 	}
 

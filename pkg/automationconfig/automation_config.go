@@ -165,6 +165,40 @@ type ReplicaSetMember struct {
 	Tags        map[string]string  `json:"tags,omitempty"`
 }
 
+func NewReplicaSetMemeber() *ReplicaSetMember {
+	return &ReplicaSetMember{}
+}
+
+func (r *ReplicaSetMember) SetId(id int) *ReplicaSetMember {
+	r.Id = id
+	return r
+}
+
+func (r *ReplicaSetMember) SetArbiterOnly(arbiterOnly bool) *ReplicaSetMember {
+	r.ArbiterOnly = arbiterOnly
+	return r
+}
+
+func (r *ReplicaSetMember) SetHorizons(horizons ReplicaSetHorizons) *ReplicaSetMember {
+	r.Horizons = horizons
+	return r
+}
+
+func (r *ReplicaSetMember) SetVotes(votes *int) *ReplicaSetMember {
+	r.Votes = votes
+	return r
+}
+
+func (r *ReplicaSetMember) SetPriority(priority *string) *ReplicaSetMember {
+	r.Priority = priority
+	return r
+}
+
+func (r *ReplicaSetMember) SetTags(tags map[string]string) *ReplicaSetMember {
+	r.Tags = tags
+	return r
+}
+
 type ReplicaSetHorizons map[string]string
 
 // newReplicaSetMember returns a ReplicaSetMember.
