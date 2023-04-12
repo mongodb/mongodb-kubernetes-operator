@@ -50,6 +50,9 @@ type Builder struct {
 	tlsConfig            *TLS
 	dataDir              string
 	port                 int
+	Votes                *int
+	Priority             *string
+	Tags                 map[string]string
 }
 
 func NewBuilder() *Builder {

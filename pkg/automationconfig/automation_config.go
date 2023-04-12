@@ -3,6 +3,7 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/stretchr/objx"
@@ -154,13 +155,18 @@ type ReplicaSet struct {
 	NumberArbiters  int                `json:"numberArbiters"`
 }
 
+type ReplicasetMemberOption struct {
+	Votes    *int              `json:"votes,omitempty"`
+	Priority *string           `json:"priority,omitempty"`
+	Tags     map[string]string `json:"tags,omitempty"`
+}
+
 type ReplicaSetMember struct {
-	Id          int                `json:"_id"`
-	Host        string             `json:"host"`
-	Priority    int                `json:"priority"`
-	ArbiterOnly bool               `json:"arbiterOnly"`
-	Votes       int                `json:"votes"`
-	Horizons    ReplicaSetHorizons `json:"horizons,omitempty"`
+	Id                     int                    `json:"_id"`
+	Host                   string                 `json:"host"`
+	ArbiterOnly            bool                   `json:"arbiterOnly"`
+	Horizons               ReplicaSetHorizons     `json:"horizons,omitempty"`
+	ReplicasetMemberOption ReplicasetMemberOption `json:",inline"`
 }
 
 type ReplicaSetHorizons map[string]string
@@ -170,20 +176,22 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 	// ensure that the number of voting members in the replica set is not more than 7
 	// as this is the maximum number of voting members.
 	votes := 0
-	priority := 0
+	priority := ""
 
 	if isVotingMember {
 		votes = 1
-		priority = 1
+		priority = strconv.Itoa(1)
 	}
 
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        name,
-		Priority:    priority,
 		ArbiterOnly: isArbiter,
-		Votes:       votes,
 		Horizons:    horizons,
+		ReplicasetMemberOption: ReplicasetMemberOption{
+			Votes:    &votes,
+			Priority: &priority,
+		},
 	}
 }
 
