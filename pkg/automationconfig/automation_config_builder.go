@@ -28,7 +28,6 @@ type Builder struct {
 	processes          []Process
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
-	members            int
 	arbiters           int
 	domain             string
 	arbiterDomain      string
@@ -224,7 +223,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		return AutomationConfig{}, fmt.Errorf("can't build the automation config: %s", err)
 	}
 
-	hostnames := make([]string, 0, b.members+b.arbiters)
+	hostnames := make([]string, 0, len(b.replicaSets)+b.arbiters)
 
 	// Create hostnames for data-bearing nodes. They start from 0
 	for i := 0; i < b.members; i++ {
@@ -317,11 +316,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		// arbiters.
 		isVotingMember := isArbiter || i < (maxVotingMembers-b.arbiters)
 
-		members[i] = *NewReplicaSetMemeber().
-			SetId(replicaSetIndex).
-			SetArbiterOnly(isArbiter).
-			SetHorizons(horizon).
-			SetVotes(votes)
+		// members[i] = *NewReplicaSetMemeber().
+		// 	SetId(replicaSetIndex).
+		// 	SetArbiterOnly(isArbiter).
+		// 	SetHorizons(horizon).
+		// 	SetVotes(votes)
 
 		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
 	}

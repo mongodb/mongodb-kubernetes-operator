@@ -199,6 +199,13 @@ func (r *ReplicaSetMember) SetTags(tags map[string]string) *ReplicaSetMember {
 	return r
 }
 
+func (r *ReplicaSetMember) Build() ReplicaSetMember {
+	return ReplicaSetMember{
+		Id:   r.Id,
+		Host: r.Host,
+	}
+}
+
 type ReplicaSetHorizons map[string]string
 
 // newReplicaSetMember returns a ReplicaSetMember.
