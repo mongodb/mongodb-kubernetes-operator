@@ -58,7 +58,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 	assert.Len(t, rs.Members, 3, "there should be the number of replicas provided")
 
 	for i, member := range rs.Members {
-		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, 1, *member.ReplicasetMemberOption.Votes)
 		assert.False(t, member.ArbiterOnly)
 		assert.Equal(t, i, member.Id)
 		assert.Equal(t, ac.Processes[i].Name, member.Host)
@@ -144,22 +144,22 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	m := ac.ReplicaSets[0].Members
 
 	// First 5 data-bearing nodes have votes
-	assert.Equal(t, 1, m[0].Votes)
-	assert.Equal(t, 1, m[1].Votes)
-	assert.Equal(t, 1, m[2].Votes)
-	assert.Equal(t, 1, m[3].Votes)
-	assert.Equal(t, 1, m[4].Votes)
+	assert.Equal(t, 1, *m[0].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 1, *m[1].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 1, *m[2].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 1, *m[3].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 1, *m[4].ReplicasetMemberOption.Votes)
 
 	// From 6th data-bearing nodes, they won'thave any votes
-	assert.Equal(t, 0, m[5].Votes)
-	assert.Equal(t, 0, m[6].Votes)
-	assert.Equal(t, 0, m[7].Votes)
-	assert.Equal(t, 0, m[8].Votes)
-	assert.Equal(t, 0, m[9].Votes)
+	assert.Equal(t, 0, *m[5].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 0, *m[6].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 0, *m[7].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 0, *m[8].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 0, *m[9].ReplicasetMemberOption.Votes)
 
 	// Arbiters always have votes
-	assert.Equal(t, 1, m[10].Votes)
-	assert.Equal(t, 1, m[11].Votes)
+	assert.Equal(t, 1, *m[10].ReplicasetMemberOption.Votes)
+	assert.Equal(t, 1, *m[11].ReplicasetMemberOption.Votes)
 }
 
 func TestReplicaSetMultipleHorizonsScaleDown(t *testing.T) {

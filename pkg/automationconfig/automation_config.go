@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 )
 
@@ -15,6 +16,31 @@ const (
 	DefaultAgentLogPath                 string      = "/var/log/mongodb-mms-automation"
 	DefaultAgentMaxLogFileDurationHours int         = 24
 )
+
+// +kubebuilder:object:generate=true
+type MemberOptions struct {
+	Votes    *int              `json:"votes,omitempty"`
+	Priority *string           `json:"priority,omitempty"`
+	Tags     map[string]string `json:"tags,omitempty"`
+}
+
+func (o *MemberOptions) GetVotes() int {
+	if o.Votes != nil {
+		return cast.ToInt(o.Votes)
+	}
+	return 1
+}
+
+func (o *MemberOptions) GetPriority() float32 {
+	if o.Priority != nil {
+		return cast.ToFloat32(o.Priority)
+	}
+	return 1.0
+}
+
+func (o *MemberOptions) GetTags() map[string]string {
+	return o.Tags
+}
 
 type AutomationConfig struct {
 	Version     int          `json:"version"`
@@ -155,12 +181,12 @@ type ReplicaSet struct {
 }
 
 type ReplicaSetMember struct {
-	Id          int                `json:"_id"`
-	Host        string             `json:"host"`
-	Priority    int                `json:"priority"`
-	ArbiterOnly bool               `json:"arbiterOnly"`
-	Votes       int                `json:"votes"`
-	Horizons    ReplicaSetHorizons `json:"horizons,omitempty"`
+	Id                     int                `json:"_id"`
+	Host                   string             `json:"host"`
+	Priority               int                `json:"priority"`
+	ArbiterOnly            bool               `json:"arbiterOnly"`
+	Horizons               ReplicaSetHorizons `json:"horizons,omitempty"`
+	ReplicasetMemberOption MemberOptions      `json:",inline"`
 }
 
 type ReplicaSetHorizons map[string]string
@@ -182,8 +208,10 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 		Host:        name,
 		Priority:    priority,
 		ArbiterOnly: isArbiter,
-		Votes:       votes,
 		Horizons:    horizons,
+		ReplicasetMemberOption: MemberOptions{
+			Votes: &votes,
+		},
 	}
 }
 

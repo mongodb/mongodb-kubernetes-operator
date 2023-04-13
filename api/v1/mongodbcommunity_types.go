@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
@@ -231,30 +230,6 @@ func ConvertCustomRolesToAutomationConfigCustomRole(roles []CustomRole) []automa
 type Privilege struct {
 	Resource Resource `json:"resource"`
 	Actions  []string `json:"actions"`
-}
-
-type MemberOptions struct {
-	Votes    *int              `json:"votes,omitempty"`
-	Priority *string           `json:"priority,omitempty"`
-	Tags     map[string]string `json:"tags,omitempty"`
-}
-
-func (o *MemberOptions) GetVotes() int {
-	if o.Votes != nil {
-		return cast.ToInt(o.Votes)
-	}
-	return 1
-}
-
-func (o *MemberOptions) GetPriority() float32 {
-	if o.Priority != nil {
-		return cast.ToFloat32(o.Priority)
-	}
-	return 1.0
-}
-
-func (o *MemberOptions) GetTags() map[string]string {
-	return o.Tags
 }
 
 // Resource specifies specifies the resources upon which a privilege permits actions.

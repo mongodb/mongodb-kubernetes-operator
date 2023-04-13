@@ -50,6 +50,7 @@ type Builder struct {
 	tlsConfig            *TLS
 	dataDir              string
 	port                 int
+	memberOptions        []MemberOptions
 }
 
 func NewBuilder() *Builder {
