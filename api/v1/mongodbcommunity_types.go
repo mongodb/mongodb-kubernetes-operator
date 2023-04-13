@@ -623,7 +623,7 @@ type MongoDBCommunity struct {
 	Status MongoDBCommunityStatus `json:"status,omitempty"`
 }
 
-func (m MongoDBCommunity) GetMongodConfiguration() MongodConfiguration {
+func (m *MongoDBCommunity) GetMongodConfiguration() MongodConfiguration {
 	mongodConfig := NewMongodConfiguration()
 	for k, v := range m.Spec.AdditionalMongodConfig.Object {
 		mongodConfig.SetOption(k, v)
@@ -631,16 +631,16 @@ func (m MongoDBCommunity) GetMongodConfiguration() MongodConfiguration {
 	return mongodConfig
 }
 
-func (m MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) GetAgentPasswordSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-agent-password", Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) GetAgentKeyfileSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-keyfile", Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
-	ownerReference := *metav1.NewControllerRef(&m, schema.GroupVersionKind{
+func (m *MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
+	ownerReference := *metav1.NewControllerRef(m, schema.GroupVersionKind{
 		Group:   GroupVersion.Group,
 		Version: GroupVersion.Version,
 		Kind:    m.Kind,
@@ -650,7 +650,7 @@ func (m MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
 
 // GetScramOptions returns a set of Options that are used to configure scram
 // authentication.
-func (m MongoDBCommunity) GetScramOptions() scram.Options {
+func (m *MongoDBCommunity) GetScramOptions() scram.Options {
 	ignoreUnknownUsers := true
 	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
@@ -687,7 +687,7 @@ func (m MongoDBCommunity) GetScramOptions() scram.Options {
 
 // GetScramUsers converts all of the users from the spec into users
 // that can be used to configure scram authentication.
-func (m MongoDBCommunity) GetScramUsers() []scram.User {
+func (m *MongoDBCommunity) GetScramUsers() []scram.User {
 	users := make([]scram.User, len(m.Spec.Users))
 	for i, u := range m.Spec.Users {
 		roles := make([]scram.Role, len(u.Roles))
@@ -724,7 +724,7 @@ func (m MongoDBCommunity) GetScramUsers() []scram.User {
 
 // IsStillScaling returns true if this resource is currently scaling,
 // considering both arbiters and regular members.
-func (m MongoDBCommunity) IsStillScaling() bool {
+func (m *MongoDBCommunity) IsStillScaling() bool {
 	arbiters := automationConfigReplicasScaler{
 		current:                m.CurrentArbiters(),
 		desired:                m.DesiredArbiters(),
@@ -737,7 +737,7 @@ func (m MongoDBCommunity) IsStillScaling() bool {
 // AutomationConfigMembersThisReconciliation determines the correct number of
 // automation config replica set members based on our desired number, and our
 // current number.
-func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
+func (m *MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 	return scale.ReplicasThisReconciliation(automationConfigReplicasScaler{
 		current: m.Status.CurrentMongoDBMembers,
 		desired: m.Spec.Members,
@@ -749,7 +749,7 @@ func (m MongoDBCommunity) AutomationConfigMembersThisReconciliation() int {
 // current number.
 //
 // Will not update arbiters until members have reached desired number.
-func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
+func (m *MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
 	if scale.IsStillScaling(m) {
 		return m.Status.CurrentMongoDBArbiters
 	}
@@ -762,12 +762,12 @@ func (m MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
 }
 
 // MongoURI returns a mongo uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoURI(clusterDomain string) string {
+func (m *MongoDBCommunity) MongoURI(clusterDomain string) string {
 	return fmt.Sprintf("mongodb://%s/?replicaSet=%s", strings.Join(m.Hosts(clusterDomain), ","), m.Name)
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
-func (m MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
+func (m *MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
@@ -776,7 +776,7 @@ func (m MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
+func (m *MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s/%s?replicaSet=%s&ssl=%t",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
@@ -788,7 +788,7 @@ func (m MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clu
 
 // MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, clusterDomain string) string {
+func (m *MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, clusterDomain string) string {
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
@@ -803,7 +803,7 @@ func (m MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, 
 		m.Spec.Security.TLS.Enabled)
 }
 
-func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
+func (m *MongoDBCommunity) Hosts(clusterDomain string) []string {
 	hosts := make([]string, m.Spec.Members)
 
 	if clusterDomain == "" {
@@ -822,7 +822,7 @@ func (m MongoDBCommunity) Hosts(clusterDomain string) []string {
 }
 
 // ServiceName returns the name of the Service that should be created for this resource.
-func (m MongoDBCommunity) ServiceName() string {
+func (m *MongoDBCommunity) ServiceName() string {
 	serviceName := m.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName
 	if serviceName != "" {
 		return serviceName
@@ -830,61 +830,61 @@ func (m MongoDBCommunity) ServiceName() string {
 	return m.Name + "-svc"
 }
 
-func (m MongoDBCommunity) ArbiterNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) ArbiterNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: m.Namespace, Name: m.Name + "-arb"}
 }
 
-func (m MongoDBCommunity) AutomationConfigSecretName() string {
+func (m *MongoDBCommunity) AutomationConfigSecretName() string {
 	return m.Name + "-config"
 }
 
 // TLSCaCertificateSecretNamespacedName will get the namespaced name of the Secret containing the CA certificate
 // As the Secret will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
-func (m MongoDBCommunity) TLSCaCertificateSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) TLSCaCertificateSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: m.Namespace}
 }
 
 // TLSConfigMapNamespacedName will get the namespaced name of the ConfigMap containing the CA certificate
 // As the ConfigMap will be mounted to our pods, it has to be in the same namespace as the MongoDB resource
-func (m MongoDBCommunity) TLSConfigMapNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) TLSConfigMapNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CaConfigMap.Name, Namespace: m.Namespace}
 }
 
 // TLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
-func (m MongoDBCommunity) TLSSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) TLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: m.Namespace}
 }
 
 // PrometheusTLSSecretNamespacedName will get the namespaced name of the Secret containing the server certificate and key
-func (m MongoDBCommunity) PrometheusTLSSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) PrometheusTLSSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Spec.Prometheus.TLSSecretRef.Name, Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) TLSOperatorCASecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) TLSOperatorCASecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-ca-certificate", Namespace: m.Namespace}
 }
 
 // TLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
-func (m MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) TLSOperatorSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-server-certificate-key", Namespace: m.Namespace}
 }
 
 // PrometheusTLSOperatorSecretNamespacedName will get the namespaced name of the Secret created by the operator
 // containing the combined certificate and key.
-func (m MongoDBCommunity) PrometheusTLSOperatorSecretNamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) PrometheusTLSOperatorSecretNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name + "-prometheus-certificate-key", Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) NamespacedName() types.NamespacedName {
+func (m *MongoDBCommunity) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Name: m.Name, Namespace: m.Namespace}
 }
 
-func (m MongoDBCommunity) DesiredReplicas() int {
+func (m *MongoDBCommunity) DesiredReplicas() int {
 	return m.Spec.Members
 }
 
-func (m MongoDBCommunity) CurrentReplicas() int {
+func (m *MongoDBCommunity) CurrentReplicas() int {
 	return m.Status.CurrentStatefulSetReplicas
 }
 
@@ -898,26 +898,26 @@ func (m MongoDBCommunity) CurrentReplicas() int {
 //
 // This was done to simplify the process of scaling arbiters, *after* members
 // have reached the desired amount of replicas.
-func (m MongoDBCommunity) ForcedIndividualScaling() bool {
+func (m *MongoDBCommunity) ForcedIndividualScaling() bool {
 	return false
 }
 
-func (m MongoDBCommunity) DesiredArbiters() int {
+func (m *MongoDBCommunity) DesiredArbiters() int {
 	return m.Spec.Arbiters
 }
 
-func (m MongoDBCommunity) CurrentArbiters() int {
+func (m *MongoDBCommunity) CurrentArbiters() int {
 	return m.Status.CurrentStatefulSetArbitersReplicas
 }
 
-func (m MongoDBCommunity) GetMongoDBVersion() string {
+func (m *MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
 // GetMongoDBVersionForAnnotation returns the MDB version used to annotate the object.
 // Here it's the same as GetMongoDBVersion, but a different name is used in order to make
 // the usage clearer in enterprise (where it's a method of OpsManager but is used for the AppDB)
-func (m MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
+func (m *MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
 	return m.GetMongoDBVersion()
 }
 
@@ -939,7 +939,7 @@ func (m *MongoDBCommunity) StatefulSetArbitersThisReconciliation() int {
 
 // GetUpdateStrategyType returns the type of RollingUpgradeStrategy that the
 // MongoDB StatefulSet should be configured with.
-func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType {
+func (m *MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType {
 	if !m.IsChangingVersion() {
 		return appsv1.RollingUpdateStatefulSetStrategyType
 	}
@@ -947,33 +947,33 @@ func (m MongoDBCommunity) GetUpdateStrategyType() appsv1.StatefulSetUpdateStrate
 }
 
 // IsChangingVersion returns true if an attempted version change is occurring.
-func (m MongoDBCommunity) IsChangingVersion() bool {
+func (m *MongoDBCommunity) IsChangingVersion() bool {
 	lastVersion := m.getLastVersion()
 	return lastVersion != "" && lastVersion != m.Spec.Version
 }
 
 // GetLastVersion returns the MDB version the statefulset was configured with.
-func (m MongoDBCommunity) getLastVersion() string {
-	return annotations.GetAnnotation(&m, annotations.LastAppliedMongoDBVersion)
+func (m *MongoDBCommunity) getLastVersion() string {
+	return annotations.GetAnnotation(m, annotations.LastAppliedMongoDBVersion)
 }
 
-func (m MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
+func (m *MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
 	return true
 }
 
-func (m MongoDBCommunity) GetAnnotations() map[string]string {
+func (m *MongoDBCommunity) GetAnnotations() map[string]string {
 	return m.Annotations
 }
 
-func (m MongoDBCommunity) DataVolumeName() string {
+func (m *MongoDBCommunity) DataVolumeName() string {
 	return "data-volume"
 }
 
-func (m MongoDBCommunity) LogsVolumeName() string {
+func (m *MongoDBCommunity) LogsVolumeName() string {
 	return "logs-volume"
 }
 
-func (m MongoDBCommunity) NeedsAutomationConfigVolume() bool {
+func (m *MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 	return true
 }
 
