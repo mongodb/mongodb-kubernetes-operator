@@ -67,6 +67,11 @@ func NewBuilder() *Builder {
 	}
 }
 
+func (b *Builder) SetMemberOptions(memberOptions []MemberOptions) *Builder {
+	b.memberOptions = memberOptions
+	return b
+}
+
 func (b *Builder) SetOptions(options Options) *Builder {
 	b.options = options
 	return b
@@ -317,6 +322,13 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		// TODO: Replace with a Builder for ReplicaSetMember.
 		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
+
+		if len(b.memberOptions) > i {
+			// override the member options if expliclty specified in the spec
+			members[i].Votes = b.memberOptions[i].Votes
+			members[i].Priority = b.memberOptions[i].GetPriority()
+			members[i].Tags = b.memberOptions[i].Tags
+		}
 	}
 
 	if b.auth == nil {
