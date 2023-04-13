@@ -22,6 +22,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	OfficialMongodbRepoUrls = []string{"docker.io/mongodb", "quay.io/mongodb"}
+)
+
 const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
@@ -36,8 +40,8 @@ const (
 	mongodbDatabaseServiceAccountName = "mongodb-database"
 	agentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	MongodbRepoUrl         = "MONGODB_REPO_URL"
-	OfficialMongodbRepoUrl = "docker.io/mongodb"
+	MongodbRepoUrl                           = "MONGODB_REPO_URL"
+	OfficialMongodbEnterpriseServerImageName = "mongodb-enterprise-server"
 
 	headlessAgentEnv                = "HEADLESS_AGENT"
 	podNamespaceEnv                 = "POD_NAMESPACE"
@@ -318,9 +322,12 @@ func getMongoDBImage(version string) string {
 		repoUrl = strings.TrimRight(repoUrl, "/")
 	}
 	mongoImageName := os.Getenv(MongodbImageEnv)
-	if repoUrl == OfficialMongodbRepoUrl {
-		return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
+	for _, officialUrl := range OfficialMongodbRepoUrls {
+		if repoUrl == officialUrl {
+			return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
+		}
 	}
+
 	// This is the old images backwards compatibility code path.
 	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }

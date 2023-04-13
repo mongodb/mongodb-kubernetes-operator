@@ -541,6 +541,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	}
 
 	return automationconfig.NewBuilder().
+		IsEnterprise(os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName).
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).

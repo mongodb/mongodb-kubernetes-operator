@@ -35,6 +35,7 @@ type Builder struct {
 	name               string
 	fcv                string
 	topology           Topology
+	isEnterprise       bool
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
@@ -74,6 +75,11 @@ func (b *Builder) SetMemberOptions(memberOptions []MemberOptions) *Builder {
 
 func (b *Builder) SetOptions(options Options) *Builder {
 	b.options = options
+	return b
+}
+
+func (b *Builder) IsEnterprise(isEnterprise bool) *Builder {
+	b.isEnterprise = isEnterprise
 	return b
 }
 
@@ -162,6 +168,9 @@ func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 
 func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	b.mongodbVersion = version
+	if b.isEnterprise {
+		b.mongodbVersion = b.mongodbVersion + "-ent"
+	}
 	return b
 }
 

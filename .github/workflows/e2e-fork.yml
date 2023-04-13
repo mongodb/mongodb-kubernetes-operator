@@ -89,6 +89,8 @@ jobs:
         include:
         - test-name: replica_set
           distro: ubi
+        - test-name: replica_set_enterprise
+          distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
         - test-name: replica_set_recovery
