@@ -121,6 +121,14 @@ def create_test_pod(args: argparse.Namespace, dev_config: DevConfig) -> None:
                             "value": f"{dev_config.repo_url}/{dev_config.readiness_probe_image_dev}:{args.tag}",
                         },
                         {
+                            "name": "MONGODB_IMAGE",
+                            "value": f"{dev_config.mongodb_image_name}",
+                        },
+                        {
+                            "name": "MONGODB_REPO_URL",
+                            "value": f"{dev_config.mongodb_image_repo_url}",
+                        },
+                        {
                             "name": "PERFORM_CLEANUP",
                             "value": f"{args.perform_cleanup}",
                         },

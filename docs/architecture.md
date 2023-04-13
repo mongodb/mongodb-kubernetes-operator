@@ -61,7 +61,7 @@ When you update the MongoDB version in your resource definition and reapply it t
 
 1. The MongoDB Agent chooses the first pod to upgrade and stops the `mongod` process using a local connection and [`db.shutdownServer`](https://www.mongodb.com/docs/manual/reference/method/db.shutdownServer/#db.shutdownServer).
 
-1. Kubernetes will restart the `mongod` container causing the version change hook to run and check the state of the MongoDB Agent. If the MongoDB Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
+1. Kubernetes will restart the `mongod` container causing the version change hook to run before the `mongod` process and check the state of the MongoDB Agent. If the MongoDB Agent expects the `mongod` process to start with a new version, the hook uses a Kubernetes API call to delete the pod.
 
 1. The Kubernetes Controller downloads the target version of MongoDB from its default docker registry and restarts the pod with the target version of `mongod` in the database container.
 

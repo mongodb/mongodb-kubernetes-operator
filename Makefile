@@ -17,7 +17,7 @@ STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGR
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
+CRD_OPTIONS ?= "crd:crdVersions=v1"
 RELEASE_NAME_HELM ?= mongodb-kubernetes-operator
 TEST_NAMESPACE ?= $(NAMESPACE)
 
@@ -58,7 +58,7 @@ debug: install install-rbac ## Run the operator in debug mode with dlv
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3)
 
 # Try to use already installed helm from PATH
 ifeq (ok,$(shell test -f "$$(which helm)" && echo ok))
@@ -136,6 +136,7 @@ cleanup-e2e: ## Cleans up e2e test env
 	# Most of the tests use StatefulSets, which in turn use stable storage. In order to
 	# avoid interleaving tests with each other, we need to drop them all.
 	kubectl delete pvc --all -n $(NAMESPACE) || true
+	kubectl delete pv --all -n $(NAMESPACE) || true
 
 generate-env-file: ## generates a local-test.env for local testing
 	python scripts/dev/get_e2e_env_vars.py  | cut -d' ' -f2 > .community-operator-dev/local-test.env
@@ -150,6 +151,7 @@ e2e-image: ## Build and push e2e test image
 
 agent-image: ## Build and push agent image
 	python pipeline.py --image-name agent-ubuntu
+	python pipeline.py --image-name agent-ubi
 
 readiness-probe-image: ## Build and push readiness probe image
 	python pipeline.py --image-name readiness-probe-init

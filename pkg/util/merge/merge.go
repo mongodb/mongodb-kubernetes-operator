@@ -24,6 +24,9 @@ func StringSlices(slice1, slice2 []string) []string {
 // StringToStringMap merges two string maps together with the second map
 // overriding any values also specified in the first.
 func StringToStringMap(map1, map2 map[string]string) map[string]string {
+	if map1 == nil && map2 == nil {
+		return nil
+	}
 	mergedMap := make(map[string]string)
 	for k, v := range map1 {
 		mergedMap[k] = v

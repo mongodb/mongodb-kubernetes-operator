@@ -49,14 +49,14 @@ spec:
         - name: AGENT_IMAGE
           value: quay.io/mongodb/mongodb-agent:12.0.15.7646-1
         - name: READINESS_PROBE_IMAGE
-          value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.12
+          value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.13
         - name: VERSION_UPGRADE_HOOK_IMAGE
           value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.6
         - name: MONGODB_IMAGE
           value: mongo
         - name: MONGODB_REPO_URL
           value: docker.io
-        image: quay.io/mongodb/mongodb-kubernetes-operator:0.7.6
+        image: quay.io/mongodb/mongodb-kubernetes-operator:0.7.9
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
         resources:

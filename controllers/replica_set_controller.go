@@ -137,7 +137,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
-	if err := r.validateSpec(mdb); err != nil {
+	err, lastAppliedSpec := r.validateSpec(mdb)
+	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -251,6 +252,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	if err := r.updateConnectionStringSecrets(mdb, os.Getenv(clusterDomain)); err != nil {
 		r.log.Errorf("Could not update connection string secrets: %s", err)
+	}
+
+	if lastAppliedSpec != nil {
+		r.cleanupScramSecrets(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
 	}
 
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
@@ -583,22 +588,24 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 }
 
 // validateSpec checks if the MongoDB resource Spec is valid.
-// If there has not yet been a successful configuration, the function runs the intial Spec validations. Otherwise
+// If there has not yet been a successful configuration, the function runs the initial Spec validations. Otherwise,
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
-func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
+// The validation also returns the lastSuccessFulConfiguration Spec as mdbv1.MongoDBCommunitySpec.
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *mdbv1.MongoDBCommunitySpec) {
+
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
-		return validation.ValidateInitalSpec(mdb, r.log)
+		return validation.ValidateInitialSpec(mdb, r.log), nil
 	}
 
 	lastSpec := mdbv1.MongoDBCommunitySpec{}
 	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
-		return err
+		return err, &lastSpec
 	}
 
-	return validation.ValidateUpdate(mdb, lastSpec, r.log)
+	return validation.ValidateUpdate(mdb, lastSpec, r.log), &lastSpec
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {

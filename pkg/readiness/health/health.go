@@ -61,7 +61,7 @@ type StepStatus struct {
 	Result    string     `json:"result"`
 }
 
-// isReadyState will return true, meaning a *ready state* in the sense that this Process can
+// IsReadyState will return true, meaning a *ready state* in the sense that this Process can
 // accept read operations.
 // It returns true if the managed process is mongos or standalone (replicationStatusUndefined)
 // or if the agent doesn't publish the replica status (older agents)

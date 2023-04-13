@@ -38,18 +38,18 @@ To deploy your first replica set:
    | `<auth-db>` | [Authentication database](https://www.mongodb.com/docs/manual/core/security-users/#std-label-user-authentication-database) where you defined the database user. | `admin` |
    | `<username>` | Username of the database user. | `my-user` |
 
-   **NOTE**: Alternatively, you can specify an optional 
-   `users[i].connectionStringSecretName` field in the 
-   ``MongoDBCommunity`` custom resource to specify 
-   the name of the connection string secret that the 
+   **NOTE**: Alternatively, you can specify an optional
+   `users[i].connectionStringSecretName` field in the
+   ``MongoDBCommunity`` custom resource to specify
+   the name of the connection string secret that the
    Community Kubernetes Operator creates.
-   
+
    Update the variables in the following command, then run it to retrieve a user's connection strings to the replica set from the secret:
 
    **NOTE**: The following command requires [jq](https://stedolan.github.io/jq/) version 1.6 or higher.</br></br>
 
    ```sh
-   kubectl get secret <connection-string-secret-name> -n <my-namespace> \ 
+   kubectl get secret <connection-string-secret-name> -n <my-namespace> \
    -o json | jq -r '.data | with_entries(.value |= @base64d)'
    ```
 
@@ -153,7 +153,7 @@ in this Replica Set, this is, the amount of `mongod` instances will be
 The value of the `spec.arbiters` field must be:
 
 - a positive integer, and
-- less than the value of the `spec.members` field. 
+- less than the value of the `spec.members` field.
 
 **NOTE**: At least one replica set member must not be an arbiter.
 
@@ -171,7 +171,7 @@ spec:
   version: "4.2.7"
 ```
 
-To add arbiters: 
+To add arbiters:
 
 1. Edit the resource definition.
 
@@ -270,7 +270,7 @@ To define a custom role:
 
    | Key | Type | Description | Required? |
    |----|----|----|----|
-   | `spec.security.authentication.ignoreUnknownUsers` | boolean | Flag that indicates whether you can add users that don't exist in the `MongoDBCommunity` resource. If omitted, defaults to `true`. | No | 
+   | `spec.security.authentication.ignoreUnknownUsers` | boolean | Flag that indicates whether you can add users that don't exist in the `MongoDBCommunity` resource. If omitted, defaults to `true`. | No |
    | `spec.security.roles` | array | Array that defines [custom roles](https://www.mongodb.com/docs/manual/core/security-user-defined-roles/) roles that give you fine-grained access control over your MongoDB deployment. | Yes |
    | `spec.security.roles.role` | string | Name of the custom role. | Yes |
    | `spec.security.roles.db` | string | Database in which you want to store the user-defined role. | Yes |
@@ -374,3 +374,16 @@ the value of `periodSeconds` to `20`, so the Kubernetes API will do half of the
 requests it normally does (default value for `periodSeconds` is `10`).
 
 *Please note that these are referential values only!*
+
+### Operator Configurations
+
+#### Modify cluster domain for MongoDB service objects
+
+To configure the cluster domain for the MongoDB service object, i.e use a domain other than the default `cluster.local` you can specify it as an environment variable in the operator deployment under `CLUSTER_DOMAIN` key.
+
+For ex:
+```yaml
+env:
+  - name: CLUSTER_DOMAIN
+    value: $CUSTOM_DOMAIN
+```

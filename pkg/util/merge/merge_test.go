@@ -57,6 +57,60 @@ func TestMergeStringSlices(t *testing.T) {
 	}
 }
 
+func TestMergeServices(t *testing.T) {
+	type args struct {
+		original corev1.ServiceSpec
+		override corev1.ServiceSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want corev1.ServiceSpec
+	}{
+		{
+			name: "Overrides a few example spec values",
+			args: args{
+				original: corev1.ServiceSpec{},
+				override: corev1.ServiceSpec{
+					Type:                     "LoadBalancer",
+					ExternalName:             "externalName",
+					ExternalTrafficPolicy:    "some-non-existing-policy",
+					HealthCheckNodePort:      123,
+					PublishNotReadyAddresses: true,
+				},
+			},
+			want: corev1.ServiceSpec{
+				Type:                     "LoadBalancer",
+				ExternalName:             "externalName",
+				ExternalTrafficPolicy:    "some-non-existing-policy",
+				HealthCheckNodePort:      123,
+				PublishNotReadyAddresses: true,
+			},
+		},
+		{
+			name: "Merge labels",
+			args: args{
+				original: corev1.ServiceSpec{
+					Selector: map[string]string{"test1": "true"},
+				},
+				override: corev1.ServiceSpec{
+					Selector: map[string]string{"test2": "true"},
+				},
+			},
+			want: corev1.ServiceSpec{
+				Selector: map[string]string{"test1": "true", "test2": "true"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ServiceSpec(tt.args.original, tt.args.override); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("%v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMergeContainer(t *testing.T) {
 	defaultQuantity := resource.NewQuantity(int64(10), resource.DecimalExponent)
 

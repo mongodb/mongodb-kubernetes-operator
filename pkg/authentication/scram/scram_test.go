@@ -98,12 +98,12 @@ func TestComputeScramCredentials_ComputesSameStoredAndServerKey_WithSameSalt(t *
 func TestEnsureScramCredentials(t *testing.T) {
 	mdb, user := buildConfigurableAndUser("mdb-0")
 	t.Run("Fails when there is no password secret, and no credentials secret", func(t *testing.T) {
-		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb.NamespacedName())
+		_, _, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(), user, mdb.NamespacedName(), nil)
 		assert.Error(t, err)
 	})
 	t.Run("Existing credentials are used when password does not exist, but credentials secret has been created", func(t *testing.T) {
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.ScramCredentialsSecretName)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName())
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret), user, mdb.NamespacedName(), nil)
 		assert.NoError(t, err)
 		assertScramCredsCredentialsValidity(t, scram1Creds, scram256Creds)
 	})
@@ -118,7 +118,7 @@ func TestEnsureScramCredentials(t *testing.T) {
 			Build()
 
 		scramCredentialsSecret := validScramCredentialsSecret(mdb.NamespacedName(), user.ScramCredentialsSecretName)
-		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName())
+		scram1Creds, scram256Creds, err := ensureScramCredentials(newMockedSecretGetUpdateCreateDeleter(scramCredentialsSecret, differentPasswordSecret), user, mdb.NamespacedName(), nil)
 		assert.NoError(t, err)
 		assert.NotEqual(t, testSha1Salt, scram1Creds.Salt)
 		assert.NotEmpty(t, scram1Creds.Salt)
@@ -148,7 +148,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 			SetField(user.PasswordSecretKey, "TDg_DESiScDrJV6").
 			Build()
 
-		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb.NamespacedName(), user)
+		acUser, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(passwordSecret), mdb.NamespacedName(), nil, user)
 
 		assert.NoError(t, err)
 		assert.Equal(t, user.Username, acUser.Username)
@@ -163,7 +163,7 @@ func TestConvertMongoDBUserToAutomationConfigUser(t *testing.T) {
 	})
 
 	t.Run("If there is no password secret, the creation fails", func(t *testing.T) {
-		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb.NamespacedName(), user)
+		_, err := convertMongoDBUserToAutomationConfigUser(newMockedSecretGetUpdateCreateDeleter(), mdb.NamespacedName(), nil, user)
 		assert.Error(t, err)
 	})
 }
@@ -177,6 +177,7 @@ func TestConfigureScram(t *testing.T) {
 		err := Enable(&auth, s, mdb)
 		assert.Error(t, err)
 	})
+
 	t.Run("Agent Credentials Secret should be created if there are no users", func(t *testing.T) {
 		mdb := buildConfigurable("mdb-0")
 		s := newMockedSecretGetUpdateCreateDeleter()
@@ -193,6 +194,25 @@ func TestConfigureScram(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, secret.HasAllKeys(keyfileSecret, AgentKeyfileKey))
 		assert.NotEmpty(t, keyfileSecret.Data[AgentKeyfileKey])
+	})
+
+	t.Run("Agent Credentials Secret should contain owner reference", func(t *testing.T) {
+		mdb := buildConfigurable("mdb-0")
+		s := newMockedSecretGetUpdateCreateDeleter()
+		auth := automationconfig.Auth{}
+		err := Enable(&auth, s, mdb)
+		assert.NoError(t, err)
+
+		passwordSecret, err := s.GetSecret(mdb.GetAgentPasswordSecretNamespacedName())
+		assert.NoError(t, err)
+
+		actualRef := passwordSecret.GetOwnerReferences()
+		expectedRef := []metav1.OwnerReference{{
+			APIVersion: "v1",
+			Kind:       "mdbc",
+			Name:       "my-ref",
+		}}
+		assert.Equal(t, expectedRef, actualRef)
 	})
 
 	t.Run("Agent Password Secret is used if it exists", func(t *testing.T) {
@@ -261,6 +281,11 @@ func buildConfigurable(name string, users ...User) Configurable {
 			Name:      name,
 			Namespace: "default",
 		},
+		refs: []metav1.OwnerReference{{
+			APIVersion: "v1",
+			Kind:       "mdbc",
+			Name:       "my-ref",
+		}},
 	}
 }
 

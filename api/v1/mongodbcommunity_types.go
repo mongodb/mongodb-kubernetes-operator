@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
@@ -17,7 +20,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -97,6 +99,10 @@ type MongoDBCommunitySpec struct {
 
 	// +optional
 	StatefulSetConfiguration StatefulSetConfiguration `json:"statefulSet,omitempty"`
+
+	// AgentConfiguration sets options for the MongoDB automation agent
+	// +optional
+	AgentConfiguration AgentConfiguration `json:"agent,omitempty"`
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
@@ -227,6 +233,30 @@ type Privilege struct {
 	Actions  []string `json:"actions"`
 }
 
+type MemberOptions struct {
+	Votes    *int              `json:"votes,omitempty"`
+	Priority *string           `json:"priority,omitempty"`
+	Tags     map[string]string `json:"tags,omitempty"`
+}
+
+func (o *MemberOptions) GetVotes() int {
+	if o.Votes != nil {
+		return cast.ToInt(o.Votes)
+	}
+	return 1
+}
+
+func (o *MemberOptions) GetPriority() float32 {
+	if o.Priority != nil {
+		return cast.ToFloat32(o.Priority)
+	}
+	return 1.0
+}
+
+func (o *MemberOptions) GetTags() map[string]string {
+	return o.Tags
+}
+
 // Resource specifies specifies the resources upon which a privilege permits actions.
 // See https://www.mongodb.com/docs/manual/reference/resource-document for more.
 type Resource struct {
@@ -266,6 +296,23 @@ type OverrideProcess struct {
 type StatefulSetConfiguration struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
+}
+
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelInfo           = "INFO"
+	LogLevelWarn           = "WARN"
+	LogLevelError          = "ERROR"
+	LogLevelFatal          = "FATAL"
+)
+
+type AgentConfiguration struct {
+	// +optional
+	LogLevel LogLevel `json:"logLevel"`
+	// +optional
+	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
@@ -329,9 +376,13 @@ func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
 }
 
 func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
-	return &MongodConfiguration{
-		Object: runtime.DeepCopyJSON(m.Object),
+	if m != nil && m.Object != nil {
+		return &MongodConfiguration{
+			Object: runtime.DeepCopyJSON(m.Object),
+		}
 	}
+	c := NewMongodConfiguration()
+	return &c
 }
 
 // NewMongodConfiguration returns an empty MongodConfiguration
@@ -558,6 +609,12 @@ type MongoDBCommunityStatus struct {
 // +kubebuilder:resource:path=mongodbcommunity,scope=Namespaced,shortName=mdbc,singular=mongodbcommunity
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current state of the MongoDB deployment"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.version",description="Version of MongoDB server"
+// +kubebuilder:metadata:annotations="service.binding/type=mongodb"
+// +kubebuilder:metadata:annotations="service.binding/provider=community"
+// +kubebuilder:metadata:annotations="service.binding=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret"
+// +kubebuilder:metadata:annotations="service.binding/connectionString=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv"
+// +kubebuilder:metadata:annotations="service.binding/username=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username"
+// +kubebuilder:metadata:annotations="service.binding/password=path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password"
 type MongoDBCommunity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -918,6 +975,14 @@ func (m *MongoDBCommunity) LogsVolumeName() string {
 
 func (m *MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 	return true
+}
+
+func (m MongoDBCommunity) GetAgentLogLevel() LogLevel {
+	return m.Spec.AgentConfiguration.LogLevel
+}
+
+func (m MongoDBCommunity) GetAgentMaxLogFileDurationHours() int {
+	return m.Spec.AgentConfiguration.MaxLogFileDurationHours
 }
 
 type automationConfigReplicasScaler struct {
