@@ -16,6 +16,11 @@ The [`/config/samples`](../config/samples) directory contains example MongoDBCom
 
 ## Deploy a Replica Set
 
+**Warning:** When you delete MongoDB resources, persistent volumes remain.
+If you recreate a new MongoDB resource with the same name and persistent
+volumes, the pre-existing data might cause issues if the new MongoDB 
+resources have a different topology than the previous ones.
+
 To deploy your first replica set:
 
 1. Replace `<your-password-here>` in [config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml](../config/samples/mongodb.com_v1_mongodbcommunity_cr.yaml) to the password you wish to use.
