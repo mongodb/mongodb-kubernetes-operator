@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 )
 
@@ -15,6 +16,31 @@ const (
 	DefaultAgentLogPath                 string      = "/var/log/mongodb-mms-automation"
 	DefaultAgentMaxLogFileDurationHours int         = 24
 )
+
+// +kubebuilder:object:generate=true
+type MemberOptions struct {
+	Votes    *int              `json:"votes,omitempty"`
+	Priority *string           `json:"priority,omitempty"`
+	Tags     map[string]string `json:"tags,omitempty"`
+}
+
+func (o *MemberOptions) GetVotes() int {
+	if o.Votes != nil {
+		return cast.ToInt(o.Votes)
+	}
+	return 1
+}
+
+func (o *MemberOptions) GetPriority() float32 {
+	if o.Priority != nil {
+		return cast.ToFloat32(o.Priority)
+	}
+	return 1.0
+}
+
+func (o *MemberOptions) GetTags() map[string]string {
+	return o.Tags
+}
 
 type AutomationConfig struct {
 	Version     int          `json:"version"`
@@ -157,10 +183,14 @@ type ReplicaSet struct {
 type ReplicaSetMember struct {
 	Id          int                `json:"_id"`
 	Host        string             `json:"host"`
-	Priority    int                `json:"priority"`
 	ArbiterOnly bool               `json:"arbiterOnly"`
-	Votes       int                `json:"votes"`
 	Horizons    ReplicaSetHorizons `json:"horizons,omitempty"`
+	// this is duplicated here instead of using MemberOptions because type of priority
+	// is different in AC from the CR(CR don't support float) - hence all the members are declared
+	// separately
+	Votes    *int              `json:"votes,omitempty"`
+	Priority float32           `json:"priority,omitempty"`
+	Tags     map[string]string `json:"tags,omitempty"`
 }
 
 type ReplicaSetHorizons map[string]string
@@ -170,7 +200,7 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 	// ensure that the number of voting members in the replica set is not more than 7
 	// as this is the maximum number of voting members.
 	votes := 0
-	priority := 0
+	priority := 0.0
 
 	if isVotingMember {
 		votes = 1
@@ -180,10 +210,10 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 	return ReplicaSetMember{
 		Id:          id,
 		Host:        name,
-		Priority:    priority,
 		ArbiterOnly: isArbiter,
-		Votes:       votes,
 		Horizons:    horizons,
+		Votes:       &votes,
+		Priority:    float32(priority),
 	}
 }
 
