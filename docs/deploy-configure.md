@@ -17,7 +17,7 @@ The [`/config/samples`](../config/samples) directory contains example MongoDBCom
 ## Deploy a Replica Set
 
 **Warning:** When you delete MongoDB resources, persistent volumes remain.
-If you recreate a new MongoDB resource with the same name and persistent
+If you create a new MongoDB resource with the same name and persistent
 volumes, the pre-existing data might cause issues if the new MongoDB 
 resources have a different topology than the previous ones.
 
