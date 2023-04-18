@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/stretchr/objx"
@@ -541,7 +543,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	}
 
 	return automationconfig.NewBuilder().
-		IsEnterprise(os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName).
+		IsEnterprise(guessEnterprise(mdb)).
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
@@ -558,6 +560,29 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
+}
+
+func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
+	overrideAssumption, err := strconv.ParseBool(os.Getenv(construct.MongoDBAssumeEnterpriseEnv))
+	if err == nil {
+		return overrideAssumption
+	}
+
+	var overriddenImage string
+	containers := mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers
+	if len(containers) > 0 {
+		for _, c := range containers {
+			if c.Name == construct.MongodbName {
+				if len(c.Image) > 0 {
+					overriddenImage = c.Image
+				}
+			}
+		}
+	}
+	if strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName) {
+		return true
+	}
+	return os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet

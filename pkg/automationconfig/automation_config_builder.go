@@ -168,9 +168,6 @@ func (b *Builder) AddVersion(version MongoDbVersionConfig) *Builder {
 
 func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	b.mongodbVersion = version
-	if b.isEnterprise {
-		b.mongodbVersion = b.mongodbVersion + "-ent"
-	}
 	return b
 }
 
@@ -274,6 +271,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		fcv = b.fcv
 	}
 
+	mongoDBVersion := b.mongodbVersion
+	if b.isEnterprise {
+		mongoDBVersion = mongoDBVersion + "-ent"
+	}
+
 	for i, h := range hostnames {
 		// Arbiters start counting from b.members and up
 		isArbiter := i >= b.members
@@ -295,7 +297,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			HostName:                    h,
 			FeatureCompatibilityVersion: fcv,
 			ProcessType:                 Mongod,
-			Version:                     b.mongodbVersion,
+			Version:                     mongoDBVersion,
 			AuthSchemaVersion:           5,
 		}
 
@@ -345,7 +347,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		b.auth = &disabled
 	}
 
-	dummyConfig := buildDummyMongoDbVersionConfig(b.mongodbVersion)
+	dummyConfig := buildDummyMongoDbVersionConfig(mongoDBVersion)
 	if !versionsContain(b.versions, dummyConfig) {
 		b.versions = append(b.versions, dummyConfig)
 	}

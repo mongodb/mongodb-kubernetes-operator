@@ -49,6 +49,7 @@ const (
 	AgentImageEnv                   = "AGENT_IMAGE"
 	MongodbImageEnv                 = "MONGODB_IMAGE"
 	MongoDBImageType                = "MDB_IMAGE_TYPE"
+	MongoDBAssumeEnterpriseEnv      = "MDB_ASSUME_ENTERPRISE"
 	VersionUpgradeHookImageEnv      = "VERSION_UPGRADE_HOOK_IMAGE"
 	ReadinessProbeImageEnv          = "READINESS_PROBE_IMAGE"
 	agentLogLevelEnv                = "AGENT_LOG_LEVEL"
