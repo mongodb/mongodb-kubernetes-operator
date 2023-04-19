@@ -261,6 +261,33 @@ func TestGuessEnterprise(t *testing.T) {
 			},
 			expectedEnterprise: true,
 		},
+		"Enterprise with StatefulSet override to Community": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			mdb: mdbv1.MongoDBCommunity{
+				Spec: mdbv1.MongoDBCommunitySpec{
+					StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
+						SpecWrapper: mdbv1.StatefulSetSpecWrapper{
+							Spec: appsv1.StatefulSetSpec{
+								Template: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:  construct.MongodbName,
+												Image: "another_repo.com/another_org/mongodb-community-server",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedEnterprise: false,
+		},
 	}
 	for testName := range tests {
 		t.Run(testName, func(t *testing.T) {
