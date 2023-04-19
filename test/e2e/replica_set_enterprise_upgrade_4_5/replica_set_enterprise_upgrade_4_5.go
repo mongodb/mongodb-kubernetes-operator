@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	versionsForUpgrades = []string{"4.4.19", "5.0.15", "6.0.5"}
+	versionsForUpgrades = []string{"4.4.19", "5.0.15"}
 )
 
 func TestMain(m *testing.M) {
@@ -28,12 +28,16 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
+	DeployEnterpriseAndUpgradeTest(t, versionsForUpgrades)
+}
+
+func DeployEnterpriseAndUpgradeTest(t *testing.T, versionsToBeTested []string) {
 	t.Setenv(construct.MongodbName, "mongodb-enterprise-server")
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	mdb.Spec.Version = versionsForUpgrades[0]
+	mdb.Spec.Version = versionsToBeTested[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
@@ -50,7 +54,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 
-	for i := 1; i < len(versionsForUpgrades); i++ {
+	for i := 1; i < len(versionsToBeTested); i++ {
 		t.Run(fmt.Sprintf("Testing upgrade from %s to %s", versionsForUpgrades[i-1], versionsForUpgrades[i]), func(t *testing.T) {
 			defer tester.StartBackgroundConnectivityTest(t, time.Second*10)()
 			t.Run(fmt.Sprintf("Upgrading to %s", versionsForUpgrades[i]), mongodbtests.ChangeVersion(&mdb, versionsForUpgrades[i]))
