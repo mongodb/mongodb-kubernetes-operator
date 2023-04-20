@@ -173,7 +173,130 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, acVolume.Secret, "automation config should be stored in a secret!")
 	assert.Nil(t, acVolume.ConfigMap, "automation config should be stored in a secret, not a config map!")
+}
 
+func TestGuessEnterprise(t *testing.T) {
+	type testConfig struct {
+		setArgs            func(t *testing.T)
+		mdb                mdbv1.MongoDBCommunity
+		expectedEnterprise bool
+	}
+	tests := map[string]testConfig{
+		"No override and Community image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: false,
+		},
+		"No override and Enterprise image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: true,
+		},
+		"Assuming enterprise manually": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
+				t.Setenv(construct.MongoDBAssumeEnterpriseEnv, "true")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: true,
+		},
+		"Assuming community manually": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
+				t.Setenv(construct.MongoDBAssumeEnterpriseEnv, "false")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: false,
+		},
+		"Enterprise with different repo": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: true,
+		},
+		"Community with different repo": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
+			},
+			mdb:                mdbv1.MongoDBCommunity{},
+			expectedEnterprise: false,
+		},
+		// This one is a corner case. We don't expect users to fall here very often as there are
+		// dedicated variables to control this type of behavior.
+		"Enterprise with StatefulSet override": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
+			},
+			mdb: mdbv1.MongoDBCommunity{
+				Spec: mdbv1.MongoDBCommunitySpec{
+					StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
+						SpecWrapper: mdbv1.StatefulSetSpecWrapper{
+							Spec: appsv1.StatefulSetSpec{
+								Template: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:  construct.MongodbName,
+												Image: "another_repo.com/another_org/mongodb-enterprise-server",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedEnterprise: true,
+		},
+		"Enterprise with StatefulSet override to Community": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
+				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			mdb: mdbv1.MongoDBCommunity{
+				Spec: mdbv1.MongoDBCommunitySpec{
+					StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
+						SpecWrapper: mdbv1.StatefulSetSpecWrapper{
+							Spec: appsv1.StatefulSetSpec{
+								Template: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:  construct.MongodbName,
+												Image: "another_repo.com/another_org/mongodb-community-server",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedEnterprise: false,
+		},
+	}
+	for testName := range tests {
+		t.Run(testName, func(t *testing.T) {
+			testConfig := tests[testName]
+			testConfig.setArgs(t)
+			calculatedEnterprise := guessEnterprise(testConfig.mdb)
+			assert.Equal(t, testConfig.expectedEnterprise, calculatedEnterprise)
+		})
+	}
 }
 
 func getVolumeByName(sts appsv1.StatefulSet, volumeName string) (corev1.Volume, error) {

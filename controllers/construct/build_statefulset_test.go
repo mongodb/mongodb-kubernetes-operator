@@ -77,6 +77,87 @@ func TestManagedSecurityContext(t *testing.T) {
 	assertStatefulSetIsBuiltCorrectly(t, mdb, sts)
 }
 
+func TestGetMongoDBImage(t *testing.T) {
+	type testConfig struct {
+		setArgs       func(t *testing.T)
+		version       string
+		expectedImage string
+	}
+	tests := map[string]testConfig{
+		"Default UBI8 Community image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(MongodbImageEnv, "mongodb-community-server")
+			},
+			version:       "6.0.5",
+			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
+		},
+		"Overridden UBI8 Enterprise image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			version:       "6.0.5",
+			expectedImage: "docker.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
+		},
+		"Overridden UBI8 Enterprise image from Quay": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "quay.io/mongodb")
+				t.Setenv(MongodbImageEnv, "mongodb-enterprise-server")
+			},
+			version:       "6.0.5",
+			expectedImage: "quay.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
+		},
+		"Overridden Ubuntu Community image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(MongodbImageEnv, "mongodb-community-server")
+				t.Setenv(MongoDBImageType, "ubuntu2204")
+			},
+			version:       "6.0.5",
+			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubuntu2204",
+		},
+		"Overridden UBI Community image": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
+				t.Setenv(MongodbImageEnv, "mongodb-community-server")
+				t.Setenv(MongoDBImageType, "ubi8")
+			},
+			version:       "6.0.5",
+			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
+		},
+		"Docker Inc images": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "docker.io")
+				t.Setenv(MongodbImageEnv, "mongo")
+			},
+			version:       "6.0.5",
+			expectedImage: "docker.io/mongo:6.0.5",
+		},
+		"Deprecated AppDB images defined the old way": {
+			setArgs: func(t *testing.T) {
+				t.Setenv(MongodbRepoUrl, "quay.io")
+				t.Setenv(MongodbImageEnv, "mongodb/mongodb-enterprise-appdb-database-ubi")
+				// In this example, we intentionally don't use the suffix from the env. variable and let users
+				// define it in the version instead. There are some known customers who do this.
+				// This is a backwards compatibility case.
+				t.Setenv(MongoDBImageType, "will-be-ignored")
+			},
+
+			version:       "5.0.14-ent",
+			expectedImage: "quay.io/mongodb/mongodb-enterprise-appdb-database-ubi:5.0.14-ent",
+		},
+	}
+	for testName := range tests {
+		t.Run(testName, func(t *testing.T) {
+			testConfig := tests[testName]
+			testConfig.setArgs(t)
+			image := getMongoDBImage(testConfig.version)
+			assert.Equal(t, testConfig.expectedImage, image)
+		})
+	}
+}
+
 func TestMongod_Container(t *testing.T) {
 	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
 

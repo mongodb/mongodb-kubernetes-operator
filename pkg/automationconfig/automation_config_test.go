@@ -474,6 +474,21 @@ func TestValidateFCV(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEnterpriseVersion(t *testing.T) {
+	//given
+	mongoDBVersion := "6.0.5"
+	expectedVersionInTheAutomationConfig := mongoDBVersion + "-ent"
+
+	//when
+	ac, err := NewBuilder().SetMongoDBVersion(mongoDBVersion).SetMembers(1).IsEnterprise(true).Build()
+
+	//then
+	assert.NoError(t, err)
+	assert.Equal(t, expectedVersionInTheAutomationConfig, ac.Processes[0].Version)
+	assert.Equal(t, "enterprise", ac.Versions[0].Builds[0].Modules[0])
+	assert.Equal(t, "enterprise", ac.Versions[0].Builds[1].Modules[0])
+}
+
 func createAutomationConfig(name, mongodbVersion, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {
 	ac, _ := NewBuilder().
 		SetName(name).

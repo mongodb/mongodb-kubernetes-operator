@@ -35,6 +35,7 @@ type Builder struct {
 	name               string
 	fcv                string
 	topology           Topology
+	isEnterprise       bool
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
@@ -74,6 +75,11 @@ func (b *Builder) SetMemberOptions(memberOptions []MemberOptions) *Builder {
 
 func (b *Builder) SetOptions(options Options) *Builder {
 	b.options = options
+	return b
+}
+
+func (b *Builder) IsEnterprise(isEnterprise bool) *Builder {
+	b.isEnterprise = isEnterprise
 	return b
 }
 
@@ -265,6 +271,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		fcv = b.fcv
 	}
 
+	mongoDBVersion := b.mongodbVersion
+	if b.isEnterprise {
+		mongoDBVersion = mongoDBVersion + "-ent"
+	}
+
 	for i, h := range hostnames {
 		// Arbiters start counting from b.members and up
 		isArbiter := i >= b.members
@@ -286,7 +297,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			HostName:                    h,
 			FeatureCompatibilityVersion: fcv,
 			ProcessType:                 Mongod,
-			Version:                     b.mongodbVersion,
+			Version:                     mongoDBVersion,
 			AuthSchemaVersion:           5,
 		}
 
@@ -336,7 +347,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		b.auth = &disabled
 	}
 
-	dummyConfig := buildDummyMongoDbVersionConfig(b.mongodbVersion)
+	dummyConfig := buildDummyMongoDbVersionConfig(mongoDBVersion)
 	if !versionsContain(b.versions, dummyConfig) {
 		b.versions = append(b.versions, dummyConfig)
 	}
