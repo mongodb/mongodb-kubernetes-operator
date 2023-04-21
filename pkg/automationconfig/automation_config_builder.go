@@ -273,7 +273,9 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 	mongoDBVersion := b.mongodbVersion
 	if b.isEnterprise {
-		mongoDBVersion = mongoDBVersion + "-ent"
+		if !strings.HasSuffix(mongoDBVersion, "-ent") {
+			mongoDBVersion = mongoDBVersion + "-ent"
+		}
 	}
 
 	for i, h := range hostnames {
