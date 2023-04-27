@@ -170,10 +170,10 @@ for MongoDB Docker images:
 
 1. In the Operator [resource definition](../config/manager/manager.yaml), set the `MONGODB_IMAGE` and `MONGODB_REPO_URL` environment variables:
 
-   | Environment Variable | Description | Default |
-   |----|----|----|
-   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongo"` |
-   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io"` |
+   | Environment Variable | Description | Default                      |
+   |----|------------------------------|----|
+   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongodb-community-server"` |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io/mongodb"`        |
 
    ```yaml
        spec:
