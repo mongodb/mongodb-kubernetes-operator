@@ -210,6 +210,7 @@ images:
   - name: readiness-probe-init
     vars:
       context: .
+      template_context: scripts/dev/templates/readiness
 
     inputs:
       - readiness_probe_image
@@ -231,16 +232,30 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
             tag: $(inputs.params.version_id)-context
 
+      - name: readiness-template-ubi
+        task_type: dockerfile_template
+        tags: [ "ubi" ]
+        template_file_extension: readiness
+        inputs:
+          - base_image
+
+        output:
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
+
       - name: readiness-init-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness
+        tags: [ "ubi" ]
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
+
+        inputs:
+          - version_id
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context
+
 
         labels:
           quay.expires-after: 48h
-
-        tags: [ "readiness-probe","ubi" ]
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev)
@@ -261,20 +276,22 @@ images:
 
         inputs:
           - release_version
+          - builder_image
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)-context
 
-      - name: readiness-template-ubi-s3
+      - name: readiness-template-release
         task_type: dockerfile_template
         tags: [ "readiness-probe", "release", "ubi" ]
-        distro: ubi
-
+        template_file_extension: readiness
         inputs:
+          - base_image
           - release_version
 
         output:
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-readiness/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: readiness-init-build-release
@@ -298,6 +315,7 @@ images:
   - name: version-post-start-hook-init
     vars:
       context: .
+      template_context: scripts/dev/templates/versionhook
 
     inputs:
       - version_post_start_hook_image
@@ -320,12 +338,20 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: $(inputs.params.version_id)-context
 
+      - name: version-post-start-hook-template-ubi
+        task_type: dockerfile_template
+        tags: [ "ubi" ]
+        template_file_extension: versionhook
+        inputs:
+          - base_image
+
+        output:
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
+
       - name: version-post-start-hook-init-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
         tags: [ "post-start-hook", "ubi" ]
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev):$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
@@ -335,19 +361,6 @@ images:
             tag: $(inputs.params.version_id)
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev)
             tag: latest
-
-
-      - name: version-post-start-hook-template-ubi-s3
-        task_type: dockerfile_template
-        tags: [ "post-start-hook","release" , "ubi" ]
-        distro: ubi
-
-        inputs:
-          - release_version
-
-        output:
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-version-post-start-hook/$(inputs.params.release_version)/ubi/Dockerfile
-
 
       - name: version-post-start-hook-init-context-release
         task_type: docker_build
@@ -366,6 +379,18 @@ images:
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.release_version)-context
+
+      - name: versionhook-template-release
+        task_type: dockerfile_template
+        tags: [ "versionhook", "release", "ubi" ]
+        template_file_extension: versionhook
+        inputs:
+          - base_image
+          - release_version
+
+        output:
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-versionhook/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build

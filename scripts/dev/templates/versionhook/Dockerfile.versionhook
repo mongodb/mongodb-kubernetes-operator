@@ -1,6 +1,6 @@
 ARG imagebase
-FROM ${imagebase} as base
+FROM ${imagebase} as builder
 
-FROM busybox
+FROM {{base_image}}
 
 COPY --from=base /version-upgrade-hook /version-upgrade-hook
