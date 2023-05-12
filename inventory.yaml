@@ -283,6 +283,8 @@ images:
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.readiness_probe_image)
             tag: $(inputs.params.release_version)
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-readiness-probe/$(inputs.params.release_version)/ubi/Dockerfile
 
   - name: version-post-start-hook-init
     vars:
@@ -359,3 +361,5 @@ images:
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
             tag: $(inputs.params.release_version)
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.versionhook-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-versionhook/$(inputs.params.release_version)/ubi/Dockerfile
