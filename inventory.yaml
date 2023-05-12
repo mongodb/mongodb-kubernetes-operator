@@ -296,7 +296,7 @@ images:
 
       - name: readiness-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
         tags: [ "readiness-probe", "release" , "ubi" ]
 
         buildargs:
@@ -306,6 +306,7 @@ images:
           quay.expires-after: Never
 
         inputs:
+          - base_image
           - release_version
 
         output:
@@ -394,7 +395,7 @@ images:
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
         tags: [ "release", "post-start-hook",  "ubi" ]
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image):$(inputs.params.release_version)-context

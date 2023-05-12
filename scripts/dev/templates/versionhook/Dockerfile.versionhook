@@ -3,4 +3,4 @@ FROM ${imagebase} as builder
 
 FROM {{base_image}}
 
-COPY --from=base /version-upgrade-hook /version-upgrade-hook
+COPY --from=builder /version-upgrade-hook /version-upgrade-hook

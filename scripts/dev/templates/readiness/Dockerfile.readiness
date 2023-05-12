@@ -3,4 +3,4 @@ FROM ${imagebase} AS builder
 
 FROM {{base_image}}
 
-COPY --from=base /probes/readinessprobe /probes/readinessprobe
+COPY --from=builder /probes/readinessprobe /probes/readinessprobe

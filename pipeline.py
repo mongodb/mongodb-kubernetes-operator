@@ -78,6 +78,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         "readiness-probe-init",
         config,
         args={
+            "builder": "true",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
@@ -98,6 +99,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         "version-post-start-hook-init",
         config,
         args={
+            "builder": "true",
             "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
