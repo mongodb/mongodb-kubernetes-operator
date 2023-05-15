@@ -1,5 +1,5 @@
 ARG imagebase
-FROM ${imagebase} as builder
+FROM ${imagebase} AS builder
 
 FROM {{base_image}}
 

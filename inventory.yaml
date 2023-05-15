@@ -236,6 +236,7 @@ images:
         task_type: dockerfile_template
         tags: [ "ubi" ]
         template_file_extension: readiness
+
         inputs:
           - base_image
 
@@ -244,11 +245,8 @@ images:
 
       - name: readiness-init-build
         task_type: docker_build
-        tags: [ "ubi" ]
+        tags: [ "readiness-probe", "ubi" ]
         dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
-
-        inputs:
-          - version_id
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context
@@ -343,6 +341,7 @@ images:
         task_type: dockerfile_template
         tags: [ "ubi" ]
         template_file_extension: versionhook
+
         inputs:
           - base_image
 
@@ -353,6 +352,9 @@ images:
         task_type: docker_build
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
         tags: [ "post-start-hook", "ubi" ]
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image_dev):$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
@@ -376,6 +378,7 @@ images:
 
         inputs:
           - release_version
+          - builder_image
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image)
@@ -383,7 +386,7 @@ images:
 
       - name: versionhook-template-release
         task_type: dockerfile_template
-        tags: [ "versionhook", "release", "ubi" ]
+        tags: [ "post-start-hook", "release", "ubi" ]
         template_file_extension: versionhook
         inputs:
           - base_image
@@ -397,6 +400,7 @@ images:
         task_type: docker_build
         dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
         tags: [ "release", "post-start-hook",  "ubi" ]
+
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.version_post_start_hook_image):$(inputs.params.release_version)-context
 
@@ -404,6 +408,7 @@ images:
           quay.expires-after: Never
 
         inputs:
+          - base_image
           - release_version
 
         output:
