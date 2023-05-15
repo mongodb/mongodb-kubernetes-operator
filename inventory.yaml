@@ -290,7 +290,7 @@ images:
 
         output:
           - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-readiness/$(inputs.params.release_version)/ubi/Dockerfile
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-readinessprobe/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: readiness-init-build-release
         task_type: docker_build
@@ -394,7 +394,7 @@ images:
 
         output:
           - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-versionhook/$(inputs.params.release_version)/ubi/Dockerfile
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator-version-upgrade-post-start-hook/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build
