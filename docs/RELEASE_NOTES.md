@@ -21,6 +21,8 @@
     Deployment), please check if your settings are correct and if they are pointing to the right coordinates. The Operator
     still provides basic backwards compatibility with previous images (`docker.io/mongo`).
 
+- `mongodb-readiness-hook` and `mongodb-version-upgrade-hook` images are now rebuilt daily, incorporating updates to system packages and security fixes. The binaries are built only once during the release process and used without changes in daily rebuilt
+
 
 ## Updated Image Tags
 

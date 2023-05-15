@@ -1,6 +1,6 @@
 ARG imagebase
-FROM ${imagebase} as base
+FROM ${imagebase} AS builder
 
-FROM busybox
+FROM {{base_image}}
 
-COPY --from=base /probes/readinessprobe /probes/readinessprobe
+COPY --from=builder /probes/readinessprobe /probes/readinessprobe

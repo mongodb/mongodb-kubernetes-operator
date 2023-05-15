@@ -72,16 +72,20 @@ def build_agent_image_ubuntu(config: DevConfig) -> None:
 def build_readiness_probe_image(config: DevConfig) -> None:
     release = _load_release()
     config.ensure_tag_is_run("readiness-probe")
+    config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
         "readiness-probe-init",
         config,
         args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "registry": config.repo_url,
             "release_version": release["readiness-probe"],
             "readiness_probe_image": config.readiness_probe_image,
             "readiness_probe_image_dev": config.readiness_probe_image_dev,
             "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
         },
     )
 
@@ -89,16 +93,20 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 def build_version_post_start_hook_image(config: DevConfig) -> None:
     release = _load_release()
     config.ensure_tag_is_run("post-start-hook")
+    config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
         "version-post-start-hook-init",
         config,
         args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
             "registry": config.repo_url,
             "release_version": release["version-upgrade-hook"],
             "version_post_start_hook_image": config.version_upgrade_hook_image,
             "version_post_start_hook_image_dev": config.version_upgrade_hook_image_dev,
             "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
         },
     )
 
