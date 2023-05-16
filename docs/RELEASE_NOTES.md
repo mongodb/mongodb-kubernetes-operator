@@ -26,8 +26,10 @@
 
 ## Updated Image Tags
 
-
 - mongodb-kubernetes-operator:0.8.0
+- mongodb-agent:12.0.21.7698-1
+- mongodb-kubernetes-readinessprobe:1.0.14
+- mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.7
 
 _All the images can be found in:_
 
