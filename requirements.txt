@@ -11,7 +11,7 @@ tqdm==v4.49.0
 boto3==1.16.21
 pymongo==3.11.4
 dnspython==2.0.0
-requests==2.24.0
+requests==2.31.0
 pyyaml==5.4.1
 ruamel.yaml==0.17.9
 semver==2.13.0
