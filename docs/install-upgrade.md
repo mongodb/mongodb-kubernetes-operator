@@ -176,8 +176,7 @@ for MongoDB Docker images:
 
    - They are rebuilt daily for the latest upstream 
      vulnerability fixes.
-
-   - MongoDB tests and maintains them.
+   - MongoDB tests, maintains, and supports them.
 
    | Environment Variable | Description | Default                      |
    |----|------------------------------|----|
