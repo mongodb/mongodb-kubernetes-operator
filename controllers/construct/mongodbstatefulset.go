@@ -2,10 +2,11 @@ package construct
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -212,12 +213,20 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		))
 }
 
-func BaseAgentCommand() string {
-	return "agent/mongodb-agent -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
+func AgentBinary() string {
+	return " agent/mongodb-agent"
+}
+
+func BaseAgentArguments() string {
+	return " -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
+}
+
+func AgentArguments() string {
+	return BaseAgentArguments() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions
 }
 
 func AutomationAgentCommand() []string {
-	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
+	return []string{"/bin/bash", "-c", MongodbUserCommand + "\n" + AgentBinary() + AgentArguments()}
 }
 
 func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, maxLogFileDurationHours int) container.Modification {
