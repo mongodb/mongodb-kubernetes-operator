@@ -5,4 +5,3 @@ This folder contains the `Dockerfile` used to build [https://quay.io/repository/
 ```
 docker build . --build-arg agent_version=${agent_version} --build-arg tools_version=${tools_version} -t "quay.io/mongodb/mongodb-agent:${agent_version}"
 docker push "quay.io/mongodb/mongodb-agent:${agent_version}"
-```
