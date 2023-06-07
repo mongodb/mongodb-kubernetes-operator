@@ -74,37 +74,6 @@ func TestNotReadyHealthFileHasNoProcesses(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestNotReadyMongodIsDown(t *testing.T) {
-	t.Run("Mongod is down for 90 seconds", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*90))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 1 hour", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*1))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 2 days", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*48))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-}
-
-func TestReadyMongodIsUp(t *testing.T) {
-	t.Run("Mongod is down for 30 seconds", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 1 second", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*1))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-}
-
 // TestReady verifies that the probe reports "ready" despite "WaitRsInit" stage reporting as not reached
 // (this is some bug in Automation Agent which we can work with)
 func TestReady(t *testing.T) {

@@ -242,11 +242,8 @@ func isInReadyState(health health.Status) bool {
 			return true
 		}
 
-		timeMongoUp := time.Unix(processHealth.LastMongoUpTime, 0)
-		mongoUpThreshold := time.Now().Add(-mongodNotReadyIntervalMinutes)
-		mongoIsHealthy := timeMongoUp.After(mongoUpThreshold)
 		// The case in which the agent is too old to publish replication status is handled inside "IsReadyState"
-		return mongoIsHealthy && processHealth.IsReadyState()
+		return processHealth.IsReadyState()
 	}
 	return false
 }
