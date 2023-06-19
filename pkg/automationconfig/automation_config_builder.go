@@ -29,6 +29,7 @@ type Builder struct {
 	replicaSets        []ReplicaSet
 	replicaSetHorizons []ReplicaSetHorizons
 	members            int
+	membersMap         map[string]int
 	arbiters           int
 	domain             string
 	arbiterDomain      string
@@ -105,6 +106,14 @@ func (b *Builder) SetSSLConfig(sslConfig TLS) *Builder {
 
 func (b *Builder) SetMembers(members int) *Builder {
 	b.members = members
+	return b
+}
+
+func (b *Builder) SetMembersMap(membersMap map[string]int) *Builder {
+	b.membersMap = make(map[string]int)
+	for k, v := range membersMap {
+		b.membersMap[k] = v
+	}
 	return b
 }
 
@@ -235,15 +244,23 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 	hostnames := make([]string, 0, b.members+b.arbiters)
 
-	// Create hostnames for data-bearing nodes. They start from 0
-	for i := 0; i < b.members; i++ {
-		hostnames = append(hostnames, fmt.Sprintf("%s-%d.%s", b.name, i, b.domain))
-	}
+	if len(b.membersMap) > 0 {
+		for memberName, members := range b.membersMap {
+			for i := 0; i < members; i++ {
+				hostnames = append(hostnames, fmt.Sprintf("%s-%d-svc.%s", memberName, i, b.domain))
+			}
+		}
+	} else {
+		// Create hostnames for data-bearing nodes. They start from 0
+		for i := 0; i < b.members; i++ {
+			hostnames = append(hostnames, fmt.Sprintf("%s-%d.%s", b.name, i, b.domain))
+		}
 
-	// Create hostnames for arbiters. They are added right after the regular members
-	for i := 0; i < b.arbiters; i++ {
-		// Arbiters will be in b.name-arb-svc service
-		hostnames = append(hostnames, fmt.Sprintf("%s-arb-%d.%s", b.name, i, b.arbiterDomain))
+		// Create hostnames for arbiters. They are added right after the regular members
+		for i := 0; i < b.arbiters; i++ {
+			// Arbiters will be in b.name-arb-svc service
+			hostnames = append(hostnames, fmt.Sprintf("%s-arb-%d.%s", b.name, i, b.arbiterDomain))
+		}
 	}
 
 	members := make([]ReplicaSetMember, b.members+b.arbiters)
