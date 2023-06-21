@@ -4,6 +4,7 @@ FROM ${imagebase} as base
 FROM {{base_image}}
 
 ARG agent_version
+ARG agent_debug
 
 LABEL name="MongoDB Agent" \
       version="${agent_version}" \

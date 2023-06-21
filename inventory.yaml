@@ -2,110 +2,6 @@ vars:
   registry: <registry>
 
 images:
-  - name: agent-ubuntu
-    vars:
-      context: .
-      template_context: scripts/dev/templates/agent
-
-    inputs:
-      - agent_version
-      - tools_version
-      - agent_image
-      - agent_image_dev
-
-    platform: linux/amd64
-    stages:
-      - name: agent-ubuntu-context
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
-        tags: [ "ubuntu" ]
-        buildargs:
-          agent_version: $(inputs.params.agent_version)
-          tools_version: $(inputs.params.tools_version)
-          agent_distro: linux_x86_64
-          tools_distro: ubuntu1604-x86_64
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: $(inputs.params.version_id)-context
-
-      - name: agent-template-ubuntu
-        task_type: dockerfile_template
-        tags: [ "ubuntu" ]
-        distro: ubuntu
-
-        output:
-          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
-
-      - name: agent-ubuntu-build
-        task_type: docker_build
-        tags: [ "ubuntu" ]
-
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context
-          agent_version: $(inputs.params.agent_version)
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: $(inputs.params.version_id)
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: latest
-
-      - name: agent-template-ubuntu-s3
-        task_type: dockerfile_template
-        tags: [ "ubuntu", "release" ]
-        distro: ubuntu
-
-        inputs:
-          - release_version
-          - s3_bucket
-
-        output:
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/$(inputs.params.release_version)/ubuntu/Dockerfile
-
-      - name: agent-context-ubuntu-release
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
-        tags: [ "ubuntu", "release" ]
-        buildargs:
-          agent_version: $(inputs.params.agent_version)
-          tools_version: $(inputs.params.tools_version)
-          agent_distro: linux_x86_64
-          tools_distro: ubuntu1604-x86_64
-
-        labels:
-          quay.expires-after: Never
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
-            tag: $(inputs.params.agent_version)-context
-
-      - name: agent-ubuntu-release
-        task_type: docker_build
-        tags: [ "ubuntu", "release" ]
-        distro: ubuntu
-
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubuntu-$(inputs.params.version_id)
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context
-          agent_version: $(inputs.params.agent_version)
-
-        labels:
-          quay.expires-after: Never
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
-            tag: $(inputs.params.agent_version)
-
   - name: agent-ubi
     vars:
       context: .
@@ -116,6 +12,11 @@ images:
       - tools_version
       - agent_image
       - agent_image_dev
+      - agent_debug
+      - agent_variant
+      - agent_distro
+      - agent_base_url
+      - agent_debug
 
     platform: linux/amd64
     stages:
@@ -126,7 +27,9 @@ images:
         buildargs:
           agent_version: $(inputs.params.agent_version)
           tools_version: $(inputs.params.tools_version)
-          agent_distro: rhel7_x86_64
+          agent_base_url: $(inputs.params.agent_base_url)
+          agent_distro: $(inputs.params.agent_distro)
+          agent_variant: $(inputs.params.agent_variant)
           tools_distro: rhel70-x86_64
 
         labels:
@@ -153,6 +56,7 @@ images:
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context
           agent_version: $(inputs.params.agent_version)
+          agent_debug: $(inputs.params.agent_debug)
 
         labels:
           quay.expires-after: 48h
@@ -199,6 +103,7 @@ images:
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context
           agent_version: $(inputs.params.agent_version)
+          agent_debug: $(inputs.params.agent_debug)
 
         labels:
           quay.expires-after: Never

@@ -10,7 +10,6 @@ from scripts.dev.dev_config import load_config, DevConfig
 VALID_IMAGE_NAMES = frozenset(
     [
         "agent-ubi",
-        "agent-ubuntu",
         "readiness-probe-init",
         "version-post-start-hook-init",
         "operator-ubi",
@@ -34,6 +33,10 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
         "agent_version": release["mongodb-agent"]["version"],
         "release_version": release["mongodb-agent"]["version"],
         "tools_version": release["mongodb-agent"]["tools_version"],
+        "agent_variant": release["mongodb-agent"]["agent_variant"],
+        "agent_distro": release["mongodb-agent"]["agent_distro"],
+        "agent_base_url": release["mongodb-agent"]["agent_base_url"],
+        "agent_debug": release["mongodb-agent"]["agent_debug"],
         "agent_image": config.agent_image,
         "agent_image_dev": config.agent_dev_image,
         "registry": config.repo_url,
@@ -47,20 +50,6 @@ def build_agent_image_ubi(config: DevConfig) -> None:
     args["agent_image"] = config.agent_image_ubi
     args["agent_image_dev"] = config.agent_dev_image_ubi
     config.ensure_tag_is_run("ubi")
-
-    sonar_build_image(
-        image_name,
-        config,
-        args=args,
-    )
-
-
-def build_agent_image_ubuntu(config: DevConfig) -> None:
-    image_name = "agent-ubuntu"
-    args = _build_agent_args(config)
-    args["agent_image"] = config.agent_image_ubuntu
-    args["agent_image_dev"] = config.agent_dev_image_ubuntu
-    config.ensure_tag_is_run("ubuntu")
 
     sonar_build_image(
         image_name,
@@ -190,7 +179,6 @@ def main() -> int:
 
     image_build_function = {
         "agent-ubi": build_agent_image_ubi,
-        "agent-ubuntu": build_agent_image_ubuntu,
         "readiness-probe-init": build_readiness_probe_image,
         "version-post-start-hook-init": build_version_post_start_hook_image,
         "operator-ubi": build_operator_ubi_image,

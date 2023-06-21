@@ -120,34 +120,20 @@ class DevConfig:
         return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
 
     @property
-    def agent_dev_image_ubuntu(self) -> str:
-        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
-
-    @property
-    def agent_image_ubuntu(self) -> str:
-        return self._config["agent_image_ubuntu"]
-
-    @property
     def agent_image_ubi(self) -> str:
         return self._config["agent_image_ubi"]
 
     @property
     def agent_dev_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
-        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
+        return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
 
     @property
     def agent_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self.agent_dev_image_ubi
-        return self.agent_dev_image_ubuntu
+        return self.agent_dev_image_ubi
 
     @property
     def image_type(self) -> str:
-        if self._distro == Distro.UBI:
-            return "ubi8"
-        return "ubuntu-2004"
+        return "ubi8"
 
     def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:
@@ -160,7 +146,7 @@ class DevConfig:
 
 
 def load_config(
-    config_file_path: Optional[str] = None, distro: Distro = Distro.UBUNTU
+    config_file_path: Optional[str] = None, distro: Distro = Distro.UBI
 ) -> DevConfig:
     if config_file_path is None:
         config_file_path = get_config_path()

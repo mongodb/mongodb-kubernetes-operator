@@ -4,7 +4,12 @@
   "version-upgrade-hook": "1.0.7",
   "readiness-probe": "1.0.14",
   "mongodb-agent": {
-    "version": "12.0.21.7698-1",
+    "version": "12.0.2400.7715-1",
+    "agent_distro": "rhel8_x86_64",
+    "agent_variant": "dev",
+    "agent_base_url": "https://mciuploads.s3.amazonaws.com/mms-automation/mongodb-mms-build-agent/builds/patches/64920cb29ccd4e76ec5b7446/automation-agent",
+    "agent_debug": "true",
     "tools_version": "100.7.0"
   }
 }
+

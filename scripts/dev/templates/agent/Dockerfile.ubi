@@ -4,8 +4,26 @@
 
 {% block packages -%}
 RUN microdnf install -y  --disableplugin=subscription-manager curl \
-    hostname nss_wrapper tar gzip procps\
-    && microdnf upgrade -y  \
-    && rm -rf /var/lib/apt/lists/*
+    hostname nss_wrapper tar gzip procps \
+    && microdnf upgrade -y
+
+RUN if [ "${agent_debug}" == "true" ]; then microdnf install -y --disableplugin=subscription-manager \
+        cyrus-sasl \
+        cyrus-sasl-gssapi \
+        cyrus-sasl-plain \
+        krb5-libs \
+        libcurl \
+        lm_sensors-libs \
+        net-snmp \
+        net-snmp-agent-libs \
+        openldap \
+        openssl \
+        jq \
+        tar \
+        findutils \
+        bind-utils; \
+     fi
+
+RUN rm -rf /var/lib/apt/lists/*
 
 {% endblock -%}
