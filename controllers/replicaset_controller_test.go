@@ -1184,6 +1184,19 @@ func TestCustomDataDir_Configuration(t *testing.T) {
 	}
 }
 
+func TestInconsistentReplicas(t *testing.T) {
+	mdb := newTestReplicaSet()
+	stsReplicas := new(int32)
+	*stsReplicas = 3
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Replicas = stsReplicas
+	mdb.Spec.Members = 4
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+	_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assert.NoError(t, err)
+}
+
 func assertVolumeMountPath(t *testing.T, mounts []corev1.VolumeMount, name, path string) {
 	for _, v := range mounts {
 		if v.Name == name {

@@ -37,6 +37,10 @@ func validateSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 		return err
 	}
 
+	if err := validateStatefulSet(mdb); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -121,6 +125,16 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) er
 	}
 	if len(mapModes) != len(allModes) {
 		return fmt.Errorf("some authentication modes are declared twice or more")
+	}
+
+	return nil
+}
+
+func validateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
+	stsReplicas := mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Replicas
+
+	if stsReplicas != nil && *stsReplicas != int32(mdb.Spec.Members) {
+		return fmt.Errorf("spec.statefulset.spec.replicas has to be equal to spec.members")
 	}
 
 	return nil
