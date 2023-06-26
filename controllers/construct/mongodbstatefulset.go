@@ -2,10 +2,11 @@ package construct
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -35,10 +36,10 @@ const (
 	versionUpgradeHookName            = "mongod-posthook"
 	ReadinessProbeContainerName       = "mongodb-agent-readinessprobe"
 	readinessProbePath                = "/opt/scripts/readinessprobe"
-	agentHealthStatusFilePathEnv      = "AGENT_STATUS_FILEPATH"
+	AgentHealthStatusFilePathEnv      = "AGENT_STATUS_FILEPATH"
 	clusterFilePath                   = "/var/lib/automation/config/cluster-config.json"
 	mongodbDatabaseServiceAccountName = "mongodb-database"
-	agentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
+	AgentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
 	MongodbRepoUrl                           = "MONGODB_REPO_URL"
 	OfficialMongodbEnterpriseServerImageName = "mongodb-enterprise-server"
@@ -213,7 +214,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 }
 
 func BaseAgentCommand() string {
-	return "agent/mongodb-agent -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
+	return "agent/mongodb-agent -healthCheckFilePath=" + AgentHealthStatusFilePathValue + " -serveStatusPort=5000"
 }
 
 func AutomationAgentCommand() []string {
@@ -250,8 +251,8 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 				Value: automationConfigSecretName,
 			},
 			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: agentHealthStatusFilePathValue,
+				Name:  AgentHealthStatusFilePathEnv,
+				Value: AgentHealthStatusFilePathValue,
 			},
 			corev1.EnvVar{
 				Name:  agentLogLevelEnv,
@@ -366,7 +367,7 @@ exec mongod -f %s;
 		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
+				Name:  AgentHealthStatusFilePathEnv,
 				Value: "/healthstatus/agent-health-status.json",
 			},
 		),

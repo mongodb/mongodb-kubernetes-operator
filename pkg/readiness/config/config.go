@@ -17,7 +17,7 @@ const (
 	defaultLogPath                   = "/var/log/mongodb-mms-automation/readiness.log"
 	podNamespaceEnv                  = "POD_NAMESPACE"
 	automationConfigSecretEnv        = "AUTOMATION_CONFIG_MAP" //nolint
-	agentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
+	AgentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
 	logPathEnv                       = "LOG_FILE_PATH"
 	hostNameEnv                      = "HOSTNAME"
 	readinessProbeLoggerBackups      = "READINESS_PROBE_LOGGER_BACKUPS"
@@ -36,7 +36,7 @@ type Config struct {
 }
 
 func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Config, error) {
-	healthStatusFilePath := getEnvOrDefault(agentHealthStatusFilePathEnv, defaultAgentHealthStatusFilePath)
+	healthStatusFilePath := getEnvOrDefault(AgentHealthStatusFilePathEnv, defaultAgentHealthStatusFilePath)
 	logFilePath := getEnvOrDefault(logPathEnv, defaultLogPath)
 
 	var namespace, automationConfigName, hostname string

@@ -163,7 +163,7 @@ func TestMongod_Container(t *testing.T) {
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 1)
-		assert.Equal(t, agentHealthStatusFilePathEnv, c.Env[0].Name)
+		assert.Equal(t, AgentHealthStatusFilePathEnv, c.Env[0].Name)
 		assert.Equal(t, "/healthstatus/agent-health-status.json", c.Env[0].Value)
 	})
 
