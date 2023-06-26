@@ -9,7 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.15
 	github.com/spf13/cast v1.5.1
 	github.com/stretchr/objx v0.5.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/xdg/stringprep v1.0.3
 	go.mongodb.org/mongo-driver v1.11.3
 	go.uber.org/zap v1.24.0
