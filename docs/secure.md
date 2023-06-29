@@ -21,7 +21,7 @@ Kubernetes.
 ### Prerequisites
 
 Before you secure MongoDBCommunity resource connections using TLS, you 
-must [Create a database user](docs/users) to authenticate to your 
+must [Create a database user](/docs/users) to authenticate to your 
 MongoDBCommunity resource.
 
 ### Procedure
@@ -39,16 +39,13 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
 1. Install `cert-manager`:
 
    ```
-   helm install cert-manager jetstack/cert-manager --namespace cert-manager \ 
-   --create-namespace --set installCRDs=true
+   helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
    ```
 
 1. Create a TLS-secured MongoDBCommunity resource:
 
    ```
-   helm upgrade community-operator mongodb/community-operator \
-   --namespace cko-namespace --set resource.tls.useCertManager=true \
-   --set createResource=true --set resource.tls.enabled=true
+   helm upgrade mongodb-kubernetes-operator mongodb/community-operator --namespace mongodb --set resource.tls.useCertManager=true --set createResource=true --set resource.tls.enabled=true
    ```
 
   This creates a resource secured with TLS and generates the necessary
