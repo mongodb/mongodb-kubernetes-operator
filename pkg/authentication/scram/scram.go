@@ -83,6 +83,11 @@ type User struct {
 	// which exposes the connection strings for the user.
 	// Note: there will be one secret with connection strings per user created.
 	ConnectionStringSecretName string
+
+	// ConnectionStringOptions contains connection string options for this user
+	// These options will be appended at the end of the connection string and
+	// will override any existing options from the resources.
+	ConnectionStringOptions map[string]interface{}
 }
 
 // Options contains a set of values that can be used for more fine grained configuration of authentication.
