@@ -90,6 +90,24 @@ func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
 
+func (m *Tester) ConnectivityRejected(opts ...OptionApplier) func(t *testing.T) {
+	clientOpts := make([]*options.ClientOptions, 0)
+	for _, optApplier := range opts {
+		clientOpts = optApplier.ApplyOption(clientOpts...)
+	}
+
+	return func(t *testing.T) {
+		// We can optionally skip connectivity tests locally
+		if testing.Short() {
+			t.Skip()
+		}
+
+		if err := m.ensureClient(clientOpts...); err == nil {
+			t.Fatalf("No error, but it should have failed")
+		}
+	}
+}
+
 func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("clusterAuthMode", "keyFile", tries, opts...)
 }
