@@ -340,10 +340,10 @@ type LogLevel string
 
 const (
 	LogLevelDebug LogLevel = "DEBUG"
-	LogLevelInfo           = "INFO"
-	LogLevelWarn           = "WARN"
-	LogLevelError          = "ERROR"
-	LogLevelFatal          = "FATAL"
+	LogLevelInfo  string   = "INFO"
+	LogLevelWarn  string   = "WARN"
+	LogLevelError string   = "ERROR"
+	LogLevelFatal string   = "FATAL"
 )
 
 type AgentConfiguration struct {
