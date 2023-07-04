@@ -6,40 +6,8 @@
   - Each user in the resource contains the same field ```additionalConnectionStringConfig``` that allows for the same functionality.
   - If options are set in the MongoDBCommunity Resource, then the options will apply to the connection string of each user.
   - If options are set in the User, then these options will override any options already present in the resource.
-- [Example](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml):
-  ```yaml
-  apiVersion: mongodbcommunity.mongodb.com/v1
-  kind: MongoDBCommunity
-  metadata:
-    name: example-mongodb
-  spec:
-    members: 3
-    type: ReplicaSet
-    version: "6.0.5"
-    security:
-      authentication:
-        modes: ["SCRAM"]
-    users:
-      - name: my-user
-        db: admin
-        passwordSecretRef:
-          name: my-user-password
-        roles:
-          - name: clusterAdmin
-            db: admin
-          - name: userAdminAnyDatabase
-            db: admin
-        scramCredentialsSecretName: my-scram
-        additionalConnectionStringConfig:
-          readPreference: secondary
-    additionalMongodConfig:
-      storage.wiredTiger.engineConfig.journalCompressor: zlib
-    additionalConnectionStringConfig:
-      readPreference: primary
-  ```
-- In this example, the connection string for ``my-user`` will have as a connection string option ``readPreference=secondary`` by overriding the resource option. 
-- Any options included will **not** be validated and using the connection strings with incorrect options will fail.
-
+- [Sample](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml)
+  
 ## Kubernetes Operator
 
 - Changes
