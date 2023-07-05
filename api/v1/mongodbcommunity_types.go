@@ -57,6 +57,15 @@ const (
 	defaultClusterDomain = "cluster.local"
 )
 
+// Connection string options that should be ignored as they are set through other means.
+var (
+	protectedConnectionStringOptions = map[string]struct{}{
+		"replicaSet": {},
+		"ssl":        {},
+		"tls":        {},
+	}
+)
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -771,7 +780,7 @@ func (m *MongoDBCommunity) GetOptionsString() string {
 	i := 0
 
 	for key, value := range generalOptionsMap {
-		if key != "replicaSet" && key != "ssl" && key != "tls" {
+		if _, protected := protectedConnectionStringOptions[key]; !protected {
 			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
 			i += 1
 		}
@@ -797,7 +806,7 @@ func (m *MongoDBCommunity) GetUserOptionsString(user scram.User) string {
 	optionValues := make([]string, len(generalOptionsMap)+len(userOptionsMap))
 	i := 0
 	for key, value := range userOptionsMap {
-		if key != "replicaSet" && key != "ssl" && key != "tls" {
+		if _, protected := protectedConnectionStringOptions[key]; !protected {
 			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
 			i += 1
 		}
@@ -805,7 +814,7 @@ func (m *MongoDBCommunity) GetUserOptionsString(user scram.User) string {
 
 	for key, value := range generalOptionsMap {
 		_, ok := userOptionsMap[key]
-		if !ok && key != "replicaSet" && key != "ssl" && key != "tls" {
+		if _, protected := protectedConnectionStringOptions[key]; !ok && !protected {
 			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
 			i += 1
 		}
