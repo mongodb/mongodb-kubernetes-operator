@@ -21,7 +21,7 @@ Kubernetes.
 ### Prerequisites
 
 Before you secure MongoDBCommunity resource connections using TLS, you 
-must [Create a database user](/docs/users) to authenticate to your 
+must [Create a database user](../docs/users.md) to authenticate to your 
 MongoDBCommunity resource.
 
 ### Procedure
