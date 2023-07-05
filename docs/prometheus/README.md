@@ -47,7 +47,7 @@ Kubernetes Operator and resources:
 helm install community-operator mongodb/community-operator --namespace <mongodb> --create-namespace
 ```
 
-To learn more, see the [Installation Instructions](/docs/install-upgrade.md#operator-in-same-namespace-as-resources).
+To learn more, see the [Installation Instructions](../install-upgrade.md#operator-in-same-namespace-as-resources).
 
 ## Create a MongoDB Resource
 
@@ -104,7 +104,7 @@ namespace.
    a. Run the following command to create a `Secret` that 
       contains the TLS certificate `tls.crt` and `tls.key` 
       entries. You can use the certificate and key files that 
-      we provide in the [`testdata/tls`](/testdata/tls) directory to create a Cert-Manager `Certificate`.
+      we provide in the [`testdata/tls`](../../testdata/tls) directory to create a Cert-Manager `Certificate`.
 
       ``` shell
       kubectl create secret tls issuer-secret --cert=../../testdata/tls/ca.crt --key=../../testdata/tls/ca.key \

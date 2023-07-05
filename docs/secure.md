@@ -15,7 +15,7 @@ certificates to encrypt traffic between:
 - Client applications and MongoDB deployments.
 
 The Operator automates TLS configuration through its integration with 
-[cert-manager](cert-manager.io), a certificate management tool for 
+[cert-manager](https://cert-manager.io/), a certificate management tool for 
 Kubernetes.
 
 ### Prerequisites
