@@ -2,11 +2,11 @@
 
 ## MongoDBCommunity Resource
 - Changes
-  - The MongoDBCommunity Resource now contains a new field ```additionalConnectionStringConfig``` where connection string options can be set.
-  - Each user in the resource contains the same field ```additionalConnectionStringConfig``` that allows for the same functionality.
-  - If options are set in the MongoDBCommunity Resource, then the options will apply to the connection string of each user.
-  - If options are set in the User, then these options will override any options already present in the resource.
-- [Sample](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml)
+  - Connection string options
+    - The MongoDBCommunity Resource now contains a new field ```additionalConnectionStringConfig``` where connection string options can be set, and they will apply to the connection string of every user.
+    - Each user in the resource contains the same field ```additionalConnectionStringConfig``` and these options apply only for this user and will override any existing options in the resource.
+    - The following options will be ignored `replicaSet`, `tls`, `ssl`, as they are set through other means.
+    - [Sample](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml)
   
 ## Kubernetes Operator
 

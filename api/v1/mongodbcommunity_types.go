@@ -771,8 +771,10 @@ func (m *MongoDBCommunity) GetOptionsString() string {
 	i := 0
 
 	for key, value := range generalOptionsMap {
-		optionValues[i] = fmt.Sprintf("%s=%v", key, value)
-		i += 1
+		if key != "replicaSet" && key != "ssl" && key != "tls" {
+			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
+			i += 1
+		}
 	}
 
 	optionValues = optionValues[:i]
@@ -795,13 +797,15 @@ func (m *MongoDBCommunity) GetUserOptionsString(user scram.User) string {
 	optionValues := make([]string, len(generalOptionsMap)+len(userOptionsMap))
 	i := 0
 	for key, value := range userOptionsMap {
-		optionValues[i] = fmt.Sprintf("%s=%v", key, value)
-		i += 1
+		if key != "replicaSet" && key != "ssl" && key != "tls" {
+			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
+			i += 1
+		}
 	}
 
 	for key, value := range generalOptionsMap {
 		_, ok := userOptionsMap[key]
-		if !ok {
+		if !ok && key != "replicaSet" && key != "ssl" && key != "tls" {
 			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
 			i += 1
 		}
