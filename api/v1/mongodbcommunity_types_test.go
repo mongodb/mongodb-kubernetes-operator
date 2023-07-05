@@ -12,57 +12,142 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type args struct {
+	members                          int
+	name                             string
+	namespace                        string
+	clusterDomain                    string
+	additionalMongodConfig           map[string]interface{}
+	additionalConnectionStringConfig map[string]interface{}
+	userConnectionStringConfig       map[string]interface{}
+	connectionString                 string
+}
+
 func TestMongoDB_MongoURI(t *testing.T) {
-	mdb := newReplicaSet(2, "my-rs", "my-namespace")
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:27017,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:27017/?replicaSet=my-rs")
-	mdb = newReplicaSet(1, "my-single-rs", "my-single-namespace")
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017/?replicaSet=my-single-rs")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.my.cluster:27017/?replicaSet=my-single-rs")
-	mdb = newReplicaSet(5, "my-big-rs", "my-big-namespace")
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017/?replicaSet=my-big-rs")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017/?replicaSet=my-big-rs")
-	mdb = newReplicaSet(2, "my-rs", "my-namespace")
-	mdb.Spec.AdditionalMongodConfig.Object = map[string]interface{}{
-		"net.port": 40333.,
+	tests := []args{
+		{
+			members:          2,
+			name:             "my-rs",
+			namespace:        "my-namespace",
+			clusterDomain:    "",
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs",
+		},
+		{
+			members:          2,
+			name:             "my-rs",
+			namespace:        "my-namespace",
+			clusterDomain:    "my.cluster",
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:27017,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:27017/?replicaSet=my-rs",
+		},
+		{
+			members:          1,
+			name:             "my-single-rs",
+			namespace:        "my-single-namespace",
+			clusterDomain:    "",
+			connectionString: "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017/?replicaSet=my-single-rs",
+		},
+		{
+			members:          1,
+			name:             "my-single-rs",
+			namespace:        "my-single-namespace",
+			clusterDomain:    "my.cluster",
+			connectionString: "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.my.cluster:27017/?replicaSet=my-single-rs",
+		},
+		{
+			members:          5,
+			name:             "my-big-rs",
+			namespace:        "my-big-namespace",
+			clusterDomain:    "",
+			connectionString: "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017/?replicaSet=my-big-rs",
+		},
+		{
+			members:          5,
+			name:             "my-big-rs",
+			namespace:        "my-big-namespace",
+			clusterDomain:    "my.cluster",
+			connectionString: "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017/?replicaSet=my-big-rs",
+		},
+		{
+			members:       2,
+			name:          "my-rs",
+			namespace:     "my-namespace",
+			clusterDomain: "",
+			additionalMongodConfig: map[string]interface{}{
+				"net.port": 40333.,
+			},
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:40333,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:40333/?replicaSet=my-rs",
+		},
+		{
+			members:       2,
+			name:          "my-rs",
+			namespace:     "my-namespace",
+			clusterDomain: "my.cluster",
+			additionalMongodConfig: map[string]interface{}{
+				"net.port": 40333.,
+			},
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:40333,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:40333/?replicaSet=my-rs",
+		},
 	}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:40333,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:40333/?replicaSet=my-rs")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:40333,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:40333/?replicaSet=my-rs")
+
+	for _, params := range tests {
+		mdb := newReplicaSet(params.members, params.name, params.namespace)
+		mdb.Spec.AdditionalMongodConfig.Object = params.additionalMongodConfig
+		assert.Equal(t, mdb.MongoURI(params.clusterDomain), params.connectionString)
+	}
 }
 
 func TestMongoDB_MongoURI_With_Options(t *testing.T) {
-	mdb := newReplicaSet(2, "my-rs", "my-namespace")
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary"}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs&readPreference=primary")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:27017,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:27017/?replicaSet=my-rs&readPreference=primary")
-
-	mdb = newReplicaSet(2, "my-rs", "my-namespace")
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs&readPreference=primary")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:27017,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:27017/?replicaSet=my-rs&readPreference=primary")
-
-	mdb = newReplicaSet(1, "my-single-rs", "my-single-namespace")
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary"}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017/?replicaSet=my-single-rs&readPreference=primary")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.my.cluster:27017/?replicaSet=my-single-rs&readPreference=primary")
-
-	mdb = newReplicaSet(5, "my-big-rs", "my-big-namespace")
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary"}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017/?replicaSet=my-big-rs&readPreference=primary")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.my.cluster:27017/?replicaSet=my-big-rs&readPreference=primary")
-
-	mdb = newReplicaSet(2, "my-rs", "my-namespace")
-	mdb.Spec.AdditionalMongodConfig.Object = map[string]interface{}{
-		"net.port": 40333.,
+	tests := []args{
+		{
+			members:                          2,
+			name:                             "my-rs",
+			namespace:                        "my-namespace",
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			connectionString:                 "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs&readPreference=primary",
+		},
+		{
+			members:   2,
+			name:      "my-rs",
+			namespace: "my-namespace",
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true},
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/?replicaSet=my-rs&readPreference=primary",
+		},
+		{
+			members:   1,
+			name:      "my-single-rs",
+			namespace: "my-single-namespace",
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary"},
+			connectionString: "mongodb://my-single-rs-0.my-single-rs-svc.my-single-namespace.svc.cluster.local:27017/?replicaSet=my-single-rs&readPreference=primary",
+		},
+		{
+			members:   5,
+			name:      "my-big-rs",
+			namespace: "my-big-namespace",
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary"},
+			connectionString: "mongodb://my-big-rs-0.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-1.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-2.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-3.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017,my-big-rs-4.my-big-rs-svc.my-big-namespace.svc.cluster.local:27017/?replicaSet=my-big-rs&readPreference=primary",
+		},
+		{
+			members:   2,
+			name:      "my-rs",
+			namespace: "my-namespace",
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary"},
+			additionalMongodConfig: map[string]interface{}{
+				"net.port": 40333.,
+			},
+			connectionString: "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:40333,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:40333/?replicaSet=my-rs&readPreference=primary",
+		},
 	}
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary"}
-	assert.Equal(t, mdb.MongoURI(""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:40333,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:40333/?replicaSet=my-rs&readPreference=primary")
-	assert.Equal(t, mdb.MongoURI("my.cluster"), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.my.cluster:40333,my-rs-1.my-rs-svc.my-namespace.svc.my.cluster:40333/?replicaSet=my-rs&readPreference=primary")
+
+	for _, params := range tests {
+		mdb := newReplicaSet(params.members, params.name, params.namespace)
+		mdb.Spec.AdditionalMongodConfig.Object = params.additionalMongodConfig
+		mdb.Spec.AdditionalConnectionStringConfig.Object = params.additionalConnectionStringConfig
+		assert.Equal(t, mdb.MongoURI(params.clusterDomain), params.connectionString)
+	}
 }
 
 func TestMongoDB_MongoSRVURI(t *testing.T) {
@@ -254,34 +339,49 @@ func TestMongoDBCommunity_MongoAuthUserURI(t *testing.T) {
 		Database: "admin",
 	}
 	mdb := newReplicaSet(2, "my-rs", "my-namespace")
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
 
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{"readPreference": "primary"}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
+	tests := []args{
+		{
+			additionalConnectionStringConfig: map[string]interface{}{},
+			connectionString:                 "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			connectionString:                 "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true},
+			connectionString: "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"readPreference": "primary"},
+			connectionString:                 "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true},
+			connectionString: "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"readPreference": "secondary"},
+			connectionString:                 "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=secondary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"retryReads": true},
+			connectionString:                 "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&retryReads=true&readPreference=primary",
+		},
+	}
 
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"readPreference": "primary"}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{
-		"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"readPreference": "secondary"}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&readPreference=secondary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"retryReads": true}
-	assert.Equal(t, "mongodb://testuser:password@my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/admin?replicaSet=my-rs&ssl=false&retryReads=true&readPreference=primary",
-		mdb.MongoAuthUserURI(testuser, "password", ""))
+	for _, params := range tests {
+		mdb.Spec.AdditionalConnectionStringConfig.Object = params.additionalConnectionStringConfig
+		testuser.ConnectionStringOptions = params.userConnectionStringConfig
+		assert.Equal(t, mdb.MongoAuthUserURI(testuser, "password", ""), params.connectionString)
+	}
 }
 
 func TestMongoDBCommunity_MongoAuthUserSRVURI(t *testing.T) {
@@ -290,34 +390,49 @@ func TestMongoDBCommunity_MongoAuthUserSRVURI(t *testing.T) {
 		Database: "admin",
 	}
 	mdb := newReplicaSet(2, "my-rs", "my-namespace")
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
 
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{"readPreference": "primary"}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
+	tests := []args{
+		{
+			additionalConnectionStringConfig: map[string]interface{}{},
+			connectionString:                 "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			connectionString:                 "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true},
+			connectionString: "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"readPreference": "primary"},
+			connectionString:                 "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig: map[string]interface{}{
+				"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true},
+			connectionString: "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"readPreference": "secondary"},
+			connectionString:                 "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=secondary",
+		},
+		{
+			additionalConnectionStringConfig: map[string]interface{}{"readPreference": "primary"},
+			userConnectionStringConfig:       map[string]interface{}{"retryReads": true},
+			connectionString:                 "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&retryReads=true&readPreference=primary",
+		},
+	}
 
-	mdb.Spec.AdditionalConnectionStringConfig.Object = map[string]interface{}{
-		"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"readPreference": "primary"}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{
-		"readPreference": "primary", "replicaSet": "differentName", "tls": true, "ssl": true}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=primary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"readPreference": "secondary"}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&readPreference=secondary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
-
-	testuser.ConnectionStringOptions = map[string]interface{}{"retryReads": true}
-	assert.Equal(t, "mongodb+srv://testuser:password@my-rs-svc.my-namespace.svc.cluster.local/admin?replicaSet=my-rs&ssl=false&retryReads=true&readPreference=primary",
-		mdb.MongoAuthUserSRVURI(testuser, "password", ""))
+	for _, params := range tests {
+		mdb.Spec.AdditionalConnectionStringConfig.Object = params.additionalConnectionStringConfig
+		testuser.ConnectionStringOptions = params.userConnectionStringConfig
+		assert.Equal(t, mdb.MongoAuthUserSRVURI(testuser, "password", ""), params.connectionString)
+	}
 }
 
 func newReplicaSet(members int, name, namespace string) MongoDBCommunity {
