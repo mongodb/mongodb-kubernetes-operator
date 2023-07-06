@@ -80,9 +80,7 @@ func hmacIteration(hashConstructor func() hash.Hash, input, salt []byte, iterati
 
 	intermediateDigest := hmacHash.Sum(nil)
 
-	for i := 0; i < len(intermediateDigest); i++ {
-		result[i] = intermediateDigest[i]
-	}
+	copy(result, intermediateDigest)
 
 	for i := 1; i < iterationCount; i++ {
 		hmacHash.Reset()
