@@ -1,5 +1,13 @@
 # MongoDB Kubernetes Operator 0.8.0
 
+## MongoDBCommunity Resource
+- Changes
+  - Connection string options
+    - The MongoDBCommunity Resource now contains a new field ```additionalConnectionStringConfig``` where connection string options can be set, and they will apply to the connection string of every user.
+    - Each user in the resource contains the same field ```additionalConnectionStringConfig``` and these options apply only for this user and will override any existing options in the resource.
+    - The following options will be ignored `replicaSet`, `tls`, `ssl`, as they are set through other means.
+    - [Sample](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml)
+  
 ## Kubernetes Operator
 
 - Changes

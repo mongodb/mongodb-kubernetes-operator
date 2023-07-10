@@ -514,6 +514,42 @@ func ChangePort(mdb *mdbv1.MongoDBCommunity, newPort int) func(*testing.T) {
 	}
 }
 
+func AddConnectionStringOption(mdb *mdbv1.MongoDBCommunity, key string, value interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Adding %s:%v to connection string", key, value)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.AdditionalConnectionStringConfig.SetOption(key, value)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ResetConnectionStringOptions(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.AdditionalConnectionStringConfig = mdbv1.NewMapWrapper()
+			db.Spec.Users[0].AdditionalConnectionStringConfig = mdbv1.NewMapWrapper()
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func AddConnectionStringOptionToUser(mdb *mdbv1.MongoDBCommunity, key string, value interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Adding %s:%v to connection string to first user", key, value)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users[0].AdditionalConnectionStringConfig.SetOption(key, value)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(c corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}

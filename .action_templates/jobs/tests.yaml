@@ -60,3 +60,5 @@ tests:
           distro: ubi
         - test-name: replica_set_operator_upgrade
           distro: ubi
+        - test-name: replica_set_connection_string_options
+          distro: ubi

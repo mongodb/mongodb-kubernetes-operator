@@ -57,6 +57,15 @@ const (
 	defaultClusterDomain = "cluster.local"
 )
 
+// Connection string options that should be ignored as they are set through other means.
+var (
+	protectedConnectionStringOptions = map[string]struct{}{
+		"replicaSet": {},
+		"ssl":        {},
+		"tls":        {},
+	}
+)
+
 // MongoDBCommunitySpec defines the desired state of MongoDB
 type MongoDBCommunitySpec struct {
 	// Members is the number of members in the replica set
@@ -119,6 +128,69 @@ type MongoDBCommunitySpec struct {
 	// Prometheus configurations.
 	// +optional
 	Prometheus *Prometheus `json:"prometheus,omitempty"`
+
+	// Additional options to be appended to the connection string. These options apply to the entire resource and to each user.
+	// +kubebuilder:validation:Type=object
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +nullable
+	AdditionalConnectionStringConfig MapWrapper `json:"additionalConnectionStringConfig,omitempty"`
+}
+
+// Wrapper for a map to be used by other structs.
+// The CRD generator does not support map[string]interface{}
+// on the top level and hence we need to work around this with
+// a wrapping struct.
+type MapWrapper struct {
+	Object map[string]interface{} `json:"-"`
+}
+
+// MarshalJSON defers JSON encoding to the wrapped map
+func (m *MapWrapper) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Object)
+}
+
+// UnmarshalJSON will decode the data into the wrapped map
+func (m *MapWrapper) UnmarshalJSON(data []byte) error {
+	if m.Object == nil {
+		m.Object = map[string]interface{}{}
+	}
+
+	// Handle keys like net.port to be set as nested maps.
+	// Without this after unmarshalling there is just key "net.port" which is not
+	// a nested map and methods like GetPort() cannot access the value.
+	tmpMap := map[string]interface{}{}
+	err := json.Unmarshal(data, &tmpMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range tmpMap {
+		m.SetOption(k, v)
+	}
+
+	return nil
+}
+
+func (m *MapWrapper) DeepCopy() *MapWrapper {
+	if m != nil && m.Object != nil {
+		return &MapWrapper{
+			Object: runtime.DeepCopyJSON(m.Object),
+		}
+	}
+	c := NewMapWrapper()
+	return &c
+}
+
+// NewMapWrapper returns an empty MapWrapper
+func NewMapWrapper() MapWrapper {
+	return MapWrapper{Object: map[string]interface{}{}}
+}
+
+// SetOption updated the MapWrapper with a new option
+func (m MapWrapper) SetOption(key string, value interface{}) MapWrapper {
+	m.Object = objx.New(m.Object).Set(key, value)
+	return m
 }
 
 // ReplicaSetHorizonConfiguration holds the split horizon DNS settings for
@@ -277,10 +349,10 @@ type LogLevel string
 
 const (
 	LogLevelDebug LogLevel = "DEBUG"
-	LogLevelInfo           = "INFO"
-	LogLevelWarn           = "WARN"
-	LogLevelError          = "ERROR"
-	LogLevelFatal          = "FATAL"
+	LogLevelInfo  string   = "INFO"
+	LogLevelWarn  string   = "WARN"
+	LogLevelError string   = "ERROR"
+	LogLevelFatal string   = "FATAL"
 )
 
 type AgentConfiguration struct {
@@ -315,60 +387,13 @@ func (m *StatefulSetSpecWrapper) DeepCopy() *StatefulSetSpecWrapper {
 
 // MongodConfiguration holds the optional mongod configuration
 // that should be merged with the operator created one.
-//
-// The CRD generator does not support map[string]interface{}
-// on the top level and hence we need to work around this with
-// a wrapping struct.
 type MongodConfiguration struct {
-	Object map[string]interface{} `json:"-"`
-}
-
-// MarshalJSON defers JSON encoding to the wrapped map
-func (m *MongodConfiguration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Object)
-}
-
-// UnmarshalJSON will decode the data into the wrapped map
-func (m *MongodConfiguration) UnmarshalJSON(data []byte) error {
-	if m.Object == nil {
-		m.Object = map[string]interface{}{}
-	}
-
-	// Handle keys like net.port to be set as nested maps.
-	// Without this after unmarshalling there is just key "net.port" which is not
-	// a nested map and methods like GetPort() cannot access the value.
-	tmpMap := map[string]interface{}{}
-	err := json.Unmarshal(data, &tmpMap)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range tmpMap {
-		m.SetOption(k, v)
-	}
-
-	return nil
-}
-
-func (m *MongodConfiguration) DeepCopy() *MongodConfiguration {
-	if m != nil && m.Object != nil {
-		return &MongodConfiguration{
-			Object: runtime.DeepCopyJSON(m.Object),
-		}
-	}
-	c := NewMongodConfiguration()
-	return &c
+	MapWrapper `json:"-"`
 }
 
 // NewMongodConfiguration returns an empty MongodConfiguration
 func NewMongodConfiguration() MongodConfiguration {
-	return MongodConfiguration{Object: map[string]interface{}{}}
-}
-
-// SetOption updated the MongodConfiguration with a new option
-func (m MongodConfiguration) SetOption(key string, value interface{}) MongodConfiguration {
-	m.Object = objx.New(m.Object).Set(key, value)
-	return m
+	return MongodConfiguration{MapWrapper{map[string]interface{}{}}}
 }
 
 // GetDBDataDir returns the db path which should be used.
@@ -424,6 +449,14 @@ type MongoDBUser struct {
 	// If provided, this secret must be different for each user in a deployment.
 	// +optional
 	ConnectionStringSecretName string `json:"connectionStringSecretName"`
+
+	// Additional options to be appended to the connection string.
+	// These options apply only to this user and will override any existing options in the resource.
+	// +kubebuilder:validation:Type=object
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +nullable
+	AdditionalConnectionStringConfig MapWrapper `json:"additionalConnectionStringConfig,omitempty"`
 }
 
 func (m MongoDBUser) GetPasswordSecretKey() string {
@@ -692,6 +725,7 @@ func (m *MongoDBCommunity) GetScramUsers() []scram.User {
 			PasswordSecretName:         u.PasswordSecretRef.Name,
 			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
 			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
+			ConnectionStringOptions:    u.AdditionalConnectionStringConfig.Object,
 		}
 	}
 	return users
@@ -736,9 +770,70 @@ func (m *MongoDBCommunity) AutomationConfigArbitersThisReconciliation() int {
 	})
 }
 
+// GetOptionsString return a string format of the connection string
+// options that can be appended directly to the connection string.
+//
+// Only takes into account options for the resource and not any user.
+func (m *MongoDBCommunity) GetOptionsString() string {
+	generalOptionsMap := m.Spec.AdditionalConnectionStringConfig.Object
+	optionValues := make([]string, len(generalOptionsMap))
+	i := 0
+
+	for key, value := range generalOptionsMap {
+		if _, protected := protectedConnectionStringOptions[key]; !protected {
+			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
+			i += 1
+		}
+	}
+
+	optionValues = optionValues[:i]
+
+	optionsString := ""
+	if i > 0 {
+		optionsString = "&" + strings.Join(optionValues, "&")
+	}
+	return optionsString
+}
+
+// GetUserOptionsString return a string format of the connection string
+// options that can be appended directly to the connection string.
+//
+// Takes into account both user options and resource options.
+// User options will override any existing options in the resource.
+func (m *MongoDBCommunity) GetUserOptionsString(user scram.User) string {
+	generalOptionsMap := m.Spec.AdditionalConnectionStringConfig.Object
+	userOptionsMap := user.ConnectionStringOptions
+	optionValues := make([]string, len(generalOptionsMap)+len(userOptionsMap))
+	i := 0
+	for key, value := range userOptionsMap {
+		if _, protected := protectedConnectionStringOptions[key]; !protected {
+			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
+			i += 1
+		}
+	}
+
+	for key, value := range generalOptionsMap {
+		_, ok := userOptionsMap[key]
+		if _, protected := protectedConnectionStringOptions[key]; !ok && !protected {
+			optionValues[i] = fmt.Sprintf("%s=%v", key, value)
+			i += 1
+		}
+	}
+
+	optionValues = optionValues[:i]
+
+	optionsString := ""
+	if i > 0 {
+		optionsString = "&" + strings.Join(optionValues, "&")
+	}
+	return optionsString
+}
+
 // MongoURI returns a mongo uri which can be used to connect to this deployment
 func (m *MongoDBCommunity) MongoURI(clusterDomain string) string {
-	return fmt.Sprintf("mongodb://%s/?replicaSet=%s", strings.Join(m.Hosts(clusterDomain), ","), m.Name)
+	optionsString := m.GetOptionsString()
+
+	return fmt.Sprintf("mongodb://%s/?replicaSet=%s%s", strings.Join(m.Hosts(clusterDomain), ","), m.Name, optionsString)
 }
 
 // MongoSRVURI returns a mongo srv uri which can be used to connect to this deployment
@@ -746,19 +841,25 @@ func (m *MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
-	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s/?replicaSet=%s", m.ServiceName(), m.Namespace, clusterDomain, m.Name)
+
+	optionsString := m.GetOptionsString()
+
+	return fmt.Sprintf("mongodb+srv://%s.%s.svc.%s/?replicaSet=%s%s", m.ServiceName(), m.Namespace, clusterDomain, m.Name, optionsString)
 }
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
 func (m *MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
-	return fmt.Sprintf("mongodb://%s:%s@%s/%s?replicaSet=%s&ssl=%t",
+	optionsString := m.GetUserOptionsString(user)
+
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?replicaSet=%s&ssl=%t%s",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
 		m.Name,
-		m.Spec.Security.TLS.Enabled)
+		m.Spec.Security.TLS.Enabled,
+		optionsString)
 }
 
 // MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
@@ -767,7 +868,10 @@ func (m *MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string,
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t",
+
+	optionsString := m.GetUserOptionsString(user)
+
+	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t%s",
 		url.QueryEscape(user.Username),
 		url.QueryEscape(password),
 		m.ServiceName(),
@@ -775,7 +879,8 @@ func (m *MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string,
 		clusterDomain,
 		user.Database,
 		m.Name,
-		m.Spec.Security.TLS.Enabled)
+		m.Spec.Security.TLS.Enabled,
+		optionsString)
 }
 
 func (m *MongoDBCommunity) Hosts(clusterDomain string) []string {
