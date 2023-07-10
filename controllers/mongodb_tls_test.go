@@ -10,7 +10,6 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubeClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	mdbClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
-	client := mdbClient.NewClient(mgr.GetClient())
+	client := kubeClient.NewClient(mgr.GetClient())
 	err := createTLSSecret(client, mdb, "CERT", "KEY", "")
 	assert.NoError(t, err)
 	err = createTLSConfigMap(client, mdb)
@@ -127,7 +126,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	}
 
 	mgr := kubeClient.NewManager(&mdb)
-	cli := mdbClient.NewClient(mgr.GetClient())
+	cli := kubeClient.NewClient(mgr.GetClient())
 
 	err := secret.CreateOrUpdate(mgr.Client,
 		secret.Builder().
@@ -160,7 +159,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
-	cli := mdbClient.NewClient(mgr.GetClient())
+	cli := kubeClient.NewClient(mgr.GetClient())
 	err := createTLSSecret(cli, mdb, "CERT", "KEY", "")
 	assert.NoError(t, err)
 
@@ -206,7 +205,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
-		client := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		client := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(client, mdb, "CERT", "KEY", "")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(client, mdb)
@@ -277,7 +276,7 @@ func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 func TestTLSOperatorSecret(t *testing.T) {
 	t.Run("Secret is created if it doesn't exist", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		c := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		c := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(c, mdb, "CERT", "KEY", "")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(c, mdb)
@@ -298,7 +297,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 
 	t.Run("Secret is updated if it already exists", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		k8sclient := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		k8sclient := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(k8sclient, mdb, "CERT", "KEY", "")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(k8sclient, mdb)
@@ -349,7 +348,7 @@ func TestCombineCertificateAndKey(t *testing.T) {
 func TestPemSupport(t *testing.T) {
 	t.Run("Success if only pem is provided", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		c := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		c := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(c, mdb, "", "", "CERT\nKEY")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(c, mdb)
@@ -369,7 +368,7 @@ func TestPemSupport(t *testing.T) {
 	})
 	t.Run("Success if pem is equal to cert+key", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		c := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		c := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(c, mdb, "CERT", "KEY", "CERT\nKEY")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(c, mdb)
@@ -389,7 +388,7 @@ func TestPemSupport(t *testing.T) {
 	})
 	t.Run("Failure if pem is different from cert+key", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
-		c := mdbClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
+		c := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(c, mdb, "CERT1", "KEY1", "CERT\nKEY")
 		assert.NoError(t, err)
 		err = createTLSConfigMap(c, mdb)
@@ -437,7 +436,7 @@ func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
 			mdb := newTestReplicaSetWithTLSCaCertificateReferences(tc.caConfigMap, tc.caCertificateSecret)
 
 			mgr := kubeClient.NewManager(&mdb)
-			cli := mdbClient.NewClient(mgr.GetClient())
+			cli := kubeClient.NewClient(mgr.GetClient())
 			err := createTLSSecret(cli, mdb, "cert", "key", "pem")
 
 			assert.NoError(t, err)
