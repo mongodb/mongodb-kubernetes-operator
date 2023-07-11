@@ -33,13 +33,19 @@ func TestDeadlockDetectionDuringVersionChange(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDeadlockDetectionWaitingAllRsMembersUp(t *testing.T) {
+	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked-waiting-all-rs-members-up.json"))
+	assert.True(t, ready)
+	assert.NoError(t, err)
+}
+
 // TestNoDeadlock verifies that if the agent has started (but not finished) "WaitRsInit" and then there is another
 // started phase ("WaitFeatureCompatibilityVersionCorrect") then no deadlock is found as the latter is considered to
 // be the "current" step
 func TestNoDeadlock(t *testing.T) {
 	health, err := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
 	assert.NoError(t, err)
-	stepStatus := findCurrentStep(health.ProcessPlans)
+	stepStatus := findCurrentStep(health.MmsStatus)
 
 	assert.Equal(t, "WaitFeatureCompatibilityVersionCorrect", stepStatus.Step)
 
@@ -206,10 +212,10 @@ func testConfigWithMongoUp(healthFilePath string, timeSinceMongoLastUp time.Dura
 		panic(err)
 	}
 
-	for key, processHealth := range status.Healthiness {
+	for key, processHealth := range status.Statuses {
 		processHealth.LastMongoUpTime = time.Now().Add(-timeSinceMongoLastUp).Unix()
 		// Need to reassign the object back to map as 'processHealth' is a copy of the struct
-		status.Healthiness[key] = processHealth
+		status.Statuses[key] = processHealth
 	}
 
 	return config.Config{

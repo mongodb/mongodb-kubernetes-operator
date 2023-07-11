@@ -55,7 +55,7 @@ func isPodReady(conf config.Config) (bool, error) {
 	}
 
 	// The 'statuses' file can be empty only for OM Agents
-	if len(healthStatus.Healthiness) == 0 && !isHeadlessMode() {
+	if len(healthStatus.Statuses) == 0 && !isHeadlessMode() {
 		logger.Info("'statuses' is empty. We assume there is no automation config for the agent yet.")
 		return true, nil
 	}
@@ -87,7 +87,7 @@ func isPodReady(conf config.Config) (bool, error) {
 
 // hasDeadlockedSteps returns true if the agent is stuck on waiting for the other agents
 func hasDeadlockedSteps(health health.Status) bool {
-	currentStep := findCurrentStep(health.ProcessPlans)
+	currentStep := findCurrentStep(health.MmsStatus)
 	if currentStep != nil {
 		return isDeadlocked(currentStep)
 	}
@@ -111,13 +111,23 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 		logger.Errorf("Only one process status is expected but got %d!", len(processStatuses))
 		return nil
 	}
+
 	// There is always only one process managed by the Agent - so there will be only one loop
-	for k, v := range processStatuses {
-		if len(v.Plans) == 0 {
-			logger.Errorf("The process %s doesn't contain any plans!", k)
+	for processName, processStatus := range processStatuses {
+		if len(processStatus.Plans) == 0 {
+			logger.Errorf("The process %s doesn't contain any plans!", processName)
 			return nil
 		}
-		currentPlan = v.Plans[len(v.Plans)-1]
+		for _, plan := range processStatus.Plans {
+			if plan.Started != nil && plan.Completed == nil {
+				currentPlan = plan
+				break
+			}
+		}
+	}
+
+	if currentPlan == nil {
+		return nil
 	}
 
 	if currentPlan.Completed != nil {
@@ -160,7 +170,7 @@ func isInGoalState(health health.Status, conf config.Config) (bool, error) {
 // performCheckOMMode does a general check if the Agent has reached the goal state - must be called when Agent is in
 // "OM mode"
 func performCheckOMMode(health health.Status) bool {
-	for _, v := range health.Healthiness {
+	for _, v := range health.Statuses {
 		logger.Debug(v)
 		if v.IsInGoalState {
 			return true
@@ -231,10 +241,10 @@ func main() {
 // isInReadyState checks the MongoDB Server state. It returns true if the mongod process is up and its state
 // is PRIMARY or SECONDARY.
 func isInReadyState(health health.Status) bool {
-	if len(health.Healthiness) == 0 {
+	if len(health.Statuses) == 0 {
 		return true
 	}
-	for _, processHealth := range health.Healthiness {
+	for _, processHealth := range health.Statuses {
 		// We know this loop should run only once, in Kubernetes there's
 		// only 1 server managed per host.
 		if !processHealth.ExpectedToBeUp {
