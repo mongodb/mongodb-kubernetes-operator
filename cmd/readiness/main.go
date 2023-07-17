@@ -136,7 +136,12 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 	return lastStartedStep
 }
 
-// isWaitStep return true is the Agent is currently waiting for something.
+// isWaitStep returns true is the Agent is currently waiting for something to happen.
+//
+// Most of the time, the Agent waits for an initialization by other member of the cluster. In such case,
+// holding the rollout does not improve the overall system state. Even if the probe returns true too quickly
+// the worst thing that can happen is a short service interruption, which is still better than full service outage.
+//
 // The 15 seconds explanation:
 //   - The status file is written every 10s but the Agent processes steps independently of it
 //   - In order to avoid reacting on a newly added wait Step (as they can naturally go away), we're giving the Agent
