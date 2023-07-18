@@ -22,18 +22,18 @@ const (
 )
 
 type Status struct {
-	Healthiness  map[string]processHealth     `json:"statuses"`
-	ProcessPlans map[string]MmsDirectorStatus `json:"mmsStatus"`
+	Statuses  map[string]processStatus     `json:"statuses"`
+	MmsStatus map[string]MmsDirectorStatus `json:"mmsStatus"`
 }
 
-type processHealth struct {
+type processStatus struct {
 	IsInGoalState   bool               `json:"IsInGoalState"`
 	LastMongoUpTime int64              `json:"LastMongoUpTime"`
 	ExpectedToBeUp  bool               `json:"ExpectedToBeUp"`
 	ReplicaStatus   *replicationStatus `json:"ReplicationStatus"`
 }
 
-func (h processHealth) String() string {
+func (h processStatus) String() string {
 	return fmt.Sprintf("ExpectedToBeUp: %t, IsInGoalState: %t, LastMongoUpTime: %v", h.ExpectedToBeUp,
 		h.IsInGoalState, time.Unix(h.LastMongoUpTime, 0))
 }
@@ -55,17 +55,19 @@ type MoveStatus struct {
 	Steps []*StepStatus `json:"steps"`
 }
 type StepStatus struct {
-	Step      string     `json:"step"`
-	Started   *time.Time `json:"started"`
-	Completed *time.Time `json:"completed"`
-	Result    string     `json:"result"`
+	Step       string     `json:"step"`
+	StepDoc    string     `json:"stepDoc"`
+	IsWaitStep bool       `json:"isWaitStep"`
+	Started    *time.Time `json:"started"`
+	Completed  *time.Time `json:"completed"`
+	Result     string     `json:"result"`
 }
 
 // IsReadyState will return true, meaning a *ready state* in the sense that this Process can
 // accept read operations.
 // It returns true if the managed process is mongos or standalone (replicationStatusUndefined)
 // or if the agent doesn't publish the replica status (older agents)
-func (h processHealth) IsReadyState() bool {
+func (h processStatus) IsReadyState() bool {
 	if h.ReplicaStatus == nil {
 		return true
 	}

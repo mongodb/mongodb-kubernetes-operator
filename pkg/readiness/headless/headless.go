@@ -63,7 +63,7 @@ func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, e
 
 // readCurrentAgentInfo returns the version the Agent has reached and the rs member name
 func readCurrentAgentInfo(health health.Status, targetVersion int64) int64 {
-	for _, v := range health.ProcessPlans {
+	for _, v := range health.MmsStatus {
 		zap.S().Debugf("Automation Config version: %d, Agent last version: %d", targetVersion, v.LastGoalStateClusterConfigVersion)
 		return v.LastGoalStateClusterConfigVersion
 	}
@@ -71,7 +71,7 @@ func readCurrentAgentInfo(health health.Status, targetVersion int64) int64 {
 	// from the Automation Config - the Agent just doesn't write the 'mmsStatus' at all so there is no indication of
 	// the version it has achieved (though health file contains 'IsInGoalState=true')
 	// Let's return the desired version in case if the Agent is in goal state and no plans exist in the health file
-	for _, v := range health.Healthiness {
+	for _, v := range health.Statuses {
 		if v.IsInGoalState {
 			return targetVersion
 		}
