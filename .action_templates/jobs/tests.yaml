@@ -7,6 +7,10 @@ tests:
       include:
         - test-name: replica_set
           distro: ubi
+        - test-name: replica_set_enterprise_upgrade_4_5
+          distro: ubi
+        - test-name: replica_set_enterprise_upgrade_5_6
+          distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
         - test-name: replica_set_recovery
@@ -20,8 +24,6 @@ tests:
         - test-name: replica_set_change_version
           distro: ubi
         - test-name: feature_compatibility_version
-          distro: ubi
-        - test-name: feature_compatibility_version_upgrade
           distro: ubi
         - test-name: prometheus
           distro: ubi
@@ -53,4 +55,10 @@ tests:
         - test-name: replica_set_custom_persistent_volume
           distro: ubi
         - test-name: replica_set_mount_connection_string
+          distro: ubi
+        - test-name: replica_set_mongod_port_change_with_arbiters
+          distro: ubi
+        - test-name: replica_set_operator_upgrade
+          distro: ubi
+        - test-name: replica_set_connection_string_options
           distro: ubi

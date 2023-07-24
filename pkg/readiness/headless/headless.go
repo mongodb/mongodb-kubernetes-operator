@@ -1,7 +1,8 @@
 package headless
 
 import (
-	"io/ioutil"
+	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -12,7 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// performCheckHeadlessMode validates if the Agent has reached the correct goal state
+const (
+	acVersionPath string = "/var/lib/automation/config/acVersion/version"
+)
+
+// PerformCheckHeadlessMode validates if the Agent has reached the correct goal state
 // The state is fetched from K8s automation config Secret directly to avoid flakiness of mounting process
 // Dev note: there is an alternative way to get current namespace: to read from
 // /var/run/secrets/kubernetes.io/serviceaccount/namespace file (see
@@ -21,23 +26,29 @@ import (
 func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, error) {
 	var targetVersion int64
 	var err error
+
 	targetVersion, err = secret.ReadAutomationConfigVersionFromSecret(conf.Namespace, conf.ClientSet, conf.AutomationConfigSecretName)
 	if err != nil {
-		file, err := os.Open("/var/lib/automation/config/acVersion/version")
-		if err != nil {
-			return false, err
-		}
-		defer file.Close()
-		data, err := ioutil.ReadAll(file)
+		// this file is expected to be present in case of AppDB, there is no point trying to access it in
+		// community, it masks the underlying error
+		if _, pathErr := os.Stat(acVersionPath); !os.IsNotExist(pathErr) {
+			file, err := os.Open(acVersionPath)
+			if err != nil {
+				return false, err
+			}
+			defer file.Close()
 
-		if err != nil {
-			return false, err
-		}
+			data, err := io.ReadAll(file)
+			if err != nil {
+				return false, err
+			}
 
-		targetVersion, err = strconv.ParseInt(string(data), 10, 64)
-
-		if err != nil {
-			return false, err
+			targetVersion, err = strconv.ParseInt(string(data), 10, 64)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			return false, fmt.Errorf("failed to fetch automation-config secret name: %s, err: %s", conf.AutomationConfigSecretName, err)
 		}
 	}
 
@@ -52,7 +63,7 @@ func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, e
 
 // readCurrentAgentInfo returns the version the Agent has reached and the rs member name
 func readCurrentAgentInfo(health health.Status, targetVersion int64) int64 {
-	for _, v := range health.ProcessPlans {
+	for _, v := range health.MmsStatus {
 		zap.S().Debugf("Automation Config version: %d, Agent last version: %d", targetVersion, v.LastGoalStateClusterConfigVersion)
 		return v.LastGoalStateClusterConfigVersion
 	}
@@ -60,7 +71,7 @@ func readCurrentAgentInfo(health health.Status, targetVersion int64) int64 {
 	// from the Automation Config - the Agent just doesn't write the 'mmsStatus' at all so there is no indication of
 	// the version it has achieved (though health file contains 'IsInGoalState=true')
 	// Let's return the desired version in case if the Agent is in goal state and no plans exist in the health file
-	for _, v := range health.Healthiness {
+	for _, v := range health.Statuses {
 		if v.IsInGoalState {
 			return targetVersion
 		}

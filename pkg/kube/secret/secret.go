@@ -1,11 +1,11 @@
 package secret
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
-	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +56,7 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 	if val, ok := data[key]; ok {
 		return val, nil
 	}
-	return "", errors.Errorf(`key "%s" not present in the Secret %s/%s`, key, objectKey.Namespace, objectKey.Name)
+	return "", fmt.Errorf(`key "%s" not present in the Secret %s/%s`, key, objectKey.Namespace, objectKey.Name)
 }
 
 // ReadByteData reads the Data field of the secret with the given objectKey
@@ -183,19 +183,19 @@ func HasOwnerReferences(secret corev1.Secret, ownerRefs []metav1.OwnerReference)
 	return true
 }
 
-// CreateOrUpdateIfNeeded creates a secret if it doesn't exists, or updates it if needed.
+// CreateOrUpdateIfNeeded creates a secret if it doesn't exist, or updates it if needed.
 func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
 	// Check if the secret exists
-	olsSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
+	oldSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
-
 		if apiErrors.IsNotFound(err) {
 			return getUpdateCreator.CreateSecret(secret)
 		}
 		return err
 	}
 
-	if reflect.DeepEqual(secret.StringData, dataToStringData(olsSecret.Data)) {
+	// Our secret builder never sets or uses secret.stringData, so we should only rely on secret.Data
+	if reflect.DeepEqual(secret.Data, oldSecret.Data) {
 		return nil
 	}
 

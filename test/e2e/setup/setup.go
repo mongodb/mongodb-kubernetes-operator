@@ -2,6 +2,7 @@ package setup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/helm"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	waite2e "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
-	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -34,19 +35,6 @@ const (
 	CertKeyPair       tlsSecretType = "CERTKEYPAIR"
 	Pem               tlsSecretType = "PEM"
 )
-
-func SetupWithDefaultOperator(t *testing.T) *e2eutil.Context {
-	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	config := LoadTestConfigFromEnv()
-	if err := DeployOperator(config, "mdb", false, true); err != nil {
-		t.Fatal(err)
-	}
-	return ctx
-}
 
 func Setup(t *testing.T) *e2eutil.Context {
 	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
@@ -80,6 +68,26 @@ func SetupWithTLS(t *testing.T, resourceName string) (*e2eutil.Context, TestConf
 	}
 
 	return ctx, config
+}
+
+func SetupWithTestConfig(t *testing.T, testConfig TestConfig, withTLS, defaultOperator bool, resourceName string) *e2eutil.Context {
+	ctx, err := e2eutil.NewContext(t, envvar.ReadBool(performCleanupEnv))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if withTLS {
+		if err := deployCertManager(testConfig); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := DeployOperator(testConfig, resourceName, withTLS, defaultOperator); err != nil {
+		t.Fatal(err)
+	}
+
+	return ctx
 }
 
 // GeneratePasswordForUser will create a secret with a password for the given user
@@ -148,6 +156,9 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 
 		helmArgs["agent.version"] = agentVersion
 		helmArgs["agent.name"] = agentName
+
+		helmArgs["mongodb.name"] = testConfig.MongoDBImage
+		helmArgs["mongodb.repo"] = testConfig.MongoDBRepoUrl
 
 		helmArgs["registry.versionUpgradeHook"] = versionUpgradeHookRegistry
 		helmArgs["registry.operator"] = operatorRegistry
@@ -223,7 +234,7 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 func deployCertManager(config TestConfig) error {
 	const helmChartName = "cert-manager"
 	if err := helm.Uninstall(helmChartName, config.CertManagerNamespace); err != nil {
-		return errors.Errorf("failed to uninstall cert-manager Helm chart: %s", err)
+		return fmt.Errorf("failed to uninstall cert-manager Helm chart: %s", err)
 	}
 
 	charlUrl := fmt.Sprintf("https://charts.jetstack.io/charts/cert-manager-%s.tgz", config.CertManagerVersion)
@@ -234,7 +245,7 @@ func deployCertManager(config TestConfig) error {
 	}
 	values := map[string]string{"installCRDs": "true"}
 	if err := helm.Install(charlUrl, helmChartName, flags, values); err != nil {
-		return errors.Errorf("failed to install cert-manager Helm chart: %s", err)
+		return fmt.Errorf("failed to install cert-manager Helm chart: %s", err)
 	}
 	return nil
 }
@@ -251,7 +262,7 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionFunc {
 			if apiErrors.IsNotFound(err) {
 				return false, nil
 			}
-			return false, errors.Errorf("error getting operator deployment: %s", err)
+			return false, fmt.Errorf("error getting operator deployment: %s", err)
 		}
 		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
 			return true, nil

@@ -1,8 +1,11 @@
 package automationconfig
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +58,7 @@ func TestBuildAutomationConfig(t *testing.T) {
 	assert.Len(t, rs.Members, 3, "there should be the number of replicas provided")
 
 	for i, member := range rs.Members {
-		assert.Equal(t, 1, member.Votes)
+		assert.Equal(t, 1, *member.Votes)
 		assert.False(t, member.ArbiterOnly)
 		assert.Equal(t, i, member.Id)
 		assert.Equal(t, ac.Processes[i].Name, member.Host)
@@ -141,22 +144,22 @@ func TestBuildAutomationConfigArbiters(t *testing.T) {
 	m := ac.ReplicaSets[0].Members
 
 	// First 5 data-bearing nodes have votes
-	assert.Equal(t, 1, m[0].Votes)
-	assert.Equal(t, 1, m[1].Votes)
-	assert.Equal(t, 1, m[2].Votes)
-	assert.Equal(t, 1, m[3].Votes)
-	assert.Equal(t, 1, m[4].Votes)
+	assert.Equal(t, 1, *m[0].Votes)
+	assert.Equal(t, 1, *m[1].Votes)
+	assert.Equal(t, 1, *m[2].Votes)
+	assert.Equal(t, 1, *m[3].Votes)
+	assert.Equal(t, 1, *m[4].Votes)
 
 	// From 6th data-bearing nodes, they won'thave any votes
-	assert.Equal(t, 0, m[5].Votes)
-	assert.Equal(t, 0, m[6].Votes)
-	assert.Equal(t, 0, m[7].Votes)
-	assert.Equal(t, 0, m[8].Votes)
-	assert.Equal(t, 0, m[9].Votes)
+	assert.Equal(t, 0, *m[5].Votes)
+	assert.Equal(t, 0, *m[6].Votes)
+	assert.Equal(t, 0, *m[7].Votes)
+	assert.Equal(t, 0, *m[8].Votes)
+	assert.Equal(t, 0, *m[9].Votes)
 
 	// Arbiters always have votes
-	assert.Equal(t, 1, m[10].Votes)
-	assert.Equal(t, 1, m[11].Votes)
+	assert.Equal(t, 1, *m[10].Votes)
+	assert.Equal(t, 1, *m[11].Votes)
 }
 
 func TestReplicaSetMultipleHorizonsScaleDown(t *testing.T) {
@@ -337,6 +340,36 @@ func TestProcessHasPortSetToDefault(t *testing.T) {
 	}
 }
 
+func TestPortsAfterMarshalling(t *testing.T) {
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetMembers(2).
+		AddProcessModification(func(i int, process *Process) {
+			process.SetPort((i + 1) * 1000)
+		}).
+		Build()
+	assert.NoError(t, err)
+
+	require.Len(t, ac.Processes, 2)
+	// ac built in-memory has ports stored as ints
+	assert.Equal(t, 1000, ac.Processes[0].Args26.Get("net.port").Int())
+	assert.Equal(t, 1000, ac.Processes[0].GetPort())
+	assert.Equal(t, 2000, ac.Processes[1].Args26.Get("net.port").Int())
+	assert.Equal(t, 2000, ac.Processes[1].GetPort())
+
+	bytes, err := json.Marshal(&ac)
+	require.NoError(t, err)
+	acDeserialized := AutomationConfig{}
+	require.NoError(t, json.Unmarshal(bytes, &acDeserialized))
+
+	require.Len(t, acDeserialized.Processes, 2)
+	// ac after deserialization has ports stored as float64
+	assert.Equal(t, 1000., acDeserialized.Processes[0].Args26.Get("net.port").Float64())
+	assert.Equal(t, 1000, acDeserialized.Processes[0].GetPort())
+	assert.Equal(t, 2000., acDeserialized.Processes[1].Args26.Get("net.port").Float64())
+	assert.Equal(t, 2000, acDeserialized.Processes[1].GetPort())
+}
+
 func TestModifications(t *testing.T) {
 	incrementVersion := func(config *AutomationConfig) {
 		config.Version += 1
@@ -433,6 +466,27 @@ func TestAreEqual(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, areEqual)
 	})
+}
+
+func TestValidateFCV(t *testing.T) {
+	_, err := NewBuilder().SetFCV("4.2.4").Build()
+
+	assert.Error(t, err)
+}
+
+func TestEnterpriseVersion(t *testing.T) {
+	//given
+	mongoDBVersion := "6.0.5"
+	expectedVersionInTheAutomationConfig := mongoDBVersion + "-ent"
+
+	//when
+	ac, err := NewBuilder().SetMongoDBVersion(mongoDBVersion).SetMembers(1).IsEnterprise(true).Build()
+
+	//then
+	assert.NoError(t, err)
+	assert.Equal(t, expectedVersionInTheAutomationConfig, ac.Processes[0].Version)
+	assert.Equal(t, "enterprise", ac.Versions[0].Builds[0].Modules[0])
+	assert.Equal(t, "enterprise", ac.Versions[0].Builds[1].Modules[0])
 }
 
 func createAutomationConfig(name, mongodbVersion, domain string, opts Options, auth Auth, members, acVersion int) AutomationConfig {

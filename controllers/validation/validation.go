@@ -1,29 +1,30 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
-// ValidateInitalSpec checks if the resource's initial Spec is valid.
-func ValidateInitalSpec(mdb mdbv1.MongoDBCommunity) error {
-	return validateSpec(mdb)
+// ValidateInitialSpec checks if the resource's initial Spec is valid.
+func ValidateInitialSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	return validateSpec(mdb, log)
 }
 
 // ValidateUpdate validates that the new Spec, corresponding to the existing one, is still valid.
-func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySpec) error {
+func ValidateUpdate(mdb mdbv1.MongoDBCommunity, oldSpec mdbv1.MongoDBCommunitySpec, log *zap.SugaredLogger) error {
 	if oldSpec.Security.TLS.Enabled && !mdb.Spec.Security.TLS.Enabled {
 		return errors.New("TLS can't be set to disabled after it has been enabled")
 	}
-	return validateSpec(mdb)
+	return validateSpec(mdb, log)
 }
 
 // validateSpec validates the specs of the given resource definition.
-func validateSpec(mdb mdbv1.MongoDBCommunity) error {
+func validateSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	if err := validateUsers(mdb); err != nil {
 		return err
 	}
@@ -32,7 +33,11 @@ func validateSpec(mdb mdbv1.MongoDBCommunity) error {
 		return err
 	}
 
-	if err := validateAuthModeSpec(mdb); err != nil {
+	if err := validateAuthModeSpec(mdb, log); err != nil {
+		return err
+	}
+
+	if err := validateStatefulSet(mdb); err != nil {
 		return err
 	}
 
@@ -77,12 +82,12 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 
 	}
 	if len(nameCollisions) > 0 {
-		return errors.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
+		return fmt.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
 			strings.Join(nameCollisions, ", "))
 	}
 
 	if len(scramSecretNameCollisions) > 0 {
-		return errors.Errorf("scram credential secret names collision, update at least one of the users: %s",
+		return fmt.Errorf("scram credential secret names collision, update at least one of the users: %s",
 			strings.Join(scramSecretNameCollisions, ", "))
 	}
 
@@ -102,8 +107,13 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 }
 
 // validateAuthModeSpec checks that the list of modes does not contain duplicates.
-func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
+func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	allModes := mdb.Spec.Security.Authentication.Modes
+
+	// Issue warning if Modes array is empty
+	if len(allModes) == 0 {
+		log.Warnf("An empty Modes array has been provided. The default mode (SCRAM-SHA-256) will be used.")
+	}
 
 	// Check that no auth is defined more than once
 	mapModes := make(map[mdbv1.AuthMode]struct{})
@@ -115,6 +125,16 @@ func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity) error {
 	}
 	if len(mapModes) != len(allModes) {
 		return fmt.Errorf("some authentication modes are declared twice or more")
+	}
+
+	return nil
+}
+
+func validateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
+	stsReplicas := mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Replicas
+
+	if stsReplicas != nil && *stsReplicas != int32(mdb.Spec.Members) {
+		return fmt.Errorf("spec.statefulset.spec.replicas has to be equal to spec.members")
 	}
 
 	return nil

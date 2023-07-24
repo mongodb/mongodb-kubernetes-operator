@@ -129,3 +129,100 @@ func TestUpdateField(t *testing.T) {
 	val2, _ := ReadKey(getUpdater, "field2", nsName("namespace", "name"))
 	assert.Equal(t, "value2", val2)
 }
+
+type mockSecretGetUpdateCreateDeleter struct {
+	secrets  map[client.ObjectKey]corev1.Secret
+	apiCalls int
+}
+
+func (c *mockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey) error {
+	delete(c.secrets, objectKey)
+	c.apiCalls += 1
+	return nil
+}
+
+func (c *mockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret) error {
+	c.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
+	c.apiCalls += 1
+	return nil
+}
+
+func (c *mockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) error {
+	return c.UpdateSecret(secret)
+}
+
+func (c *mockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
+	c.apiCalls += 1
+	if s, ok := c.secrets[objectKey]; !ok {
+		return corev1.Secret{}, notFoundError()
+	} else {
+		return s, nil
+	}
+}
+
+func TestCreateOrUpdateIfNeededCreate(t *testing.T) {
+	mock := &mockSecretGetUpdateCreateDeleter{
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
+	}
+
+	secret := getDefaultSecret()
+
+	// first time it does not exist, we create it
+	err := CreateOrUpdateIfNeeded(mock, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, mock.apiCalls) // 2 calls -> get + creation
+}
+
+func TestCreateOrUpdateIfNeededUpdate(t *testing.T) {
+	mock := &mockSecretGetUpdateCreateDeleter{
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
+	}
+	secret := getDefaultSecret()
+
+	{
+		err := mock.CreateSecret(secret)
+		assert.NoError(t, err)
+		mock.apiCalls = 0
+	}
+
+	{
+		secret.Data = map[string][]byte{"test": {1, 2, 3}}
+		// secret differs -> we update
+		err := CreateOrUpdateIfNeeded(mock, secret)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, mock.apiCalls) // 2 calls -> get + update
+	}
+}
+
+func TestCreateOrUpdateIfNeededEqual(t *testing.T) {
+	mock := &mockSecretGetUpdateCreateDeleter{
+		secrets:  map[client.ObjectKey]corev1.Secret{},
+		apiCalls: 0,
+	}
+	secret := getDefaultSecret()
+
+	{
+		err := mock.CreateSecret(secret)
+		assert.NoError(t, err)
+		mock.apiCalls = 0
+	}
+
+	{
+		// the secret already exists, so we only call get
+		err := CreateOrUpdateIfNeeded(mock, secret)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, mock.apiCalls) // 1 call -> get
+	}
+}
+
+func getDefaultSecret() corev1.Secret {
+	secret :=
+		Builder().
+			SetName("secret").
+			SetNamespace("mdb.Namespace").
+			SetStringMapToData(map[string]string{"password": "my-password"}).
+			Build()
+	return secret
+}

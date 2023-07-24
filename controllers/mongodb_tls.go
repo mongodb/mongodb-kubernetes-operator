@@ -7,7 +7,6 @@ import (
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -23,12 +22,13 @@ import (
 )
 
 const (
-	tlsCAMountPath             = "/var/lib/tls/ca/"
-	tlsCACertName              = "ca.crt"
-	tlsOperatorSecretMountPath = "/var/lib/tls/server/" //nolint
-	tlsSecretCertName          = "tls.crt"              //nolint
-	tlsSecretKeyName           = "tls.key"
-	tlsSecretPemName           = "tls.pem"
+	tlsCAMountPath               = "/var/lib/tls/ca/"
+	tlsCACertName                = "ca.crt"
+	tlsOperatorSecretMountPath   = "/var/lib/tls/server/"     //nolint
+	tlsPrometheusSecretMountPath = "/var/lib/tls/prometheus/" //nolint
+	tlsSecretCertName            = "tls.crt"
+	tlsSecretKeyName             = "tls.key"
+	tlsSecretPemName             = "tls.pem"
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
@@ -142,7 +142,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 	certKey := getCertAndKey(getter, mdb, secretName)
 	pem := getPem(getter, mdb, secretName)
 	if certKey == "" && pem == "" {
-		return "", fmt.Errorf(`Neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf(`neither "%s" nor the pair "%s"/"%s" were present in the TLS secret`, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	if certKey == "" {
 		return pem, nil
@@ -151,7 +151,7 @@ func getPemOrConcatenatedCrtAndKey(getter secret.Getter, mdb mdbv1.MongoDBCommun
 		return certKey, nil
 	}
 	if certKey != pem {
-		return "", fmt.Errorf(`If all of "%s", "%s" and "%s" are present in the secret, the entry for "%s" must be equal to the concatenation of "%s" with "%s"`, tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
+		return "", fmt.Errorf(`if all of "%s", "%s" and "%s" are present in the secret, the entry for "%s" must be equal to the concatenation of "%s" with "%s"`, tlsSecretCertName, tlsSecretKeyName, tlsSecretPemName, tlsSecretPemName, tlsSecretCertName, tlsSecretKeyName)
 	}
 	return certKey, nil
 }
@@ -163,16 +163,21 @@ func getCaCrt(cmGetter configmap.Getter, secretGetter secret.Getter, mdb mdbv1.M
 	if mdb.Spec.Security.TLS.CaCertificateSecret != nil {
 		caResourceName = mdb.TLSCaCertificateSecretNamespacedName()
 		caData, err = secret.ReadStringData(secretGetter, caResourceName)
-	} else {
+	} else if mdb.Spec.Security.TLS.CaConfigMap != nil {
 		caResourceName = mdb.TLSConfigMapNamespacedName()
 		caData, err = configmap.ReadData(cmGetter, caResourceName)
 	}
+
 	if err != nil {
 		return "", err
 	}
 
+	if caData == nil {
+		return "", fmt.Errorf("TLS field requires a reference to the CA certificate which signed the server certificates. Neither secret (field caCertificateSecretRef) not configMap (field CaConfigMap) reference present")
+	}
+
 	if cert, ok := caData[tlsCACertName]; !ok || cert == "" {
-		return "", errors.Errorf(`CA certificate resource "%s" should have a CA certificate in field "%s"`, caResourceName, tlsCACertName)
+		return "", fmt.Errorf(`CA certificate resource "%s" should have a CA certificate in field "%s"`, caResourceName, tlsCACertName)
 	} else {
 		return cert, nil
 	}
@@ -312,8 +317,7 @@ func buildTLSPrometheus(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification
 	// The same key-certificate pair is used for all servers
 	tlsSecretVolume := statefulset.CreateVolumeFromSecret("prom-tls-secret", mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
 
-	// TODO: Is it ok to use the same `tlsOperatorSecretMountPath`
-	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsOperatorSecretMountPath, statefulset.WithReadOnly(true))
+	tlsSecretVolumeMount := statefulset.CreateVolumeMount(tlsSecretVolume.Name, tlsPrometheusSecretMountPath, statefulset.WithReadOnly(true))
 
 	// MongoDB expects both key and certificate to be provided in a single PEM file
 	// We are using a secret format where they are stored in separate fields, tls.crt and tls.key

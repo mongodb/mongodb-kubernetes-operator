@@ -43,21 +43,21 @@ jobs:
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.0
+      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
-        ref: ${{github.event.pull_request.head.ref}}
+        ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
         submodules: true
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.8'
+        python-version: 3.10.4
     - name: Cache Dependencies
       uses: actions/cache@v2
       with:
@@ -89,6 +89,10 @@ jobs:
         include:
         - test-name: replica_set
           distro: ubi
+        - test-name: replica_set_enterprise_upgrade_4_5
+          distro: ubi
+        - test-name: replica_set_enterprise_upgrade_5_6
+          distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
         - test-name: replica_set_recovery
@@ -102,8 +106,6 @@ jobs:
         - test-name: replica_set_change_version
           distro: ubi
         - test-name: feature_compatibility_version
-          distro: ubi
-        - test-name: feature_compatibility_version_upgrade
           distro: ubi
         - test-name: prometheus
           distro: ubi
@@ -136,17 +138,23 @@ jobs:
           distro: ubi
         - test-name: replica_set_mount_connection_string
           distro: ubi
+        - test-name: replica_set_mongod_port_change_with_arbiters
+          distro: ubi
+        - test-name: replica_set_operator_upgrade
+          distro: ubi
+        - test-name: replica_set_connection_string_options
+          distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.0
+      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
       uses: actions/checkout@v2
       with:
-        ref: ${{github.event.pull_request.head.ref}}
+        ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
         submodules: true
     # template: .action_templates/steps/set-run-status.yaml
@@ -171,7 +179,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.8'
+        python-version: 3.10.4
     - name: Cache Dependencies
       uses: actions/cache@v2
       with:

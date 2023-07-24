@@ -8,99 +8,84 @@
 
 ## Secure MongoDBCommunity Resource Connections using TLS
 
-You can configure the MongoDB Community Kubernetes Operator to use TLS certificates to encrypt traffic between:
+You can configure the MongoDB Community Kubernetes Operator to use TLS 
+certificates to encrypt traffic between:
 
 - MongoDB hosts in a replica set, and
 - Client applications and MongoDB deployments.
 
+The Operator automates TLS configuration through its integration with 
+[cert-manager](cert-manager.io), a certificate management tool for 
+Kubernetes.
+
 ### Prerequisites
 
-Before you secure MongoDBCommunity resource connections using TLS, you must:
-
-1. Create a PEM-encoded TLS certificate for the servers in the MongoDBCommunity resource using your own Certificate Authority (CA). The certificate must have one of the following:
-
-   - A wildcard `Common Name` that matches the domain name of all of the replica set members:
-
-     ```
-     *.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
-     ```
-   - The domain name for each of the replica set members as `Subject Alternative Names` (SAN):
-
-     ```
-     <metadata.name of the MongoDBCommunity resource>-0.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
-     <metadata.name of the MongoDBCommunity resource>-1.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
-     <metadata.name of the MongoDBCommunity resource>-2.<metadata.name of the MongoDBCommunity resource>-svc.<namespace>.svc.cluster.local
-     ```
-
-1. Create a Kubernetes ConfigMap that contains the certificate for the CA that signed your server certificate. The key in the ConfigMap that references the certificate must be named `ca.crt`. Kubernetes configures this automatically if the certificate file is named `ca.crt`:
-   ```
-   kubectl create configmap <tls-ca-configmap-name> --from-file=ca.crt --namespace <namespace>
-   ```
-
-   For a certificate file with any other name, you must define the `ca.crt` key manually:
-   ```
-   kubectl create configmap <tls-ca-configmap-name> --from-file=ca.crt=<certificate-file-name>.crt --namespace <namespace>
-   ```
-
-1. Create a Kubernetes secret that contains the server certificate and key for the members of your replica set. For a server certificate named `server.crt` and key named `server.key`:
-   ```
-   kubectl create secret tls <tls-secret-name> --cert=server.crt --key=server.key --namespace <namespace>
-   ```
+Before you secure MongoDBCommunity resource connections using TLS, you 
+must [Create a database user](docs/users) to authenticate to your 
+MongoDBCommunity resource.
 
 ### Procedure
 
-To secure connections to MongoDBCommunity resources using TLS:
+To secure connections to MongoDBCommunity resources with TLS using `cert-manager`:
 
-1. Add the following fields to the MongoDBCommunity resource definition:
+1. Add the `cert-manager` repository to your `helm` repository list and
+   ensure it's up to date:
 
-   - `spec.security.tls.enabled`: Encrypts communications using TLS certificates between MongoDB hosts in a replica set and client applications and MongoDB deployments. Set to `true`.
-   - `spec.security.tls.optional`: (**Optional**) Enables the members of the replica set to accept both TLS and non-TLS client connections. Equivalent to setting the MongoDB[`net.tls.mode`](https://www.mongodb.com/docs/manual/reference/configuration-options/#net.tls.mode) setting to `preferSSL`. If omitted, defaults to `false`.
-
-     ---
-     **NOTE**
-
-     When you enable TLS on an existing replica set deployment:
-
-     a. Set `spec.security.tls.optional` to `true`.
-
-     b. Apply the configuration to Kubernetes.
-
-     c. Upgrade your existing clients to use TLS.
-
-     d. Remove the `spec.security.tls.optional` field.
-
-     e. Complete the remaining steps in the procedure.
-
-     ---
-   - `spec.security.tls.certificateKeySecretRef.name`: Name of the Kubernetes secret that contains the server certificate and key that you created in the [prerequisites](#prerequisites-1).
-   - `spec.security.tls.caConfigMapRef.name`: Name of the Kubernetes ConfigMap that contains the Certificate Authority certificate used to sign the server certificate that you created in the [prerequisites](#prerequisites-1).
-
-   ```yaml
-   apiVersion: mongodbcommunity.mongodb.com/v1
-   kind: MongoDBCommunity
-   metadata:
-     name: example-mongodb
-   spec:
-     members: 3
-     type: ReplicaSet
-     version: "4.2.7"
-     security:
-       tls:
-         enabled: true
-         certificateKeySecretRef:
-           name: <tls-secret-name>
-         caConfigMapRef:
-           name: <tls-ca-configmap-name>
+   ```
+   helm repo add jetstack https://charts.jetstack.io
+   helm repo update
    ```
 
-1. Apply the configuration to Kubernetes:
-   ```
-   kubectl apply -f <example>.yaml --namespace <my-namespace>
-   ```
-1. From within the Kubernetes cluster, connect to the MongoDBCommunity resource.
-   - If `spec.security.tls.optional` is omitted or `false`: clients must
-     establish TLS connections to the MongoDB servers in the replica set.
-   - If `spec.security.tls.optional` is true, clients can establish TLS or
-     non-TLS connections to the MongoDB servers in the replica set.
+1. Install `cert-manager`:
 
-   See the documentation for your connection method to learn how to establish a TLS connection to a MongoDB server.
+   ```
+   helm install cert-manager jetstack/cert-manager --namespace cert-manager \ 
+   --create-namespace --set installCRDs=true
+   ```
+
+1. Create a TLS-secured MongoDBCommunity resource:
+
+   ```
+   helm upgrade community-operator mongodb/community-operator \
+   --namespace cko-namespace --set resource.tls.useCertManager=true \
+   --set createResource=true --set resource.tls.enabled=true
+   ```
+
+  This creates a resource secured with TLS and generates the necessary
+  certificates with `cert-manager` according to the values specified in
+  the `values.yaml` file in the Community Kubernetes Operator 
+  [chart repository](https://github.com/mongodb/helm-charts/tree/main/charts/community-operator).
+
+  `cert-manager` automatically reissues certificates according to the
+  value of `resource.tls.certManager.renewCertBefore`. To alter the 
+  reissuance interval, either: 
+  
+  - Set `resource.tls.certManager.renewCertBefore` in `values.yaml` to 
+     the desired interval in hours before running `helm upgrade`
+
+  - Set `spec.renewBefore` in the Certificate resource file generated
+     by `cert-manager` to the desired interval in hours after running 
+     `helm upgrade`
+  
+
+
+1. Test your connection over TLS by 
+
+   - Connecting to a `mongod` container using `kubectl`:
+
+   ```
+   kubectl exec -it mongodb-replica-set -c mongod -- bash
+   ```
+
+   Where `mongodb-replica-set` is the name of your MongoDBCommunity resource
+
+   - Then, use `mongosh` to connect over TLS:
+
+   ```
+   mongosh --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile \
+   /var/lib/tls/server/*.pem \ 
+   --host <mongodb-replica-set>.<mongodb-replica-set>-svc.<namespace>.svc.cluster.local
+   ```
+
+   Where `mongodb-replica-set` is the name of your MongoDBCommunity 
+   resource and `namespace` is the namespace of your deployment.

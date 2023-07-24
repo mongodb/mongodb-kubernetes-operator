@@ -24,6 +24,9 @@ func StringSlices(slice1, slice2 []string) []string {
 // StringToStringMap merges two string maps together with the second map
 // overriding any values also specified in the first.
 func StringToStringMap(map1, map2 map[string]string) map[string]string {
+	if map1 == nil && map2 == nil {
+		return nil
+	}
 	mergedMap := make(map[string]string)
 	for k, v := range map1 {
 		mergedMap[k] = v
@@ -504,11 +507,15 @@ func Tolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []
 	mergedTolerations := make([]corev1.Toleration, 0)
 	defaultMap := createTolerationsMap(defaultTolerations)
 	for _, v := range overrideTolerations {
-		defaultMap[v.Key] = v
+		if _, ok := defaultMap[v.Key]; ok {
+			defaultMap[v.Key] = append(defaultMap[v.Key], v)
+		} else {
+			defaultMap[v.Key] = []corev1.Toleration{v}
+		}
 	}
 
 	for _, v := range defaultMap {
-		mergedTolerations = append(mergedTolerations, v)
+		mergedTolerations = append(mergedTolerations, v...)
 	}
 
 	if len(mergedTolerations) == 0 {
@@ -522,10 +529,14 @@ func Tolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []
 	return mergedTolerations
 }
 
-func createTolerationsMap(tolerations []corev1.Toleration) map[string]corev1.Toleration {
-	tolerationsMap := make(map[string]corev1.Toleration)
+func createTolerationsMap(tolerations []corev1.Toleration) map[string][]corev1.Toleration {
+	tolerationsMap := make(map[string][]corev1.Toleration)
 	for _, t := range tolerations {
-		tolerationsMap[t.Key] = t
+		if _, ok := tolerationsMap[t.Key]; ok {
+			tolerationsMap[t.Key] = append(tolerationsMap[t.Key], t)
+		} else {
+			tolerationsMap[t.Key] = []corev1.Toleration{t}
+		}
 	}
 	return tolerationsMap
 }

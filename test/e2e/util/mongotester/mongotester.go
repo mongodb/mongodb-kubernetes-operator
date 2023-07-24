@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/objx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -89,6 +88,24 @@ func (m *Tester) ConnectivitySucceeds(opts ...OptionApplier) func(t *testing.T) 
 // to connect to the MongoDB resource
 func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
+}
+
+func (m *Tester) ConnectivityRejected(opts ...OptionApplier) func(t *testing.T) {
+	clientOpts := make([]*options.ClientOptions, 0)
+	for _, optApplier := range opts {
+		clientOpts = optApplier.ApplyOption(clientOpts...)
+	}
+
+	return func(t *testing.T) {
+		// We can optionally skip connectivity tests locally
+		if testing.Short() {
+			t.Skip()
+		}
+
+		if err := m.ensureClient(clientOpts...); err == nil {
+			t.Fatalf("No error, but it should have failed")
+		}
+	}
 }
 
 func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
@@ -201,6 +218,12 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 
 	connectivityOpts := defaults()
 	return func(t *testing.T) {
+
+		// We can optionally skip connectivity tests locally
+		if testing.Short() {
+			t.Skip()
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
 		defer cancel()
 
@@ -222,7 +245,10 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 				t.Logf("Was successfully able to connect, when we should not have been able to!")
 				return false, nil
 			}
-			t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
+			// this information is only useful if we needed more than one attempt.
+			if attempts >= 2 {
+				t.Logf("Connectivity check was successful after %d attempt(s)", attempts)
+			}
 			return true, nil
 		})
 
@@ -241,7 +267,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 		tls.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			cert := verifiedChains[0][0]
 			if initialCertSerialNumber.Cmp(cert.SerialNumber) == 0 {
-				return errors.Errorf("certificate serial number has not changed: %s", cert.SerialNumber)
+				return fmt.Errorf("certificate serial number has not changed: %s", cert.SerialNumber)
 			}
 			return nil
 		}
@@ -444,7 +470,7 @@ func WithHosts(hosts []string) OptionApplier {
 func WithTls(mdb mdbv1.MongoDBCommunity) OptionApplier {
 	tlsConfig, err := getClientTLSConfig(mdb)
 	if err != nil {
-		panic(errors.Errorf("could not retrieve TLS config: %s", err))
+		panic(fmt.Errorf("could not retrieve TLS config: %s", err))
 	}
 
 	return withTls(tlsConfig)
@@ -508,7 +534,7 @@ func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	}
 	block, _ := pem.Decode(certSecret.Data["tls.crt"])
 	if block == nil {
-		return nil, errors.Errorf("error decoding client cert key")
+		return nil, fmt.Errorf("error decoding client cert key")
 	}
 	return x509.ParseCertificate(block.Bytes)
 }

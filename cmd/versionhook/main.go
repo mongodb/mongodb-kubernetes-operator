@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
 	"go.uber.org/zap"
@@ -61,7 +59,7 @@ func main() {
 		logger.Infof("Pod should be deleted")
 		if err := deletePod(); err != nil {
 			// We should not raise an error if the Pod could not be deleted. It can have even
-			// worst consequences: Pod being restarted with the same version, and the agent
+			// worse consequences: Pod being restarted with the same version, and the agent
 			// killing it immediately after.
 			logger.Errorf("Could not manually trigger restart of this Pod because of: %s", err)
 			logger.Errorf("Make sure the Pod is restarted in order for the upgrade process to continue")
@@ -109,7 +107,7 @@ func waitForAgentHealthStatus() (agent.Health, error) {
 
 		status, ok := health.Healthiness[getHostname()]
 		if !ok {
-			return agent.Health{}, errors.Errorf("couldn't find status for hostname %s", getHostname())
+			return agent.Health{}, fmt.Errorf("couldn't find status for hostname %s", getHostname())
 		}
 
 		// We determine if the file has been updated by checking if the process is not in goal state.
@@ -118,7 +116,7 @@ func waitForAgentHealthStatus() (agent.Health, error) {
 			return health, nil
 		}
 	}
-	return agent.Health{}, errors.Errorf("agent health status not ready after waiting %s", pollingDuration.String())
+	return agent.Health{}, fmt.Errorf("agent health status not ready after waiting %s", pollingDuration.String())
 
 }
 
@@ -133,7 +131,7 @@ func getAgentHealthStatus() (agent.Health, error) {
 
 	h, err := readAgentHealthStatus(f)
 	if err != nil {
-		return agent.Health{}, errors.Errorf("could not read health status file: %s", err)
+		return agent.Health{}, fmt.Errorf("could not read health status file: %s", err)
 	}
 	return h, err
 }
@@ -142,7 +140,7 @@ func getAgentHealthStatus() (agent.Health, error) {
 // io.Reader
 func readAgentHealthStatus(reader io.Reader) (agent.Health, error) {
 	var h agent.Health
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return h, err
 	}
@@ -160,7 +158,7 @@ func getHostname() string {
 func shouldDeletePod(health agent.Health) (bool, error) {
 	status, ok := health.ProcessPlans[getHostname()]
 	if !ok {
-		return false, errors.Errorf("hostname %s was not in the process plans", getHostname())
+		return false, fmt.Errorf("hostname %s was not in the process plans", getHostname())
 	}
 	return isWaitingToBeDeleted(status), nil
 }
@@ -187,15 +185,15 @@ func isWaitingToBeDeleted(healthStatus agent.MmsDirectorStatus) bool {
 func deletePod() error {
 	thisPod, err := getThisPod()
 	if err != nil {
-		return errors.Errorf("could not get pod: %s", err)
+		return fmt.Errorf("could not get pod: %s", err)
 	}
 	k8sClient, err := inClusterClient()
 	if err != nil {
-		return errors.Errorf("could not get client: %s", err)
+		return fmt.Errorf("could not get client: %s", err)
 	}
 
 	if err := k8sClient.Delete(context.TODO(), &thisPod); err != nil {
-		return errors.Errorf("could not delete pod: %s", err)
+		return fmt.Errorf("could not delete pod: %s", err)
 	}
 	return nil
 }
@@ -204,12 +202,12 @@ func deletePod() error {
 func getThisPod() (corev1.Pod, error) {
 	podName := getHostname()
 	if podName == "" {
-		return corev1.Pod{}, errors.Errorf("environment variable HOSTNAME was not present")
+		return corev1.Pod{}, fmt.Errorf("environment variable HOSTNAME was not present")
 	}
 
 	ns, err := getNamespace()
 	if err != nil {
-		return corev1.Pod{}, errors.Errorf("could not read namespace: %s", err)
+		return corev1.Pod{}, fmt.Errorf("could not read namespace: %s", err)
 	}
 
 	return corev1.Pod{
@@ -223,18 +221,18 @@ func getThisPod() (corev1.Pod, error) {
 func inClusterClient() (client.Client, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, errors.Errorf("could not get cluster config: %s", err)
+		return nil, fmt.Errorf("could not get cluster config: %s", err)
 	}
 
 	k8sClient, err := client.New(config, client.Options{})
 	if err != nil {
-		return nil, errors.Errorf("could not create client: %s", err)
+		return nil, fmt.Errorf("could not create client: %s", err)
 	}
 	return k8sClient, nil
 }
 
 func getNamespace() (string, error) {
-	data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", err
 	}

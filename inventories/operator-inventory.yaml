@@ -5,31 +5,53 @@ images:
   - name: operator-ubi
     vars:
       context: .
-      template_context: scripts/dev/templates
+      template_context: scripts/dev/templates/operator
 
     inputs:
       - operator_image
       - operator_image_dev
 
+    platform: linux/amd64
+
     stages:
-      - name: operator-template-ubi
+#
+# Dev build stages
+#
+      - name: operator-builder-dev
+        task_type: docker_build
+        tags: [ "ubi" ]
+        dockerfile: scripts/dev/templates/operator/Dockerfile.builder
+
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+        - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          tag: $(inputs.params.version_id)-context
+
+      - name: operator-template-dev
         task_type: dockerfile_template
         tags: ["ubi"]
-        distro: operator
-
+        template_file_extension: operator
         inputs:
-          - builder
-          - builder_image
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
-      - name: operator-build-ubi
+      - name: operator-build-dev
         task_type: docker_build
         tags: ["ubi"]
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
-        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+        inputs:
+          - version_id
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image_dev):$(inputs.params.version_id)-context
 
         labels:
           quay.expires-after: 48h
@@ -40,14 +62,52 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
             tag: latest
 
-      - name: operator-release-ubi
+#
+# Release build stages
+#
+      - name: operator-builder-release
         task_type: docker_build
-        tags: ["release"]
+        tags: [ "ubi", "release"]
+
+        inputs:
+          - builder_image
+          - release_version
+
+        dockerfile: scripts/dev/templates/operator/Dockerfile.builder
+
+        labels:
+          quay.expires-after: Never
+
+        buildargs:
+          builder_image: $(inputs.params.builder_image)
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+            tag: $(inputs.params.release_version)-context
+
+      - name: operator-template-release
+        task_type: dockerfile_template
+        tags: [ "ubi", "release"]
+        template_file_extension: operator
+        inputs:
+          - base_image
+          - release_version
+
+        output:
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator/$(inputs.params.release_version)/ubi/Dockerfile
+
+      - name: operator-build-release
+        task_type: docker_build
+        tags: [ "ubi", "release"]
 
         inputs:
           - release_version
 
-        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image):$(inputs.params.release_version)-context
 
         labels:
           quay.expires-after: Never

@@ -42,7 +42,7 @@ each one of them in charge of some part of the lifecycle of the MongoDB database
 # Getting Started
 
 ## PR Prerequisites
-* Please ensure you have signed our Contributor Agreement. You can find it [here](https://www.mongodb.com/legal/contributor-agreement). 
+* Please ensure you have signed our Contributor Agreement. You can find it [here](https://www.mongodb.com/legal/contributor-agreement).
 
 * Please ensure that all commits are signed.
 
@@ -57,7 +57,7 @@ to be able to run properly. Create a json file with the following content:
   "namespace": "mongodb",
   "repo_url": "localhost:5000",
   "operator_image": "mongodb-kubernetes-operator",
-  "e2e_image": "community-e2e",
+  "e2e_image": "community-operator-e2e",
   "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
   "agent_image_ubuntu": "mongodb-agent-dev",
   "agent_image_ubi": "mongodb-agent-ubi-dev",
@@ -79,7 +79,7 @@ to be able to run properly. Create a json file with the following content:
 9. `s3_bucket` the S3 bucket that Dockerfiles will be pushed to as part of the release process. Note: this is only required when running the release tasks locally.
 
 
-You can set the `MONGODB_COMMUNITY_CONFIG` environment variable to be the absolute path of this file. 
+You can set the `MONGODB_COMMUNITY_CONFIG` environment variable to be the absolute path of this file.
 It will default to `~/.community-operator-dev/config.json`
 
 Please see [here](./build_operator_locally.md) to see how to build and deploy the operator locally.
@@ -102,8 +102,9 @@ instance, you can leave this as `mongodb`.
 
 The test runner is a Python script, in order to use it a virtualenv needs to be
 created.
+
 **Python 3.9 is not supported yet. Please use Python 3.8.**
-  
+
 ### Pip
 ```sh
 python -m venv venv
@@ -115,7 +116,7 @@ python -m pip install -r requirements.txt
 
 * create a python environment and install dependencies.
 ```bash
-pipenv install
+pipenv install -r requirements.txt
 ```
 
 * activate the python environment.

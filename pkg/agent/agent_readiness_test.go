@@ -98,7 +98,6 @@ func (m mockPodGetter) GetPod(client.ObjectKey) (corev1.Pod, error) {
 	}
 
 	pod := m.pods[m.currPodIndex]
-	m.currPodIndex++
 
 	return pod, nil
 }

@@ -2,7 +2,9 @@ package construct
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -12,7 +14,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/probes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/resourcerequirements"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,9 +22,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	OfficialMongodbRepoUrls = []string{"docker.io/mongodb", "quay.io/mongodb"}
+)
+
 const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
+
+	DefaultImageType = "ubi8"
 
 	versionUpgradeHookName            = "mongod-posthook"
 	ReadinessProbeContainerName       = "mongodb-agent-readinessprobe"
@@ -33,21 +40,26 @@ const (
 	mongodbDatabaseServiceAccountName = "mongodb-database"
 	agentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	MongodbRepoUrl = "MONGODB_REPO_URL"
+	MongodbRepoUrl                           = "MONGODB_REPO_URL"
+	OfficialMongodbEnterpriseServerImageName = "mongodb-enterprise-server"
 
-	headlessAgentEnv           = "HEADLESS_AGENT"
-	podNamespaceEnv            = "POD_NAMESPACE"
-	automationConfigEnv        = "AUTOMATION_CONFIG_MAP"
-	AgentImageEnv              = "AGENT_IMAGE"
-	MongodbImageEnv            = "MONGODB_IMAGE"
-	VersionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
-	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
-	ManagedSecurityContextEnv  = "MANAGED_SECURITY_CONTEXT"
+	headlessAgentEnv                = "HEADLESS_AGENT"
+	podNamespaceEnv                 = "POD_NAMESPACE"
+	automationConfigEnv             = "AUTOMATION_CONFIG_MAP"
+	AgentImageEnv                   = "AGENT_IMAGE"
+	MongodbImageEnv                 = "MONGODB_IMAGE"
+	MongoDBImageType                = "MDB_IMAGE_TYPE"
+	MongoDBAssumeEnterpriseEnv      = "MDB_ASSUME_ENTERPRISE"
+	VersionUpgradeHookImageEnv      = "VERSION_UPGRADE_HOOK_IMAGE"
+	ReadinessProbeImageEnv          = "READINESS_PROBE_IMAGE"
+	agentLogLevelEnv                = "AGENT_LOG_LEVEL"
+	agentMaxLogFileDurationHoursEnv = "AGENT_MAX_LOG_FILE_DURATION_HOURS"
 
 	automationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
-	automationAgentOptions = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
+	automationAgentOptions    = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
+	automationAgentLogOptions = " -logFile /var/log/mongodb-mms-automation/automation-agent.log -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
 
 	MongodbUserCommand = `current_uid=$(id -u)
 AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
@@ -70,7 +82,7 @@ type MongoDBStatefulSetOwner interface {
 	GetName() string
 	// GetNamespace returns the namespace the resource is defined in.
 	GetNamespace() string
-	// GetMongoDBVersion returns the version of MongoDB to be used for this resource
+	// GetMongoDBVersion returns the version of MongoDB to be used for this resource.
 	GetMongoDBVersion() string
 	// AutomationConfigSecretName returns the name of the secret which will contain the automation config.
 	AutomationConfigSecretName() string
@@ -78,17 +90,21 @@ type MongoDBStatefulSetOwner interface {
 	GetUpdateStrategyType() appsv1.StatefulSetUpdateStrategyType
 	// HasSeparateDataAndLogsVolumes returns whether or not the volumes for data and logs would need to be different.
 	HasSeparateDataAndLogsVolumes() bool
-	// GetAgentScramKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
+	// GetAgentKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
 	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
-	// DataVolumeName returns the name that the data volume should have
+	// DataVolumeName returns the name that the data volume should have.
 	DataVolumeName() string
-	// LogsVolumeName returns the name that the data volume should have
+	// LogsVolumeName returns the name that the data volume should have.
 	LogsVolumeName() string
+	// GetAgentLogLevel returns the log level for the MongoDB automation agent.
+	GetAgentLogLevel() mdbv1.LogLevel
+	// GetAgentMaxLogFileDurationHours returns the number of hours after which the log file should be rolled.
+	GetAgentMaxLogFileDurationHours() int
 
 	// GetMongodConfiguration returns the MongoDB configuration for each member.
 	GetMongodConfiguration() mdbv1.MongodConfiguration
 
-	// NeedsAutomationConfigVolume returns whether the statefuslet needs to have a volume for the automationconfig.
+	// NeedsAutomationConfigVolume returns whether the statefulset needs to have a volume for the automationconfig.
 	NeedsAutomationConfigVolume() bool
 }
 
@@ -115,12 +131,16 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
 	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
 
+	// tmp volume is required by the mongodb-agent and mongod
+	tmpVolume := statefulset.CreateVolumeFromEmptyDir("tmp")
+	tmpVolumeMount := statefulset.CreateVolumeMount(tmpVolume.Name, "/tmp", statefulset.WithReadOnly(false))
+
 	keyFileNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 	keyFileVolume := statefulset.CreateVolumeFromEmptyDir(keyFileNsName.Name)
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
-	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount}
+	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount, tmpVolumeMount}
 
 	automationConfigVolumeFunc := podtemplatespec.NOOP()
 	if mdb.NeedsAutomationConfigVolume() {
@@ -129,7 +149,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, automationConfigVolumeMount)
 	}
-	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod}
+	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod, tmpVolumeMount}
 	dataVolumeClaim := statefulset.NOOP()
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
@@ -150,10 +170,16 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		singleModeVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
 	}
 
-	podSecurityContext := podtemplatespec.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		podSecurityContext = podtemplatespec.WithSecurityContext(podtemplatespec.DefaultPodSecurityContext())
+	podSecurityContext, _ := podtemplatespec.WithDefaultSecurityContextsModifications()
+
+	agentLogLevel := mdbv1.LogLevelInfo
+	if mdb.GetAgentLogLevel() != "" {
+		agentLogLevel = string(mdb.GetAgentLogLevel())
+	}
+
+	agentMaxLogFileDurationHours := automationconfig.DefaultAgentMaxLogFileDurationHours
+	if mdb.GetAgentMaxLogFileDurationHours() != 0 {
+		agentMaxLogFileDurationHours = mdb.GetAgentMaxLogFileDurationHours()
 	}
 
 	return statefulset.Apply(
@@ -175,9 +201,10 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(hooksVolume),
 				automationConfigVolumeFunc,
 				podtemplatespec.WithVolume(scriptsVolume),
+				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts)),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentMaxLogFileDurationHours)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
@@ -190,15 +217,11 @@ func BaseAgentCommand() string {
 }
 
 func AutomationAgentCommand() []string {
-	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions}
+	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount) container.Modification {
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, maxLogFileDurationHours int) container.Modification {
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(os.Getenv(AgentImageEnv)),
@@ -206,8 +229,8 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		securityContext,
 		container.WithCommand(AutomationAgentCommand()),
+		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  headlessAgentEnv,
@@ -230,17 +253,27 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 				Name:  agentHealthStatusFilePathEnv,
 				Value: agentHealthStatusFilePathValue,
 			},
+			corev1.EnvVar{
+				Name:  agentLogLevelEnv,
+				Value: logLevel,
+			},
+			corev1.EnvVar{
+				Name:  agentMaxLogFileDurationHoursEnv,
+				Value: strconv.Itoa(maxLogFileDurationHours),
+			},
 		),
 	)
 }
 
 func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
 		container.WithImage(os.Getenv(VersionUpgradeHookImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
+		containerSecurityContext,
 	)
 }
 
@@ -271,21 +304,32 @@ func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 // readinessProbeInit returns a modification function which will add the readiness probe container.
 // this container will copy the readiness probe binary into the /opt/scripts directory.
 func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(ReadinessProbeContainerName),
 		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
 		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
+		containerSecurityContext,
 	)
 }
 
 func getMongoDBImage(version string) string {
 	repoUrl := os.Getenv(MongodbRepoUrl)
+	imageType := envvar.GetEnvOrDefault(MongoDBImageType, DefaultImageType)
+
 	if strings.HasSuffix(repoUrl, "/") {
 		repoUrl = strings.TrimRight(repoUrl, "/")
 	}
 	mongoImageName := os.Getenv(MongodbImageEnv)
+	for _, officialUrl := range OfficialMongodbRepoUrls {
+		if repoUrl == officialUrl {
+			return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
+		}
+	}
+
+	// This is the old images backwards compatibility code path.
 	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }
 
@@ -298,10 +342,6 @@ func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additio
 # wait for config and keyfile to be created by the agent
  while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
 
-# with mongod configured to append logs, we need to provide them to stdout as
-# mongod does not write to stdout and a log file
-tail -F /var/log/mongodb-mms-automation/mongodb.log > /dev/stdout &
-
 # start mongod with this configuration
 exec mongod -f %s;
 
@@ -313,17 +353,17 @@ exec mongod -f %s;
 		mongoDbCommand,
 	}
 
-	securityContext := container.NOOP()
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
-	if !managedSecurityContext {
-		securityContext = container.WithSecurityContext(container.DefaultSecurityContext())
-	}
+	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(getMongoDBImage(version)),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(containerCommand),
+		// The official image provides both CMD and ENTRYPOINT. We're reusing the former and need to replace
+		// the latter with an empty string.
+		container.WithArgs([]string{""}),
+		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
 				Name:  agentHealthStatusFilePathEnv,
@@ -331,7 +371,5 @@ exec mongod -f %s;
 			},
 		),
 		container.WithVolumeMounts(volumeMounts),
-
-		securityContext,
 	)
 }

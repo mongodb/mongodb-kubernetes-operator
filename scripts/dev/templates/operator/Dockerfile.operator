@@ -1,0 +1,18 @@
+ARG imagebase
+FROM ${imagebase} AS builder
+
+FROM {{base_image}}
+
+ENV OPERATOR=manager \
+    USER_UID=2000 \
+    USER_NAME=mongodb-kubernetes-operator
+
+WORKDIR /
+COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/build/bin /usr/local/bin
+
+RUN  /usr/local/bin/user_setup
+
+USER ${USER_UID}
+
+ENTRYPOINT ["/usr/local/bin/entrypoint"]

@@ -2,15 +2,22 @@
 
 <img align="right" src="https://mongodb-kubernetes-operator.s3.amazonaws.com/img/Leaf-Forest%402x.png">
 
-### v0.6.0 has introduced breaking changes. If you are upgrading from a previous version, follow the upgrade instructions outlined [in the release notes](https://github.com/mongodb/mongodb-kubernetes-operator/releases/tag/v0.6.0)
-
-
-This is a [Kubernetes Operator](https://coreos.com/operators/) which deploys MongoDB Community into Kubernetes clusters.
+This is a [Kubernetes Operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) which deploys MongoDB Community into Kubernetes clusters.
 
 If you are a MongoDB Enterprise customer, or need Enterprise features such as Backup, you can use the [MongoDB Enterprise Operator for Kubernetes](https://github.com/mongodb/mongodb-enterprise-kubernetes).
 
 Here is a talk from MongoDB Live 2020 about the Community Operator:
 * [Run it in Kubernetes! Community and Enterprise MongoDB in Containers](https://www.youtube.com/watch?v=2Xszdg-4T6A&t=1368s)
+
+> **Note** 
+> 
+> Hi, I'm Dan Mckean 👋 I'm the Product Manager for MongoDB's support of Kubernetes. 
+> 
+> The [Community Operator](https://github.com/mongodb/mongodb-kubernetes-operator) is something I inherited when I started, but it doesn't get as much attention from us as we'd like, and we're trying to understand how it's used in order to establish it's future. It will help us establish exactly what level of support we can offer, and what sort of timeframe we aim to provide support in 🙂 
+>
+>Here's a super short survey (it's much easier for us to review all the feedback that way!): [https://docs.google.com/forms/d/e/1FAIpQLSfwrwyxBSlUyJ6AmC-eYlgW_3JEdfA48SB2i5--_WpiynMW2w/viewform?usp=sf_link](https://docs.google.com/forms/d/e/1FAIpQLSfwrwyxBSlUyJ6AmC-eYlgW_3JEdfA48SB2i5--_WpiynMW2w/viewform?usp=sf_link)
+>
+> If you'd rather email me instead: [dan.mckean@mongodb.com](mailto:dan.mckean@mongodb.com?subject=MongoDB%20Community%20Operator%20feedback)
 
 ## Table of Contents
 

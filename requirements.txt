@@ -1,17 +1,21 @@
-git+https://github.com/mongodb/sonar@94ed8a31e3f28c1d8a4b2ce96a341662c3f74c62
+git+https://github.com/mongodb/sonar@0c21097a55a4426c8824f74cdcfbceb11b27bb68
 github-action-templates==0.0.4
 docker==4.3.1
-kubernetes==11.0.0
+kubernetes==26.1.0
 jinja2==2.11.3
 MarkupSafe==2.0.1
 PyYAML==5.4.1
 black==22.3.0
-mypy==0.782
+mypy==0.961
 tqdm==v4.49.0
 boto3==1.16.21
 pymongo==3.11.4
 dnspython==2.0.0
-requests==2.24.0
+requests==2.31.0
 pyyaml==5.4.1
 ruamel.yaml==0.17.9
+semver==2.13.0
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+certifi>=2022.12.7 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=1.26.5 # not directly required, pinned by Snyk to avoid a vulnerability

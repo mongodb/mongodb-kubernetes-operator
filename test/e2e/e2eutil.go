@@ -70,7 +70,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 		Spec: mdbv1.MongoDBCommunitySpec{
 			Members:  3,
 			Type:     "ReplicaSet",
-			Version:  "4.4.0",
+			Version:  "6.0.5",
 			Arbiters: 0,
 			Security: mdbv1.Security{
 				Authentication: mdbv1.Authentication{
@@ -121,7 +121,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 										Name: "mongod",
 										Resources: corev1.ResourceRequirements{
 											Limits: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.1"),
+												"cpu":    resource.MustParse("1.0"),
 												"memory": resource.MustParse("200M"),
 											},
 											Requests: map[corev1.ResourceName]resource.Quantity{
@@ -134,7 +134,7 @@ func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBC
 										Name: "mongodb-agent",
 										Resources: corev1.ResourceRequirements{
 											Limits: map[corev1.ResourceName]resource.Quantity{
-												"cpu":    resource.MustParse("0.1"),
+												"cpu":    resource.MustParse("1.0"),
 												"memory": resource.MustParse("200M"),
 											},
 											Requests: map[corev1.ResourceName]resource.Quantity{
@@ -157,10 +157,10 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	return mdbv1.TLS{
 		Enabled:  true,
 		Optional: optional,
-		CertificateKeySecret: mdbv1.LocalObjectReference{
+		CertificateKeySecret: corev1.LocalObjectReference{
 			Name: "tls-certificate",
 		},
-		CaCertificateSecret: &mdbv1.LocalObjectReference{
+		CaCertificateSecret: &corev1.LocalObjectReference{
 			Name: "tls-ca-key-pair",
 		},
 	}

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/stretchr/objx"
@@ -27,8 +29,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
-
-	"github.com/pkg/errors"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
@@ -75,7 +75,6 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
 	configMapWatcher := watch.New()
-
 	return &ReplicaSetReconciler{
 		client:           kubernetesClient.NewClient(mgrClient),
 		scheme:           mgr.GetScheme(),
@@ -140,7 +139,8 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
-	if err := r.validateSpec(mdb); err != nil {
+	err, lastAppliedSpec := r.validateSpec(mdb)
+	if err != nil {
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -256,6 +256,10 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
+	if lastAppliedSpec != nil {
+		r.cleanupScramSecrets(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
+	}
+
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
 		r.log.Errorf("Could not save current spec as an annotation: %s", err)
 	}
@@ -296,11 +300,11 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 	if mdb.Spec.Security.TLS.Enabled {
 		r.log.Infof("TLS is enabled, creating/updating CA secret")
 		if err := ensureCASecret(r.client, r.client, r.client, mdb); err != nil {
-			return errors.Errorf("could not ensure CA secret: %s", err)
+			return fmt.Errorf("could not ensure CA secret: %s", err)
 		}
 		r.log.Infof("TLS is enabled, creating/updating TLS secret")
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
-			return errors.Errorf("could not ensure TLS secret: %s", err)
+			return fmt.Errorf("could not ensure TLS secret: %s", err)
 		}
 	}
 	return nil
@@ -317,7 +321,7 @@ func (r *ReplicaSetReconciler) ensurePrometheusTLSResources(mdb mdbv1.MongoDBCom
 	// require the contents.
 	r.log.Infof("Prometheus TLS is enabled, creating/updating TLS secret")
 	if err := ensurePrometheusTLSSecret(r.client, mdb); err != nil {
-		return errors.Errorf("could not ensure TLS secret: %s", err)
+		return fmt.Errorf("could not ensure TLS secret: %s", err)
 	}
 
 	return nil
@@ -332,17 +336,17 @@ func (r *ReplicaSetReconciler) ensurePrometheusTLSResources(mdb mdbv1.MongoDBCom
 func (r *ReplicaSetReconciler) deployStatefulSet(mdb mdbv1.MongoDBCommunity) (bool, error) {
 	r.log.Info("Creating/Updating StatefulSet")
 	if err := r.createOrUpdateStatefulSet(mdb, false); err != nil {
-		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
+		return false, fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
 	r.log.Info("Creating/Updating StatefulSet for Arbiters")
 	if err := r.createOrUpdateStatefulSet(mdb, true); err != nil {
-		return false, errors.Errorf("error creating/updating StatefulSet: %s", err)
+		return false, fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 
 	currentSts, err := r.client.GetStatefulSet(mdb.NamespacedName())
 	if err != nil {
-		return false, errors.Errorf("error getting StatefulSet: %s", err)
+		return false, fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
 	r.log.Debugf("Ensuring StatefulSet is ready, with type: %s", mdb.GetUpdateStrategyType())
@@ -404,12 +408,16 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(mdb mdbv1.MongoDBCommunity) bool
 	}
 
 	// if we are scaling up, we need to make sure the StatefulSet is scaled up first.
-	if scale.IsScalingUp(mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
+	if scale.IsScalingUp(&mdb) || mdb.CurrentArbiters() < mdb.DesiredArbiters() {
+		if scale.HasZeroReplicas(&mdb) {
+			r.log.Debug("Scaling up the ReplicaSet when there is no replicas, the Automation Config must be updated first")
+			return true
+		}
 		r.log.Debug("Scaling up the ReplicaSet, the StatefulSet must be updated first")
 		return false
 	}
 
-	if scale.IsScalingDown(mdb) {
+	if scale.IsScalingDown(&mdb) {
 		r.log.Debug("Scaling down the ReplicaSet, the Automation Config must be updated first")
 		return true
 	}
@@ -442,17 +450,20 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 // The Service definition is built from the `mdb` resource. If `isArbiter` is set to true, the Service
 // will be created for the arbiters Statefulset.
 func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
-	name := mdb.ServiceName()
+	processPortManager, err := r.createProcessPortManager(mdb)
+	if err != nil {
+		return err
+	}
 
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: mdb.Namespace}}
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: mdb.ServiceName(), Namespace: mdb.Namespace}}
 	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.client, svc, func() error {
 		resourceVersion := svc.ResourceVersion // Save resourceVersion for later
-		*svc = buildService(mdb)
+		*svc = r.buildService(mdb, processPortManager)
 		svc.ResourceVersion = resourceVersion
 		return nil
 	})
 	if err != nil {
-		r.log.Infof("Cloud not create or patch the service: %s", err)
+		r.log.Errorf("Could not create or patch the service: %s", err)
 		return nil
 	}
 
@@ -461,18 +472,35 @@ func (r *ReplicaSetReconciler) ensureService(mdb mdbv1.MongoDBCommunity) error {
 	return err
 }
 
+// createProcessPortManager is a helper method for creating new ReplicaSetPortManager.
+// ReplicaSetPortManager needs current automation config and current pod state and the code for getting them
+// was extracted here as it is used in ensureService and buildAutomationConfig.
+func (r *ReplicaSetReconciler) createProcessPortManager(mdb mdbv1.MongoDBCommunity) (*agent.ReplicaSetPortManager, error) {
+	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	if err != nil {
+		return nil, fmt.Errorf("could not read existing automation config: %s", err)
+	}
+
+	currentPodStates, err := agent.GetAllDesiredMembersAndArbitersPodState(mdb.NamespacedName(), r.client, mdb.StatefulSetReplicasThisReconciliation(), mdb.StatefulSetArbitersThisReconciliation(), currentAC.Version, r.log)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get all pods goal state: %w", err)
+	}
+
+	return agent.NewReplicaSetPortManager(r.log, mdb.Spec.AdditionalMongodConfig.GetDBPort(), currentPodStates, currentAC.Processes), nil
+}
+
 func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommunity, isArbiter bool) error {
 	set := appsv1.StatefulSet{}
 
 	name := mdb.NamespacedName()
 	if isArbiter {
-		name.Name = name.Name + "-arb"
+		name = mdb.ArbiterNamespacedName()
 	}
 
 	err := r.client.Get(context.TODO(), name, &set)
 	err = k8sClient.IgnoreNotFound(err)
 	if err != nil {
-		return errors.Errorf("error getting StatefulSet: %s", err)
+		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
 	buildStatefulSetModificationFunction(mdb)(&set)
@@ -481,7 +509,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 	}
 
 	if _, err = statefulset.CreateOrUpdate(r.client, set); err != nil {
-		return errors.Errorf("error creating/updating StatefulSet: %s", err)
+		return fmt.Errorf("error creating/updating StatefulSet: %s", err)
 	}
 	return nil
 }
@@ -491,7 +519,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(mdb mdbv1.MongoDBCommun
 func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
 	ac, err := r.buildAutomationConfig(mdb)
 	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not build automation config: %s", err)
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not build automation config: %s", err)
 	}
 
 	return automationconfig.EnsureSecret(
@@ -515,6 +543,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	}
 
 	return automationconfig.NewBuilder().
+		IsEnterprise(guessEnterprise(mdb)).
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
@@ -528,21 +557,46 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
-		SetPort(mdb.GetMongodConfiguration().GetDBPort()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		Build()
 }
 
+func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
+	overrideAssumption, err := strconv.ParseBool(os.Getenv(construct.MongoDBAssumeEnterpriseEnv))
+	if err == nil {
+		return overrideAssumption
+	}
+
+	var overriddenImage string
+	containers := mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers
+	if len(containers) > 0 {
+		for _, c := range containers {
+			if c.Name == construct.MongodbName {
+				if len(c.Image) > 0 {
+					overriddenImage = c.Image
+				}
+			}
+		}
+	}
+	if len(overriddenImage) > 0 {
+		if strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName) {
+			return true
+		}
+		return false
+	}
+	return os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName
+}
+
 // buildService creates a Service that will be used for the Replica Set StatefulSet
 // that allows all the members of the STS to see each other.
-func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
+func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portManager *agent.ReplicaSetPortManager) corev1.Service {
 	label := make(map[string]string)
 	name := mdb.ServiceName()
 
 	label["app"] = name
 
-	return service.Builder().
+	serviceBuilder := service.Builder().
 		SetName(name).
 		SetNamespace(mdb.Namespace).
 		SetSelector(label).
@@ -550,38 +604,37 @@ func buildService(mdb mdbv1.MongoDBCommunity) corev1.Service {
 		SetServiceType(corev1.ServiceTypeClusterIP).
 		SetClusterIP("None").
 		SetPublishNotReadyAddresses(true).
-		SetOwnerReferences(mdb.GetOwnerReferences()).
-		AddPort(mongoDBPort(mdb)).
-		AddPort(prometheusPort(mdb)).
-		Build()
-}
+		SetOwnerReferences(mdb.GetOwnerReferences())
 
-// mongoDBPort returns a `corev1.ServicePort` to be configured in the StatefulSet
-// for this MongoDB resource.
-func mongoDBPort(mdb mdbv1.MongoDBCommunity) *corev1.ServicePort {
-	return &corev1.ServicePort{
-		Port: int32(mdb.GetMongodConfiguration().GetDBPort()),
-		Name: "mongodb",
+	for _, servicePort := range portManager.GetServicePorts() {
+		tmpServicePort := servicePort
+		serviceBuilder.AddPort(&tmpServicePort)
 	}
+
+	serviceBuilder.AddPort(prometheusPort(mdb))
+
+	return serviceBuilder.Build()
 }
 
 // validateSpec checks if the MongoDB resource Spec is valid.
-// If there has not yet been a successful configuration, the function runs the intial Spec validations. Otherwise
+// If there has not yet been a successful configuration, the function runs the initial Spec validations. Otherwise,
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
-func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) error {
+// The validation also returns the lastSuccessFulConfiguration Spec as mdbv1.MongoDBCommunitySpec.
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *mdbv1.MongoDBCommunitySpec) {
+
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
-		return validation.ValidateInitalSpec(mdb)
+		return validation.ValidateInitialSpec(mdb, r.log), nil
 	}
 
 	lastSpec := mdbv1.MongoDBCommunitySpec{}
 	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
-		return err
+		return err, &lastSpec
 	}
 
-	return validation.ValidateUpdate(mdb, lastSpec)
+	return validation.ValidateUpdate(mdb, lastSpec, r.log), &lastSpec
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
@@ -598,22 +651,22 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
 	tlsModification, err := getTLSConfigModification(r.client, r.client, mdb)
 	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure TLS modification: %s", err)
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure TLS modification: %s", err)
 	}
 
 	customRolesModification, err := getCustomRolesModification(mdb)
 	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure custom roles: %s", err)
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure custom roles: %s", err)
 	}
 
 	currentAC, err := automationconfig.ReadFromSecret(r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
 	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not read existing automation config: %s", err)
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not read existing automation config: %s", err)
 	}
 
 	auth := automationconfig.Auth{}
-	if err := scram.Enable(&auth, r.client, mdb); err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not configure scram authentication: %s", err)
+	if err := scram.Enable(&auth, r.client, &mdb); err != nil {
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure scram authentication: %s", err)
 	}
 
 	prometheusModification := automationconfig.NOOP()
@@ -623,8 +676,13 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 
 		prometheusModification, err = getPrometheusModification(r.client, mdb)
 		if err != nil {
-			return automationconfig.AutomationConfig{}, errors.Errorf("could not enable TLS on Prometheus endpoint: %s", err)
+			return automationconfig.AutomationConfig{}, fmt.Errorf("could not enable TLS on Prometheus endpoint: %s", err)
 		}
+	}
+
+	processPortManager, err := r.createProcessPortManager(mdb)
+	if err != nil {
+		return automationconfig.AutomationConfig{}, err
 	}
 
 	automationConfig, err := buildAutomationConfig(
@@ -634,9 +692,11 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		tlsModification,
 		customRolesModification,
 		prometheusModification,
+		processPortManager.GetPortsModification(),
 	)
+
 	if err != nil {
-		return automationconfig.AutomationConfig{}, errors.Errorf("could not create an automation config: %s", err)
+		return automationconfig.AutomationConfig{}, fmt.Errorf("could not create an automation config: %s", err)
 	}
 
 	if mdb.Spec.AutomationConfigOverride != nil {
@@ -646,7 +706,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	return automationConfig, nil
 }
 
-// overrideToAutomationConfig turns an automation config ovverride from the resource spec into an automation config
+// overrideToAutomationConfig turns an automation config override from the resource spec into an automation config
 // which can be used to merge.
 func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
 	var processes []automationconfig.Process
@@ -684,7 +744,7 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, mdb)
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
@@ -707,7 +767,7 @@ func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.M
 	return statefulset.Apply(
 		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
 		statefulset.WithServiceName(mdb.ServiceName()),
-		statefulset.WithName(mdb.Name+"-arb"),
+		statefulset.WithName(mdb.ArbiterNamespacedName().Name),
 	)
 }
 

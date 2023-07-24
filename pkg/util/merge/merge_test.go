@@ -57,6 +57,60 @@ func TestMergeStringSlices(t *testing.T) {
 	}
 }
 
+func TestMergeServices(t *testing.T) {
+	type args struct {
+		original corev1.ServiceSpec
+		override corev1.ServiceSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want corev1.ServiceSpec
+	}{
+		{
+			name: "Overrides a few example spec values",
+			args: args{
+				original: corev1.ServiceSpec{},
+				override: corev1.ServiceSpec{
+					Type:                     "LoadBalancer",
+					ExternalName:             "externalName",
+					ExternalTrafficPolicy:    "some-non-existing-policy",
+					HealthCheckNodePort:      123,
+					PublishNotReadyAddresses: true,
+				},
+			},
+			want: corev1.ServiceSpec{
+				Type:                     "LoadBalancer",
+				ExternalName:             "externalName",
+				ExternalTrafficPolicy:    "some-non-existing-policy",
+				HealthCheckNodePort:      123,
+				PublishNotReadyAddresses: true,
+			},
+		},
+		{
+			name: "Merge labels",
+			args: args{
+				original: corev1.ServiceSpec{
+					Selector: map[string]string{"test1": "true"},
+				},
+				override: corev1.ServiceSpec{
+					Selector: map[string]string{"test2": "true"},
+				},
+			},
+			want: corev1.ServiceSpec{
+				Selector: map[string]string{"test1": "true", "test2": "true"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ServiceSpec(tt.args.original, tt.args.override); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("%v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMergeContainer(t *testing.T) {
 	defaultQuantity := resource.NewQuantity(int64(10), resource.DecimalExponent)
 
@@ -615,4 +669,83 @@ func TestMergeHostAliases(t *testing.T) {
 	assert.Equal(t, []string{"abc", "def", "ghi"}, merged[0].Hostnames)
 	assert.Equal(t, "1.2.3.5", merged[1].IP)
 	assert.Equal(t, []string{"abc"}, merged[1].Hostnames)
+}
+
+func TestTolerations(t *testing.T) {
+	type args struct {
+		defaultTolerations  []corev1.Toleration
+		overrideTolerations []corev1.Toleration
+	}
+	tests := []struct {
+		name string
+		args args
+		want []corev1.Toleration
+	}{
+		{
+			name: "override tolerations is nil",
+			args: args{
+				defaultTolerations: []corev1.Toleration{
+					{
+						Key:      "key1",
+						Value:    "value1",
+						Operator: corev1.TolerationOpEqual,
+					},
+					{
+						Key:      "key1",
+						Value:    "value2",
+						Operator: corev1.TolerationOpExists,
+					},
+				},
+				overrideTolerations: nil,
+			},
+			want: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+		},
+
+		{
+			name: "default tolerations is nil",
+			args: args{
+				defaultTolerations: nil,
+				overrideTolerations: []corev1.Toleration{
+					{
+						Key:      "key1",
+						Value:    "value1",
+						Operator: corev1.TolerationOpEqual,
+					},
+					{
+						Key:      "key1",
+						Value:    "value2",
+						Operator: corev1.TolerationOpExists,
+					},
+				},
+			},
+			want: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, Tolerations(tt.args.defaultTolerations, tt.args.overrideTolerations), "Tolerations(%v, %v)", tt.args.defaultTolerations, tt.args.overrideTolerations)
+		})
+	}
 }

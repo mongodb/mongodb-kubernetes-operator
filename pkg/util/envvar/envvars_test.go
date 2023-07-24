@@ -1,16 +1,13 @@
 package envvar
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetEnvOrDefault(t *testing.T) {
-
-	err := os.Setenv("env1", "val1")
-	assert.NoError(t, err)
+	t.Setenv("env1", "val1")
 
 	val := GetEnvOrDefault("env1", "defaultVal1")
 	assert.Equal(t, "val1", val)

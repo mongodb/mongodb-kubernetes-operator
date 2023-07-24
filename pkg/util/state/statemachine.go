@@ -1,7 +1,8 @@
 package state
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -139,11 +140,11 @@ func (m *Machine) Reconcile() (reconcile.Result, error) {
 func (m *Machine) determineState() error {
 	currentStateName, err := m.saveLoader.LoadNextState(m.nsName)
 	if err != nil {
-		return errors.Errorf("could not load starting state: %s", err)
+		return fmt.Errorf("could not load starting state: %s", err)
 	}
 	nextState, ok := m.states[currentStateName]
 	if !ok {
-		return errors.Errorf("could not determine state %s as it was not added to the State Machine", currentStateName)
+		return fmt.Errorf("could not determine state %s as it was not added to the State Machine", currentStateName)
 	}
 	m.currentState = &nextState
 	return nil

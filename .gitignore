@@ -96,3 +96,7 @@ Dockerfile.ubuntu-*
 diagnostics
 
 !test/test-app/Dockerfile
+
+Pipfile
+Pipfile.lock
+.community-operator-dev

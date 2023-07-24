@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [Prerequisites](#prerequisites)
 - [Install the Operator](#install-the-operator)
   - [Understand Deployment Scopes](#understand-deployment-scopes)
     - [Operator in Same Namespace as Resources](#operator-in-same-namespace-as-resources)
@@ -16,6 +17,10 @@
      - [Procedure using kubectl](#procedure-using-kubectl)
 - [Upgrade the Operator](#upgrade-the-operator)
 - [Rotating TLS certificate for the MongoDB deployment](#rotating-tls-certificate-for-the-mongodb-deployment)
+
+## Prerequisites
+
+- A Kubernetes cluster with nodes with x86-64/AMD64 processors (either all, or a separate node pool)
 
 ## Install the Operator
 
@@ -165,10 +170,18 @@ for MongoDB Docker images:
 
 1. In the Operator [resource definition](../config/manager/manager.yaml), set the `MONGODB_IMAGE` and `MONGODB_REPO_URL` environment variables:
 
-   | Environment Variable | Description | Default |
-   |----|----|----|
-   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongo"` |
-   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io"` |
+   **NOTE:** Use the official 
+   [MongoDB Community Server images](https://hub.docker.com/r/mongodb/mongodb-community-server). 
+   Official images provide the following advantages:
+
+   - They are rebuilt daily for the latest upstream 
+     vulnerability fixes.
+   - MongoDB tests, maintains, and supports them.
+
+   | Environment Variable | Description | Default                      |
+   |----|------------------------------|----|
+   | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongodb-community-server"` |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io/mongodb"`        |
 
    ```yaml
        spec:

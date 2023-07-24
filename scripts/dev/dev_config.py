@@ -108,6 +108,14 @@ class DevConfig:
         return self._get_dev_image("readiness_probe_image_dev", "readiness_probe_image")
 
     @property
+    def mongodb_image_name(self) -> str:
+        return self._config.get("mongodb_image_name", "mongodb-community-server")
+
+    @property
+    def mongodb_image_repo_url(self) -> str:
+        return self._config.get("mongodb_image_repo_url", "docker.io/mongodb")
+
+    @property
     def agent_dev_image_ubi(self) -> str:
         return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
 
@@ -134,6 +142,12 @@ class DevConfig:
         if self._distro == Distro.UBI:
             return self.agent_dev_image_ubi
         return self.agent_dev_image_ubuntu
+
+    @property
+    def image_type(self) -> str:
+        if self._distro == Distro.UBI:
+            return "ubi8"
+        return "ubuntu-2004"
 
     def ensure_skip_tag(self, tag: str) -> None:
         if tag not in self.skip_tags:

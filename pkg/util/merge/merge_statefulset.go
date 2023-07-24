@@ -65,7 +65,7 @@ func LabelSelectors(originalLabelSelector, overrideLabelSelector *metav1.LabelSe
 	}
 	// we have only specified a label selector in the original
 	if originalLabelSelector == nil {
-		return originalLabelSelector
+		return overrideLabelSelector
 	}
 
 	// we have specified both, so we must merge them
