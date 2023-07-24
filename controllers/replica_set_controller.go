@@ -756,7 +756,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 		),
 
 		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
-		statefulset.WithMetadata(
+		statefulset.WithObjectMetadata(
 			mdb.Spec.StatefulSetConfiguration.MetadataWrapper.Labels,
 			mdb.Spec.StatefulSetConfiguration.MetadataWrapper.Annotations,
 		),
