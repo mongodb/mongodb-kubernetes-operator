@@ -260,17 +260,17 @@ func HasExpectedMetadata(mdb *mdbv1.MongoDBCommunity, expectedLabels map[string]
 		err = e2eutil.TestClient.Client.List(context.TODO(), &podList, client.InNamespace(namespace))
 		assert.NoError(t, err)
 		assert.NotEmpty(t, podList.Items)
-	EachPod:
+
 		for _, s := range podList.Items {
-			// only consider pod owner by the stateful set (as opposite to the controller replica set)
+			// only consider stateful-sets (as opposite to the controller replica set)
 			for _, owner := range s.OwnerReferences {
 				if owner.Kind == "ReplicaSet" {
-					continue EachPod
+					continue
 				}
 			}
 			// Ignore non-owned pods
 			if len(s.OwnerReferences) == 0 {
-				continue EachPod
+				continue
 			}
 
 			// Ensure we are considering pods owned by a stateful set
@@ -281,7 +281,7 @@ func HasExpectedMetadata(mdb *mdbv1.MongoDBCommunity, expectedLabels map[string]
 				}
 			}
 			if !hasStatefulSetOwner {
-				continue EachPod
+				continue
 			}
 
 			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "pod "+s.Name)
