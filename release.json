@@ -2,7 +2,7 @@
   "golang-builder-image": "golang:1.20",
   "mongodb-kubernetes-operator": "0.8.0",
   "version-upgrade-hook": "1.0.7",
-  "readiness-probe": "1.0.14",
+  "readiness-probe": "1.0.15",
   "mongodb-agent": {
     "version": "12.0.24.7719-1",
     "tools_version": "100.7.0"
