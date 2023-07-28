@@ -235,3 +235,35 @@ func TestWithAnnotations(t *testing.T) {
 	WithAnnotations(nil)(&sts)
 	assert.Len(t, sts.Annotations, 2)
 }
+
+func TestWithObjectMetadata(t *testing.T) {
+	sts, err := defaultStatefulSetBuilder().Build()
+	assert.NoError(t, err)
+	assert.Len(t, sts.Labels, 0)
+	assert.Len(t, sts.Annotations, 0)
+
+	// handles nil values gracefully
+	{
+		WithObjectMetadata(nil, nil)(&sts)
+	}
+
+	// Test that it works when there are no annotations
+	{
+		WithObjectMetadata(map[string]string{"label": "a"}, map[string]string{"annotation": "b"})(&sts)
+		assert.Equal(t, "b", sts.Annotations["annotation"])
+		assert.Equal(t, "a", sts.Labels["label"])
+	}
+
+	// test that WithObjectMetadata merges the maps
+	{
+		WithObjectMetadata(map[string]string{"label2": "a"}, map[string]string{"annotation2": "b"})(&sts)
+		assert.Equal(t, "b", sts.Annotations["annotation"])
+		assert.Equal(t, "b", sts.Annotations["annotation2"])
+	}
+
+	// Test that we can override a key
+	{
+		WithObjectMetadata(map[string]string{"label": "b"}, map[string]string{"annotation": "b"})(&sts)
+		assert.Equal(t, "b", sts.Annotations["annotation"])
+	}
+}

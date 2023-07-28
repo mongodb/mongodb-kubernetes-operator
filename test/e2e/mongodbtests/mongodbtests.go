@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"testing"
 	"time"
 
@@ -217,6 +219,7 @@ func containsVolume(volumes []corev1.PersistentVolume, volumeName string) bool {
 	}
 	return false
 }
+
 func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *testing.T) {
 	return func(t *testing.T) {
 		volumeList, err := getPersistentVolumesList()
@@ -228,6 +231,77 @@ func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *tes
 		for _, v := range volumes {
 			assert.True(t, containsVolume(actualVolumes, v.Name))
 		}
+	}
+}
+func HasExpectedMetadata(mdb *mdbv1.MongoDBCommunity, expectedLabels map[string]string, expectedAnnotations map[string]string) func(t *testing.T) {
+	return func(t *testing.T) {
+		namespace := mdb.Namespace
+
+		statefulSetList := appsv1.StatefulSetList{}
+		err := e2eutil.TestClient.Client.List(context.TODO(), &statefulSetList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, statefulSetList.Items)
+		for _, s := range statefulSetList.Items {
+			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "statefulset "+s.Name)
+		}
+
+		volumeList := corev1.PersistentVolumeList{}
+		err = e2eutil.TestClient.Client.List(context.TODO(), &volumeList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, volumeList.Items)
+		for _, s := range volumeList.Items {
+			volName := s.Name
+			if strings.HasPrefix(volName, "data-volume-") || strings.HasPrefix(volName, "logs-volume-") {
+				containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "volume "+volName)
+			}
+		}
+
+		podList := corev1.PodList{}
+		err = e2eutil.TestClient.Client.List(context.TODO(), &podList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, podList.Items)
+
+		for _, s := range podList.Items {
+			// only consider stateful-sets (as opposite to the controller replica set)
+			for _, owner := range s.OwnerReferences {
+				if owner.Kind == "ReplicaSet" {
+					continue
+				}
+			}
+			// Ignore non-owned pods
+			if len(s.OwnerReferences) == 0 {
+				continue
+			}
+
+			// Ensure we are considering pods owned by a stateful set
+			hasStatefulSetOwner := false
+			for _, owner := range s.OwnerReferences {
+				if owner.Kind == "StatefulSet" {
+					hasStatefulSetOwner = true
+				}
+			}
+			if !hasStatefulSetOwner {
+				continue
+			}
+
+			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "pod "+s.Name)
+		}
+	}
+}
+
+func containsMetadata(t *testing.T, metadata *metav1.ObjectMeta, expectedLabels map[string]string, expectedAnnotations map[string]string, msg string) {
+	labels := metadata.Labels
+	for k, v := range expectedLabels {
+		assert.Contains(t, labels, k, msg+" has label "+k)
+		value := labels[k]
+		assert.Equal(t, v, value, msg+" has label "+k+" with value "+v)
+	}
+
+	annotations := metadata.Annotations
+	for k, v := range expectedAnnotations {
+		assert.Contains(t, annotations, k, msg+" has annotation "+k)
+		value := annotations[k]
+		assert.Equal(t, v, value, msg+" has annotation "+k+" with value "+v)
 	}
 }
 

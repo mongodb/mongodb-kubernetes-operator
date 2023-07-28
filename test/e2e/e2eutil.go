@@ -28,6 +28,13 @@ func TestLabels() map[string]string {
 	}
 }
 
+// TestAnnotations create an annotations map
+func TestAnnotations() map[string]string {
+	return map[string]string{
+		"e2e-test-annotated": "true",
+	}
+}
+
 func TestDataDir() string {
 	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata")
 }

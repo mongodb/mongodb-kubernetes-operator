@@ -343,6 +343,8 @@ type OverrideProcess struct {
 type StatefulSetConfiguration struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SpecWrapper StatefulSetSpecWrapper `json:"spec"`
+	// +optional
+	MetadataWrapper StatefulSetMetadataWrapper `json:"metadata"`
 }
 
 type LogLevel string
@@ -382,6 +384,21 @@ func (m *StatefulSetSpecWrapper) UnmarshalJSON(data []byte) error {
 func (m *StatefulSetSpecWrapper) DeepCopy() *StatefulSetSpecWrapper {
 	return &StatefulSetSpecWrapper{
 		Spec: m.Spec,
+	}
+}
+
+// StatefulSetMetadataWrapper is a wrapper around Labels and Annotations
+type StatefulSetMetadataWrapper struct {
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+func (m *StatefulSetMetadataWrapper) DeepCopy() *StatefulSetMetadataWrapper {
+	return &StatefulSetMetadataWrapper{
+		Labels:      m.Labels,
+		Annotations: m.Annotations,
 	}
 }
 

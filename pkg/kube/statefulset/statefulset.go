@@ -306,6 +306,13 @@ func WithCustomSpecs(spec appsv1.StatefulSetSpec) Modification {
 	}
 }
 
+func WithObjectMetadata(labels map[string]string, annotations map[string]string) Modification {
+	return func(set *appsv1.StatefulSet) {
+		WithLabels(labels)(set)
+		WithAnnotations(annotations)(set)
+	}
+}
+
 func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {
 	for idx, pvc := range pvcs {
 		if pvc.Name == name {
