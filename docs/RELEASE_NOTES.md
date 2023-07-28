@@ -7,6 +7,9 @@
     - Each user in the resource contains the same field ```additionalConnectionStringConfig``` and these options apply only for this user and will override any existing options in the resource.
     - The following options will be ignored `replicaSet`, `tls`, `ssl`, as they are set through other means.
     - [Sample](../config/samples/mongodb.com_v1_mongodbcommunity_additional_connection_string_options.yaml)
+  - Support for Label and Annotations Wrapper
+    - Additionally to the `specWrapper` for `statefulsets` we now support overriding `metadata.Labels` and `metadata.Annotations` via the `MetadataWrapper`.
+    - [Sample](../config/samples/arbitrary_statefulset_configuration/mongodb.com_v1_metadata.yaml)
 
 ## Updated Image Tags
 
