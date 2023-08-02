@@ -12,7 +12,7 @@ func TestIsReadyStateNotPrimaryNorSecondary(t *testing.T) {
 	status := []replicationStatus{replicationStatusUndefined, replicationStatusPrimary, replicationStatusSecondary, replicationStatusArbiter}
 
 	for i := range status {
-		h := processHealth{ReplicaStatus: &status[i]}
+		h := processStatus{ReplicaStatus: &status[i]}
 		assert.True(t, h.IsReadyState())
 	}
 }
@@ -26,7 +26,7 @@ func TestIsNotReady(t *testing.T) {
 	}
 
 	for i := range status {
-		h := processHealth{ReplicaStatus: &status[i]}
+		h := processStatus{ReplicaStatus: &status[i]}
 		assert.False(t, h.IsReadyState())
 	}
 }

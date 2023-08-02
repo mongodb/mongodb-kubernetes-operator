@@ -4,7 +4,7 @@ docker==4.3.1
 kubernetes==26.1.0
 jinja2==2.11.3
 MarkupSafe==2.0.1
-PyYAML==5.4.1
+PyYAML==6.0.1
 black==22.3.0
 mypy==0.961
 tqdm==v4.49.0
@@ -12,7 +12,6 @@ boto3==1.16.21
 pymongo==3.11.4
 dnspython==2.0.0
 requests==2.31.0
-pyyaml==5.4.1
 ruamel.yaml==0.17.9
 semver==2.13.0
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability

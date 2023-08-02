@@ -170,6 +170,9 @@ func PersistentVolumeClaim(defaultPvc corev1.PersistentVolumeClaim, overridePvc 
 		defaultPvc.Namespace = overridePvc.Namespace
 	}
 
+	defaultPvc.Labels = StringToStringMap(defaultPvc.Labels, overridePvc.Labels)
+	defaultPvc.Annotations = StringToStringMap(defaultPvc.Annotations, overridePvc.Annotations)
+
 	if overridePvc.Spec.VolumeMode != nil {
 		defaultPvc.Spec.VolumeMode = overridePvc.Spec.VolumeMode
 	}
