@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"github.com/stretchr/testify/require"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,7 +25,6 @@ import (
 
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 
@@ -641,7 +642,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 // assertConnectionStringSecretPorts checks that connection string secret has expectedPort and does not have notExpectedPort.
 func assertConnectionStringSecretPorts(t *testing.T, c k8sClient.Client, mdb mdbv1.MongoDBCommunity, expectedPort int, notExpectedPort int) {
 	connectionStringSecret := corev1.Secret{}
-	scramUsers := mdb.GetScramUsers()
+	scramUsers := mdb.GetAuthUsers()
 	require.Len(t, scramUsers, 1)
 	secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: mdb.Namespace}
 	err := c.Get(context.TODO(), secretNamespacedName, &connectionStringSecret)
@@ -877,7 +878,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 		secret.Builder().
 			SetName(keyFileNsName.Name).
 			SetNamespace(keyFileNsName.Namespace).
-			SetField(scram.AgentKeyfileKey, "my-keyfile").
+			SetField(constants.AgentKeyfileKey, "my-keyfile").
 			Build(),
 	)
 	assert.NoError(t, err)
@@ -887,7 +888,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 		secret.Builder().
 			SetName(passwordNsName.Name).
 			SetNamespace(passwordNsName.Namespace).
-			SetField(scram.AgentPasswordKey, "my-pass").
+			SetField(constants.AgentPasswordKey, "my-pass").
 			Build(),
 	)
 	assert.NoError(t, err)
@@ -1080,14 +1081,14 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()
 		s, err := mgr.Client.GetSecret(secretNsName)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Data[scram.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
+		assert.Equal(t, s.Data[constants.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
 	})
 
 	t.Run("Secret with keyfile was created", func(t *testing.T) {
 		secretNsName := mdb.GetAgentKeyfileSecretNamespacedName()
 		s, err := mgr.Client.GetSecret(secretNsName)
 		assert.NoError(t, err)
-		assert.Equal(t, s.Data[scram.AgentKeyfileKey], []byte(currentAc.Auth.Key))
+		assert.Equal(t, s.Data[constants.AgentKeyfileKey], []byte(currentAc.Auth.Key))
 	})
 }
 

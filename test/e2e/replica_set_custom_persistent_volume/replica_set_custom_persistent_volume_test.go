@@ -118,7 +118,7 @@ func TestReplicaSetCustomPersistentVolumes(t *testing.T) {
 		err := e2eutil.TestClient.Create(context.TODO(), &volumesToCreate[i], &e2eutil.CleanupOptions{TestContext: ctx})
 		assert.NoError(t, err)
 	}
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {

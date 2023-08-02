@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/imdario/mergo"
 	"github.com/stretchr/objx"
 
@@ -33,8 +36,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
 
@@ -51,7 +52,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -258,6 +258,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	if lastAppliedSpec != nil {
 		r.cleanupScramSecrets(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
+		r.cleanupPemFile(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
 	}
 
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {
@@ -305,6 +306,12 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 		r.log.Infof("TLS is enabled, creating/updating TLS secret")
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
 			return fmt.Errorf("could not ensure TLS secret: %s", err)
+		}
+		if mdb.Spec.GetAgentAuthMode() == "X509" {
+			r.log.Infof("Agent X509 authentication is enabled, creating/updating agent certificate secret")
+			if err := ensureAgentCertSecret(r.client, mdb); err != nil {
+				return fmt.Errorf("could not ensure Agent Certificate secret: %s", err)
+			}
 		}
 	}
 	return nil
@@ -665,8 +672,8 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	auth := automationconfig.Auth{}
-	if err := scram.Enable(&auth, r.client, &mdb); err != nil {
-		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure scram authentication: %s", err)
+	if err := authentication.Enable(&auth, r.client, &mdb); err != nil {
+		return automationconfig.AutomationConfig{}, err
 	}
 
 	prometheusModification := automationconfig.NOOP()
@@ -752,6 +759,7 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulse
 			podtemplatespec.Apply(
 				buildTLSPodSpecModification(mdb),
 				buildTLSPrometheus(mdb),
+				buildAgentX509(mdb),
 			),
 		),
 

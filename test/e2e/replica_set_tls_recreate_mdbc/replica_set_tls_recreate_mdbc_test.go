@@ -28,7 +28,7 @@ func TestReplicaSetTLSRecreateMdbc(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb1, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
-	scramUser := mdb1.GetScramUsers()[0]
+	scramUser := mdb1.GetAuthUsers()[0]
 	mdb1.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, testConfig.Namespace)

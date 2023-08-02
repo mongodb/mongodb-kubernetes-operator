@@ -1,9 +1,20 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"math/big"
 	"testing"
+	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -37,17 +48,53 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
-func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string, expectedPromTLSSecretName string) {
-	prometheusTLSEnabled := expectedPromTLSSecretName != ""
+func TestStatefulSet_IsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509"}
+	mgr := kubeClient.NewManager(&mdb)
 
-	if prometheusTLSEnabled {
-		assert.Len(t, sts.Spec.Template.Spec.Volumes, 9)
-	} else {
-		assert.Len(t, sts.Spec.Template.Spec.Volumes, 8)
-	}
+	client := kubeClient.NewClient(mgr.GetClient())
+	err := createTLSSecret(client, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createTLSConfigMap(client, mdb)
+	assert.NoError(t, err)
+	crt, key, err := createAgentCertificate()
+	assert.NoError(t, err)
+	err = createAgentCertSecret(client, mdb, crt, key, "")
+	assert.NoError(t, err)
+
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts := appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "agent-certs-pem")
+
+	// If we deactivate X509 for the agent, we expect the certificates to be unmounted.
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"SCRAM"}
+	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	assert.NoError(t, err)
+
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts = appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
+}
+
+func assertStatefulSetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string, expectedPromTLSSecretName string, expectedAgentCertSecretName string) {
+	prometheusTLSEnabled := expectedPromTLSSecretName != ""
+	agentX509Enabled := expectedAgentCertSecretName != ""
+
 	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
@@ -78,6 +125,27 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 			},
 		})
 	}
+	if agentX509Enabled {
+		assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "agent-certs-pem",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  expectedAgentCertSecretName,
+					DefaultMode: &permission,
+				},
+			},
+		})
+	} else {
+		assert.NotContains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "agent-certs-pem",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  expectedAgentCertSecretName,
+					DefaultMode: &permission,
+				},
+			},
+		})
+	}
 
 	tlsSecretVolumeMount := corev1.VolumeMount{
 		Name:      "tls-secret",
@@ -94,17 +162,36 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 		ReadOnly:  true,
 		MountPath: tlsPrometheusSecretMountPath,
 	}
+	agentCertSecretVolumeMount := corev1.VolumeMount{
+		Name:      "agent-certs-pem",
+		ReadOnly:  true,
+		MountPath: automationAgentPemMountPath,
+	}
 
 	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 
-	agentContainer := sts.Spec.Template.Spec.Containers[0]
+	var agentContainer corev1.Container
+	var mongodbContainer corev1.Container
+
+	for i, container := range sts.Spec.Template.Spec.Containers {
+		if container.Name == construct.AgentName {
+			agentContainer = sts.Spec.Template.Spec.Containers[i]
+		} else if container.Name == construct.MongodbName {
+			mongodbContainer = sts.Spec.Template.Spec.Containers[i]
+		}
+	}
+
 	assert.Contains(t, agentContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, agentContainer.VolumeMounts, tlsCAVolumeMount)
 	if prometheusTLSEnabled {
 		assert.Contains(t, agentContainer.VolumeMounts, tlsPrometheusSecretVolumeMount)
 	}
+	if agentX509Enabled {
+		assert.Contains(t, agentContainer.VolumeMounts, agentCertSecretVolumeMount)
+	} else {
+		assert.NotContains(t, agentContainer.VolumeMounts, agentCertSecretVolumeMount)
+	}
 
-	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
 	if prometheusTLSEnabled {
@@ -152,7 +239,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name, "")
 }
 
 func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
@@ -180,7 +267,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 
 	// updating sts tls-ca volume directly to simulate changing of underlying volume's secret
 	for i := range sts.Spec.Template.Spec.Volumes {
@@ -192,7 +279,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Update(context.TODO(), &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -200,7 +287,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	sts = appsv1.StatefulSet{}
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
 func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
@@ -492,6 +579,10 @@ func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string,
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Security.TLS.CertificateKeySecret.Name, crt, key, pem)
 }
 
+func createAgentCertSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.AgentCertificateSecretNamespacedName().Name, crt, key, pem)
+}
+
 func createPrometheusTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Prometheus.TLSSecretRef.Name, crt, key, pem)
 }
@@ -504,4 +595,52 @@ func createUserPasswordSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, us
 
 	s := sBuilder.Build()
 	return c.Create(context.TODO(), &s)
+}
+
+func createAgentCertificate() (string, string, error) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return "", "", err
+	}
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return "", "", err
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return "", "", err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"MongoDB"},
+			CommonName:   "mms-automation-agent",
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0), // cert expires in 10 years
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return "", "", err
+	}
+
+	caPEM := new(bytes.Buffer)
+	_ = pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	caPrivKeyPEM := new(bytes.Buffer)
+	_ = pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privBytes,
+	})
+
+	return caPEM.String(), caPrivKeyPEM.String(), nil
 }

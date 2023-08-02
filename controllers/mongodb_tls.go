@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 
@@ -29,6 +31,7 @@ const (
 	tlsSecretCertName            = "tls.crt"
 	tlsSecretKeyName             = "tls.key"
 	tlsSecretPemName             = "tls.pem"
+	automationAgentPemMountPath  = "/var/lib/mongodb-mms-automation/agent-certs"
 )
 
 // validateTLSConfig will check that the configured ConfigMap and Secret exist and that they have the correct fields.
@@ -223,6 +226,26 @@ func ensureTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDB
 	return secret.CreateOrUpdate(getUpdateCreator, operatorSecret)
 }
 
+func ensureAgentCertSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
+	if mdb.Spec.GetAgentAuthMode() != "X509" {
+		return nil
+	}
+
+	certKey, err := getPemOrConcatenatedCrtAndKey(getUpdateCreator, mdb, mdb.AgentCertificateSecretNamespacedName())
+	if err != nil {
+		return err
+	}
+
+	agentCertSecret := secret.Builder().
+		SetName(mdb.AgentCertificatePemSecretNamespacedName().Name).
+		SetNamespace(mdb.NamespacedName().Namespace).
+		SetField(mdb.AgentCertificatePemSecretNamespacedName().Name, certKey).
+		SetOwnerReferences(mdb.GetOwnerReferences()).
+		Build()
+
+	return secret.CreateOrUpdate(getUpdateCreator, agentCertSecret)
+}
+
 // ensurePrometheusTLSSecret will create or update the operator-managed Secret containing
 // the concatenated certificate and key from the user-provided Secret.
 func ensurePrometheusTLSSecret(getUpdateCreator secret.GetUpdateCreator, mdb mdbv1.MongoDBCommunity) error {
@@ -265,9 +288,15 @@ func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey, caCert string) a
 		mode = automationconfig.TLSModePreferred
 	}
 
+	automationAgentPemFilePath := ""
+	if mdb.Spec.GetAgentAuthMode() == "X509" {
+		automationAgentPemFilePath = automationAgentPemMountPath + "/" + mdb.AgentCertificatePemSecretNamespacedName().Name
+	}
+
 	return func(config *automationconfig.AutomationConfig) {
 		// Configure CA certificate for agent
 		config.TLSConfig.CAFilePath = caCertificatePath
+		config.TLSConfig.AutoPEMKeyFilePath = automationAgentPemFilePath
 
 		for i := range config.Processes {
 			args := config.Processes[i].Args26
@@ -328,4 +357,22 @@ func buildTLSPrometheus(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification
 		podtemplatespec.WithVolumeMounts(construct.AgentName, tlsSecretVolumeMount),
 		podtemplatespec.WithVolumeMounts(construct.MongodbName, tlsSecretVolumeMount),
 	)
+}
+
+func buildAgentX509(mdb mdbv1.MongoDBCommunity) podtemplatespec.Modification {
+	if mdb.Spec.GetAgentAuthMode() != "X509" {
+		return podtemplatespec.Apply(
+			podtemplatespec.RemoveVolume(constants.AgentPemFile),
+			podtemplatespec.RemoveVolumeMount(construct.AgentName, constants.AgentPemFile),
+		)
+	}
+
+	agentCertVolume := statefulset.CreateVolumeFromSecret(constants.AgentPemFile, mdb.AgentCertificatePemSecretNamespacedName().Name)
+	agentCertVolumeMount := statefulset.CreateVolumeMount(agentCertVolume.Name, automationAgentPemMountPath, statefulset.WithReadOnly(true))
+
+	return podtemplatespec.Apply(
+		podtemplatespec.WithVolume(agentCertVolume),
+		podtemplatespec.WithVolumeMounts(construct.AgentName, agentCertVolumeMount),
+	)
+
 }

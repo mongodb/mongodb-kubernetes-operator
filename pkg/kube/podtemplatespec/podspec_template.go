@@ -133,6 +133,23 @@ func WithVolume(volume corev1.Volume) Modification {
 	}
 }
 
+func RemoveVolume(volume string) Modification {
+	return func(template *corev1.PodTemplateSpec) {
+		index := 0
+		found := false
+		for i := range template.Spec.Volumes {
+			if template.Spec.Volumes[i].Name == volume {
+				index = i
+				found = true
+			}
+		}
+
+		if found {
+			template.Spec.Volumes = append(template.Spec.Volumes[:index], template.Spec.Volumes[index+1:]...)
+		}
+	}
+}
+
 func findIndexByName(name string, containers []corev1.Container) int {
 	for idx, c := range containers {
 		if c.Name == name {
@@ -251,6 +268,16 @@ func WithVolumeMounts(containerName string, volumeMounts ...corev1.VolumeMount) 
 			return
 		}
 		container.WithVolumeMounts(volumeMounts)(c)
+	}
+}
+
+func RemoveVolumeMount(containerName string, volumeMount string) Modification {
+	return func(podTemplateSpec *corev1.PodTemplateSpec) {
+		c := FindContainerByName(containerName, podTemplateSpec)
+		if c == nil {
+			return
+		}
+		container.WithoutVolumeMount(volumeMount)(c)
 	}
 }
 

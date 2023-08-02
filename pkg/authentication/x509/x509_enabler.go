@@ -1,4 +1,4 @@
-package scram
+package x509
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ import (
 
 // enableAgentAuthentication updates the provided auth struct and configures scram authentication based on the provided
 // values and configuration options.
-func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agentKeyFileContents string, opts authtypes.Options) error {
+func enableAgentAuthentication(auth *automationconfig.Auth, agentKeyFileContents string, agentName string, opts authtypes.Options) error {
 	if err := validateAgentOptions(opts); err != nil {
 		return err
 	}
@@ -22,29 +22,23 @@ func enableAgentAuthentication(auth *automationconfig.Auth, agentPassword, agent
 	auth.AuthoritativeSet = opts.AuthoritativeSet
 	auth.KeyFile = opts.KeyFile
 
-	// windows file is specified to pass validation, this will never be used
-	auth.KeyFileWindows = constants.AutomationAgentWindowsKeyFilePath
-
-	auth.AutoAuthMechanisms = make([]string, 0)
-	if contains.String(opts.AuthMechanisms, constants.Sha256) {
-		auth.AutoAuthMechanisms = append(auth.AutoAuthMechanisms, constants.Sha256)
-	}
-	if contains.String(opts.AuthMechanisms, constants.Sha1) {
-		auth.AutoAuthMechanisms = append(auth.AutoAuthMechanisms, constants.Sha1)
-	}
-
-	// the username of the MongoDB Agent
-	auth.AutoUser = opts.AgentName
-
-	// the mechanism used by the Agent
-	auth.AutoAuthMechanism = opts.AutoAuthMechanism
-
-	// the password for the Agent user
-	auth.AutoPwd = agentPassword
-
 	// the contents the keyfile should have, this file is owned and managed
 	// by the agent
 	auth.Key = agentKeyFileContents
+
+	// windows file is specified to pass validation, this will never be used
+	auth.KeyFileWindows = constants.AutomationAgentWindowsKeyFilePath
+
+	auth.AutoAuthMechanisms = []string{constants.X509}
+
+	// the username of the MongoDB Agent
+	auth.AutoUser = agentName
+
+	// the mechanism used by the Agent
+	auth.AutoAuthMechanism = constants.X509
+
+	// the password for the Agent user
+	auth.AutoPwd = ""
 
 	return nil
 }
@@ -59,6 +53,7 @@ func enableClientAuthentication(auth *automationconfig.Auth, opts authtypes.Opti
 			auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, authMode)
 		}
 	}
+
 	auth.Users = append(auth.Users, users...)
 	return nil
 }
@@ -69,12 +64,6 @@ func validateAgentOptions(opts authtypes.Options) error {
 	var errs error
 	if opts.AutoAuthMechanism == "" {
 		errs = multierror.Append(errs, errors.New("AutoAuthMechanism must not be empty"))
-	}
-	if opts.AgentName == "" {
-		errs = multierror.Append(errs, errors.New("AgentName must be specified"))
-	}
-	if opts.KeyFile == "" {
-		errs = multierror.Append(errs, errors.New("KeyFile must be specified"))
 	}
 	return errs
 }

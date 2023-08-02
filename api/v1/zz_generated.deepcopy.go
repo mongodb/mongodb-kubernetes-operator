@@ -50,6 +50,11 @@ func (in *Authentication) DeepCopyInto(out *Authentication) {
 		*out = make([]AuthMode, len(*in))
 		copy(*out, *in)
 	}
+	if in.AgentCertificateSecret != nil {
+		in, out := &in.AgentCertificateSecret, &out.AgentCertificateSecret
+		*out = new(corev1.LocalObjectReference)
+		**out = **in
+	}
 	if in.IgnoreUnknownUsers != nil {
 		in, out := &in.IgnoreUnknownUsers, &out.IgnoreUnknownUsers
 		*out = new(bool)
