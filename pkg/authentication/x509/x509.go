@@ -124,8 +124,8 @@ func readAgentSubjectsFromCert(agentCert string) (string, error) {
 	return rdns.String(), nil
 }
 
-func CreateAgentCertificateSecret(name string, key string, mdb authtypes.Configurable, invalid bool) v1.Secret {
-	agentCert, _ := CreateAgentCertificate(name)
+func CreateAgentCertificateSecret(key string, mdb authtypes.Configurable, invalid bool) v1.Secret {
+	agentCert, _, _ := CreateAgentCertificate()
 	if invalid {
 		agentCert = "INVALID CERT"
 	}
@@ -137,16 +137,21 @@ func CreateAgentCertificateSecret(name string, key string, mdb authtypes.Configu
 		Build()
 }
 
-func CreateAgentCertificate(name string) (string, error) {
+func CreateAgentCertificate() (string, string, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return "", "", err
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	template := x509.Certificate{
@@ -154,7 +159,7 @@ func CreateAgentCertificate(name string) (string, error) {
 		Subject: pkix.Name{
 			Organization:       []string{"MongoDB"},
 			OrganizationalUnit: []string{"ENG"},
-			CommonName:         name,
+			CommonName:         "mms-automation-agent",
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0), // cert expires in 10 years
@@ -163,7 +168,7 @@ func CreateAgentCertificate(name string) (string, error) {
 	}
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	caPEM := new(bytes.Buffer)
@@ -172,5 +177,11 @@ func CreateAgentCertificate(name string) (string, error) {
 		Bytes: certBytes,
 	})
 
-	return caPEM.String(), nil
+	caPrivKeyPEM := new(bytes.Buffer)
+	_ = pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privBytes,
+	})
+
+	return caPEM.String(), caPrivKeyPEM.String(), nil
 }

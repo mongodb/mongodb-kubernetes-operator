@@ -19,7 +19,7 @@ func TestEnable(t *testing.T) {
 		auth := automationconfig.Auth{}
 		mdb := buildX509Configurable("mdb", mocks.BuildX509MongoDBUser("my-user"), mocks.BuildScramMongoDBUser("my-scram-user"))
 
-		agentSecret := CreateAgentCertificateSecret("my-agent", "tls.crt", mdb, false)
+		agentSecret := CreateAgentCertificateSecret("tls.crt", mdb, false)
 		keyfileSecret := secret.Builder().
 			SetName(mdb.GetAgentKeyfileSecretNamespacedName().Name).
 			SetNamespace(mdb.GetAgentKeyfileSecretNamespacedName().Namespace).
@@ -54,7 +54,7 @@ func TestEnable(t *testing.T) {
 			AutoAuthMechanisms:       []string{constants.X509},
 			AutoAuthMechanism:        constants.X509,
 			DeploymentAuthMechanisms: []string{constants.X509},
-			AutoUser:                 "CN=my-agent,OU=ENG,O=MongoDB",
+			AutoUser:                 "CN=mms-automation-agent,OU=ENG,O=MongoDB",
 			Key:                      "RuPeMaIe2g0SNTTa",
 			KeyFile:                  "/path/to/keyfile",
 			KeyFileWindows:           constants.AutomationAgentWindowsKeyFilePath,
@@ -107,21 +107,21 @@ func Test_ensureAgent(t *testing.T) {
 	assert.Error(t, err)
 
 	auth = automationconfig.Auth{}
-	agentSecret := CreateAgentCertificateSecret("my-agent", "tls.pem", mdb, false)
+	agentSecret := CreateAgentCertificateSecret("tls.pem", mdb, false)
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
 	err = ensureAgent(&auth, secrets, mdb)
 	assert.Error(t, err)
 
 	auth = automationconfig.Auth{}
-	agentSecret = CreateAgentCertificateSecret("my-agent", "tls.crt", mdb, true)
+	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, true)
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
 	err = ensureAgent(&auth, secrets, mdb)
 	assert.Error(t, err)
 
 	auth = automationconfig.Auth{}
-	agentSecret = CreateAgentCertificateSecret("my-agent", "tls.crt", mdb, false)
+	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, false)
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
 	err = ensureAgent(&auth, secrets, mdb)
@@ -222,12 +222,12 @@ func Test_convertMongoDBResourceUsersToAutomationConfigUsers(t *testing.T) {
 }
 
 func Test_readAgentSubjectsFromCert(t *testing.T) {
-	agentCert, _ := CreateAgentCertificate("my-agent")
+	agentCert, _, _ := CreateAgentCertificate()
 
 	subjectName, err := readAgentSubjectsFromCert(agentCert)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "CN=my-agent,OU=ENG,O=MongoDB", subjectName)
+	assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", subjectName)
 }
 
 func buildX509Configurable(name string, users ...authtypes.User) authtypes.Configurable {

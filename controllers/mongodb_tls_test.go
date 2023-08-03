@@ -1,24 +1,15 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
-	"math/big"
-	"testing"
-	"time"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubeClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
@@ -61,7 +52,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
 	assert.NoError(t, err)
 	err = createTLSConfigMap(client, mdb)
 	assert.NoError(t, err)
-	crt, key, err := createAgentCertificate()
+	crt, key, err := x509.CreateAgentCertificate()
 	assert.NoError(t, err)
 	err = createAgentCertSecret(client, mdb, crt, key, "")
 	assert.NoError(t, err)
@@ -600,52 +591,4 @@ func createUserPasswordSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, us
 
 	s := sBuilder.Build()
 	return c.Create(context.TODO(), &s)
-}
-
-func createAgentCertificate() (string, string, error) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return "", "", err
-	}
-
-	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-	if err != nil {
-		return "", "", err
-	}
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		return "", "", err
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"MongoDB"},
-			CommonName:   "mms-automation-agent",
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0), // cert expires in 10 years
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
-	if err != nil {
-		return "", "", err
-	}
-
-	caPEM := new(bytes.Buffer)
-	_ = pem.Encode(caPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	})
-
-	caPrivKeyPEM := new(bytes.Buffer)
-	_ = pem.Encode(caPrivKeyPEM, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: privBytes,
-	})
-
-	return caPEM.String(), caPrivKeyPEM.String(), nil
 }

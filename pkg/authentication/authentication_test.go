@@ -63,7 +63,7 @@ func TestEnable(t *testing.T) {
 		auth := automationconfig.Auth{}
 		user := mocks.BuildX509MongoDBUser("my-user")
 		mdb := buildConfigurable("mdb", []string{constants.X509}, constants.X509, user)
-		agentSecret := x509.CreateAgentCertificateSecret("my-agent", "tls.crt", mdb, false)
+		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", mdb, false)
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
 		err := Enable(&auth, secrets, mdb)
@@ -75,7 +75,7 @@ func TestEnable(t *testing.T) {
 		assert.Equal(t, []string{constants.X509}, auth.AutoAuthMechanisms)
 		assert.Len(t, auth.Users, 1)
 		assert.Equal(t, "CN=my-user,OU=organizationalunit,O=organization", auth.Users[0].Username)
-		assert.Equal(t, "CN=my-agent,OU=ENG,O=MongoDB", auth.AutoUser)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", auth.AutoUser)
 	})
 	t.Run("SCRAM and X509 with SCRAM agent", func(t *testing.T) {
 		auth := automationconfig.Auth{}
@@ -111,7 +111,7 @@ func TestEnable(t *testing.T) {
 			SetNamespace(mdb.NamespacedName().Namespace).
 			SetField(userScram.PasswordSecretKey, "TDg_DESiScDrJV6").
 			Build()
-		agentSecret := x509.CreateAgentCertificateSecret("my-agent", "tls.crt", mdb, false)
+		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", mdb, false)
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret, agentSecret)
 
 		err := Enable(&auth, secrets, mdb)
@@ -124,7 +124,7 @@ func TestEnable(t *testing.T) {
 		assert.Len(t, auth.Users, 2)
 		assert.Equal(t, "my-user", auth.Users[0].Username)
 		assert.Equal(t, "CN=my-user,OU=organizationalunit,O=organization", auth.Users[1].Username)
-		assert.Equal(t, "CN=my-agent,OU=ENG,O=MongoDB", auth.AutoUser)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", auth.AutoUser)
 	})
 
 }
