@@ -277,7 +277,7 @@ func RemoveVolumeMount(containerName string, volumeMount string) Modification {
 		if c == nil {
 			return
 		}
-		container.WithoutVolumeMount(volumeMount)(c)
+		container.RemoveVolumeMount(volumeMount)(c)
 	}
 }
 

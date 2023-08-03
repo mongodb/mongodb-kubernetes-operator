@@ -159,7 +159,7 @@ func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
 	}
 }
 
-func WithoutVolumeMount(volumeMount string) Modification {
+func RemoveVolumeMount(volumeMount string) Modification {
 	return func(container *corev1.Container) {
 		index := 0
 		found := false

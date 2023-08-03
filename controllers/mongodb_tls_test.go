@@ -74,6 +74,11 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
+	// Check that the pem secret has been created
+	s := corev1.Secret{}
+	err = mgr.GetClient().Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), &s)
+	assert.NoError(t, err)
+
 	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "agent-certs-pem")
 
 	// If we deactivate X509 for the agent, we expect the certificates to be unmounted.

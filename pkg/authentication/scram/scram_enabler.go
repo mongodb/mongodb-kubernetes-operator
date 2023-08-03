@@ -54,11 +54,13 @@ func enableClientAuthentication(auth *automationconfig.Auth, opts authtypes.Opti
 		return err
 	}
 
-	for _, authMode := range opts.AuthMechanisms {
-		if !contains.String(auth.DeploymentAuthMechanisms, authMode) {
-			auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, authMode)
-		}
+	if !contains.String(auth.DeploymentAuthMechanisms, constants.Sha256) && contains.String(opts.AuthMechanisms, constants.Sha256) {
+		auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, constants.Sha256)
 	}
+	if !contains.String(auth.DeploymentAuthMechanisms, constants.Sha1) && contains.String(opts.AuthMechanisms, constants.Sha1) {
+		auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, constants.Sha1)
+	}
+
 	auth.Users = append(auth.Users, users...)
 	return nil
 }

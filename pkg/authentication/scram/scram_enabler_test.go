@@ -21,7 +21,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		AgentName:         "mms-automation",
 		AutoAuthMechanism: constants.Sha256,
 	}
-	err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+	err := configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 	assert.NoError(t, err)
 
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, constants.AutomationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
-		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+		err := configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{constants.Sha256, constants.Sha1}, auth.DeploymentAuthMechanisms)
 	})
@@ -51,7 +51,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		AgentName:         "mms-automation",
 		AutoAuthMechanism: constants.Sha256,
 	}
-	err = configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+	err = configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 	assert.NoError(t, err)
 
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, constants.AutomationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
-		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+		err := configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{constants.Sha256}, auth.DeploymentAuthMechanisms)
 	})
@@ -78,7 +78,7 @@ func TestScramAutomationConfig(t *testing.T) {
 		AgentName:         "mms-automation",
 		AutoAuthMechanism: constants.Sha1,
 	}
-	err = configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+	err = configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 	assert.NoError(t, err)
 
 	t.Run("Authentication is correctly configured", func(t *testing.T) {
@@ -91,14 +91,14 @@ func TestScramAutomationConfig(t *testing.T) {
 		assert.Equal(t, constants.AutomationAgentWindowsKeyFilePath, auth.KeyFileWindows)
 	})
 	t.Run("Subsequent configuration doesn't add to deployment auth mechanisms", func(t *testing.T) {
-		err := configureScramInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
+		err := configureInAutomationConfig(&auth, "password", "keyfilecontents", []automationconfig.MongoDBUser{}, opts)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{constants.Sha1}, auth.DeploymentAuthMechanisms)
 	})
 }
 
-// configureScramInAutomationConfig updates the provided auth struct and fully configures Scram authentication.
-func configureScramInAutomationConfig(auth *automationconfig.Auth, agentPassword, agentKeyFile string, users []automationconfig.MongoDBUser, opts authtypes.Options) error {
+// configureInAutomationConfig updates the provided auth struct and fully configures Scram authentication.
+func configureInAutomationConfig(auth *automationconfig.Auth, agentPassword, agentKeyFile string, users []automationconfig.MongoDBUser, opts authtypes.Options) error {
 	err := enableAgentAuthentication(auth, agentPassword, agentKeyFile, opts)
 	if err != nil {
 		return err

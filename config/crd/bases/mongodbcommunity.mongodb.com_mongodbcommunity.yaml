@@ -177,10 +177,8 @@ spec:
                         description: AgentCertificateSecret is a reference to a Secret
                           containing the certificate and the key for the automation
                           agent The certificate is expected to be available under
-                          the key "tls.crt" and the key under "tls.key" Alternatively,
-                          an entry tls.pem, containing the concatenation of cert and
-                          key, can be provided. If all of tls.pem, tls.crt and tls.key
-                          are present, the tls.pem one needs to be equal to the concatenation
+                          the key "tls.crt" and the key under "tls.key" If additionally,
+                          tls.pem is present, then it needs to be equal to the concatenation
                           of tls.crt and tls.key
                         properties:
                           name:

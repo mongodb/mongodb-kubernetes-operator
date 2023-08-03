@@ -109,7 +109,7 @@ func BuildX509MongoDBUser(name string) authtypes.User {
 
 func BuildScramMongoDBUser(name string) authtypes.User {
 	return authtypes.User{
-		Username: fmt.Sprintf("%s-user", name),
+		Username: name,
 		Database: "admin",
 		Roles: []authtypes.Role{
 			{
@@ -130,8 +130,9 @@ func BuildScramMongoDBUser(name string) authtypes.User {
 				Name:     "clusterAdmin",
 			},
 		},
-		PasswordSecretKey:  fmt.Sprintf("%s-password", name),
-		PasswordSecretName: fmt.Sprintf("%s-password-secret", name),
+		PasswordSecretKey:          fmt.Sprintf("%s-password", name),
+		PasswordSecretName:         fmt.Sprintf("%s-password-secret", name),
+		ScramCredentialsSecretName: fmt.Sprintf("%s-scram", name),
 	}
 
 }
