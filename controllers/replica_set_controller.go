@@ -258,7 +258,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 
 	if lastAppliedSpec != nil {
 		r.cleanupScramSecrets(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
-		r.cleanupPemFile(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
+		r.cleanupPemSecret(mdb.Spec, *lastAppliedSpec, mdb.Namespace)
 	}
 
 	if err := r.updateLastSuccessfulConfiguration(mdb); err != nil {

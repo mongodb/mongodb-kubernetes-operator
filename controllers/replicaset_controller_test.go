@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 	"os"
 	"reflect"
 	"testing"
@@ -1090,6 +1091,104 @@ func assertReplicaSetIsConfiguredWithScram(t *testing.T, mdb mdbv1.MongoDBCommun
 		assert.NoError(t, err)
 		assert.Equal(t, s.Data[constants.AgentKeyfileKey], []byte(currentAc.Auth.Key))
 	})
+}
+
+func assertReplicaSetIsConfiguredWithScramTLS(t *testing.T, mdb mdbv1.MongoDBCommunity) {
+	mgr := client.NewManager(&mdb)
+	newClient := client.NewClient(mgr.GetClient())
+	err := createTLSSecret(newClient, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createTLSConfigMap(newClient, mdb)
+	assert.NoError(t, err)
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+	t.Run("Automation Config is configured with SCRAM", func(t *testing.T) {
+		assert.Empty(t, currentAc.TLSConfig.AutoPEMKeyFilePath)
+		assert.NotEmpty(t, currentAc.Auth.Key)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
+		assert.NotEmpty(t, currentAc.Auth.AutoPwd)
+		assert.False(t, currentAc.Auth.Disabled)
+	})
+	t.Run("Secret with password was created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()
+		s, err := mgr.Client.GetSecret(secretNsName)
+		assert.NoError(t, err)
+		assert.Equal(t, s.Data[constants.AgentPasswordKey], []byte(currentAc.Auth.AutoPwd))
+	})
+
+	t.Run("Secret with keyfile was created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentKeyfileSecretNamespacedName()
+		s, err := mgr.Client.GetSecret(secretNsName)
+		assert.NoError(t, err)
+		assert.Equal(t, s.Data[constants.AgentKeyfileKey], []byte(currentAc.Auth.Key))
+	})
+}
+
+func assertReplicaSetIsConfiguredWithX509(t *testing.T, mdb mdbv1.MongoDBCommunity) {
+	mgr := client.NewManager(&mdb)
+	newClient := client.NewClient(mgr.GetClient())
+	err := createTLSSecret(newClient, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createTLSConfigMap(newClient, mdb)
+	assert.NoError(t, err)
+	crt, key, err := x509.CreateAgentCertificate()
+	assert.NoError(t, err)
+	err = createAgentCertSecret(newClient, mdb, crt, key, "")
+	assert.NoError(t, err)
+
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	currentAc, err := automationconfig.ReadFromSecret(mgr.Client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace})
+
+	t.Run("Automation Config is configured with X509", func(t *testing.T) {
+		assert.NotEmpty(t, currentAc.TLSConfig.AutoPEMKeyFilePath)
+		assert.NotEmpty(t, currentAc.Auth.Key)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
+		assert.Empty(t, currentAc.Auth.AutoPwd)
+		assert.False(t, currentAc.Auth.Disabled)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", currentAc.Auth.AutoUser)
+	})
+	t.Run("Secret with password was not created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()
+		_, err := mgr.Client.GetSecret(secretNsName)
+		assert.Error(t, err)
+	})
+	t.Run("Secret with keyfile was created", func(t *testing.T) {
+		secretNsName := mdb.GetAgentKeyfileSecretNamespacedName()
+		s, err := mgr.Client.GetSecret(secretNsName)
+		assert.NoError(t, err)
+		assert.Equal(t, s.Data[constants.AgentKeyfileKey], []byte(currentAc.Auth.Key))
+	})
+}
+
+func TestX509andSCRAMIsConfiguredWithX509Agent(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509", "SCRAM"}
+	mdb.Spec.Security.Authentication.AgentMode = "X509"
+
+	assertReplicaSetIsConfiguredWithX509(t, mdb)
+}
+
+func TestX509andSCRAMIsConfiguredWithSCRAMAgent(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509", "SCRAM"}
+	mdb.Spec.Security.Authentication.AgentMode = "SCRAM"
+
+	assertReplicaSetIsConfiguredWithScramTLS(t, mdb)
+}
+
+func TestX509IsConfigured(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509"}
+
+	assertReplicaSetIsConfiguredWithX509(t, mdb)
 }
 
 func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {

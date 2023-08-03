@@ -6,7 +6,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (r *ReplicaSetReconciler) cleanupPemFile(currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
+// cleanupPemSecret cleans up the old pem secret generated for the agent certificate.
+func (r *ReplicaSetReconciler) cleanupPemSecret(currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
 	if currentMDB.GetAgentAuthMode() == lastAppliedMDBSpec.GetAgentAuthMode() {
 		return
 	}

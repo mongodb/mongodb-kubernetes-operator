@@ -579,6 +579,10 @@ func createAgentCertSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt s
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.AgentCertificateSecretNamespacedName().Name, crt, key, pem)
 }
 
+func createAgentCertPemSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.AgentCertificatePemSecretNamespacedName().Name, crt, key, pem)
+}
+
 func createPrometheusTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Prometheus.TLSSecretRef.Name, crt, key, pem)
 }
