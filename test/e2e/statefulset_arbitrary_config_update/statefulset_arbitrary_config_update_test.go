@@ -46,6 +46,14 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 
 	overrideSpec := mdb.Spec.StatefulSetConfiguration
 	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
+	overrideSpec.SpecWrapper.Spec.Template.Spec.Tolerations = []corev1.Toleration{
+		{
+			Key:      "key1",
+			Value:    "value1",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+	}
 
 	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *mdbv1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 
