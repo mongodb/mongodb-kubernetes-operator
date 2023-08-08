@@ -27,9 +27,9 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "mongodb-rs")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "mongodb-rs")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
