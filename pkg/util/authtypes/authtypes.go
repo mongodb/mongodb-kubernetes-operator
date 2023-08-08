@@ -1,8 +1,11 @@
 package authtypes
 
 import (
+	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"net/url"
 )
 
 // Options contains a set of values that can be used for more fine-grained configuration of authentication.
@@ -33,7 +36,7 @@ type Role struct {
 }
 
 // User is a struct which holds all the values required to create an AutomationConfig user
-// and references to the credentials for the specific user.
+// and references to the credentials for that specific user.
 type User struct {
 	// Username is the username of the user.
 	Username string
@@ -64,6 +67,15 @@ type User struct {
 	// These options will be appended at the end of the connection string and
 	// will override any existing options from the resources.
 	ConnectionStringOptions map[string]interface{}
+}
+
+func (u User) GetLoginString(password string) string {
+	if u.Database != constants.ExternalDB {
+		return fmt.Sprintf("%s:%s@",
+			url.QueryEscape(u.Username),
+			url.QueryEscape(password))
+	}
+	return ""
 }
 
 // Configurable is an interface which any resource which can configure ScramSha authentication should implement.

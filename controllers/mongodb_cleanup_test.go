@@ -97,7 +97,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 	})
 
 }
-func TestReplicaSetReconciler_cleanupPemSecret(t *testing.T) {
+func TestReplicaSetReconcilerCleanupPemSecret(t *testing.T) {
 	lastAppliedSpec := mdbv1.MongoDBCommunitySpec{
 		Security: mdbv1.Security{
 			Authentication: mdbv1.Authentication{

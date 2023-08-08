@@ -54,8 +54,8 @@ type MockConfigurable struct {
 	refs   []metav1.OwnerReference
 }
 
-func NewMockConfigurable(opts authtypes.Options, users []authtypes.User, nsName types.NamespacedName, refs []metav1.OwnerReference) *MockConfigurable {
-	return &MockConfigurable{opts: opts, users: users, nsName: nsName, refs: refs}
+func NewMockConfigurable(opts authtypes.Options, users []authtypes.User, nsName types.NamespacedName, refs []metav1.OwnerReference) MockConfigurable {
+	return MockConfigurable{opts: opts, users: users, nsName: nsName, refs: refs}
 }
 
 func (m MockConfigurable) AgentCertificateSecretNamespacedName() types.NamespacedName {

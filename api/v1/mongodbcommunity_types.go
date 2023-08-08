@@ -3,32 +3,23 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
+	"regexp"
 	"strings"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"github.com/stretchr/objx"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
-
+	"github.com/stretchr/objx"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"regexp"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type Type string
@@ -464,12 +455,12 @@ type MongoDBUser struct {
 	// These secrets names must be different for each user in a deployment.
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	// +optional
-	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
+	ScramCredentialsSecretName string `json:"scramCredentialsSecretName,omitempty"`
 
 	// ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
 	// If provided, this secret must be different for each user in a deployment.
 	// +optional
-	ConnectionStringSecretName string `json:"connectionStringSecretName"`
+	ConnectionStringSecretName string `json:"connectionStringSecretName,omitempty"`
 
 	// Additional options to be appended to the connection string.
 	// These options apply only to this user and will override any existing options in the resource.
@@ -593,7 +584,9 @@ type Authentication struct {
 	AgentMode AuthMode `json:"agentMode,omitempty"`
 
 	// AgentCertificateSecret is a reference to a Secret containing the certificate and the key for the automation agent
-	// The certificate is expected to be available under the key "tls.crt" and the key under "tls.key"
+	// The secret needs to have available:
+	// - certificate under key: "tls.crt"
+	// - private key under key: "tls.key"
 	// If additionally, tls.pem is present, then it needs to be equal to the concatenation of tls.crt and tls.key
 	// +optional
 	AgentCertificateSecret *corev1.LocalObjectReference `json:"agentCertificateSecretRef,omitempty"`
@@ -824,6 +817,10 @@ func (m *MongoDBCommunitySpec) GetAgentAuthMode() AuthMode {
 	return ""
 }
 
+func (m *MongoDBCommunitySpec) IsAgentX509() bool {
+	return m.GetAgentAuthMode() == "X509"
+}
+
 // IsStillScaling returns true if this resource is currently scaling,
 // considering both arbiters and regular members.
 func (m *MongoDBCommunity) IsStillScaling() bool {
@@ -944,14 +941,8 @@ func (m *MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 // and includes the authentication data for the user
 func (m *MongoDBCommunity) MongoAuthUserURI(user authtypes.User, password string, clusterDomain string) string {
 	optionsString := m.GetUserOptionsString(user)
-	login := ""
-	if user.Database != constants.ExternalDB {
-		login = fmt.Sprintf("%s:%s@",
-			url.QueryEscape(user.Username),
-			url.QueryEscape(password))
-	}
 	return fmt.Sprintf("mongodb://%s%s/%s?replicaSet=%s&ssl=%t%s",
-		login,
+		user.GetLoginString(password),
 		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
 		m.Name,
@@ -967,14 +958,8 @@ func (m *MongoDBCommunity) MongoAuthUserSRVURI(user authtypes.User, password str
 	}
 
 	optionsString := m.GetUserOptionsString(user)
-	login := ""
-	if user.Database != constants.ExternalDB {
-		login = fmt.Sprintf("%s:%s@",
-			url.QueryEscape(user.Username),
-			url.QueryEscape(password))
-	}
 	return fmt.Sprintf("mongodb+srv://%s%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t%s",
-		login,
+		user.GetLoginString(password),
 		m.ServiceName(),
 		m.Namespace,
 		clusterDomain,

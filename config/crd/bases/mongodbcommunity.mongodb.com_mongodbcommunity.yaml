@@ -174,12 +174,12 @@ spec:
                   authentication:
                     properties:
                       agentCertificateSecretRef:
-                        description: AgentCertificateSecret is a reference to a Secret
+                        description: 'AgentCertificateSecret is a reference to a Secret
                           containing the certificate and the key for the automation
-                          agent The certificate is expected to be available under
-                          the key "tls.crt" and the key under "tls.key" If additionally,
-                          tls.pem is present, then it needs to be equal to the concatenation
-                          of tls.crt and tls.key
+                          agent The secret needs to have available: - certificate
+                          under key: "tls.crt" - private key under key: "tls.key"
+                          If additionally, tls.pem is present, then it needs to be
+                          equal to the concatenation of tls.crt and tls.key'
                         properties:
                           name:
                             description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
