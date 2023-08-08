@@ -11,6 +11,7 @@ import (
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -26,9 +27,9 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	ctx := setup.Setup(t)
 	defer ctx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "mongodb-rs")
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(ctx, user, "mongodb-rs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,8 +38,13 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		{
 			Key:      "key1",
 			Value:    "value1",
-			Operator: corev1.TolerationOpExists,
+			Operator: corev1.TolerationOpEqual,
 			Effect:   corev1.TaintEffectNoSchedule,
+		},
+		{
+			Key:      "key2",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectPreferNoSchedule,
 		},
 	}
 
@@ -61,7 +67,20 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
 		return container.ReadinessProbe.TimeoutSeconds == 100
 	}))
-	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetPodConditionIsTrue(&mdb, 0, func(pod corev1.Pod) bool {
-		return reflect.DeepEqual(pod.Spec.Tolerations, overrideTolerations)
+	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetConditionIsTrue(&mdb, func(sts appsv1.StatefulSet) bool {
+		tolerationsFound := true
+		for _, overrideToleration := range overrideTolerations {
+			tolerationFound := false
+			for _, specToleration := range sts.Spec.Template.Spec.Tolerations {
+				if reflect.DeepEqual(overrideToleration, specToleration) {
+					tolerationFound = true
+					break
+				}
+			}
+			if !tolerationFound {
+				tolerationsFound = false
+			}
+		}
+		return tolerationsFound
 	}))
 }

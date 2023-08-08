@@ -644,7 +644,7 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 	}
 }
 
-func StatefulSetPodConditionIsTrue(mdb *mdbv1.MongoDBCommunity, podNum int, condition func(s corev1.Pod) bool) func(*testing.T) {
+func StatefulSetConditionIsTrue(mdb *mdbv1.MongoDBCommunity, condition func(s appsv1.StatefulSet) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
 		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
@@ -652,9 +652,8 @@ func StatefulSetPodConditionIsTrue(mdb *mdbv1.MongoDBCommunity, podNum int, cond
 			t.Fatal(err)
 		}
 
-		pod := podFromMongoDBCommunity(mdb, 0)
-		if !condition(pod) {
-			t.Fatalf(`Pod "%s-%d" does not satisfy condition`, mdb.Name, podNum)
+		if !condition(sts) {
+			t.Fatalf(`StatefulSet "%s" does not satisfy condition`, mdb.Name)
 		}
 	}
 }
