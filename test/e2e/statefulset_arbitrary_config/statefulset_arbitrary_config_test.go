@@ -3,6 +3,7 @@ package statefulset_arbitrary_config_update
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
@@ -32,7 +33,17 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	overrideTolerations := []corev1.Toleration{
+		{
+			Key:      "key1",
+			Value:    "value1",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+	}
+
 	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.Template.Spec.Tolerations = overrideTolerations
 
 	customServiceName := "database"
 	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.ServiceName = customServiceName
@@ -49,5 +60,8 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
 	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
 		return container.ReadinessProbe.TimeoutSeconds == 100
+	}))
+	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetPodConditionIsTrue(&mdb, 0, func(pod corev1.Pod) bool {
+		return reflect.DeepEqual(pod.Spec.Tolerations, overrideTolerations)
 	}))
 }
