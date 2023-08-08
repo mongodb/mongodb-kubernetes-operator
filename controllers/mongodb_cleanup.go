@@ -12,7 +12,7 @@ func (r *ReplicaSetReconciler) cleanupPemSecret(currentMDB mdbv1.MongoDBCommunit
 		return
 	}
 
-	if currentMDB.GetAgentAuthMode() != "X509" && lastAppliedMDBSpec.GetAgentAuthMode() == "X509" {
+	if !currentMDB.IsAgentX509() && lastAppliedMDBSpec.IsAgentX509() {
 		agentCertSecret := lastAppliedMDBSpec.GetAgentCertificateRef()
 		if err := r.client.DeleteSecret(types.NamespacedName{
 			Namespace: namespace,

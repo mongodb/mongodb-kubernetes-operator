@@ -289,7 +289,7 @@ func tlsConfigModification(mdb mdbv1.MongoDBCommunity, certKey, caCert string) a
 	}
 
 	automationAgentPemFilePath := ""
-	if mdb.Spec.GetAgentAuthMode() == "X509" {
+	if mdb.Spec.IsAgentX509() {
 		automationAgentPemFilePath = automationAgentPemMountPath + "/" + mdb.AgentCertificatePemSecretNamespacedName().Name
 	}
 

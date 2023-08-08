@@ -307,7 +307,7 @@ func (r *ReplicaSetReconciler) ensureTLSResources(mdb mdbv1.MongoDBCommunity) er
 		if err := ensureTLSSecret(r.client, mdb); err != nil {
 			return fmt.Errorf("could not ensure TLS secret: %s", err)
 		}
-		if mdb.Spec.GetAgentAuthMode() == "X509" {
+		if mdb.Spec.IsAgentX509() {
 			r.log.Infof("Agent X509 authentication is enabled, creating/updating agent certificate secret")
 			if err := ensureAgentCertSecret(r.client, mdb); err != nil {
 				return fmt.Errorf("could not ensure Agent Certificate secret: %s", err)
@@ -685,6 +685,10 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 		if err != nil {
 			return automationconfig.AutomationConfig{}, fmt.Errorf("could not enable TLS on Prometheus endpoint: %s", err)
 		}
+	}
+
+	if mdb.Spec.IsAgentX509() {
+		r.secretWatcher.Watch(mdb.AgentCertificateSecretNamespacedName(), mdb.NamespacedName())
 	}
 
 	processPortManager, err := r.createProcessPortManager(mdb)
