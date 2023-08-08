@@ -735,7 +735,7 @@ func (m *MongoDBCommunity) GetAuthOptions() authtypes.Options {
 }
 
 // GetAuthUsers converts all the users from the spec into users
-// that can be used to configure scram authentication.
+// that can be used to configure authentication.
 func (m *MongoDBCommunity) GetAuthUsers() []authtypes.User {
 	users := make([]authtypes.User, len(m.Spec.Users))
 	for i, u := range m.Spec.Users {
