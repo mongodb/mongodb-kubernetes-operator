@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"testing"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
@@ -639,6 +640,20 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 
 		if !condition(*existingContainer) {
 			t.Fatalf(`Container "%s" does not satisfy condition`, containerName)
+		}
+	}
+}
+
+func StatefulSetConditionIsTrue(mdb *mdbv1.MongoDBCommunity, condition func(s appsv1.StatefulSet) bool) func(*testing.T) {
+	return func(t *testing.T) {
+		sts := appsv1.StatefulSet{}
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !condition(sts) {
+			t.Fatalf(`StatefulSet "%s" does not satisfy condition`, mdb.Name)
 		}
 	}
 }
