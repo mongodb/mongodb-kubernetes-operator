@@ -74,19 +74,6 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 		return container.ReadinessProbe.TimeoutSeconds == 100
 	}))
 	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetConditionIsTrue(&mdb, func(sts appsv1.StatefulSet) bool {
-		tolerationsFound := true
-		for _, overrideToleration := range overrideTolerations {
-			tolerationFound := false
-			for _, specToleration := range sts.Spec.Template.Spec.Tolerations {
-				if reflect.DeepEqual(overrideToleration, specToleration) {
-					tolerationFound = true
-					break
-				}
-			}
-			if !tolerationFound {
-				tolerationsFound = false
-			}
-		}
-		return tolerationsFound
+		return reflect.DeepEqual(overrideTolerations, sts.Spec.Template.Spec.Tolerations)
 	}))
 }
