@@ -247,6 +247,140 @@ func TestMergeEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, mergedContainer.Env[1].Value, "val2")
 }
 
+func TestMergeTolerations(t *testing.T) {
+	tests := []struct {
+		name                string
+		defaultTolerations  []corev1.Toleration
+		overrideTolerations []corev1.Toleration
+		expectedTolerations []corev1.Toleration
+	}{
+		{
+			// In case the calling code specifies default tolerations,
+			// they should be kept when there are no overrides.
+			name: "Overriding with nil tolerations",
+			defaultTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+			overrideTolerations: nil,
+			expectedTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+		},
+		{
+			// If the override is specifying an empty list of tolerations,
+			// they should replace default tolerations.
+			name: "Overriding with empty tolerations",
+			defaultTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+			},
+			overrideTolerations: []corev1.Toleration{},
+			expectedTolerations: []corev1.Toleration{},
+		},
+		{
+			// Overriding toleration should replace a nil original toleration.
+			name:               "Overriding when default toleration is nil",
+			defaultTolerations: nil,
+			overrideTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+			expectedTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+		},
+		{
+			// Overriding toleration should replace any original toleration.
+			name: "Overriding when original toleration is not nil",
+			defaultTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value3",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value4",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+			overrideTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+			expectedTolerations: []corev1.Toleration{
+				{
+					Key:      "key1",
+					Value:    "value1",
+					Operator: corev1.TolerationOpEqual,
+				},
+				{
+					Key:      "key1",
+					Value:    "value2",
+					Operator: corev1.TolerationOpExists,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defaultSpec := getDefaultPodSpec()
+			defaultSpec.Spec.Tolerations = tt.defaultTolerations
+			overrideSpec := getDefaultPodSpec()
+			overrideSpec.Spec.Tolerations = tt.overrideTolerations
+
+			mergedSpec := merge.PodTemplateSpecs(defaultSpec, overrideSpec)
+			assert.Equal(t, tt.expectedTolerations, mergedSpec.Spec.Tolerations)
+		})
+	}
+}
+
 func TestMergeContainer(t *testing.T) {
 	vol0 := corev1.VolumeMount{Name: "container-0.volume-mount-0"}
 	sideCarVol := corev1.VolumeMount{Name: "container-1.volume-mount-0"}
