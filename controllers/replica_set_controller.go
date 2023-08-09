@@ -689,6 +689,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 
 	if mdb.Spec.IsAgentX509() {
 		r.secretWatcher.Watch(mdb.AgentCertificateSecretNamespacedName(), mdb.NamespacedName())
+		r.secretWatcher.Watch(mdb.AgentCertificatePemSecretNamespacedName(), mdb.NamespacedName())
 	}
 
 	processPortManager, err := r.createProcessPortManager(mdb)

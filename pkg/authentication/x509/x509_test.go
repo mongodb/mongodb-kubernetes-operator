@@ -112,6 +112,7 @@ func Test_ensureAgent(t *testing.T) {
 
 	err = ensureAgent(&auth, secrets, mdb)
 	assert.Error(t, err)
+	assert.ErrorContains(t, err, "key \"tls.crt\" not present in the Secret")
 
 	auth = automationconfig.Auth{}
 	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, true)
@@ -119,6 +120,7 @@ func Test_ensureAgent(t *testing.T) {
 
 	err = ensureAgent(&auth, secrets, mdb)
 	assert.Error(t, err)
+	assert.ErrorContains(t, err, "x509: malformed certificate")
 
 	auth = automationconfig.Auth{}
 	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, false)

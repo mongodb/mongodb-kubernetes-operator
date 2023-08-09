@@ -48,7 +48,7 @@ func enableClientAuthentication(auth *automationconfig.Auth, opts authtypes.Opti
 		return err
 	}
 
-	if !contains.String(auth.DeploymentAuthMechanisms, constants.X509) {
+	if !contains.X509(auth.DeploymentAuthMechanisms) {
 		auth.DeploymentAuthMechanisms = append(auth.DeploymentAuthMechanisms, constants.X509)
 	}
 

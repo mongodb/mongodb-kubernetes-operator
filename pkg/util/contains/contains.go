@@ -1,6 +1,7 @@
 package contains
 
 import (
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,18 @@ func String(slice []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func Sha256(slice []string) bool {
+	return String(slice, constants.Sha256)
+}
+
+func Sha1(slice []string) bool {
+	return String(slice, constants.Sha1)
+}
+
+func X509(slice []string) bool {
+	return String(slice, constants.X509)
 }
 
 func NamespacedName(nsNames []types.NamespacedName, nsName types.NamespacedName) bool {

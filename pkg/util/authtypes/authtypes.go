@@ -3,6 +3,7 @@ package authtypes
 import (
 	"fmt"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"net/url"
@@ -24,6 +25,10 @@ type Options struct {
 
 	// AutoAuthMechanism is the desired authentication mechanism that the agents will use.
 	AutoAuthMechanism string
+}
+
+func (o *Options) IsSha256Present() bool {
+	return contains.String(o.AuthMechanisms, constants.Sha256)
 }
 
 // Role is a struct which will map to automationconfig.Role.

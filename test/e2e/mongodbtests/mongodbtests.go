@@ -165,6 +165,18 @@ func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) fun
 	}
 }
 
+func AgentX509SecretsExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		agentCertSecret := corev1.Secret{}
+		err := e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificateSecretNamespacedName(), &agentCertSecret)
+		assert.NoError(t, err)
+
+		agentCertPemSecret := corev1.Secret{}
+		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), &agentCertPemSecret)
+		assert.NoError(t, err)
+	}
+}
+
 func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	checkSecret := func(t *testing.T, resourceNamespacedName types.NamespacedName) {
 		secret := corev1.Secret{}
@@ -461,6 +473,18 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity, skipStatusCheck ...bool) fu
 					CurrentStatefulSetReplicas: mdb.Spec.Members,
 				}))
 		}
+	}
+}
+
+func BasicFunctionalityX509(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		mdbOwnerReference := getOwnerReference(mdb)
+		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
+		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Stateful Set Has OwnerReference", StatefulSetHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Service Set Has OwnerReference", ServiceHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(mdb, mdbOwnerReference))
 	}
 }
 
