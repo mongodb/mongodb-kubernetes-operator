@@ -43,7 +43,7 @@ func TestOptionBuilder_PendingPhase(t *testing.T) {
 func TestOptionBuilder_FailedPhase(t *testing.T) {
 	mdb := newReplicaSet(3, testVersion, "my-rs", "my-ns")
 
-	statusOptions().withFailedPhase().GetOptions()[0].ApplyOption(&mdb)
+	statusOptions().withFailedPhase(0).GetOptions()[0].ApplyOption(&mdb)
 
 	assert.Equal(t, mdbv1.Failed, mdb.Status.Phase)
 }

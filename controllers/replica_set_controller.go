@@ -118,9 +118,6 @@ type ReplicaSetReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-
-	// TODO: generalize preparation for resource
-	// Fetch the MongoDB instance
 	mdb := mdbv1.MongoDBCommunity{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, &mdb)
 	if err != nil {
@@ -144,7 +141,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(10),
 		)
 	}
 
@@ -153,7 +150,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring the service (members) exists: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
 		)
 	}
 
@@ -162,7 +159,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error validating TLS config: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(10),
 		)
 	}
 
@@ -170,7 +167,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Info, "TLS config is not yet valid, retrying in 10 seconds").
-				withPendingPhase(10),
+				withFailedPhase(10),
 		)
 	}
 
@@ -178,7 +175,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
 		)
 	}
 
@@ -186,7 +183,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring TLS resources: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
 		)
 	}
 
@@ -194,7 +191,16 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error ensuring User config: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
+		)
+	}
+
+	statefulSetRecoverErr, automationConfigRecoveryErr := r.recoverMongoDBReplicaSetIfNeeded(mdb)
+	if statefulSetRecoverErr != nil || automationConfigRecoveryErr != nil {
+		return status.Update(r.client.Status(), &mdb,
+			statusOptions().
+				withMessage(Error, fmt.Sprintf("Error recovering MongoDB ReplicaSet: [%s], [%s]", statefulSetRecoverErr, automationConfigRecoveryErr)).
+				withFailedPhase(5),
 		)
 	}
 
@@ -203,7 +209,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error deploying MongoDB ReplicaSet: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
 		)
 	}
 
@@ -220,7 +226,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		return status.Update(r.client.Status(), &mdb,
 			statusOptions().
 				withMessage(Error, fmt.Sprintf("Error resetting StatefulSet UpdateStrategyType: %s", err)).
-				withFailedPhase(),
+				withFailedPhase(0),
 		)
 	}
 
@@ -443,6 +449,18 @@ func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(mdb mdbv1.MongoDBCommunit
 		func() (bool, error) {
 			return r.deployStatefulSet(mdb)
 		})
+}
+
+// recoverMongoDBReplicaSetIfNeeded analyzes the status of the MongoDBCommunity resource and if it's failing,
+// it assumes users might want to try to recover it. Therefore, it will push both the StatefulSet and AutomationConfig
+// and hope the agent will perform a successful recovery.
+func (r *ReplicaSetReconciler) recoverMongoDBReplicaSetIfNeeded(mdb mdbv1.MongoDBCommunity) (error, error) {
+	if mdb.Status.Phase == mdbv1.Failed {
+		_, err := r.deployStatefulSet(mdb)
+		_, err2 := r.deployAutomationConfig(mdb)
+		return err, err2
+	}
+	return nil, nil
 }
 
 // ensureService creates a Service unless it already exists.
