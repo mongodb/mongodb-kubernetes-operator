@@ -1148,6 +1148,7 @@ func assertReplicaSetIsConfiguredWithX509(t *testing.T, mdb mdbv1.MongoDBCommuni
 
 	t.Run("Automation Config is configured with X509", func(t *testing.T) {
 		assert.NotEmpty(t, currentAc.TLSConfig.AutoPEMKeyFilePath)
+		assert.Equal(t, automationAgentPemMountPath+"/"+mdb.AgentCertificatePemSecretNamespacedName().Name, currentAc.TLSConfig.AutoPEMKeyFilePath)
 		assert.NotEmpty(t, currentAc.Auth.Key)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)

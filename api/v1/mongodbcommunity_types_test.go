@@ -588,6 +588,9 @@ func TestMongoDBCommunity_AgentCertificateSecretNamespacedName(t *testing.T) {
 
 	assert.Equal(t, "agent-certs", m.AgentCertificateSecretNamespacedName().Name)
 	assert.Equal(t, "mdb", m.AgentCertificateSecretNamespacedName().Namespace)
+
+	m.Spec.Security.Authentication.AgentCertificateSecret = &corev1.LocalObjectReference{Name: "agent-certs-custom"}
+	assert.Equal(t, "agent-certs-custom", m.AgentCertificateSecretNamespacedName().Name)
 }
 
 func TestMongoDBCommunity_AgentCertificatePemSecretNamespacedName(t *testing.T) {
@@ -595,6 +598,10 @@ func TestMongoDBCommunity_AgentCertificatePemSecretNamespacedName(t *testing.T) 
 
 	assert.Equal(t, "agent-certs-pem", m.AgentCertificatePemSecretNamespacedName().Name)
 	assert.Equal(t, "mdb", m.AgentCertificatePemSecretNamespacedName().Namespace)
+
+	m.Spec.Security.Authentication.AgentCertificateSecret = &corev1.LocalObjectReference{Name: "agent-certs-custom"}
+	assert.Equal(t, "agent-certs-custom-pem", m.AgentCertificatePemSecretNamespacedName().Name)
+
 }
 
 func TestMongoDBCommunitySpec_GetAgentAuthMode(t *testing.T) {
