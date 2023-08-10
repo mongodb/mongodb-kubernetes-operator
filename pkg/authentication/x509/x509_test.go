@@ -135,10 +135,9 @@ func Test_convertMongoDBResourceUsersToAutomationConfigUsers(t *testing.T) {
 		mdb authtypes.Configurable
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []automationconfig.MongoDBUser
-		wantErr bool
+		name string
+		args args
+		want []automationconfig.MongoDBUser
 	}{
 		{
 			name: "Only x.509 users",
@@ -177,13 +176,11 @@ func Test_convertMongoDBResourceUsersToAutomationConfigUsers(t *testing.T) {
 					AuthenticationRestrictions: []string{},
 				},
 			},
-			wantErr: false,
 		},
 		{
-			name:    "Only SCRAM users",
-			args:    args{mdb: buildX509Configurable("mongodb", mocks.BuildScramMongoDBUser("my-user-1"), mocks.BuildScramMongoDBUser("my-user-2"))},
-			want:    nil,
-			wantErr: false,
+			name: "Only SCRAM users",
+			args: args{mdb: buildX509Configurable("mongodb", mocks.BuildScramMongoDBUser("my-user-1"), mocks.BuildScramMongoDBUser("my-user-2"))},
+			want: nil,
 		},
 		{
 			name: "X.509 and SCRAM users",
@@ -206,16 +203,11 @@ func Test_convertMongoDBResourceUsersToAutomationConfigUsers(t *testing.T) {
 					AuthenticationRestrictions: []string{},
 				},
 			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := convertMongoDBResourceUsersToAutomationConfigUsers(tt.args.mdb)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("convertMongoDBResourceUsersToAutomationConfigUsers() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := convertMongoDBResourceUsersToAutomationConfigUsers(tt.args.mdb)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertMongoDBResourceUsersToAutomationConfigUsers() got = %v, want %v", got, tt.want)
 			}

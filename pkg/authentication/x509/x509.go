@@ -27,10 +27,7 @@ import (
 func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) error {
 	opts := mdb.GetAuthOptions()
 
-	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(mdb)
-	if err != nil {
-		return fmt.Errorf("could not convert users to Automation Config users: %s", err)
-	}
+	desiredUsers := convertMongoDBResourceUsersToAutomationConfigUsers(mdb)
 
 	if opts.AutoAuthMechanism == constants.X509 {
 		if err := ensureAgent(auth, secretGetUpdateCreateDeleter, mdb); err != nil {
@@ -67,7 +64,7 @@ func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secre
 }
 
 // convertMongoDBResourceUsersToAutomationConfigUsers returns a list of users that are able to be set in the AutomationConfig
-func convertMongoDBResourceUsersToAutomationConfigUsers(mdb authtypes.Configurable) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(mdb authtypes.Configurable) []automationconfig.MongoDBUser {
 	var usersWanted []automationconfig.MongoDBUser
 	for _, u := range mdb.GetAuthUsers() {
 		if u.Database == constants.ExternalDB {
@@ -75,7 +72,7 @@ func convertMongoDBResourceUsersToAutomationConfigUsers(mdb authtypes.Configurab
 			usersWanted = append(usersWanted, acUser)
 		}
 	}
-	return usersWanted, nil
+	return usersWanted
 }
 
 // convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
