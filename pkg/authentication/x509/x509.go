@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"k8s.io/api/core/v1"
 	"math/big"
+	"regexp"
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -58,6 +59,10 @@ func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secre
 	agentSubject, err := readAgentSubjectsFromCert(agentCert)
 	if err != nil {
 		return err
+	}
+
+	if !isValidX509Subject(agentSubject) {
+		return fmt.Errorf("Agent subject: %s is not a valid subject", agentSubject)
 	}
 
 	return enableAgentAuthentication(auth, agentKeyFile, agentSubject, mdb.GetAuthOptions())
@@ -121,6 +126,20 @@ func readAgentSubjectsFromCert(agentCert string) (string, error) {
 	return rdns.String(), nil
 }
 
+func isValidX509Subject(subject string) bool {
+	expected := []string{"CN", "C", "OU"}
+	for _, name := range expected {
+		matched, err := regexp.MatchString(name+`=\w+`, subject)
+		if err != nil {
+			continue
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
 func CreateAgentCertificateSecret(key string, mdb authtypes.Configurable, invalid bool) v1.Secret {
 	agentCert, _, _ := CreateAgentCertificate()
 	if invalid {
@@ -154,6 +173,7 @@ func CreateAgentCertificate() (string, string, error) {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
+			Country:            []string{"US"},
 			Organization:       []string{"MongoDB"},
 			OrganizationalUnit: []string{"ENG"},
 			CommonName:         "mms-automation-agent",

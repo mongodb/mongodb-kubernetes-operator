@@ -54,7 +54,7 @@ func TestEnable(t *testing.T) {
 			AutoAuthMechanisms:       []string{constants.X509},
 			AutoAuthMechanism:        constants.X509,
 			DeploymentAuthMechanisms: []string{constants.X509},
-			AutoUser:                 "CN=mms-automation-agent,OU=ENG,O=MongoDB",
+			AutoUser:                 "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US",
 			Key:                      "RuPeMaIe2g0SNTTa",
 			KeyFile:                  "/path/to/keyfile",
 			KeyFileWindows:           constants.AutomationAgentWindowsKeyFilePath,
@@ -221,7 +221,7 @@ func Test_readAgentSubjectsFromCert(t *testing.T) {
 	subjectName, err := readAgentSubjectsFromCert(agentCert)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", subjectName)
+	assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", subjectName)
 }
 
 func buildX509Configurable(name string, users ...authtypes.User) authtypes.Configurable {

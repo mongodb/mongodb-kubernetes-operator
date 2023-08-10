@@ -1154,7 +1154,7 @@ func assertReplicaSetIsConfiguredWithX509(t *testing.T, mdb mdbv1.MongoDBCommuni
 		assert.NotEmpty(t, currentAc.Auth.KeyFileWindows)
 		assert.Empty(t, currentAc.Auth.AutoPwd)
 		assert.False(t, currentAc.Auth.Disabled)
-		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", currentAc.Auth.AutoUser)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", currentAc.Auth.AutoUser)
 	})
 	t.Run("Secret with password was not created", func(t *testing.T) {
 		secretNsName := mdb.GetAgentPasswordSecretNamespacedName()

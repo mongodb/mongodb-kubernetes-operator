@@ -75,7 +75,7 @@ func TestEnable(t *testing.T) {
 		assert.Equal(t, []string{constants.X509}, auth.AutoAuthMechanisms)
 		assert.Len(t, auth.Users, 1)
 		assert.Equal(t, "CN=my-user,OU=organizationalunit,O=organization", auth.Users[0].Username)
-		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", auth.AutoUser)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", auth.AutoUser)
 	})
 	t.Run("SCRAM and X509 with SCRAM agent", func(t *testing.T) {
 		auth := automationconfig.Auth{}
@@ -124,7 +124,7 @@ func TestEnable(t *testing.T) {
 		assert.Len(t, auth.Users, 2)
 		assert.Equal(t, "my-user", auth.Users[0].Username)
 		assert.Equal(t, "CN=my-user,OU=organizationalunit,O=organization", auth.Users[1].Username)
-		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB", auth.AutoUser)
+		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", auth.AutoUser)
 	})
 
 }

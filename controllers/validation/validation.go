@@ -3,7 +3,6 @@ package validation
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
@@ -109,9 +108,6 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 			if user.ScramCredentialsSecretName != "" {
 				return fmt.Errorf("X509 user %s should not have scram credentials secret name", user.Username)
 			}
-			if !isValidX509Subject(user.Username) {
-				return fmt.Errorf("X.509 user %s does not have correct subject name", user.Username)
-			}
 		} else {
 			_, sha1 := expectedAuthMethods[constants.Sha1]
 			_, sha256 := expectedAuthMethods[constants.Sha256]
@@ -208,20 +204,4 @@ func validateStatefulSet(mdb mdbv1.MongoDBCommunity) error {
 	}
 
 	return nil
-}
-
-// TODO: Do we need this?
-// isValidX509Subject checks the subject contains CommonName, Country and Organizational Unit, Location and State.
-func isValidX509Subject(subject string) bool {
-	expected := []string{"CN", "O", "OU"}
-	for _, name := range expected {
-		matched, err := regexp.MatchString(name+`=\w+`, subject)
-		if err != nil {
-			continue
-		}
-		if !matched {
-			return false
-		}
-	}
-	return true
 }
