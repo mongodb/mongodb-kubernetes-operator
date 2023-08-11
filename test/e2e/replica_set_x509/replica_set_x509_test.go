@@ -6,6 +6,9 @@ import (
 	"os"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
@@ -14,8 +17,6 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/tlstests"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestMain(m *testing.M) {
@@ -47,7 +48,8 @@ func TestReplicaSetX509(t *testing.T) {
 		}
 		users := mdb.GetAuthUsers()
 
-		cert, root := createCerts(t, &mdb)
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
 
 		t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(&mdb))
@@ -64,7 +66,8 @@ func TestReplicaSetX509(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		cert, root := createCerts(t, &mdb)
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
@@ -80,12 +83,17 @@ func TestReplicaSetX509(t *testing.T) {
 		}
 		initialCertSerialNumber := agentCert.SerialNumber
 
-		cert, root := createCerts(t, &mdb)
+		initialAgentPem := &corev1.Secret{}
+		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), initialAgentPem)
+		assert.NoError(t, err)
+
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
 		t.Run("Update certificate secret", tlstests.RotateAgentCertificate(&mdb))
-		t.Run("Wait for MongoDB to reach Running Phase after rotating server cert", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Wait for MongoDB to reach Running Phase after rotating agent cert", mongodbtests.MongoDBReachesRunningPhase(&mdb))
 
 		agentCert, err = GetAgentCert(mdb)
 		if err != nil {
@@ -94,6 +102,12 @@ func TestReplicaSetX509(t *testing.T) {
 		finalCertSerialNumber := agentCert.SerialNumber
 
 		assert.NotEqual(t, finalCertSerialNumber, initialCertSerialNumber)
+
+		finalAgentPem := &corev1.Secret{}
+		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), finalAgentPem)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, finalAgentPem.Data, initialAgentPem.Data)
 
 		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
 	})
@@ -107,7 +121,8 @@ func TestReplicaSetX509(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		cert, root := createCerts(t, &mdb)
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
@@ -124,7 +139,8 @@ func TestReplicaSetX509(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		cert, root := createCerts(t, &mdb)
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
@@ -176,7 +192,7 @@ func getInvalidUser() v1.MongoDBUser {
 	}
 }
 
-func createCerts(t *testing.T, mdb *v1.MongoDBCommunity) (string, string) {
+func createCerts(t *testing.T, mdb *v1.MongoDBCommunity) (string, string, string) {
 	dir, _ := os.MkdirTemp("", "certdir")
 
 	t.Logf("Creating client certificate pem file")
@@ -198,5 +214,5 @@ func createCerts(t *testing.T, mdb *v1.MongoDBCommunity) (string, string) {
 	assert.NoError(t, err)
 	t.Logf("Created root ca file: %s", root.Name())
 
-	return cert.Name(), root.Name()
+	return cert.Name(), root.Name(), dir
 }
