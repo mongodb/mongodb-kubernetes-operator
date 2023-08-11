@@ -2,15 +2,14 @@ package v1
 
 import (
 	"encoding/json"
+
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

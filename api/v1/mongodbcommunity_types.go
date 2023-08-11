@@ -13,9 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
 	"github.com/stretchr/objx"

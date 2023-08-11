@@ -3,11 +3,11 @@ package authentication
 import (
 	"fmt"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 )
 

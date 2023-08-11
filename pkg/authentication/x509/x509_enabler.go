@@ -4,10 +4,9 @@ import (
 	"errors"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 )
 

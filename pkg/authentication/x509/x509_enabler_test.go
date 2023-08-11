@@ -3,8 +3,8 @@ package x509
 import (
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"github.com/stretchr/testify/assert"
 )

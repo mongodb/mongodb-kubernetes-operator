@@ -3,13 +3,14 @@ package mocks
 import (
 	"fmt"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 )
 
 type MockSecretGetUpdateCreateDeleter struct {
@@ -41,7 +42,7 @@ func (c MockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) err
 
 func (c MockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
 	if s, ok := c.secrets[objectKey]; !ok {
-		return corev1.Secret{}, errors.NotFoundError()
+		return corev1.Secret{}, &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
 	} else {
 		return s, nil
 	}

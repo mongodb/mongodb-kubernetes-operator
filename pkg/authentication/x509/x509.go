@@ -10,14 +10,15 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
-	"k8s.io/api/core/v1"
 	"math/big"
 	"regexp"
 	"time"
 
+	"k8s.io/api/core/v1"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 )

@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"

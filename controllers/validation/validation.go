@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"

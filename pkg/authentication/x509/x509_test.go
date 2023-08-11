@@ -4,14 +4,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/authtypes"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/mocks"
-	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/mocks"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEnable(t *testing.T) {
