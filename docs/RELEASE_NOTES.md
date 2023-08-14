@@ -8,6 +8,7 @@
 ## Updated Image Tags
 
 - mongodb-kubernetes-operator:0.8.2
+- mongodb-agent:12.0.25.7724-1
 
 _All the images can be found in:_
 
