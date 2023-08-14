@@ -3,10 +3,16 @@ package controllers
 import (
 	"context"
 	"errors"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+
 	corev1 "k8s.io/api/core/v1"
+
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
@@ -15,13 +21,9 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
@@ -42,7 +44,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
-func TestStatefulSet_IsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509"}
 	mgr := kubeClient.NewManager(&mdb)
@@ -195,7 +197,7 @@ func assertStatefulSetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 	}
 }
 
-func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mdb.Spec.Prometheus = &mdbv1.Prometheus{
 		Username: "username",
@@ -238,7 +240,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name, "")
 }
 
-func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
@@ -286,7 +288,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	assertStatefulSetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
-func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 		client := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(client, mdb, "CERT", "KEY", "")
@@ -485,7 +487,7 @@ func TestPemSupport(t *testing.T) {
 	})
 }
 
-func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
+func TestTLSConfigReferencesToCACertAreValidated(t *testing.T) {
 	type args struct {
 		caConfigMap         *corev1.LocalObjectReference
 		caCertificateSecret *corev1.LocalObjectReference
