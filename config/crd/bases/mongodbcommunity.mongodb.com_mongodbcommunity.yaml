@@ -69,6 +69,8 @@ spec:
                 description: AgentConfiguration sets options for the MongoDB automation
                   agent
                 properties:
+                  logFile:
+                    type: string
                   logLevel:
                     type: string
                   maxLogFileDurationHours:
