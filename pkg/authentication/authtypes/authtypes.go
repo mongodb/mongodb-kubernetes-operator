@@ -2,11 +2,13 @@ package authtypes
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
+	"net/url"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"net/url"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 )
 
 // Options contains a set of values that can be used for more fine-grained configuration of authentication.
