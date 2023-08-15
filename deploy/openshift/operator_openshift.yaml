@@ -47,7 +47,7 @@ spec:
         - name: OPERATOR_NAME
           value: mongodb-kubernetes-operator
         - name: AGENT_IMAGE
-          value: quay.io/mongodb/mongodb-agent:12.0.24.7719-1
+          value: quay.io/mongodb/mongodb-agent:12.0.25.7724-1
         - name: READINESS_PROBE_IMAGE
           value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.15
         - name: VERSION_UPGRADE_HOOK_IMAGE
@@ -56,7 +56,7 @@ spec:
           value: mongo
         - name: MONGODB_REPO_URL
           value: docker.io
-        image: quay.io/mongodb/mongodb-kubernetes-operator:0.8.1
+        image: quay.io/mongodb/mongodb-kubernetes-operator:0.8.2
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
         resources:
