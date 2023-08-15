@@ -361,6 +361,8 @@ type AgentConfiguration struct {
 	// +optional
 	LogLevel LogLevel `json:"logLevel"`
 	// +optional
+	LogFile string `json:"logFile"`
+	// +optional
 	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
 }
 
@@ -1076,6 +1078,10 @@ func (m *MongoDBCommunity) NeedsAutomationConfigVolume() bool {
 
 func (m MongoDBCommunity) GetAgentLogLevel() LogLevel {
 	return m.Spec.AgentConfiguration.LogLevel
+}
+
+func (m MongoDBCommunity) GetAgentLogFile() string {
+	return m.Spec.AgentConfiguration.LogFile
 }
 
 func (m MongoDBCommunity) GetAgentMaxLogFileDurationHours() int {
