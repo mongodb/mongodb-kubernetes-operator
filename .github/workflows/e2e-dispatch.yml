@@ -70,6 +70,9 @@ jobs:
         registry: quay.io
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+    # template: .action_templates/steps/set-up-qemu.yaml
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
     # template: .action_templates/steps/build-and-push-development-images.yaml
     - name: Build and Push Images
       run: |

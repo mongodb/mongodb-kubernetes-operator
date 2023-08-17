@@ -6,6 +6,7 @@ jobs:
     - template: checkout
     - template: setup-and-install-python
     - template: quay-login
+    - template: set-up-qemu
     - template: build-and-push-development-images
   - template: single-test
     steps:
