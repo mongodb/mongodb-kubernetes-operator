@@ -150,6 +150,7 @@ e2e-image: ## Build and push e2e test image
 	python pipeline.py --image-name e2e
 
 agent-image: ## Build and push agent image
+	python pipeline.py --image-name agent-ubuntu
 	python pipeline.py --image-name agent-ubi
 
 readiness-probe-image: ## Build and push readiness probe image
