@@ -35,6 +35,7 @@ class DevConfig:
         self._distro = distro
         self.include_tags: List[str] = []
         self.skip_tags: List[str] = []
+        self.gh_run_id = ""
 
     def ensure_tag_is_run(self, tag: str) -> None:
         if tag not in self.include_tags:

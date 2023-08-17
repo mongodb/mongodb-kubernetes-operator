@@ -76,7 +76,7 @@ jobs:
     # template: .action_templates/steps/build-and-push-development-images.yaml
     - name: Build and Push Images
       run: |
-        python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false
+        python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false --tag ${{ github.run_id }}
       env:
         MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
         version_id: ${{ github.run_id }}

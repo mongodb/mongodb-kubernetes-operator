@@ -107,6 +107,11 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.readiness_probe_image_dev)
 
+    if config.gh_run_id != "":
+        create_and_push_manifest(
+            config, config.readiness_probe_image_dev, config.gh_run_id
+        )
+
     if "release" in config.include_tags:
         create_and_push_manifest(
             config, config.readiness_probe_image, release["readiness-probe"]
@@ -150,6 +155,11 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.version_upgrade_hook_image_dev)
 
+    if config.gh_run_id != "":
+        create_and_push_manifest(
+            config, config.version_upgrade_hook_image_dev, config.gh_run_id
+        )
+
     if "release" in config.include_tags:
         create_and_push_manifest(
             config, config.version_upgrade_hook_image, release["version-upgrade-hook"]
@@ -192,6 +202,9 @@ def build_operator_ubi_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.operator_image_dev)
 
+    if config.gh_run_id != "":
+        create_and_push_manifest(config, config.operator_image_dev, config.gh_run_id)
+
     if "release" in config.include_tags:
         create_and_push_manifest(
             config, config.operator_image, release["mongodb-kubernetes-operator"]
@@ -222,6 +235,9 @@ def build_e2e_image(config: DevConfig) -> None:
     )
 
     create_and_push_manifest(config, config.e2e_image)
+
+    if config.gh_run_id != "":
+        create_and_push_manifest(config, config.e2e_image, config.gh_run_id)
 
 
 def create_and_push_manifest(
@@ -284,6 +300,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
     parser.add_argument("--release", type=lambda x: x.lower() == "true")
+    parser.add_argument("--tag", type=str)
     return parser.parse_args()
 
 
@@ -302,6 +319,8 @@ def main() -> int:
     # by default we do not want to run any release tasks. We must explicitly
     # use the --release flag to run them.
     config.ensure_skip_tag("release")
+
+    config.gh_run_id = args.tag
 
     # specify --release to release the image
     if args.release:
