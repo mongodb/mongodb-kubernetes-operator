@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import subprocess
 from typing import Dict, Optional
 
 from sonar.sonar import process_image
@@ -75,7 +76,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        "readiness-probe-init",
+        "readiness-probe-init-amd64",
         config,
         args={
             "builder": "true",
@@ -89,6 +90,28 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         },
     )
 
+    sonar_build_image(
+        "readiness-probe-init-arm64",
+        config,
+        args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "registry": config.repo_url,
+            "release_version": release["readiness-probe"],
+            "readiness_probe_image": config.readiness_probe_image,
+            "readiness_probe_image_dev": config.readiness_probe_image_dev,
+            "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
+        },
+    )
+
+    create_and_push_manifest(config, config.readiness_probe_image_dev)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.readiness_probe_image, release["readiness-probe"]
+        )
+
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
     release = _load_release()
@@ -96,7 +119,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        "version-post-start-hook-init",
+        "version-post-start-hook-init-amd64",
         config,
         args={
             "builder": "true",
@@ -110,12 +133,49 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         },
     )
 
+    sonar_build_image(
+        "version-post-start-hook-init-arm64",
+        config,
+        args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "registry": config.repo_url,
+            "release_version": release["version-upgrade-hook"],
+            "version_post_start_hook_image": config.version_upgrade_hook_image,
+            "version_post_start_hook_image_dev": config.version_upgrade_hook_image_dev,
+            "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
+        },
+    )
+
+    create_and_push_manifest(config, config.version_upgrade_hook_image_dev)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.version_upgrade_hook_image, release["version-upgrade-hook"]
+        )
+
 
 def build_operator_ubi_image(config: DevConfig) -> None:
     release = _load_release()
     config.ensure_tag_is_run("ubi")
     sonar_build_image(
-        "operator-ubi",
+        "operator-ubi-amd64",
+        config,
+        args={
+            "registry": config.repo_url,
+            "builder": "true",
+            "builder_image": release["golang-builder-image"],
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "operator_image": config.operator_image,
+            "operator_image_dev": config.operator_image_dev,
+            "release_version": release["mongodb-kubernetes-operator"],
+            "s3_bucket": config.s3_bucket,
+        },
+        inventory="inventories/operator-inventory.yaml",
+    )
+    sonar_build_image(
+        "operator-ubi-arm64",
         config,
         args={
             "registry": config.repo_url,
@@ -130,11 +190,18 @@ def build_operator_ubi_image(config: DevConfig) -> None:
         inventory="inventories/operator-inventory.yaml",
     )
 
+    create_and_push_manifest(config, config.operator_image_dev)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.operator_image, release["mongodb-kubernetes-operator"]
+        )
+
 
 def build_e2e_image(config: DevConfig) -> None:
     release = _load_release()
     sonar_build_image(
-        "e2e",
+        "e2e-arm64",
         config,
         args={
             "registry": config.repo_url,
@@ -143,6 +210,58 @@ def build_e2e_image(config: DevConfig) -> None:
         },
         inventory="inventories/e2e-inventory.yaml",
     )
+    sonar_build_image(
+        "e2e-amd64",
+        config,
+        args={
+            "registry": config.repo_url,
+            "base_image": release["golang-builder-image"],
+            "e2e_image": config.e2e_image,
+        },
+        inventory="inventories/e2e-inventory.yaml",
+    )
+
+    create_and_push_manifest(config, config.e2e_image)
+
+
+def create_and_push_manifest(
+    config: DevConfig, image: str, tag: str = "latest"
+) -> None:
+    final_manifest = "{0}/{1}:{2}".format(config.repo_url, image, tag)
+    args = ["docker", "manifest", "rm", final_manifest]
+    args_str = " ".join(args)
+    print(f"removing existing manifest: {args_str}")
+    subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    args = [
+        "docker",
+        "manifest",
+        "create",
+        final_manifest,
+        "--amend",
+        final_manifest + "-amd64",
+        "--amend",
+        final_manifest + "-arm64",
+    ]
+    args_str = " ".join(args)
+    print(f"creating new manifest: {args_str}")
+    cp = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if cp.returncode != 0:
+        raise Exception(cp.stderr)
+
+    args = ["docker", "manifest", "push", final_manifest]
+    args_str = " ".join(args)
+    print(f"pushing new manifest: {args_str}")
+    cp = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if cp.returncode != 0:
+        raise Exception(cp.stderr)
+
+
+# docker manifest rm $(REPO_URL)/$(OPERATOR_IMAGE):latest | true
+# docker manifest create $(REPO_URL)/$(OPERATOR_IMAGE):latest --amend $(REPO_URL)/$(OPERATOR_IMAGE):latest-amd64 --amend $(REPO_URL)/$(OPERATOR_IMAGE):latest-arm64
+# docker manifest push $(REPO_URL)/$(OPERATOR_IMAGE):latest
 
 
 def sonar_build_image(

@@ -2,7 +2,40 @@ vars:
   registry: <registry>
 
 images:
-  - name: e2e
+  - name: e2e-arm64
+    vars:
+      context: .
+      template_context: scripts/dev/templates
+    inputs:
+      - e2e_image
+    platform: linux/arm64
+    stages:
+      - name: e2e-template
+        task_type: dockerfile_template
+        distro: e2e
+
+        inputs:
+          - builder
+          - base_image
+
+        output:
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+
+      - name: e2e-build
+        task_type: docker_build
+
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+            tag: $(inputs.params.version_id)-arm64
+          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+            tag: latest-arm64
+
+  - name: e2e-amd64
     vars:
       context: .
       template_context: scripts/dev/templates
@@ -19,19 +52,19 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-amd64
 
       - name: e2e-build
         task_type: docker_build
 
-        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-amd64
 
         labels:
           quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
-            tag: $(inputs.params.version_id)
+            tag: $(inputs.params.version_id)-amd64
           - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
-            tag: latest
+            tag: latest-amd64
 

@@ -1,8 +1,8 @@
 {% if builder %}
-FROM {{builder_image}} AS builder
+FROM --platform=$TARGETPLATFORM {{builder_image}} AS builder
 
 {% else %}
-FROM {{base_image}}
+FROM --platform=$TARGETPLATFORM {{base_image}}
 {% endif %}
 
 {% block packages -%}

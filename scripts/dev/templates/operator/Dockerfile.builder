@@ -1,12 +1,14 @@
 ARG builder_image
-FROM ${builder_image} AS builder
+FROM --platform=$BUILDPLATFORM ${builder_image} AS builder
 
 RUN mkdir /workspace
 WORKDIR /workspace
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager cmd/manager/main.go
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -o manager cmd/manager/main.go
 
 FROM busybox
 
