@@ -9,7 +9,7 @@ NAMESPACE := $(shell jq -r .namespace < $(MONGODB_COMMUNITY_CONFIG))
 UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < $(MONGODB_COMMUNITY_CONFIG))
 READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < $(MONGODB_COMMUNITY_CONFIG))
 REGISTRY := $(shell jq -r .repo_url < $(MONGODB_COMMUNITY_CONFIG))
-AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubuntu < $(MONGODB_COMMUNITY_CONFIG))
+AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubi < $(MONGODB_COMMUNITY_CONFIG))
 
 HELM_CHART ?= ./helm-charts/charts/community-operator
 
@@ -150,7 +150,7 @@ e2e-image: ## Build and push e2e test image
 	python pipeline.py --image-name e2e
 
 agent-image: ## Build and push agent image
-	python pipeline.py --image-name agent-ubuntu
+	# python pipeline.py --image-name agent-ubuntu
 	python pipeline.py --image-name agent-ubi
 
 readiness-probe-image: ## Build and push readiness probe image

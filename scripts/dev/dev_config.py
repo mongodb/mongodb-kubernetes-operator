@@ -161,7 +161,7 @@ class DevConfig:
 
 
 def load_config(
-    config_file_path: Optional[str] = None, distro: Distro = Distro.UBUNTU
+    config_file_path: Optional[str] = None, distro: Distro = Distro.UBI
 ) -> DevConfig:
     if config_file_path is None:
         config_file_path = get_config_path()
