@@ -43,17 +43,29 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
 
 
 def build_agent_image_ubi(config: DevConfig) -> None:
-    image_name = "agent-ubi"
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubi
     args["agent_image_dev"] = config.agent_dev_image_ubi
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        image_name,
+        "agent-ubi-amd64",
         config,
         args=args,
     )
+    sonar_build_image(
+        "agent-ubi-arm64",
+        config,
+        args=args,
+    )
+
+    create_and_push_manifest(config, config.agent_dev_image_ubi)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(config, config.agent_dev_image_ubi, config.gh_run_id)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(config, config.agent_image_ubi, args["agent_version"])
 
 
 def build_agent_image_ubuntu(config: DevConfig) -> None:
@@ -107,7 +119,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.readiness_probe_image_dev)
 
-    if config.gh_run_id != "":
+    if config.gh_run_id is not None and config.gh_run_id != "":
         create_and_push_manifest(
             config, config.readiness_probe_image_dev, config.gh_run_id
         )
@@ -155,7 +167,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.version_upgrade_hook_image_dev)
 
-    if config.gh_run_id != "":
+    if config.gh_run_id is not None and config.gh_run_id != "":
         create_and_push_manifest(
             config, config.version_upgrade_hook_image_dev, config.gh_run_id
         )
@@ -202,7 +214,7 @@ def build_operator_ubi_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.operator_image_dev)
 
-    if config.gh_run_id != "":
+    if config.gh_run_id is not None and config.gh_run_id != "":
         create_and_push_manifest(config, config.operator_image_dev, config.gh_run_id)
 
     if "release" in config.include_tags:
@@ -236,7 +248,7 @@ def build_e2e_image(config: DevConfig) -> None:
 
     create_and_push_manifest(config, config.e2e_image)
 
-    if config.gh_run_id != "":
+    if config.gh_run_id is not None and config.gh_run_id != "":
         create_and_push_manifest(config, config.e2e_image, config.gh_run_id)
 
 

@@ -106,7 +106,7 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
             tag: $(inputs.params.agent_version)
 
-  - name: agent-ubi
+  - name: agent-ubi-amd64
     vars:
       context: .
       template_context: scripts/dev/templates/agent
@@ -134,7 +134,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: $(inputs.params.version_id)-context
+            tag: $(inputs.params.version_id)-context-amd64
 
       - name: agent-template-ubi
         task_type: dockerfile_template
@@ -142,16 +142,16 @@ images:
         tags: [ "ubi" ]
 
         output:
-          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
 
       - name: agent-ubi-build
         task_type: docker_build
         tags: [ "ubi" ]
 
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context-amd64
           agent_version: $(inputs.params.agent_version)
 
         labels:
@@ -159,9 +159,9 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: $(inputs.params.version_id)
+            tag: $(inputs.params.version_id)-amd64
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
-            tag: latest
+            tag: latest-amd64
 
       - name: agent-template-ubi-s3
         task_type: dockerfile_template
@@ -189,15 +189,15 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
-            tag: $(inputs.params.agent_version)-context
+            tag: $(inputs.params.agent_version)-context-amd64
 
       - name: agent-ubi-release
         task_type: docker_build
         tags: [ "ubi", "release" ]
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context-amd64
           agent_version: $(inputs.params.agent_version)
 
         labels:
@@ -205,7 +205,108 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
-            tag: $(inputs.params.agent_version)
+            tag: $(inputs.params.agent_version)-amd64
+
+  - name: agent-ubi-arm64
+    vars:
+      context: .
+      template_context: scripts/dev/templates/agent
+
+    inputs:
+      - agent_version
+      - tools_version
+      - agent_image
+      - agent_image_dev
+
+    platform: linux/arm64
+    stages:
+      - name: agent-ubi-context
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: [ "ubi" ]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: amzn2_aarch64
+          tools_distro: rhel82-aarch64
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
+            tag: $(inputs.params.version_id)-context-arm64
+
+      - name: agent-template-ubi
+        task_type: dockerfile_template
+        distro: ubi
+        tags: [ "ubi" ]
+
+        output:
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+
+      - name: agent-ubi-build
+        task_type: docker_build
+        tags: [ "ubi" ]
+
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context-arm64
+          agent_version: $(inputs.params.agent_version)
+
+        labels:
+          quay.expires-after: 48h
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
+            tag: $(inputs.params.version_id)-arm64
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image_dev)
+            tag: latest-arm64
+
+      - name: agent-template-ubi-s3
+        task_type: dockerfile_template
+        tags: [ "ubi", "release" ]
+        distro: ubi
+
+        inputs:
+          - release_version
+
+        output:
+          - dockerfile: $(inputs.params.s3_bucket)/mongodb-agent/$(inputs.params.release_version)/ubi/Dockerfile
+
+      - name: agent-context-ubi-release
+        task_type: docker_build
+        dockerfile: scripts/dev/templates/agent/Dockerfile.builder
+        tags: [ "ubi", "release" ]
+        buildargs:
+          agent_version: $(inputs.params.agent_version)
+          tools_version: $(inputs.params.tools_version)
+          agent_distro: amzn2_aarch64
+          tools_distro: rhel82-aarch64
+
+        labels:
+          quay.expires-after: Never
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+            tag: $(inputs.params.agent_version)-context-arm64
+
+      - name: agent-ubi-release
+        task_type: docker_build
+        tags: [ "ubi", "release" ]
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+
+        buildargs:
+          imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context-arm64
+          agent_version: $(inputs.params.agent_version)
+
+        labels:
+          quay.expires-after: Never
+
+        output:
+          - registry: $(inputs.params.registry)/$(inputs.params.agent_image)
+            tag: $(inputs.params.agent_version)-arm64
 
   - name: readiness-probe-init-amd64
     vars:
