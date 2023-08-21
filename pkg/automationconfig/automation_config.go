@@ -86,7 +86,7 @@ type MonitoringVersion struct {
 // https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
 type LogRotateConfig struct {
 	// maximum size for an individual log file before rotation
-	SizeThresholdMB float64 `json:"sizeThresholdMB"`
+	SizeThresholdMB int `json:"sizeThresholdMB"`
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
@@ -94,7 +94,7 @@ type LogRotateConfig struct {
 	// maximum number of log files to have total
 	NumTotal int `json:"numTotal,omitempty"`
 	// maximum percentage of the total disk space these log files should take up.
-	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
+	PercentOfDiskspace int `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
 	IncludeAuditLogsWithMongoDBLogs bool `json:"includeAuditLogsWithMongoDBLogs,omitempty"`

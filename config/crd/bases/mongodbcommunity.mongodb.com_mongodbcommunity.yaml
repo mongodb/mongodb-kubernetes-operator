@@ -1,15 +1,10 @@
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-    service.binding: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret
-    service.binding/connectionString: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv
-    service.binding/password: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password
-    service.binding/provider: community
-    service.binding/type: mongodb
-    service.binding/username: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: mongodbcommunity.mongodbcommunity.mongodb.com
 spec:
@@ -69,6 +64,36 @@ spec:
                 description: AgentConfiguration sets options for the MongoDB automation
                   agent
                 properties:
+                  LogRotateConfig:
+                    description: LogRotationConfig if enabled, will enable LogRotationConfig
+                      for all processes.
+                    properties:
+                      includeAuditLogsWithMongoDBLogs:
+                        description: set to 'true' to have the Automation Agent rotate
+                          the audit files along with mongodb log files
+                        type: boolean
+                      numTotal:
+                        description: maximum number of log files to have total
+                        type: integer
+                      numUncompressed:
+                        description: maximum number of log files to leave uncompressed
+                        type: integer
+                      percentOfDiskspace:
+                        description: maximum percentage of the total disk space these
+                          log files should take up.
+                        type: integer
+                      sizeThresholdMB:
+                        description: maximum size for an individual log file before
+                          rotation
+                        type: integer
+                      timeThresholdHrs:
+                        description: maximum hours for an individual log file before
+                          rotation
+                        type: integer
+                    required:
+                    - sizeThresholdMB
+                    - timeThresholdHrs
+                    type: object
                   logLevel:
                     type: string
                   maxLogFileDurationHours:
@@ -89,6 +114,36 @@ spec:
                       description: OverrideProcess contains fields that we can override
                         on the AutomationConfig processes.
                       properties:
+                        LogRotateConfig:
+                          description: 'LogRotateConfig matches the setting defined
+                            here: https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances'
+                          properties:
+                            includeAuditLogsWithMongoDBLogs:
+                              description: set to 'true' to have the Automation Agent
+                                rotate the audit files along with mongodb log files
+                              type: boolean
+                            numTotal:
+                              description: maximum number of log files to have total
+                              type: integer
+                            numUncompressed:
+                              description: maximum number of log files to leave uncompressed
+                              type: integer
+                            percentOfDiskspace:
+                              description: maximum percentage of the total disk space
+                                these log files should take up.
+                              type: integer
+                            sizeThresholdMB:
+                              description: maximum size for an individual log file
+                                before rotation
+                              type: integer
+                            timeThresholdHrs:
+                              description: maximum hours for an individual log file
+                                before rotation
+                              type: integer
+                          required:
+                          - sizeThresholdMB
+                          - timeThresholdHrs
+                          type: object
                         disabled:
                           type: boolean
                         name:
@@ -291,7 +346,6 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
-                        x-kubernetes-map-type: atomic
                       caConfigMapRef:
                         description: CaConfigMap is a reference to a ConfigMap containing
                           the certificate for the CA which signed the server certificates
@@ -304,7 +358,6 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
-                        x-kubernetes-map-type: atomic
                       certificateKeySecretRef:
                         description: CertificateKeySecret is a reference to a Secret
                           containing a private key and certificate to use for TLS.
@@ -322,7 +375,6 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
-                        x-kubernetes-map-type: atomic
                       enabled:
                         type: boolean
                       optional:
@@ -471,3 +523,9 @@ spec:
     storage: true
     subresources:
       status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

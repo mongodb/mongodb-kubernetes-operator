@@ -2,6 +2,7 @@ package replica_set_mongod_config
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"os"
 	"testing"
 
@@ -53,6 +54,17 @@ func TestReplicaSet(t *testing.T) {
 
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
+	lcr := automationconfig.LogRotateConfig{
+		SizeThresholdMB:                 10,
+		TimeThresholdHrs:                10,
+		NumUncompressed:                 1,
+		NumTotal:                        1,
+		PercentOfDiskspace:              10,
+		IncludeAuditLogsWithMongoDBLogs: false,
+	}
+
+	mdb.Spec.AgentConfiguration.LogRotationConfig = &lcr
+
 	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +75,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	// TODO: add a test to check log settings
 	for i := range settings {
 		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
 	}
