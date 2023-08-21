@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // cleanupPemSecret cleans up the old pem secret generated for the agent certificate.
@@ -18,7 +20,11 @@ func (r *ReplicaSetReconciler) cleanupPemSecret(currentMDB mdbv1.MongoDBCommunit
 			Namespace: namespace,
 			Name:      agentCertSecret + "-pem",
 		}); err != nil {
-			r.log.Warnf("Could not cleanup old agent pem file %s: %s", agentCertSecret, err)
+			if apiErrors.IsNotFound(err) {
+				r.log.Debugf("Agent pem file secret %s-pem was already deleted", agentCertSecret)
+			} else {
+				r.log.Warnf("Could not cleanup old agent pem file %s-pem: %s", agentCertSecret, err)
+			}
 		}
 	}
 }
