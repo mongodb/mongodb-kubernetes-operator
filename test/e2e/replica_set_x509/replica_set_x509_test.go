@@ -29,8 +29,11 @@ func TestMain(m *testing.M) {
 
 func TestReplicaSetX509(t *testing.T) {
 	resourceName := "mdb-tls"
-
-	ctx, testConfig := setup.SetupWithTLS(t, resourceName)
+	helmArgs := []setup.HelmArg{
+		{Name: "resource.tls.useX509", Value: "true"},
+		{Name: "resource.tls.sampleX509User", Value: "true"},
+	}
+	ctx, testConfig := setup.SetupWithTLS(t, resourceName, helmArgs...)
 	defer ctx.Teardown()
 
 	mdb, _ := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
@@ -48,12 +51,13 @@ func TestReplicaSetX509(t *testing.T) {
 		}
 		users := mdb.GetAuthUsers()
 
-		cert, root, dir := createCerts(t, &mdb)
-		defer os.RemoveAll(dir)
-
 		t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(&mdb))
 		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(&mdb))
+
+		cert, root, dir := createCerts(t, &mdb)
+		defer os.RemoveAll(dir)
+
 		t.Run("Connectivity Fails without certs", tester.ConnectivityFails(WithURI(mongodbtests.GetConnectionStringForUser(mdb, users[0])), WithTls(mdb)))
 		t.Run("Connectivity Fails with invalid certs", tester.ConnectivityFails(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
 	})
