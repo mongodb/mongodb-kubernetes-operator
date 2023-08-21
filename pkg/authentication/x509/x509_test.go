@@ -20,7 +20,7 @@ func TestEnable(t *testing.T) {
 		auth := automationconfig.Auth{}
 		mdb := buildX509Configurable("mdb", mocks.BuildX509MongoDBUser("my-user"), mocks.BuildScramMongoDBUser("my-scram-user"))
 
-		agentSecret := CreateAgentCertificateSecret("tls.crt", mdb, false)
+		agentSecret := CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 		keyfileSecret := secret.Builder().
 			SetName(mdb.GetAgentKeyfileSecretNamespacedName().Name).
 			SetNamespace(mdb.GetAgentKeyfileSecretNamespacedName().Namespace).
@@ -28,7 +28,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret, keyfileSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		expected := automationconfig.Auth{
@@ -70,7 +70,7 @@ func TestEnable(t *testing.T) {
 
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter()
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		expected := automationconfig.Auth{
@@ -104,30 +104,30 @@ func Test_ensureAgent(t *testing.T) {
 	mdb := buildX509Configurable("mdb")
 	secrets := mocks.NewMockedSecretGetUpdateCreateDeleter()
 
-	err := ensureAgent(&auth, secrets, mdb)
+	err := ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 
 	auth = automationconfig.Auth{}
-	agentSecret := CreateAgentCertificateSecret("tls.pem", mdb, false)
+	agentSecret := CreateAgentCertificateSecret("tls.pem", false, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb)
+	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "key \"tls.crt\" not present in the Secret")
 
 	auth = automationconfig.Auth{}
-	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, true)
+	agentSecret = CreateAgentCertificateSecret("tls.crt", true, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb)
+	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "x509: malformed certificate")
 
 	auth = automationconfig.Auth{}
-	agentSecret = CreateAgentCertificateSecret("tls.crt", mdb, false)
+	agentSecret = CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb)
+	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.NoError(t, err)
 }
 
@@ -225,7 +225,7 @@ func Test_readAgentSubjectsFromCert(t *testing.T) {
 	assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", subjectName)
 }
 
-func buildX509Configurable(name string, users ...authtypes.User) authtypes.Configurable {
+func buildX509Configurable(name string, users ...authtypes.User) mocks.MockConfigurable {
 	return mocks.NewMockConfigurable(
 		authtypes.Options{
 			AuthoritativeSet:  false,
@@ -246,7 +246,7 @@ func buildX509Configurable(name string, users ...authtypes.User) authtypes.Confi
 	)
 }
 
-func buildScramConfigurable(name string, users ...authtypes.User) authtypes.Configurable {
+func buildScramConfigurable(name string, users ...authtypes.User) mocks.MockConfigurable {
 	return mocks.NewMockConfigurable(
 		authtypes.Options{
 			AuthoritativeSet:  false,

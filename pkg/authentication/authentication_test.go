@@ -27,7 +27,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -49,7 +49,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -64,10 +64,10 @@ func TestEnable(t *testing.T) {
 		auth := automationconfig.Auth{}
 		user := mocks.BuildX509MongoDBUser("my-user")
 		mdb := buildConfigurable("mdb", []string{constants.X509}, constants.X509, user)
-		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", mdb, false)
+		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -90,7 +90,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -112,10 +112,10 @@ func TestEnable(t *testing.T) {
 			SetNamespace(mdb.NamespacedName().Namespace).
 			SetField(userScram.PasswordSecretKey, "TDg_DESiScDrJV6").
 			Build()
-		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", mdb, false)
+		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret, agentSecret)
 
-		err := Enable(&auth, secrets, mdb)
+		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -130,7 +130,7 @@ func TestEnable(t *testing.T) {
 
 }
 
-func buildConfigurable(name string, auth []string, agent string, users ...authtypes.User) authtypes.Configurable {
+func buildConfigurable(name string, auth []string, agent string, users ...authtypes.User) mocks.MockConfigurable {
 	return mocks.NewMockConfigurable(
 		authtypes.Options{
 			AuthoritativeSet:  false,

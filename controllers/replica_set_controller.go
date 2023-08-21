@@ -8,42 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/imdario/mergo"
-	"github.com/stretchr/objx"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
-	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
-
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +16,35 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/imdario/mergo"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/predicates"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/validation"
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/watch"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/agent"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
+	kubernetesClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/podtemplatespec"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/service"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/functions"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/merge"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/result"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/status"
+	"github.com/stretchr/objx"
 )
 
 const (
@@ -672,7 +663,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	auth := automationconfig.Auth{}
-	if err := authentication.Enable(&auth, r.client, &mdb); err != nil {
+	if err := authentication.Enable(&auth, r.client, &mdb, mdb.AgentCertificateSecretNamespacedName()); err != nil {
 		return automationconfig.AutomationConfig{}, err
 	}
 

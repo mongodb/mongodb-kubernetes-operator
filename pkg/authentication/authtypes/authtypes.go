@@ -93,9 +93,6 @@ type Configurable interface {
 	// GetAuthUsers returns a list of users which will be mapped to users in the AutomationConfig.
 	GetAuthUsers() []User
 
-	// AgentCertificateSecretNamespacedName returns the NamespacedName of the secret which stores the certificate for the agent.
-	AgentCertificateSecretNamespacedName() types.NamespacedName
-
 	// GetAgentPasswordSecretNamespacedName returns the NamespacedName of the secret which stores the generated password for the agent.
 	GetAgentPasswordSecretNamespacedName() types.NamespacedName
 

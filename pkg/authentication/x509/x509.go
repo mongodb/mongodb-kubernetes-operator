@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
@@ -26,13 +27,13 @@ import (
 // Enable will configure all of the required Kubernetes resources for X509 to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) error {
+func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
 	opts := mdb.GetAuthOptions()
 
 	desiredUsers := convertMongoDBResourceUsersToAutomationConfigUsers(mdb)
 
 	if opts.AutoAuthMechanism == constants.X509 {
-		if err := ensureAgent(auth, secretGetUpdateCreateDeleter, mdb); err != nil {
+		if err := ensureAgent(auth, secretGetUpdateCreateDeleter, mdb, agentCertSecret); err != nil {
 			return err
 		}
 	}
@@ -40,7 +41,7 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	return enableClientAuthentication(auth, opts, desiredUsers)
 }
 
-func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) error {
+func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
 		return fmt.Errorf("could not generate keyfile contents: %s", err)
@@ -52,7 +53,7 @@ func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secre
 		return err
 	}
 
-	agentCert, err := secret.ReadKey(secretGetUpdateCreateDeleter, "tls.crt", mdb.AgentCertificateSecretNamespacedName())
+	agentCert, err := secret.ReadKey(secretGetUpdateCreateDeleter, "tls.crt", agentCertSecret)
 	if err != nil {
 		return err
 	}
@@ -141,15 +142,15 @@ func isValidX509Subject(subject string) bool {
 	return true
 }
 
-func CreateAgentCertificateSecret(key string, mdb authtypes.Configurable, invalid bool) v1.Secret {
+func CreateAgentCertificateSecret(key string, invalid bool, agentCertSecret types.NamespacedName) v1.Secret {
 	agentCert, _, _ := CreateAgentCertificate()
 	if invalid {
 		agentCert = "INVALID CERT"
 	}
 
 	return secret.Builder().
-		SetName(mdb.AgentCertificateSecretNamespacedName().Name).
-		SetNamespace(mdb.AgentCertificateSecretNamespacedName().Namespace).
+		SetName(agentCertSecret.Name).
+		SetNamespace(agentCertSecret.Namespace).
 		SetField(key, agentCert).
 		Build()
 }
