@@ -82,15 +82,34 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
+// LogRotateConfig matches the setting defined here:
+// https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
+type LogRotateConfig struct {
+	// maximum size for an individual log file before rotation
+	SizeThresholdMB float64 `json:"sizeThresholdMB"`
+	// maximum hours for an individual log file before rotation
+	TimeThresholdHrs int `json:"timeThresholdHrs"`
+	// maximum number of log files to leave uncompressed
+	NumUncompressed int `json:"numUncompressed,omitempty"`
+	// maximum number of log files to have total
+	NumTotal int `json:"numTotal,omitempty"`
+	// maximum percentage of the total disk space these log files should take up.
+	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
+	// set to 'true' to have the Automation Agent rotate the audit files along
+	// with mongodb log files
+	IncludeAuditLogsWithMongoDBLogs bool `json:"includeAuditLogsWithMongoDBLogs,omitempty"`
+}
+
 type Process struct {
-	Name                        string      `json:"name"`
-	Disabled                    bool        `json:"disabled"`
-	HostName                    string      `json:"hostname"`
-	Args26                      objx.Map    `json:"args2_6"`
-	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
-	ProcessType                 ProcessType `json:"processType"`
-	Version                     string      `json:"version"`
-	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	Name                        string           `json:"name"`
+	Disabled                    bool             `json:"disabled"`
+	HostName                    string           `json:"hostname"`
+	Args26                      objx.Map         `json:"args2_6"`
+	FeatureCompatibilityVersion string           `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType      `json:"processType"`
+	Version                     string           `json:"version"`
+	AuthSchemaVersion           int              `json:"authSchemaVersion"`
+	LogRotateConfig             *LogRotateConfig `json:"LogRotateConfig,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {

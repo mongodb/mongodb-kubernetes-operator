@@ -37,6 +37,7 @@ type Builder struct {
 	topology           Topology
 	isEnterprise       bool
 	mongodbVersion     string
+	logRotateConfig    *LogRotateConfig
 	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions             []MongoDbVersionConfig
@@ -171,6 +172,11 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
+func (b *Builder) SetLogRotateConfig(lrc *LogRotateConfig) *Builder {
+	b.logRotateConfig = lrc
+	return b
+}
+
 func (b *Builder) SetBackupVersions(versions []BackupVersion) *Builder {
 	b.backupVersions = versions
 	return b
@@ -301,6 +307,10 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			ProcessType:                 Mongod,
 			Version:                     mongoDBVersion,
 			AuthSchemaVersion:           5,
+		}
+
+		if b.logRotateConfig != nil {
+			process.LogRotateConfig = b.logRotateConfig
 		}
 
 		// ports should be change via ProcessModification or Modification

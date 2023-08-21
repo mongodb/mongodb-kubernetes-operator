@@ -553,6 +553,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
+		SetLogRotateConfig(mdb.Spec.AgentConfiguration.LogRotationConfig).
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
@@ -712,8 +713,9 @@ func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automat
 	var processes []automationconfig.Process
 	for _, p := range override.Processes {
 		processes = append(processes, automationconfig.Process{
-			Name:     p.Name,
-			Disabled: p.Disabled,
+			Name:            p.Name,
+			Disabled:        p.Disabled,
+			LogRotateConfig: p.LogRotateConfig,
 		})
 	}
 
