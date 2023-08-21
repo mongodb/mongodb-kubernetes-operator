@@ -45,7 +45,7 @@ func TestReplicaSetX509(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("User with wrong certificates", func(t *testing.T) {
+	t.Run("Connection with certificates of wrong user", func(t *testing.T) {
 		mdb.Spec.Users = []v1.MongoDBUser{
 			getInvalidUser(),
 		}
@@ -62,7 +62,7 @@ func TestReplicaSetX509(t *testing.T) {
 		t.Run("Connectivity Fails with invalid certs", tester.ConnectivityFails(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
 	})
 
-	t.Run("User has valid certificate", func(t *testing.T) {
+	t.Run("Connection with valid certificate", func(t *testing.T) {
 		t.Run("Update MongoDB Resource", func(t *testing.T) {
 			err := e2eutil.UpdateMongoDBResource(&mdb, func(m *v1.MongoDBCommunity) {
 				m.Spec.Users = []v1.MongoDBUser{getValidUser()}
