@@ -2,15 +2,14 @@ package replica_set
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"os"
 	"testing"
 
-	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 )
 
 func TestMain(m *testing.M) {
