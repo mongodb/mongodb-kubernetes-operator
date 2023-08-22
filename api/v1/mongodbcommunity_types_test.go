@@ -2,14 +2,16 @@ package v1
 
 import (
 	"encoding/json"
+
 	"testing"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type args struct {
@@ -208,14 +210,14 @@ func TestMongodConfigurationWithNestedMapsAfterUnmarshalling(t *testing.T) {
 	}, mc.Object)
 }
 
-func TestGetScramOptions(t *testing.T) {
+func TestGetAuthOptions(t *testing.T) {
 	t.Run("Default AutoAuthMechanism set if modes array empty", func(t *testing.T) {
 		mdb := newModesArray(nil, "empty-modes-array", "my-namespace")
 
-		options := mdb.GetScramOptions()
+		options := mdb.GetAuthOptions()
 
 		assert.EqualValues(t, defaultMode, options.AutoAuthMechanism)
-		assert.EqualValues(t, []string{}, options.AutoAuthMechanisms)
+		assert.EqualValues(t, []string{constants.Sha256}, options.AuthMechanisms)
 	})
 }
 
@@ -334,7 +336,7 @@ func TestGetConnectionStringSecretName(t *testing.T) {
 }
 
 func TestMongoDBCommunity_MongoAuthUserURI(t *testing.T) {
-	testuser := scram.User{
+	testuser := authtypes.User{
 		Username: "testuser",
 		Database: "admin",
 	}
@@ -382,10 +384,18 @@ func TestMongoDBCommunity_MongoAuthUserURI(t *testing.T) {
 		testuser.ConnectionStringOptions = params.userConnectionStringConfig
 		assert.Equal(t, mdb.MongoAuthUserURI(testuser, "password", ""), params.connectionString)
 	}
+
+	testuser = authtypes.User{
+		Username: "testuser",
+		Database: "$external",
+	}
+	mdb = newReplicaSet(2, "my-rs", "my-namespace")
+
+	assert.Equal(t, mdb.MongoAuthUserURI(testuser, "", ""), "mongodb://my-rs-0.my-rs-svc.my-namespace.svc.cluster.local:27017,my-rs-1.my-rs-svc.my-namespace.svc.cluster.local:27017/$external?replicaSet=my-rs&ssl=false")
 }
 
 func TestMongoDBCommunity_MongoAuthUserSRVURI(t *testing.T) {
-	testuser := scram.User{
+	testuser := authtypes.User{
 		Username: "testuser",
 		Database: "admin",
 	}
@@ -433,6 +443,103 @@ func TestMongoDBCommunity_MongoAuthUserSRVURI(t *testing.T) {
 		testuser.ConnectionStringOptions = params.userConnectionStringConfig
 		assert.Equal(t, mdb.MongoAuthUserSRVURI(testuser, "password", ""), params.connectionString)
 	}
+
+	testuser = authtypes.User{
+		Username: "testuser",
+		Database: "$external",
+	}
+	mdb = newReplicaSet(2, "my-rs", "my-namespace")
+
+	assert.Equal(t, mdb.MongoAuthUserSRVURI(testuser, "", ""), "mongodb+srv://my-rs-svc.my-namespace.svc.cluster.local/$external?replicaSet=my-rs&ssl=false")
+}
+
+func TestConvertAuthModeToAuthMechanism(t *testing.T) {
+	assert.Equal(t, constants.X509, ConvertAuthModeToAuthMechanism("X509"))
+	assert.Equal(t, constants.Sha256, ConvertAuthModeToAuthMechanism("SCRAM"))
+	assert.Equal(t, constants.Sha256, ConvertAuthModeToAuthMechanism("SCRAM-SHA-256"))
+	assert.Equal(t, constants.Sha1, ConvertAuthModeToAuthMechanism("SCRAM-SHA-1"))
+	assert.Equal(t, "", ConvertAuthModeToAuthMechanism("LDAP"))
+}
+
+func TestMongoDBCommunity_GetAuthOptions(t *testing.T) {
+	mdb := newReplicaSet(3, "mdb", "mongodb")
+	mdb.Spec.Security.Authentication.Modes = []AuthMode{"SCRAM", "X509"}
+
+	opts := mdb.GetAuthOptions()
+
+	assert.Equal(t, constants.Sha256, opts.AutoAuthMechanism)
+	assert.Equal(t, []string{constants.Sha256, constants.X509}, opts.AuthMechanisms)
+	assert.Equal(t, false, opts.AuthoritativeSet)
+
+	mdb.Spec.Security.Authentication.Modes = []AuthMode{"X509"}
+	mdb.Spec.Security.Authentication.AgentMode = "X509"
+
+	opts = mdb.GetAuthOptions()
+	assert.Equal(t, constants.X509, opts.AutoAuthMechanism)
+	assert.Equal(t, []string{constants.X509}, opts.AuthMechanisms)
+}
+
+func TestMongoDBCommunity_GetAuthUsers(t *testing.T) {
+	mdb := newReplicaSet(3, "mdb", "mongodb")
+	mdb.Spec.Users = []MongoDBUser{
+		{
+			Name:              "my-user",
+			DB:                "admin",
+			PasswordSecretRef: SecretKeyReference{Name: "my-user-password"},
+			Roles: []Role{
+				{
+					DB:   "admin",
+					Name: "readWriteAnyDatabase",
+				},
+			},
+			ScramCredentialsSecretName:       "my-scram",
+			ConnectionStringSecretName:       "",
+			AdditionalConnectionStringConfig: MapWrapper{},
+		},
+		{
+			Name:              "CN=my-x509-authenticated-user,OU=organizationalunit,O=organization",
+			DB:                "$external",
+			PasswordSecretRef: SecretKeyReference{},
+			Roles: []Role{
+				{
+					DB:   "admin",
+					Name: "readWriteAnyDatabase",
+				},
+			},
+			ScramCredentialsSecretName:       "",
+			ConnectionStringSecretName:       "",
+			AdditionalConnectionStringConfig: MapWrapper{},
+		},
+	}
+
+	authUsers := mdb.GetAuthUsers()
+
+	assert.Equal(t, authtypes.User{
+		Username: "my-user",
+		Database: "admin",
+		Roles: []authtypes.Role{{
+			Database: "admin",
+			Name:     "readWriteAnyDatabase",
+		}},
+		PasswordSecretKey:          "password",
+		PasswordSecretName:         "my-user-password",
+		ScramCredentialsSecretName: "my-scram-scram-credentials",
+		ConnectionStringSecretName: "mdb-admin-my-user",
+		ConnectionStringOptions:    nil,
+	}, authUsers[0])
+	assert.Equal(t, authtypes.User{
+		Username: "CN=my-x509-authenticated-user,OU=organizationalunit,O=organization",
+		Database: "$external",
+		Roles: []authtypes.Role{{
+			Database: "admin",
+			Name:     "readWriteAnyDatabase",
+		}},
+		PasswordSecretKey:          "",
+		PasswordSecretName:         "",
+		ScramCredentialsSecretName: "",
+		ConnectionStringSecretName: "mdb-external-cn-my-x509-authenticated-user-ou-organizationalunit-o-organization",
+		ConnectionStringOptions:    nil,
+	}, authUsers[1])
 }
 
 func newReplicaSet(members int, name, namespace string) MongoDBCommunity {
@@ -463,5 +570,113 @@ func newModesArray(modes []AuthMode, name, namespace string) MongoDBCommunity {
 				},
 			},
 		},
+	}
+}
+
+func TestMongoDBCommunitySpec_GetAgentCertificateRef(t *testing.T) {
+	m := newReplicaSet(3, "mdb", "mdb")
+
+	assert.Equal(t, "agent-certs", m.Spec.GetAgentCertificateRef())
+
+	m.Spec.Security.Authentication.AgentCertificateSecret = &corev1.LocalObjectReference{Name: "my-agent-certificate"}
+
+	assert.Equal(t, "my-agent-certificate", m.Spec.GetAgentCertificateRef())
+}
+
+func TestMongoDBCommunity_AgentCertificateSecretNamespacedName(t *testing.T) {
+	m := newReplicaSet(3, "mdb", "mdb")
+
+	assert.Equal(t, "agent-certs", m.AgentCertificateSecretNamespacedName().Name)
+	assert.Equal(t, "mdb", m.AgentCertificateSecretNamespacedName().Namespace)
+
+	m.Spec.Security.Authentication.AgentCertificateSecret = &corev1.LocalObjectReference{Name: "agent-certs-custom"}
+	assert.Equal(t, "agent-certs-custom", m.AgentCertificateSecretNamespacedName().Name)
+}
+
+func TestMongoDBCommunity_AgentCertificatePemSecretNamespacedName(t *testing.T) {
+	m := newReplicaSet(3, "mdb", "mdb")
+
+	assert.Equal(t, "agent-certs-pem", m.AgentCertificatePemSecretNamespacedName().Name)
+	assert.Equal(t, "mdb", m.AgentCertificatePemSecretNamespacedName().Namespace)
+
+	m.Spec.Security.Authentication.AgentCertificateSecret = &corev1.LocalObjectReference{Name: "agent-certs-custom"}
+	assert.Equal(t, "agent-certs-custom-pem", m.AgentCertificatePemSecretNamespacedName().Name)
+
+}
+
+func TestMongoDBCommunitySpec_GetAgentAuthMode(t *testing.T) {
+	type fields struct {
+		agentAuth AuthMode
+		modes     []AuthMode
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   AuthMode
+	}{
+		{
+			name: "Agent auth not specified and modes array empty",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{},
+			},
+			want: AuthMode("SCRAM-SHA-256"),
+		},
+		{
+			name: "Agent auth specified and modes array empty",
+			fields: fields{
+				agentAuth: "X509",
+				modes:     []AuthMode{},
+			},
+			want: AuthMode("X509"),
+		},
+		{
+			name: "Modes array one element",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{"X509"},
+			},
+			want: AuthMode("X509"),
+		},
+		{
+			name: "Modes array has sha256 and sha1",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{"SCRAM-SHA-256", "SCRAM-SHA-1"},
+			},
+			want: AuthMode("SCRAM-SHA-256"),
+		},
+		{
+			name: "Modes array has scram and sha1",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{"SCRAM", "SCRAM-SHA-1"},
+			},
+			want: AuthMode("SCRAM-SHA-256"),
+		},
+		{
+			name: "Modes array has 2 different auth modes",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{"SCRAM", "X509"},
+			},
+			want: AuthMode(""),
+		},
+		{
+			name: "Modes array has 3 auth modes",
+			fields: fields{
+				agentAuth: "",
+				modes:     []AuthMode{"SCRAM-SHA-256", "SCRAM-SHA-1", "X509"},
+			},
+			want: AuthMode(""),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newReplicaSet(3, "mdb", "mdb")
+			m.Spec.Security.Authentication.Modes = tt.fields.modes
+			m.Spec.Security.Authentication.AgentMode = tt.fields.agentAuth
+			assert.Equalf(t, tt.want, m.Spec.GetAgentAuthMode(), "GetAgentAuthMode()")
+		})
 	}
 }

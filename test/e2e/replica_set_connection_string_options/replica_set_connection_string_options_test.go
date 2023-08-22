@@ -25,7 +25,7 @@ func TestReplicaSetWithConnectionString(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
@@ -49,7 +49,7 @@ func TestReplicaSetWithConnectionString(t *testing.T) {
 	t.Run("Connection String With User Options Only", func(t *testing.T) {
 		t.Run("Test Add New Connection String Option to User", mongodbtests.AddConnectionStringOptionToUser(&mdb, "readPreference", "primary"))
 		t.Run("Test Secrets Are Updated", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		scramUser = mdb.GetScramUsers()[0]
+		scramUser = mdb.GetAuthUsers()[0]
 		t.Run("Test Basic Connectivity With User Options", tester.ConnectivitySucceeds())
 		t.Run("Test SRV Connectivity With User Options", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		t.Run("Test Basic Connectivity with generated connection string secret with user options",
@@ -65,7 +65,7 @@ func TestReplicaSetWithConnectionString(t *testing.T) {
 		t.Run("Resetting Connection String Options", mongodbtests.ResetConnectionStringOptions(&mdb))
 		t.Run("Test Add New Connection String Option to Resource", mongodbtests.AddConnectionStringOption(&mdb, "readPreference", "primary"))
 		t.Run("Test Secrets Are Updated", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		scramUser = mdb.GetScramUsers()[0]
+		scramUser = mdb.GetAuthUsers()[0]
 		t.Run("Test Basic Connectivity With Resource Options", tester.ConnectivitySucceeds())
 		t.Run("Test SRV Connectivity With Resource Options", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		t.Run("Test Basic Connectivity with generated connection string secret with resource options",
@@ -81,7 +81,7 @@ func TestReplicaSetWithConnectionString(t *testing.T) {
 		t.Run("Test Add New Connection String Option to Resource", mongodbtests.AddConnectionStringOption(&mdb, "readPreference", "primary"))
 		t.Run("Test Add New Connection String Option to User", mongodbtests.AddConnectionStringOptionToUser(&mdb, "readPreference", "secondary"))
 		t.Run("Test Secrets Are Updated", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		scramUser = mdb.GetScramUsers()[0]
+		scramUser = mdb.GetAuthUsers()[0]
 		t.Run("Test Basic Connectivity With Overwritten Options", tester.ConnectivitySucceeds())
 		t.Run("Test SRV Connectivity With Overwritten Options", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		t.Run("Test Basic Connectivity with generated connection string secret with overwritten options",
@@ -97,7 +97,7 @@ func TestReplicaSetWithConnectionString(t *testing.T) {
 		t.Run("Resetting Connection String Options", mongodbtests.ResetConnectionStringOptions(&mdb))
 		t.Run("Test Add New Connection String Option to Resource", mongodbtests.AddConnectionStringOption(&mdb, "readPreference", "wrong"))
 		t.Run("Test Secrets Are Updated", mongodbtests.MongoDBReachesRunningPhase(&mdb))
-		scramUser = mdb.GetScramUsers()[0]
+		scramUser = mdb.GetAuthUsers()[0]
 		t.Run("Test Basic Connectivity", tester.ConnectivityRejected(WithURI(mdb.MongoURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		t.Run("Test SRV Connectivity", tester.ConnectivityRejected(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 		t.Run("Test Basic Connectivity with generated connection string secret",

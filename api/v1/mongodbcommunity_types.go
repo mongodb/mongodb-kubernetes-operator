@@ -3,30 +3,23 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
+	"regexp"
 	"strings"
-
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"github.com/stretchr/objx"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
-
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"regexp"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/annotations"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/scale"
+	"github.com/stretchr/objx"
 )
 
 type Type string
@@ -452,7 +445,8 @@ type MongoDBUser struct {
 	DB string `json:"db,omitempty"`
 
 	// PasswordSecretRef is a reference to the secret containing this user's password
-	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef"`
+	// +optional
+	PasswordSecretRef SecretKeyReference `json:"passwordSecretRef,omitempty"`
 
 	// Roles is an array of roles assigned to this user
 	Roles []Role `json:"roles"`
@@ -460,12 +454,13 @@ type MongoDBUser struct {
 	// ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
 	// These secrets names must be different for each user in a deployment.
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
-	ScramCredentialsSecretName string `json:"scramCredentialsSecretName"`
+	// +optional
+	ScramCredentialsSecretName string `json:"scramCredentialsSecretName,omitempty"`
 
 	// ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
 	// If provided, this secret must be different for each user in a deployment.
 	// +optional
-	ConnectionStringSecretName string `json:"connectionStringSecretName"`
+	ConnectionStringSecretName string `json:"connectionStringSecretName,omitempty"`
 
 	// Additional options to be appended to the connection string.
 	// These options apply only to this user and will override any existing options in the resource.
@@ -584,6 +579,18 @@ type Authentication struct {
 	// Modes is an array specifying which authentication methods should be enabled.
 	Modes []AuthMode `json:"modes"`
 
+	// AgentMode contains the authentication mode used by the automation agent.
+	// +optional
+	AgentMode AuthMode `json:"agentMode,omitempty"`
+
+	// AgentCertificateSecret is a reference to a Secret containing the certificate and the key for the automation agent
+	// The secret needs to have available:
+	// - certificate under key: "tls.crt"
+	// - private key under key: "tls.key"
+	// If additionally, tls.pem is present, then it needs to be equal to the concatenation of tls.crt and tls.key
+	// +optional
+	AgentCertificateSecret *corev1.LocalObjectReference `json:"agentCertificateSecretRef,omitempty"`
+
 	// IgnoreUnknownUsers set to true will ensure any users added manually (not through the CRD)
 	// will not be removed.
 
@@ -595,17 +602,28 @@ type Authentication struct {
 	IgnoreUnknownUsers *bool `json:"ignoreUnknownUsers,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1
+// +kubebuilder:validation:Enum=SCRAM;SCRAM-SHA-256;SCRAM-SHA-1;X509
 type AuthMode string
+
+func IsAuthPresent(authModes []AuthMode, auth string) bool {
+	for _, authMode := range authModes {
+		if string(authMode) == auth {
+			return true
+		}
+	}
+	return false
+}
 
 // ConvertAuthModeToAuthMechanism acts as a map but is immutable. It allows users to use different labels to describe the
 // same authentication mode.
 func ConvertAuthModeToAuthMechanism(authModeLabel AuthMode) string {
 	switch authModeLabel {
 	case "SCRAM", "SCRAM-SHA-256":
-		return scram.Sha256
+		return constants.Sha256
 	case "SCRAM-SHA-1":
-		return scram.Sha1
+		return constants.Sha1
+	case "X509":
+		return constants.X509
 	default:
 		return ""
 	}
@@ -673,9 +691,9 @@ func (m *MongoDBCommunity) GetOwnerReferences() []metav1.OwnerReference {
 	return []metav1.OwnerReference{ownerReference}
 }
 
-// GetScramOptions returns a set of Options that are used to configure scram
+// GetAuthOptions returns a set of Options that are used to configure scram
 // authentication.
-func (m *MongoDBCommunity) GetScramOptions() scram.Options {
+func (m *MongoDBCommunity) GetAuthOptions() authtypes.Options {
 	ignoreUnknownUsers := true
 	if m.Spec.Security.Authentication.IgnoreUnknownUsers != nil {
 		ignoreUnknownUsers = *m.Spec.Security.Authentication.IgnoreUnknownUsers
@@ -683,42 +701,41 @@ func (m *MongoDBCommunity) GetScramOptions() scram.Options {
 
 	authModes := m.Spec.Security.Authentication.Modes
 	defaultAuthMechanism := ConvertAuthModeToAuthMechanism(defaultMode)
-	var autoAuthMechanism string
+	autoAuthMechanism := ConvertAuthModeToAuthMechanism(m.Spec.GetAgentAuthMode())
 	authMechanisms := make([]string, len(authModes))
 
-	if len(authModes) == 0 {
+	if autoAuthMechanism == "" {
 		autoAuthMechanism = defaultAuthMechanism
-	} else {
-		autoAuthMechanism = ConvertAuthModeToAuthMechanism(authModes[0])
+	}
 
+	if len(authModes) == 0 {
+		authMechanisms = []string{defaultAuthMechanism}
+	} else {
 		for i, authMode := range authModes {
 			if authMech := ConvertAuthModeToAuthMechanism(authMode); authMech != "" {
 				authMechanisms[i] = authMech
-				if authMech == defaultAuthMechanism {
-					autoAuthMechanism = defaultAuthMechanism
-				}
 			}
 		}
 	}
 
-	return scram.Options{
-		AuthoritativeSet:   !ignoreUnknownUsers,
-		KeyFile:            scram.AutomationAgentKeyFilePathInContainer,
-		AutoAuthMechanisms: authMechanisms,
-		AgentName:          scram.AgentName,
-		AutoAuthMechanism:  autoAuthMechanism,
+	return authtypes.Options{
+		AuthoritativeSet:  !ignoreUnknownUsers,
+		KeyFile:           constants.AutomationAgentKeyFilePathInContainer,
+		AuthMechanisms:    authMechanisms,
+		AgentName:         constants.AgentName,
+		AutoAuthMechanism: autoAuthMechanism,
 	}
 }
 
-// GetScramUsers converts all of the users from the spec into users
-// that can be used to configure scram authentication.
-func (m *MongoDBCommunity) GetScramUsers() []scram.User {
-	users := make([]scram.User, len(m.Spec.Users))
+// GetAuthUsers converts all the users from the spec into users
+// that can be used to configure authentication.
+func (m *MongoDBCommunity) GetAuthUsers() []authtypes.User {
+	users := make([]authtypes.User, len(m.Spec.Users))
 	for i, u := range m.Spec.Users {
-		roles := make([]scram.Role, len(u.Roles))
+		roles := make([]authtypes.Role, len(u.Roles))
 		for j, r := range u.Roles {
 
-			roles[j] = scram.Role{
+			roles[j] = authtypes.Role{
 				Name:     r.Name,
 				Database: r.DB,
 			}
@@ -734,18 +751,74 @@ func (m *MongoDBCommunity) GetScramUsers() []scram.User {
 			u.DB = defaultDBForUser
 		}
 
-		users[i] = scram.User{
+		users[i] = authtypes.User{
 			Username:                   u.Name,
 			Database:                   u.DB,
 			Roles:                      roles,
-			PasswordSecretKey:          u.GetPasswordSecretKey(),
-			PasswordSecretName:         u.PasswordSecretRef.Name,
-			ScramCredentialsSecretName: u.GetScramCredentialsSecretName(),
 			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
 			ConnectionStringOptions:    u.AdditionalConnectionStringConfig.Object,
 		}
+
+		if u.DB != constants.ExternalDB {
+			users[i].ScramCredentialsSecretName = u.GetScramCredentialsSecretName()
+			users[i].PasswordSecretKey = u.GetPasswordSecretKey()
+			users[i].PasswordSecretName = u.PasswordSecretRef.Name
+		}
 	}
 	return users
+}
+
+// AgentCertificateSecretNamespacedName returns the namespaced name of the secret containing the agent certificate.
+func (m *MongoDBCommunity) AgentCertificateSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: m.Namespace,
+		Name:      m.Spec.GetAgentCertificateRef(),
+	}
+}
+
+// AgentCertificatePemSecretNamespacedName returns the namespaced name of the secret containing the agent certificate in pem format.
+func (m *MongoDBCommunity) AgentCertificatePemSecretNamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: m.Namespace,
+		Name:      m.Spec.GetAgentCertificateRef() + "-pem",
+	}
+}
+
+// GetAgentCertificateRef returns the name of the secret containing the agent certificate.
+// If it is specified in the CR, it will return this. Otherwise, it default to agent-certs.
+func (m *MongoDBCommunitySpec) GetAgentCertificateRef() string {
+	agentCertSecret := "agent-certs"
+	if m.Security.Authentication.AgentCertificateSecret != nil && m.Security.Authentication.AgentCertificateSecret.Name != "" {
+		agentCertSecret = m.Security.Authentication.AgentCertificateSecret.Name
+	}
+	return agentCertSecret
+}
+
+// GetAgentAuthMode return the agent authentication mode. If the agent auth mode is specified, it will return this.
+// Otherwise, if the spec.security.authentication.modes array is empty, it will default to SCRAM-SHA-256.
+// If spec.security.authentication.modes has one element, the agent auth mode will default to that.
+// If spec.security.authentication.modes has more than one element, then agent auth will need to be specified,
+// with one exception: if spec.security.authentication.modes contains only SCRAM-SHA-256 and SCRAM-SHA-1, then it defaults to SCRAM-SHA-256 (for backwards compatibility).
+func (m *MongoDBCommunitySpec) GetAgentAuthMode() AuthMode {
+	if m.Security.Authentication.AgentMode != "" {
+		return m.Security.Authentication.AgentMode
+	}
+
+	if len(m.Security.Authentication.Modes) == 0 {
+		return "SCRAM-SHA-256"
+	} else if len(m.Security.Authentication.Modes) == 1 {
+		return m.Security.Authentication.Modes[0]
+	} else if len(m.Security.Authentication.Modes) == 2 {
+		if (IsAuthPresent(m.Security.Authentication.Modes, "SCRAM") || IsAuthPresent(m.Security.Authentication.Modes, "SCRAM-SHA-256")) &&
+			IsAuthPresent(m.Security.Authentication.Modes, "SCRAM-SHA-1") {
+			return "SCRAM-SHA-256"
+		}
+	}
+	return ""
+}
+
+func (m *MongoDBCommunitySpec) IsAgentX509() bool {
+	return m.GetAgentAuthMode() == "X509"
 }
 
 // IsStillScaling returns true if this resource is currently scaling,
@@ -817,7 +890,7 @@ func (m *MongoDBCommunity) GetOptionsString() string {
 //
 // Takes into account both user options and resource options.
 // User options will override any existing options in the resource.
-func (m *MongoDBCommunity) GetUserOptionsString(user scram.User) string {
+func (m *MongoDBCommunity) GetUserOptionsString(user authtypes.User) string {
 	generalOptionsMap := m.Spec.AdditionalConnectionStringConfig.Object
 	userOptionsMap := user.ConnectionStringOptions
 	optionValues := make([]string, len(generalOptionsMap)+len(userOptionsMap))
@@ -866,12 +939,10 @@ func (m *MongoDBCommunity) MongoSRVURI(clusterDomain string) string {
 
 // MongoAuthUserURI returns a mongo uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m *MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, clusterDomain string) string {
+func (m *MongoDBCommunity) MongoAuthUserURI(user authtypes.User, password string, clusterDomain string) string {
 	optionsString := m.GetUserOptionsString(user)
-
-	return fmt.Sprintf("mongodb://%s:%s@%s/%s?replicaSet=%s&ssl=%t%s",
-		url.QueryEscape(user.Username),
-		url.QueryEscape(password),
+	return fmt.Sprintf("mongodb://%s%s/%s?replicaSet=%s&ssl=%t%s",
+		user.GetLoginString(password),
 		strings.Join(m.Hosts(clusterDomain), ","),
 		user.Database,
 		m.Name,
@@ -881,16 +952,14 @@ func (m *MongoDBCommunity) MongoAuthUserURI(user scram.User, password string, cl
 
 // MongoAuthUserSRVURI returns a mongo srv uri which can be used to connect to this deployment
 // and includes the authentication data for the user
-func (m *MongoDBCommunity) MongoAuthUserSRVURI(user scram.User, password string, clusterDomain string) string {
+func (m *MongoDBCommunity) MongoAuthUserSRVURI(user authtypes.User, password string, clusterDomain string) string {
 	if clusterDomain == "" {
 		clusterDomain = defaultClusterDomain
 	}
 
 	optionsString := m.GetUserOptionsString(user)
-
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t%s",
-		url.QueryEscape(user.Username),
-		url.QueryEscape(password),
+	return fmt.Sprintf("mongodb+srv://%s%s.%s.svc.%s/%s?replicaSet=%s&ssl=%t%s",
+		user.GetLoginString(password),
 		m.ServiceName(),
 		m.Namespace,
 		clusterDomain,

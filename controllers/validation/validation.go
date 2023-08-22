@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"go.uber.org/zap"
+
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 )
 
 // ValidateInitialSpec checks if the resource's initial Spec is valid.
@@ -37,6 +39,10 @@ func validateSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 		return err
 	}
 
+	if err := validateAgentCertSecret(mdb, log); err != nil {
+		return err
+	}
+
 	if err := validateStatefulSet(mdb); err != nil {
 		return err
 	}
@@ -46,13 +52,22 @@ func validateSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 
 // validateUsers checks if the users configuration is valid
 func validateUsers(mdb mdbv1.MongoDBCommunity) error {
-	connectionStringSecretNameMap := map[string]scram.User{}
+	connectionStringSecretNameMap := map[string]authtypes.User{}
 	nameCollisions := []string{}
 
-	scramSecretNameMap := map[string]scram.User{}
+	scramSecretNameMap := map[string]authtypes.User{}
 	scramSecretNameCollisions := []string{}
+	expectedAuthMethods := map[string]struct{}{}
 
-	for _, user := range mdb.GetScramUsers() {
+	if len(mdb.Spec.Security.Authentication.Modes) == 0 {
+		expectedAuthMethods[constants.Sha256] = struct{}{}
+	}
+
+	for _, auth := range mdb.Spec.Security.Authentication.Modes {
+		expectedAuthMethods[mdbv1.ConvertAuthModeToAuthMechanism(auth)] = struct{}{}
+	}
+
+	for _, user := range mdb.GetAuthUsers() {
 
 		// Ensure no collisions in the connection string secret names
 		connectionStringSecretName := user.ConnectionStringSecretName
@@ -80,6 +95,35 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 			connectionStringSecretNameMap[connectionStringSecretName] = user
 		}
 
+		if user.Database == constants.ExternalDB {
+			if _, ok := expectedAuthMethods[constants.X509]; !ok {
+				return fmt.Errorf("X.509 user %s present but X.509 is not enabled", user.Username)
+			}
+			if user.PasswordSecretKey != "" {
+				return fmt.Errorf("X509 user %s shoul not have a password secret key", user.Username)
+			}
+			if user.PasswordSecretName != "" {
+				return fmt.Errorf("X509 user %s should not have a password secret name", user.Username)
+			}
+			if user.ScramCredentialsSecretName != "" {
+				return fmt.Errorf("X509 user %s should not have scram credentials secret name", user.Username)
+			}
+		} else {
+			_, sha1 := expectedAuthMethods[constants.Sha1]
+			_, sha256 := expectedAuthMethods[constants.Sha256]
+			if !sha1 && !sha256 {
+				return fmt.Errorf("SCRAM user %s present but SCRAM is not enabled", user.Username)
+			}
+			if user.PasswordSecretKey == "" {
+				return fmt.Errorf("SCRAM user %s is missing password secret key", user.Username)
+			}
+			if user.PasswordSecretName == "" {
+				return fmt.Errorf("SCRAM user %s is missing password secret name", user.Username)
+			}
+			if user.ScramCredentialsSecretName == "" {
+				return fmt.Errorf("SCRAM user %s is missing scram credentials secret name", user.Username)
+			}
+		}
 	}
 	if len(nameCollisions) > 0 {
 		return fmt.Errorf("connection string secret names collision, update at least one of the users so that the resulted secret names (<resource name>-<user>-<db>) are unique: %s",
@@ -109,24 +153,46 @@ func validateArbiterSpec(mdb mdbv1.MongoDBCommunity) error {
 // validateAuthModeSpec checks that the list of modes does not contain duplicates.
 func validateAuthModeSpec(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
 	allModes := mdb.Spec.Security.Authentication.Modes
+	mapMechanisms := make(map[string]struct{})
 
 	// Issue warning if Modes array is empty
 	if len(allModes) == 0 {
+		mapMechanisms[constants.Sha256] = struct{}{}
 		log.Warnf("An empty Modes array has been provided. The default mode (SCRAM-SHA-256) will be used.")
 	}
 
 	// Check that no auth is defined more than once
-	mapModes := make(map[mdbv1.AuthMode]struct{})
-	for i, mode := range allModes {
+	for _, mode := range allModes {
 		if value := mdbv1.ConvertAuthModeToAuthMechanism(mode); value == "" {
 			return fmt.Errorf("unexpected value (%q) defined for supported authentication modes", value)
+		} else if value == constants.X509 && !mdb.Spec.Security.TLS.Enabled {
+			return fmt.Errorf("TLS must be enabled when using X.509 authentication")
 		}
-		mapModes[allModes[i]] = struct{}{}
+		mapMechanisms[mdbv1.ConvertAuthModeToAuthMechanism(mode)] = struct{}{}
 	}
-	if len(mapModes) != len(allModes) {
+
+	if len(mapMechanisms) < len(allModes) {
 		return fmt.Errorf("some authentication modes are declared twice or more")
 	}
 
+	agentMode := mdb.Spec.GetAgentAuthMode()
+	if agentMode == "" && len(allModes) > 1 {
+		return fmt.Errorf("If spec.security.authentication.modes contains different authentication modes, the agent mode must be specified ")
+	}
+	if _, present := mapMechanisms[mdbv1.ConvertAuthModeToAuthMechanism(agentMode)]; !present {
+		return fmt.Errorf("Agent authentication mode: %s must be part of the spec.security.authentication.modes", agentMode)
+	}
+
+	return nil
+}
+
+func validateAgentCertSecret(mdb mdbv1.MongoDBCommunity, log *zap.SugaredLogger) error {
+	agentMode := mdb.Spec.GetAgentAuthMode()
+	if agentMode != "X509" &&
+		mdb.Spec.Security.Authentication.AgentCertificateSecret != nil &&
+		mdb.Spec.Security.Authentication.AgentCertificateSecret.Name != "" {
+		log.Warnf("Agent authentication is not X.509, but the agent certificate secret is configured, it will be ignored")
+	}
 	return nil
 }
 

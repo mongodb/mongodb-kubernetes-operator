@@ -5,21 +5,25 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+
 	corev1 "k8s.io/api/core/v1"
 
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	kubeClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/configmap"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
-	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
@@ -37,17 +41,58 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
-func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string, expectedPromTLSSecretName string) {
-	prometheusTLSEnabled := expectedPromTLSSecretName != ""
+func TestStatefulSetIsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
+	mdb := newTestReplicaSetWithTLS()
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"X509"}
+	mgr := kubeClient.NewManager(&mdb)
 
-	if prometheusTLSEnabled {
-		assert.Len(t, sts.Spec.Template.Spec.Volumes, 9)
-	} else {
-		assert.Len(t, sts.Spec.Template.Spec.Volumes, 8)
-	}
+	client := kubeClient.NewClient(mgr.GetClient())
+	err := createTLSSecret(client, mdb, "CERT", "KEY", "")
+	assert.NoError(t, err)
+	err = createTLSConfigMap(client, mdb)
+	assert.NoError(t, err)
+	crt, key, err := x509.CreateAgentCertificate()
+	assert.NoError(t, err)
+	err = createAgentCertSecret(client, mdb, crt, key, "")
+	assert.NoError(t, err)
+
+	r := NewReconciler(mgr)
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts := appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	// Check that the pem secret has been created
+	s := corev1.Secret{}
+	err = mgr.GetClient().Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), &s)
+	assert.NoError(t, err)
+
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", mdb.AgentCertificatePemSecretNamespacedName().Name)
+
+	// If we deactivate X509 for the agent, we expect the certificates to be unmounted.
+	mdb.Spec.Security.Authentication.Modes = []mdbv1.AuthMode{"SCRAM"}
+	err = mgr.GetClient().Update(context.TODO(), &mdb)
+	assert.NoError(t, err)
+
+	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+	assertReconciliationSuccessful(t, res, err)
+
+	sts = appsv1.StatefulSet{}
+	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+	assert.NoError(t, err)
+
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
+}
+
+func assertStatefulSetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSet, expectedTLSCASecretName string, expectedTLSOperatorSecretName string, expectedPromTLSSecretName string, expectedAgentCertSecretName string) {
+	prometheusTLSEnabled := expectedPromTLSSecretName != ""
+	agentX509Enabled := expectedAgentCertSecretName != ""
+
 	permission := int32(416)
 	assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
 		Name: "tls-ca",
@@ -78,6 +123,27 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 			},
 		})
 	}
+	if agentX509Enabled {
+		assert.Contains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "agent-certs-pem",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  expectedAgentCertSecretName,
+					DefaultMode: &permission,
+				},
+			},
+		})
+	} else {
+		assert.NotContains(t, sts.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "agent-certs-pem",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  expectedAgentCertSecretName,
+					DefaultMode: &permission,
+				},
+			},
+		})
+	}
 
 	tlsSecretVolumeMount := corev1.VolumeMount{
 		Name:      "tls-secret",
@@ -94,17 +160,36 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 		ReadOnly:  true,
 		MountPath: tlsPrometheusSecretMountPath,
 	}
+	agentCertSecretVolumeMount := corev1.VolumeMount{
+		Name:      "agent-certs-pem",
+		ReadOnly:  true,
+		MountPath: automationAgentPemMountPath,
+	}
 
 	assert.Len(t, sts.Spec.Template.Spec.InitContainers, 2)
 
-	agentContainer := sts.Spec.Template.Spec.Containers[0]
+	var agentContainer corev1.Container
+	var mongodbContainer corev1.Container
+
+	for i, container := range sts.Spec.Template.Spec.Containers {
+		if container.Name == construct.AgentName {
+			agentContainer = sts.Spec.Template.Spec.Containers[i]
+		} else if container.Name == construct.MongodbName {
+			mongodbContainer = sts.Spec.Template.Spec.Containers[i]
+		}
+	}
+
 	assert.Contains(t, agentContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, agentContainer.VolumeMounts, tlsCAVolumeMount)
 	if prometheusTLSEnabled {
 		assert.Contains(t, agentContainer.VolumeMounts, tlsPrometheusSecretVolumeMount)
 	}
+	if agentX509Enabled {
+		assert.Contains(t, agentContainer.VolumeMounts, agentCertSecretVolumeMount)
+	} else {
+		assert.NotContains(t, agentContainer.VolumeMounts, agentCertSecretVolumeMount)
+	}
 
-	mongodbContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsSecretVolumeMount)
 	assert.Contains(t, mongodbContainer.VolumeMounts, tlsCAVolumeMount)
 	if prometheusTLSEnabled {
@@ -112,7 +197,7 @@ func assertStatefulsetVolumesAndVolumeMounts(t *testing.T, sts appsv1.StatefulSe
 	}
 }
 
-func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mdb.Spec.Prometheus = &mdbv1.Prometheus{
 		Username: "username",
@@ -152,10 +237,10 @@ func TestStatefulSet_IsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name)
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, mdb.TLSOperatorCASecretNamespacedName().Name, mdb.TLSOperatorSecretNamespacedName().Name, mdb.PrometheusTLSOperatorSecretNamespacedName().Name, "")
 }
 
-func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
+func TestStatefulSetIsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *testing.T) {
 	mdb := newTestReplicaSetWithTLS()
 	mgr := kubeClient.NewManager(&mdb)
 
@@ -180,7 +265,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 
 	// updating sts tls-ca volume directly to simulate changing of underlying volume's secret
 	for i := range sts.Spec.Template.Spec.Volumes {
@@ -192,7 +277,7 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	err = mgr.GetClient().Update(context.TODO(), &sts)
 	assert.NoError(t, err)
 
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, changedTLSCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 
 	res, err = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -200,10 +285,10 @@ func TestStatefulSet_IsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t 
 	sts = appsv1.StatefulSet{}
 	err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
 	assert.NoError(t, err)
-	assertStatefulsetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "")
+	assertStatefulSetVolumesAndVolumeMounts(t, sts, tlsCAVolumeSecretName, mdb.TLSOperatorSecretNamespacedName().Name, "", "")
 }
 
-func TestAutomationConfig_IsCorrectlyConfiguredWithTLS(t *testing.T) {
+func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 	createAC := func(mdb mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 		client := kubeClient.NewClient(kubeClient.NewManager(&mdb).GetClient())
 		err := createTLSSecret(client, mdb, "CERT", "KEY", "")
@@ -402,7 +487,7 @@ func TestPemSupport(t *testing.T) {
 	})
 }
 
-func TestTLSConfig_ReferencesToCACertAreValidated(t *testing.T) {
+func TestTLSConfigReferencesToCACertAreValidated(t *testing.T) {
 	type args struct {
 		caConfigMap         *corev1.LocalObjectReference
 		caCertificateSecret *corev1.LocalObjectReference
@@ -490,6 +575,14 @@ func createTLSSecretWithNamespaceAndName(c k8sClient.Client, namespace string, n
 
 func createTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
 	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.Spec.Security.TLS.CertificateKeySecret.Name, crt, key, pem)
+}
+
+func createAgentCertSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.AgentCertificateSecretNamespacedName().Name, crt, key, pem)
+}
+
+func createAgentCertPemSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
+	return createTLSSecretWithNamespaceAndName(c, mdb.Namespace, mdb.AgentCertificatePemSecretNamespacedName().Name, crt, key, pem)
 }
 
 func createPrometheusTLSSecret(c k8sClient.Client, mdb mdbv1.MongoDBCommunity, crt string, key string, pem string) error {
