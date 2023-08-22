@@ -2,6 +2,7 @@ package replica_set
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"os"
 	"testing"
 
@@ -32,6 +33,25 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	lcr := automationconfig.LogRotate{
+		SizeThresholdMB:                 0.001,
+		TimeThresholdHrs:                1,
+		NumUncompressed:                 10,
+		NumTotal:                        10,
+		PercentOfDiskspace:              1,
+		IncludeAuditLogsWithMongoDBLogs: false,
+	}
+
+	systemLog := automationconfig.SystemLog{
+		Destination: automationconfig.File,
+		Path:        "/tmp/path",
+		LogAppend:   false,
+	}
+
+	// LogRotate can only be configured if systemLog to file has been configured
+	mdb.Spec.AgentConfiguration.LogRotate = &lcr
+	mdb.Spec.AgentConfiguration.SystemLog = &systemLog
+
 	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +60,7 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
+	t.Run("AutomationConfig has the correct logRotateConfig", mongodbtests.AutomationConfigHasLogRotationConfig(&mdb, lcr))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet((mdb.Name))))
 	t.Run("Test Basic Connectivity with generated connection string secret",
