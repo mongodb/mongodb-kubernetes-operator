@@ -334,9 +334,9 @@ type AutomationConfigOverride struct {
 
 // OverrideProcess contains fields that we can override on the AutomationConfig processes.
 type OverrideProcess struct {
-	Name            string                            `json:"name"`
-	Disabled        bool                              `json:"disabled"`
-	LogRotateConfig *automationconfig.LogRotateConfig `json:"LogRotateConfig,omitempty"`
+	Name      string                      `json:"name"`
+	Disabled  bool                        `json:"disabled"`
+	LogRotate *automationconfig.LogRotate `json:"LogRotate,omitempty"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
@@ -364,8 +364,11 @@ type AgentConfiguration struct {
 	// +optional
 	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
 	// +optional
-	// LogRotationConfig if enabled, will enable LogRotationConfig for all processes.
-	LogRotationConfig *automationconfig.LogRotateConfig `json:"LogRotateConfig,omitempty"`
+	// LogRotate if enabled, will enable LogRotate for all processes.
+	LogRotate *automationconfig.LogRotate `json:"logRotate,omitempty"`
+	// +optional
+	// SystemLog configures system log of mongod
+	SystemLog *automationconfig.SystemLog `json:"systemLog,omitempty"`
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation

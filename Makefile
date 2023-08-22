@@ -17,7 +17,7 @@ STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGR
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:crdVersions=v1"
+CRD_OPTIONS ?= "crd:crdVersions=v1,allowDangerousTypes=true"
 RELEASE_NAME_HELM ?= mongodb-kubernetes-operator
 TEST_NAMESPACE ?= $(NAMESPACE)
 

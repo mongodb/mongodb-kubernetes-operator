@@ -82,11 +82,12 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
-// LogRotateConfig matches the setting defined here:
+// LogRotate matches the setting defined here:
 // https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
-type LogRotateConfig struct {
+// and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate
+type LogRotate struct {
 	// maximum size for an individual log file before rotation
-	SizeThresholdMB int `json:"sizeThresholdMB"`
+	SizeThresholdMB float64 `json:"sizeThresholdMB"`
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
@@ -94,22 +95,22 @@ type LogRotateConfig struct {
 	// maximum number of log files to have total
 	NumTotal int `json:"numTotal,omitempty"`
 	// maximum percentage of the total disk space these log files should take up.
-	PercentOfDiskspace int `json:"percentOfDiskspace,omitempty"`
+	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
 	IncludeAuditLogsWithMongoDBLogs bool `json:"includeAuditLogsWithMongoDBLogs,omitempty"`
 }
 
 type Process struct {
-	Name                        string           `json:"name"`
-	Disabled                    bool             `json:"disabled"`
-	HostName                    string           `json:"hostname"`
-	Args26                      objx.Map         `json:"args2_6"`
-	FeatureCompatibilityVersion string           `json:"featureCompatibilityVersion"`
-	ProcessType                 ProcessType      `json:"processType"`
-	Version                     string           `json:"version"`
-	AuthSchemaVersion           int              `json:"authSchemaVersion"`
-	LogRotateConfig             *LogRotateConfig `json:"LogRotateConfig,omitempty"`
+	Name                        string      `json:"name"`
+	Disabled                    bool        `json:"disabled"`
+	HostName                    string      `json:"hostname"`
+	Args26                      objx.Map    `json:"args2_6"`
+	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType `json:"processType"`
+	Version                     string      `json:"version"`
+	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	LogRotate                   *LogRotate  `json:"logRotate,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -178,10 +179,17 @@ const (
 
 type ProcessType string
 
+type Destination string
+
+const (
+	File   Destination = "file"
+	Syslog Destination = "syslog"
+)
+
 type SystemLog struct {
-	Destination string `json:"destination"`
-	Path        string `json:"path"`
-	LogAppend   bool   `json:"logAppend"`
+	Destination Destination `json:"destination"`
+	Path        string      `json:"path"`
+	LogAppend   bool        `json:"logAppend"`
 }
 
 type WiredTiger struct {
@@ -349,11 +357,6 @@ const (
 type TLS struct {
 	CAFilePath            string                `json:"CAFilePath"`
 	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
-}
-
-type LogRotate struct {
-	SizeThresholdMB  int `json:"sizeThresholdMB"`
-	TimeThresholdHrs int `json:"timeThresholdHrs"`
 }
 
 type ToolsVersion struct {

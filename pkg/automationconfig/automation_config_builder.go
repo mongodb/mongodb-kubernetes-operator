@@ -37,7 +37,7 @@ type Builder struct {
 	topology           Topology
 	isEnterprise       bool
 	mongodbVersion     string
-	logRotateConfig    *LogRotateConfig
+	logRotate          *LogRotate
 	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions             []MongoDbVersionConfig
@@ -53,6 +53,7 @@ type Builder struct {
 	dataDir              string
 	port                 int
 	memberOptions        []MemberOptions
+	systemLog            *SystemLog
 }
 
 func NewBuilder() *Builder {
@@ -66,6 +67,8 @@ func NewBuilder() *Builder {
 		processModifications: []func(int, *Process){},
 		tlsConfig:            nil,
 		sslConfig:            nil,
+		logRotate:            nil,
+		systemLog:            nil,
 	}
 }
 
@@ -172,8 +175,13 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
-func (b *Builder) SetLogRotateConfig(lrc *LogRotateConfig) *Builder {
-	b.logRotateConfig = lrc
+func (b *Builder) SetLogRotateConfig(lrc *LogRotate) *Builder {
+	b.logRotate = lrc
+	return b
+}
+
+func (b *Builder) SetSystemLog(sl *SystemLog) *Builder {
+	b.systemLog = sl
 	return b
 }
 
@@ -309,8 +317,15 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			AuthSchemaVersion:           5,
 		}
 
-		if b.logRotateConfig != nil {
-			process.LogRotateConfig = b.logRotateConfig
+		if b.logRotate != nil {
+			if b.systemLog == nil {
+				return AutomationConfig{}, fmt.Errorf("configurting logRotate without systemlog will not work")
+			}
+			process.LogRotate = b.logRotate
+		}
+
+		if b.systemLog != nil {
+			process.SetSystemLog(*b.systemLog)
 		}
 
 		// ports should be change via ProcessModification or Modification

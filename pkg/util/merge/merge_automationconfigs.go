@@ -35,6 +35,6 @@ func getProcessIndexByName(desiredProcessName string, originalProcesses []automa
 func mergeProcess(original, override automationconfig.Process) automationconfig.Process {
 	// TODO: in order to override the disabled field, we just need this one field. We can handle all fields in a future change.
 	original.Disabled = override.Disabled
-	original.LogRotateConfig = override.LogRotateConfig
+	original.LogRotate = override.LogRotate
 	return original
 }

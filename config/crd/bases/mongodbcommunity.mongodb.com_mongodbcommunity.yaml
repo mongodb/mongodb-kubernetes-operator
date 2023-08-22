@@ -64,9 +64,11 @@ spec:
                 description: AgentConfiguration sets options for the MongoDB automation
                   agent
                 properties:
-                  LogRotateConfig:
-                    description: LogRotationConfig if enabled, will enable LogRotationConfig
-                      for all processes.
+                  logLevel:
+                    type: string
+                  logRotate:
+                    description: LogRotate if enabled, will enable LogRotate for all
+                      processes.
                     properties:
                       includeAuditLogsWithMongoDBLogs:
                         description: set to 'true' to have the Automation Agent rotate
@@ -81,11 +83,11 @@ spec:
                       percentOfDiskspace:
                         description: maximum percentage of the total disk space these
                           log files should take up.
-                        type: integer
+                        type: number
                       sizeThresholdMB:
                         description: maximum size for an individual log file before
                           rotation
-                        type: integer
+                        type: number
                       timeThresholdHrs:
                         description: maximum hours for an individual log file before
                           rotation
@@ -94,10 +96,22 @@ spec:
                     - sizeThresholdMB
                     - timeThresholdHrs
                     type: object
-                  logLevel:
-                    type: string
                   maxLogFileDurationHours:
                     type: integer
+                  systemLog:
+                    description: SystemLog configures system log of mongod
+                    properties:
+                      destination:
+                        type: string
+                      logAppend:
+                        type: boolean
+                      path:
+                        type: string
+                    required:
+                    - destination
+                    - logAppend
+                    - path
+                    type: object
                 type: object
               arbiters:
                 description: 'Arbiters is the number of arbiters to add to the Replica
@@ -114,9 +128,10 @@ spec:
                       description: OverrideProcess contains fields that we can override
                         on the AutomationConfig processes.
                       properties:
-                        LogRotateConfig:
-                          description: 'LogRotateConfig matches the setting defined
-                            here: https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances'
+                        LogRotate:
+                          description: 'LogRotate matches the setting defined here:
+                            https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
+                            and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate'
                           properties:
                             includeAuditLogsWithMongoDBLogs:
                               description: set to 'true' to have the Automation Agent
@@ -131,11 +146,11 @@ spec:
                             percentOfDiskspace:
                               description: maximum percentage of the total disk space
                                 these log files should take up.
-                              type: integer
+                              type: number
                             sizeThresholdMB:
                               description: maximum size for an individual log file
                                 before rotation
-                              type: integer
+                              type: number
                             timeThresholdHrs:
                               description: maximum hours for an individual log file
                                 before rotation
