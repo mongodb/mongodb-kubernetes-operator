@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	replicasetenterpriseupgrade45 "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/replica_set_enterprise_upgrade_4_5"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/replica_set_enterprise_upgrade"
 )
 
 var (
@@ -22,5 +22,5 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
-	replicasetenterpriseupgrade45.DeployEnterpriseAndUpgradeTest(t, versionsForUpgrades)
+	replica_set_enterprise_upgrade.DeployEnterpriseAndUpgradeTest(t, versionsForUpgrades)
 }
