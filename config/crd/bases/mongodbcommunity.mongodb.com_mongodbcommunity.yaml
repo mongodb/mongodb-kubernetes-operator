@@ -243,6 +243,29 @@ spec:
                 properties:
                   authentication:
                     properties:
+                      agentCertificateSecretRef:
+                        description: 'AgentCertificateSecret is a reference to a Secret
+                          containing the certificate and the key for the automation
+                          agent The secret needs to have available: - certificate
+                          under key: "tls.crt" - private key under key: "tls.key"
+                          If additionally, tls.pem is present, then it needs to be
+                          equal to the concatenation of tls.crt and tls.key'
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      agentMode:
+                        description: AgentMode contains the authentication mode used
+                          by the automation agent.
+                        enum:
+                        - SCRAM
+                        - SCRAM-SHA-256
+                        - SCRAM-SHA-1
+                        - X509
+                        type: string
                       ignoreUnknownUsers:
                         default: true
                         nullable: true
@@ -255,6 +278,7 @@ spec:
                           - SCRAM
                           - SCRAM-SHA-256
                           - SCRAM-SHA-1
+                          - X509
                           type: string
                         type: array
                     required:
@@ -495,9 +519,7 @@ spec:
                       type: string
                   required:
                   - name
-                  - passwordSecretRef
                   - roles
-                  - scramCredentialsSecretName
                   type: object
                 type: array
               version:

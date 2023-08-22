@@ -68,6 +68,13 @@ func RotateCertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	}
 }
 
+func RotateAgentCertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return func(t *testing.T) {
+		agentCertSecretName := mdb.AgentCertificateSecretNamespacedName()
+		rotateCertManagerSecret(agentCertSecretName, t)
+	}
+}
+
 func RotateCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		caCertSecretName := mdb.TLSCaCertificateSecretNamespacedName()

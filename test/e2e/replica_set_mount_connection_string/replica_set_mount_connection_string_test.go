@@ -67,7 +67,7 @@ func TestMountConnectionString(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {

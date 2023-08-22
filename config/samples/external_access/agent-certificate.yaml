@@ -1,0 +1,28 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: agent-certs
+spec:
+  commonName: mms-automation-agent
+  dnsNames:
+    - automation
+  duration: 240h0m0s
+  issuerRef: # should point to your issuer
+    name: ca-issuer
+  renewBefore: 120h0m0s
+  secretName: agent-certs # should be equal to agentCertificateSecretRef from the MDBC resource
+  subject:
+    countries:
+      - US
+    localities:
+      - NY
+    organizationalUnits:
+      - a-1635241837-m5yb81lfnrz
+    organizations:
+      - cluster.local-agent
+    provinces:
+      - NY
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth

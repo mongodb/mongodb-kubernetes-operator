@@ -159,6 +159,23 @@ func WithVolumeMounts(volumeMounts []corev1.VolumeMount) Modification {
 	}
 }
 
+func RemoveVolumeMount(volumeMount string) Modification {
+	return func(container *corev1.Container) {
+		index := 0
+		found := false
+		for i := range container.VolumeMounts {
+			if container.VolumeMounts[i].Name == volumeMount {
+				index = i
+				found = true
+			}
+		}
+
+		if found {
+			container.VolumeMounts = append(container.VolumeMounts[:index], container.VolumeMounts[index+1:]...)
+		}
+	}
+}
+
 func volumeMountToString(v corev1.VolumeMount) string {
 	return strings.Join([]string{v.Name, v.MountPath, v.SubPath}, "-")
 }

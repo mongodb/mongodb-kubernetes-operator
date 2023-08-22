@@ -62,3 +62,5 @@ tests:
           distro: ubi
         - test-name: replica_set_connection_string_options
           distro: ubi
+        - test-name: replica_set_x509
+          distro: ubi

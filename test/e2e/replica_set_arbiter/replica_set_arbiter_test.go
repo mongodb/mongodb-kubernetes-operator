@@ -2,13 +2,14 @@ package replica_set
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
 	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -96,7 +97,7 @@ func TestReplicaSetArbiter(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					scramUser := mdb.GetScramUsers()[0]
+					scramUser := mdb.GetAuthUsers()[0]
 					expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=%s&ssl=false", mdb.Name, pwd, mdb.Name, mdb.Namespace, mdb.Name)
 					cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
 					assert.Equal(t, expectedCnxStr, cnxStrSrv)

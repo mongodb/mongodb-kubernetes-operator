@@ -50,7 +50,7 @@ func TestReplicaSetCustomAnnotations(t *testing.T) {
 		Labels:      e2eutil.TestLabels(),
 		Annotations: e2eutil.TestAnnotations(),
 	}
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")
 	if err != nil {
