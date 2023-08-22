@@ -2,13 +2,16 @@ package wait
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/statefulset"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	"github.com/stretchr/testify/assert"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +34,23 @@ func ForConfigMapToExist(cmName string, retryInterval, timeout time.Duration) (c
 	return cm, waitForRuntimeObjectToExist(cmName, retryInterval, timeout, &cm, e2eutil.OperatorNamespace)
 }
 
+func ForServiceToHavePort(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, expectedPort int32) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDBCommunity) bool {
+		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
+		svc := corev1.Service{}
+		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &svc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(svc.Spec.Ports) != 1 {
+			return false
+		}
+
+		assert.Len(t, svc.Spec.Ports, 1)
+		return svc.Spec.Ports[0].Port == expectedPort
+	})
+}
+
 // ForSecretToExist waits until a Secret of the given name exists
 // using the provided retryInterval and timeout
 func ForSecretToExist(cmName string, retryInterval, timeout time.Duration, namespace string) (corev1.Secret, error) {
@@ -51,6 +71,20 @@ func ForMongoDBMessageStatus(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInt
 	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDBCommunity) bool {
 		t.Logf("current message: %s, waiting for message: %s", db.Status.Message, message)
 		return db.Status.Message == message
+	})
+}
+
+func ForAutomationConfigVersion(t *testing.T, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, expectedVersion int) error {
+	return waitForMongoDBCondition(mdb, retryInterval, timeout, func(db mdbv1.MongoDBCommunity) bool {
+		currentSecret := corev1.Secret{}
+		currentAc := automationconfig.AutomationConfig{}
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
+		assert.NoError(t, err)
+		err = json.Unmarshal(currentSecret.Data[automationconfig.ConfigKey], &currentAc)
+		assert.NoError(t, err)
+
+		t.Logf("current AC version: %s, waiting for version: %s", currentAc.Version, expectedVersion)
+		return currentAc.Version == expectedVersion
 	})
 }
 

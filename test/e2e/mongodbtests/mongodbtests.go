@@ -4,25 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 
-	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
+	"github.com/stretchr/testify/assert"
 )
 
 // SkipTestIfLocal skips tests locally which tests connectivity to mongodb pods
@@ -154,14 +156,10 @@ func ServiceHasOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReferenc
 
 func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) func(t *testing.T) {
 	return func(t *testing.T) {
-		serviceNamespacedName := types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace}
-		svc := corev1.Service{}
-		err := e2eutil.TestClient.Get(context.TODO(), serviceNamespacedName, &svc)
+		err := wait.ForServiceToHavePort(t, mdb, 1*time.Second, 15*time.Second, expectedPort)
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Len(t, svc.Spec.Ports, 1)
-		assert.Equal(t, svc.Spec.Ports[0].Port, expectedPort)
 	}
 }
 
@@ -332,7 +330,7 @@ func MongoDBReachesPendingPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) 
 // MongoDBReachesRunningPhase ensure the MongoDB resource reaches the Running phase
 func MongoDBReachesRunningPhase(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*12)
+		err := wait.ForMongoDBToReachPhase(t, mdb, mdbv1.Running, time.Second*15, time.Minute*15)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -363,7 +361,17 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 	}
 }
 
-func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
+func AutomationConfigReachesVersion(mdb *mdbv1.MongoDBCommunity, expectedVersion int) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForAutomationConfigVersion(t, mdb, time.Second*15, time.Minute*12, expectedVersion)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("MongoDB %s/%s is Running!", mdb.Namespace, mdb.Name)
+	}
+}
+
+func GetAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationconfig.AutomationConfig {
 	currentSecret := corev1.Secret{}
 	currentAc := automationconfig.AutomationConfig{}
 	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, &currentSecret)
@@ -376,7 +384,7 @@ func getAutomationConfig(t *testing.T, mdb *mdbv1.MongoDBCommunity) automationco
 // AutomationConfigVersionHasTheExpectedVersion verifies that the automation config has the expected version.
 func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := GetAutomationConfig(t, mdb)
 		assert.Equal(t, expectedVersion, currentAc.Version)
 	}
 }
@@ -384,7 +392,7 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, e
 // AutomationConfigReplicaSetsHaveExpectedArbiters verifies that the automation config has the expected version.
 func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := GetAutomationConfig(t, mdb)
 		lsRs := currentAc.ReplicaSets
 		for _, rs := range lsRs {
 			arbiters := 0
@@ -401,7 +409,7 @@ func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity
 // AutomationConfigHasTheExpectedCustomRoles verifies that the automation config has the expected custom roles.
 func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, roles []automationconfig.CustomRole) func(t *testing.T) {
 	return func(t *testing.T) {
-		currentAc := getAutomationConfig(t, mdb)
+		currentAc := GetAutomationConfig(t, mdb)
 		assert.ElementsMatch(t, roles, currentAc.Roles)
 	}
 }

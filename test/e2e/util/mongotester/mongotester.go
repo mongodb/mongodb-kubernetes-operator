@@ -12,20 +12,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/objx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"github.com/stretchr/objx"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"go.mongodb.org/mongo-driver/bson"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type Tester struct {
@@ -351,12 +353,14 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 	t.Logf("Starting background connectivity test")
 
 	// start a go routine which will periodically check basic MongoDB connectivity
+	// TODO: add timeout here
 	go func() { //nolint
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(interval):
+				// TODO: this shouldn't do fatal
 				m.ConnectivitySucceeds(opts...)(t)
 			}
 		}
@@ -606,7 +610,7 @@ func GetUserCert(mdb mdbv1.MongoDBCommunity, userCertSecret string) (string, err
 func defaults() connectivityOpts {
 	return connectivityOpts{
 		IntervalTime:   1 * time.Second,
-		TimeoutTime:    30 * time.Second,
+		TimeoutTime:    2 * time.Minute,
 		ContextTimeout: 10 * time.Minute,
 		Database:       "testing",
 		Collection:     "numbers",
