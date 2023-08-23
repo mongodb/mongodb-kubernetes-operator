@@ -90,13 +90,17 @@ type LogRotate struct {
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
+	// +optional
 	NumUncompressed int `json:"numUncompressed,omitempty"`
 	// maximum number of log files to have total
+	// +optional
 	NumTotal int `json:"numTotal,omitempty"`
 	// maximum percentage of the total disk space these log files should take up.
+	// +optional
 	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
+	// +optional
 	IncludeAuditLogsWithMongoDBLogs bool `json:"includeAuditLogsWithMongoDBLogs,omitempty"`
 }
 
@@ -142,8 +146,15 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 
 func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 	return p.SetArgs26Field("systemLog.path", systemLog.Path).
-		SetArgs26Field("systemLog.destination", systemLog.Destination).
+		// since Destination is a go type wrapper around string, we will need to force it back to string otherwise
+		// SetArgs value boxing takes the upper (Destination) type instead of string.
+		SetArgs26Field("systemLog.destination", string(systemLog.Destination)).
 		SetArgs26Field("systemLog.logAppend", systemLog.LogAppend)
+}
+
+func (p *Process) SetLogRotate(logRotate *LogRotate) *Process {
+	p.LogRotate = logRotate
+	return p
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {

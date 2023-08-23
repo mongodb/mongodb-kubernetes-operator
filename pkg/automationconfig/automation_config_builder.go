@@ -175,16 +175,6 @@ func (b *Builder) SetMongoDBVersion(version string) *Builder {
 	return b
 }
 
-func (b *Builder) SetLogRotateConfig(lrc *LogRotate) *Builder {
-	b.logRotate = lrc
-	return b
-}
-
-func (b *Builder) SetSystemLog(sl *SystemLog) *Builder {
-	b.systemLog = sl
-	return b
-}
-
 func (b *Builder) SetBackupVersions(versions []BackupVersion) *Builder {
 	b.backupVersions = versions
 	return b
@@ -315,17 +305,6 @@ func (b *Builder) Build() (AutomationConfig, error) {
 			ProcessType:                 Mongod,
 			Version:                     mongoDBVersion,
 			AuthSchemaVersion:           5,
-		}
-
-		if b.logRotate != nil {
-			if b.systemLog == nil {
-				return AutomationConfig{}, fmt.Errorf("configuring logRotate without systemlog will not work")
-			}
-			process.LogRotate = b.logRotate
-		}
-
-		if b.systemLog != nil {
-			process.SetSystemLog(*b.systemLog)
 		}
 
 		// ports should be change via ProcessModification or Modification

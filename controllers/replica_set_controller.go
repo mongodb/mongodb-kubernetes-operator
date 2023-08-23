@@ -551,14 +551,18 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetReplicaSetHorizons(mdb.Spec.ReplicaSetHorizons).
 		SetPreviousAutomationConfig(currentAc).
 		SetMongoDBVersion(mdb.Spec.Version).
-		SetLogRotateConfig(mdb.Spec.AgentConfiguration.LogRotate).
-		SetSystemLog(mdb.Spec.AgentConfiguration.SystemLog).
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
+		AddProcessModification(func(_ int, p *automationconfig.Process) {
+			p.SetLogRotate(mdb.Spec.AgentConfiguration.LogRotate)
+			if mdb.Spec.AgentConfiguration.SystemLog != nil {
+				p.SetSystemLog(*mdb.Spec.AgentConfiguration.SystemLog)
+			}
+		}).
 		Build()
 }
 

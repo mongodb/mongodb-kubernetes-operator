@@ -318,6 +318,17 @@ func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}
 	})
 
+	t.Run("With LogRotate and Systemlog enabled", func(t *testing.T) {
+		mdb := newTestReplicaSetWithSystemLogAndLogRotate()
+		ac := createAC(mdb)
+
+		for _, process := range ac.Processes {
+			assert.Equal(t, "/tmp/test", process.Args26.Get("systemLog.path").String())
+			assert.Equal(t, "file", process.Args26.Get("systemLog.destination").String())
+			assert.Equal(t, process.LogRotate, mdb.Spec.AgentConfiguration.LogRotate)
+		}
+	})
+
 	t.Run("With TLS enabled and required, rollout completed", func(t *testing.T) {
 		mdb := newTestReplicaSetWithTLS()
 		ac := createAC(mdb)
