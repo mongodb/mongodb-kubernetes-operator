@@ -705,15 +705,15 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	if mdb.Spec.AutomationConfigOverride != nil {
-		automationConfig = merge.AutomationConfigs(automationConfig, overrideToAutomationConfig(*mdb.Spec.AutomationConfigOverride))
+		automationConfig = merge.AutomationConfigs(automationConfig, OverrideToAutomationConfig(*mdb.Spec.AutomationConfigOverride))
 	}
 
 	return automationConfig, nil
 }
 
-// overrideToAutomationConfig turns an automation config override from the resource spec into an automation config
+// OverrideToAutomationConfig turns an automation config override from the resource spec into an automation config
 // which can be used to merge.
-func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
+func OverrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
 	var processes []automationconfig.Process
 	for _, p := range override.Processes {
 		processes = append(processes, automationconfig.Process{
@@ -723,7 +723,6 @@ func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automat
 		})
 	}
 
-	// TODO: currently we are just merging processes. Other fields can be added here.
 	return automationconfig.AutomationConfig{
 		Processes: processes,
 	}
