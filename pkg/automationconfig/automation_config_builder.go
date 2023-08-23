@@ -319,7 +319,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 
 		if b.logRotate != nil {
 			if b.systemLog == nil {
-				return AutomationConfig{}, fmt.Errorf("configurting logRotate without systemlog will not work")
+				return AutomationConfig{}, fmt.Errorf("configuring logRotate without systemlog will not work")
 			}
 			process.LogRotate = b.logRotate
 		}
