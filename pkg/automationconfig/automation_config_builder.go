@@ -37,7 +37,6 @@ type Builder struct {
 	topology           Topology
 	isEnterprise       bool
 	mongodbVersion     string
-	logRotate          *LogRotate
 	previousAC         AutomationConfig
 	// MongoDB installable versions
 	versions             []MongoDbVersionConfig
@@ -53,7 +52,6 @@ type Builder struct {
 	dataDir              string
 	port                 int
 	memberOptions        []MemberOptions
-	systemLog            *SystemLog
 }
 
 func NewBuilder() *Builder {
@@ -67,8 +65,6 @@ func NewBuilder() *Builder {
 		processModifications: []func(int, *Process){},
 		tlsConfig:            nil,
 		sslConfig:            nil,
-		logRotate:            nil,
-		systemLog:            nil,
 	}
 }
 

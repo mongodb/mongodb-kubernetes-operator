@@ -381,7 +381,7 @@ func AutomationConfigVersionHasTheExpectedVersion(mdb *mdbv1.MongoDBCommunity, e
 	}
 }
 
-// AutomationConfigHasLogRotationConfig verifies that the automation config has the LogRotate.
+// AutomationConfigHasLogRotationConfig verifies that the automation config contains the given LogRotate config.
 func AutomationConfigHasLogRotationConfig(mdb *mdbv1.MongoDBCommunity, lrc automationconfig.LogRotate) func(t *testing.T) {
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(t, mdb)
