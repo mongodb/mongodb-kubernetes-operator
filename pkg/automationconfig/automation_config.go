@@ -6,6 +6,7 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -400,8 +401,8 @@ type MongoDbVersionConfig struct {
 	Builds []BuildConfig `json:"builds"`
 }
 
-// AreEqual returns whether or not the given AutomationConfigs have the same contents.
-// the comparison does not take version into account.
+// AreEqual returns whether the given AutomationConfigs have the same contents.
+// the comparison does not take the version into account.
 func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
 	// Here we compare the bytes of the two automationconfigs,
 	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
@@ -426,4 +427,21 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 		return AutomationConfig{}, err
 	}
 	return ac, nil
+}
+
+func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *LogRotate, p *Process) {
+	if systemLog != nil {
+		p.SetSystemLog(*systemLog)
+	}
+
+	if logRotate != nil {
+		if systemLog == nil {
+			zap.S().Warn("Configuring logRotate without systemLog will not work")
+		}
+		if systemLog != nil && systemLog.Destination == Syslog {
+			zap.S().Warn("Configuring logRotate with systemLog.Destination = Syslog will not work")
+		}
+		p.SetLogRotate(logRotate)
+	}
+
 }

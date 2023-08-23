@@ -318,7 +318,7 @@ func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 		}
 	})
 
-	t.Run("With LogRotate and Systemlog enabled", func(t *testing.T) {
+	t.Run("With LogRotate and SystemLog enabled", func(t *testing.T) {
 		mdb := newTestReplicaSetWithSystemLogAndLogRotate()
 		ac := createAC(mdb)
 
