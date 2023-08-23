@@ -3,7 +3,6 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
