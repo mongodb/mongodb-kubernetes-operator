@@ -363,7 +363,7 @@ func AutomationConfigSecretExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T
 
 func AutomationConfigReachesVersion(mdb *mdbv1.MongoDBCommunity, expectedVersion int) func(t *testing.T) {
 	return func(t *testing.T) {
-		err := wait.ForAutomationConfigVersion(t, mdb, time.Second*15, time.Hour, expectedVersion)
+		err := wait.ForAutomationConfigVersion(t, mdb, time.Second*15, time.Minute*12, expectedVersion)
 		if err != nil {
 			t.Fatal(err)
 		}
