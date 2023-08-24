@@ -142,13 +142,13 @@ images:
         tags: [ "ubi" ]
 
         output:
-          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
       - name: agent-ubi-build
         task_type: docker_build
         tags: [ "ubi" ]
 
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context-amd64
@@ -194,7 +194,7 @@ images:
       - name: agent-ubi-release
         task_type: docker_build
         tags: [ "ubi", "release" ]
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context-amd64
@@ -243,13 +243,13 @@ images:
         tags: [ "ubi" ]
 
         output:
-          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+          - dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
       - name: agent-ubi-build
         task_type: docker_build
         tags: [ "ubi" ]
 
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image_dev):$(inputs.params.version_id)-context-arm64
@@ -295,7 +295,7 @@ images:
       - name: agent-ubi-release
         task_type: docker_build
         tags: [ "ubi", "release" ]
-        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/agent/Dockerfile.ubi-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.agent_image):$(inputs.params.agent_version)-context-arm64
@@ -342,12 +342,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)-amd64
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
 
       - name: readiness-init-build
         task_type: docker_build
         tags: [ "readiness-probe", "ubi" ]
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context-amd64
@@ -390,12 +390,12 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)-amd64
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-readinessprobe/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: readiness-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)-amd64
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
         tags: [ "readiness-probe", "release" , "ubi" ]
 
         buildargs:
@@ -446,12 +446,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)-arm64
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
 
       - name: readiness-init-build
         task_type: docker_build
         tags: [ "readiness-probe", "ubi" ]
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.readiness_probe_image_dev):$(inputs.params.version_id)-context-arm64
@@ -494,12 +494,12 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)-arm64
+          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-readinessprobe/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: readiness-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)-arm64
+        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
         tags: [ "readiness-probe", "release" , "ubi" ]
 
         buildargs:
@@ -551,11 +551,11 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)-amd64
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
 
       - name: version-post-start-hook-init-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
         tags: [ "post-start-hook", "ubi" ]
 
         buildargs:
@@ -598,12 +598,12 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)-amd64
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator-version-upgrade-post-start-hook/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)-amd64
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
         tags: [ "release", "post-start-hook",  "ubi" ]
 
         buildargs:
@@ -655,11 +655,11 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)-arm64
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
 
       - name: version-post-start-hook-init-build
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
         tags: [ "post-start-hook", "ubi" ]
 
         buildargs:
@@ -702,12 +702,12 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)-arm64
+          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator-version-upgrade-post-start-hook/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: version-post-start-hook-init-build-release
         task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)-arm64
+        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
         tags: [ "release", "post-start-hook",  "ubi" ]
 
         buildargs:

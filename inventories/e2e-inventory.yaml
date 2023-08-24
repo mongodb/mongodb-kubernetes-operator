@@ -19,12 +19,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
       - name: e2e-build
         task_type: docker_build
 
-        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h
@@ -52,12 +52,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-amd64
+          - dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
       - name: e2e-build
         task_type: docker_build
 
-        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/Dockerfile.ubi-$(inputs.params.version_id)
 
         labels:
           quay.expires-after: 48h

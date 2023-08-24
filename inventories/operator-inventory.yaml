@@ -40,12 +40,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)-amd64
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
       - name: operator-build-dev
         task_type: docker_build
         tags: ["ubi"]
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)-amd64
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
         inputs:
           - version_id
@@ -94,7 +94,7 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)-amd64
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: operator-build-release
@@ -104,7 +104,7 @@ images:
         inputs:
           - release_version
 
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)-amd64
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.operator_image):$(inputs.params.release_version)-context-amd64
@@ -154,12 +154,12 @@ images:
           - base_image
 
         output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)-arm64
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
       - name: operator-build-dev
         task_type: docker_build
         tags: [ "ubi" ]
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)-arm64
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
 
         inputs:
           - version_id
@@ -208,7 +208,7 @@ images:
           - release_version
 
         output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)-arm64
+          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
           - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator/$(inputs.params.release_version)/ubi/Dockerfile
 
       - name: operator-build-release
@@ -218,7 +218,7 @@ images:
         inputs:
           - release_version
 
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)-arm64
+        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
 
         buildargs:
           imagebase: $(inputs.params.registry)/$(inputs.params.operator_image):$(inputs.params.release_version)-context-arm64
