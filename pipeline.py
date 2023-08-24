@@ -252,6 +252,17 @@ def build_e2e_image(config: DevConfig) -> None:
         create_and_push_manifest(config, config.e2e_image, config.gh_run_id)
 
 
+"""
+generates docker manifests by running the following commands:
+1. Clear existing manifests
+docker manifest rm config.repo_url/image:tag
+2. Create the manifest
+docker manifest create config.repo_url/image:tag --amend config.repo_url/image:tag-amd64 --amend config.repo_url/image:tag-arm64
+3. Push the manifest
+docker manifest push config.repo_url/image:tag
+"""
+
+
 def create_and_push_manifest(
     config: DevConfig, image: str, tag: str = "latest"
 ) -> None:
@@ -285,11 +296,6 @@ def create_and_push_manifest(
 
     if cp.returncode != 0:
         raise Exception(cp.stderr)
-
-
-# docker manifest rm $(REPO_URL)/$(OPERATOR_IMAGE):latest | true
-# docker manifest create $(REPO_URL)/$(OPERATOR_IMAGE):latest --amend $(REPO_URL)/$(OPERATOR_IMAGE):latest-amd64 --amend $(REPO_URL)/$(OPERATOR_IMAGE):latest-arm64
-# docker manifest push $(REPO_URL)/$(OPERATOR_IMAGE):latest
 
 
 def sonar_build_image(
