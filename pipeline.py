@@ -253,7 +253,7 @@ def build_e2e_image(config: DevConfig) -> None:
 
 
 """
-generates docker manifests by running the following commands:
+Generates docker manifests by running the following commands:
 1. Clear existing manifests
 docker manifest rm config.repo_url/image:tag
 2. Create the manifest
