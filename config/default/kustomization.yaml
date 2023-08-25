@@ -1,6 +1,6 @@
 namePrefix: ""
 
-bases:
+resources:
   - ../crd
   - ../rbac
   - ../manager
