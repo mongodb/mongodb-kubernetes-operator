@@ -13,8 +13,6 @@ tests:
           distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
-        - test-name: replica_set_recovery
-          distro: ubi
         - test-name: replica_set_mongod_readiness
           distro: ubi
         - test-name: replica_set_scale
@@ -28,8 +26,6 @@ tests:
         - test-name: prometheus
           distro: ubi
         - test-name: replica_set_tls
-          distro: ubi
-        - test-name: replica_set_tls_pem_file
           distro: ubi
         - test-name: replica_set_tls_recreate_mdbc
           distro: ubi
