@@ -39,8 +39,8 @@ func TestEnsureSecret(t *testing.T) {
 	})
 
 	t.Run("test logRotate marshal and unmarshal", func(t *testing.T) {
-		sizeThresholdMB := SizeThresholdMB("0.0001")
-		percent := PercentOfDiskspace("1")
+		sizeThresholdMB := StringAsFloat("0.0001")
+		percent := StringAsFloat("1")
 
 		desiredAutomationConfig, err = NewBuilder().SetMembers(3).AddProcessModification(func(i_ int, p *Process) {
 			p.SetLogRotate(&LogRotate{

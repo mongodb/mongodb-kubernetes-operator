@@ -28,12 +28,12 @@ func (in *LogRotate) DeepCopyInto(out *LogRotate) {
 	*out = *in
 	if in.SizeThresholdMB != nil {
 		in, out := &in.SizeThresholdMB, &out.SizeThresholdMB
-		*out = new(SizeThresholdMB)
+		*out = new(StringAsFloat)
 		**out = **in
 	}
 	if in.PercentOfDiskspace != nil {
 		in, out := &in.PercentOfDiskspace, &out.PercentOfDiskspace
-		*out = new(PercentOfDiskspace)
+		*out = new(StringAsFloat)
 		**out = **in
 	}
 }

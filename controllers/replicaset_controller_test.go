@@ -69,7 +69,7 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 }
 
 func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
-	stm := automationconfig.SizeThresholdMB("1")
+	stm := automationconfig.StringAsFloat("1")
 	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",

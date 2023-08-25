@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 	"go.uber.org/zap"
@@ -82,34 +83,29 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
-type SizeThresholdMB string
+type StringAsFloat string
 
-func (s *SizeThresholdMB) MarshalJSON() ([]byte, error) {
+// MarshalJSON We are sending this as a float, because the agent internally represents this as a float
+// and because using float64 as a type in a crd is strongly discouraged.
+func (s *StringAsFloat) MarshalJSON() ([]byte, error) {
+	// This env var is only set if we re-use the mdb type as a library to send it the values to kube.
+	// If this is set, we want to make sure to send the value as a string, otherwise openapi will complain.
+	//
+	// The non-test case is when we send this value to the agent, which needs to be of float64
+	if isTest := envvar.ReadBool("MDB_RUN_AS_TEST"); isTest {
+		return json.Marshal(string(*s))
+	}
 	return json.Marshal(cast.ToFloat64(string(*s)))
 }
 
-func (s *SizeThresholdMB) UnmarshalJSON(data []byte) error {
-	var f float64
+// UnmarshalJSON we handle internally (operator) this as a string.
+func (s *StringAsFloat) UnmarshalJSON(data []byte) error {
+	var f interface{}
 	if err := json.Unmarshal(data, &f); err != nil {
 		return err
 	}
-	stm := SizeThresholdMB(cast.ToString(f))
-	*s = stm
-	return nil
-}
-
-type PercentOfDiskspace string
-
-func (p *PercentOfDiskspace) MarshalJSON() ([]byte, error) {
-	return json.Marshal(cast.ToFloat64(string(*p)))
-}
-func (p *PercentOfDiskspace) UnmarshalJSON(data []byte) error {
-	var f float64
-	if err := json.Unmarshal(data, &f); err != nil {
-		return err
-	}
-	per := PercentOfDiskspace(cast.ToString(f))
-	*p = per
+	stm := cast.ToString(f)
+	*s = StringAsFloat(stm)
 	return nil
 }
 
@@ -120,7 +116,7 @@ func (p *PercentOfDiskspace) UnmarshalJSON(data []byte) error {
 type LogRotate struct {
 	// Maximum size for an individual log file before rotation.
 	// The string needs to be able to be converted to float64
-	SizeThresholdMB *SizeThresholdMB `json:"sizeThresholdMB"`
+	SizeThresholdMB *StringAsFloat `json:"sizeThresholdMB"`
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
@@ -132,7 +128,7 @@ type LogRotate struct {
 	// Maximum percentage of the total disk space these log files should take up.
 	// The string needs to be able to be converted to float64
 	// +optional
-	PercentOfDiskspace *PercentOfDiskspace `json:"percentOfDiskspace,omitempty"`
+	PercentOfDiskspace *StringAsFloat `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
 	// +optional

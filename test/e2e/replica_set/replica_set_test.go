@@ -32,8 +32,10 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sizeThresholdMB := automationconfig.SizeThresholdMB("0.0001")
-	percent := automationconfig.PercentOfDiskspace("1")
+	t.Setenv("MDB_RUN_AS_TEST", "true")
+
+	sizeThresholdMB := automationconfig.StringAsFloat("0.0001")
+	percent := automationconfig.StringAsFloat("1")
 
 	lcr := automationconfig.LogRotate{
 		SizeThresholdMB:                 &sizeThresholdMB,
