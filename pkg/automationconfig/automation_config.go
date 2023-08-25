@@ -82,12 +82,45 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
+type SizeThresholdMB string
+
+func (s *SizeThresholdMB) MarshalJSON() ([]byte, error) {
+	return json.Marshal(cast.ToFloat64(string(*s)))
+}
+
+func (s *SizeThresholdMB) UnmarshalJSON(data []byte) error {
+	var f float64
+	if err := json.Unmarshal(data, &f); err != nil {
+		return err
+	}
+	stm := SizeThresholdMB(cast.ToString(f))
+	*s = stm
+	return nil
+}
+
+type PercentOfDiskspace string
+
+func (p *PercentOfDiskspace) MarshalJSON() ([]byte, error) {
+	return json.Marshal(cast.ToFloat64(string(*p)))
+}
+func (p *PercentOfDiskspace) UnmarshalJSON(data []byte) error {
+	var f float64
+	if err := json.Unmarshal(data, &f); err != nil {
+		return err
+	}
+	per := PercentOfDiskspace(cast.ToString(f))
+	*p = per
+	return nil
+}
+
 // LogRotate matches the setting defined here:
 // https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
 // and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate
+// +kubebuilder:object:generate=true
 type LogRotate struct {
-	// maximum size for an individual log file before rotation
-	SizeThresholdMB float64 `json:"sizeThresholdMB"`
+	// Maximum size for an individual log file before rotation.
+	// The string needs to be able to be converted to float64
+	SizeThresholdMB *SizeThresholdMB `json:"sizeThresholdMB"`
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
@@ -96,9 +129,10 @@ type LogRotate struct {
 	// maximum number of log files to have total
 	// +optional
 	NumTotal int `json:"numTotal,omitempty"`
-	// maximum percentage of the total disk space these log files should take up.
+	// Maximum percentage of the total disk space these log files should take up.
+	// The string needs to be able to be converted to float64
 	// +optional
-	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
+	PercentOfDiskspace *PercentOfDiskspace `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
 	// +optional

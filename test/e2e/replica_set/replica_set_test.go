@@ -32,12 +32,15 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	sizeThresholdMB := automationconfig.SizeThresholdMB("0.0001")
+	percent := automationconfig.PercentOfDiskspace("1")
+
 	lcr := automationconfig.LogRotate{
-		SizeThresholdMB:                 0.001,
+		SizeThresholdMB:                 &sizeThresholdMB,
 		TimeThresholdHrs:                1,
 		NumUncompressed:                 10,
 		NumTotal:                        10,
-		PercentOfDiskspace:              1,
+		PercentOfDiskspace:              &percent,
 		IncludeAuditLogsWithMongoDBLogs: false,
 	}
 

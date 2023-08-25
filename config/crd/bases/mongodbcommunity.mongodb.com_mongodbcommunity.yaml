@@ -86,13 +86,15 @@ spec:
                         description: maximum number of log files to leave uncompressed
                         type: integer
                       percentOfDiskspace:
-                        description: maximum percentage of the total disk space these
-                          log files should take up.
-                        type: number
+                        description: Maximum percentage of the total disk space these
+                          log files should take up. The string needs to be able to
+                          be converted to float64
+                        type: string
                       sizeThresholdMB:
-                        description: maximum size for an individual log file before
-                          rotation
-                        type: number
+                        description: Maximum size for an individual log file before
+                          rotation. The string needs to be able to be converted to
+                          float64
+                        type: string
                       timeThresholdHrs:
                         description: maximum hours for an individual log file before
                           rotation
@@ -149,13 +151,15 @@ spec:
                               description: maximum number of log files to leave uncompressed
                               type: integer
                             percentOfDiskspace:
-                              description: maximum percentage of the total disk space
-                                these log files should take up.
-                              type: number
+                              description: Maximum percentage of the total disk space
+                                these log files should take up. The string needs to
+                                be able to be converted to float64
+                              type: string
                             sizeThresholdMB:
-                              description: maximum size for an individual log file
-                                before rotation
-                              type: number
+                              description: Maximum size for an individual log file
+                                before rotation. The string needs to be able to be
+                                converted to float64
+                              type: string
                             timeThresholdHrs:
                               description: maximum hours for an individual log file
                                 before rotation
