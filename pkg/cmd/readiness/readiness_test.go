@@ -1,4 +1,4 @@
-package main
+package readiness
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/cmd/readiness/testdata"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/cmd/readiness/testdata"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/health"
 
