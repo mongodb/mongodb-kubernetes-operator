@@ -47,7 +47,7 @@ git submodule update --init
 make all-images deploy
 ```
 
-Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developing-locally)
+Note: this will build and push the operator at `repo_url/mongodb-kubernetes-operator`, where `repo_url` is extracted from the [dev config file](./contributing.md#developer-configuration)
 
 6. Change the `image` field in the [manager.yaml](../config/manager/manager.yaml) file to have the image you just built
 

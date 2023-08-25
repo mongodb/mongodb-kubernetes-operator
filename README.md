@@ -29,12 +29,12 @@ Here is a talk from MongoDB Live 2020 about the Community Operator:
 
 ## Documentation
 
-See the [documentation](/docs) to learn how to:
+See the [documentation](docs) to learn how to:
 
-1. [Install or upgrade](/docs/install-upgrade.md) the Operator.
-1. [Deploy and configure](/docs/deploy-configure.md) MongoDB resources.
-1. [Create a database user](/docs/users.md) with SCRAM authentication.
-1. [Secure MongoDB resource connections](/docs/secure.md) using TLS.
+1. [Install or upgrade](docs/install-upgrade.md) the Operator.
+1. [Deploy and configure](docs/deploy-configure.md) MongoDB resources.
+1. [Create a database user](docs/users.md) with SCRAM authentication.
+1. [Secure MongoDB resource connections](docs/secure.md) using TLS.
 
 *NOTE: [MongoDB Enterprise Kubernetes Operator](https://www.mongodb.com/docs/kubernetes-operator/master/) docs are for the enterprise operator use case and NOT for the community operator. In addition to the docs mentioned above, you can refer to this [blog post](https://www.mongodb.com/blog/post/run-secure-containerized-mongodb-deployments-using-the-mongo-db-community-kubernetes-oper) as well to learn more about community operator deployment*
 
@@ -61,8 +61,8 @@ The MongoDB Community Kubernetes Operator supports the following features:
 
 Before you contribute to the MongoDB Community Kubernetes Operator, please read:
 
-- [MongoDB Community Kubernetes Operator Architecture](/docs/architecture.md)
-- [Contributing to MongoDB Community Kubernetes Operator](/docs/contributing.md)
+- [MongoDB Community Kubernetes Operator Architecture](docs/architecture.md)
+- [Contributing to MongoDB Community Kubernetes Operator](docs/contributing.md)
 
 Please file issues before filing PRs. For PRs to be accepted, contributors must sign our [CLA](https://www.mongodb.com/legal/contributor-agreement).
 
