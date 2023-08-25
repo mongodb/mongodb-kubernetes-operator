@@ -66,6 +66,9 @@ def build_agent_image_ubi(config: DevConfig) -> None:
 
     if "release" in config.include_tags:
         create_and_push_manifest(config, config.agent_image_ubi, args["agent_version"])
+        create_and_push_manifest(
+            config, config.agent_image_ubi, args["agent_version"] + "-context"
+        )
 
 
 def build_agent_image_ubuntu(config: DevConfig) -> None:
@@ -128,6 +131,11 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         create_and_push_manifest(
             config, config.readiness_probe_image, release["readiness-probe"]
         )
+        create_and_push_manifest(
+            config,
+            config.readiness_probe_image,
+            release["readiness-probe"] + "-context",
+        )
 
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
@@ -176,6 +184,11 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         create_and_push_manifest(
             config, config.version_upgrade_hook_image, release["version-upgrade-hook"]
         )
+        create_and_push_manifest(
+            config,
+            config.version_upgrade_hook_image,
+            release["version-upgrade-hook"] + "-context",
+        )
 
 
 def build_operator_ubi_image(config: DevConfig) -> None:
@@ -220,6 +233,11 @@ def build_operator_ubi_image(config: DevConfig) -> None:
     if "release" in config.include_tags:
         create_and_push_manifest(
             config, config.operator_image, release["mongodb-kubernetes-operator"]
+        )
+        create_and_push_manifest(
+            config,
+            config.operator_image,
+            release["mongodb-kubernetes-operator"] + "-context",
         )
 
 
