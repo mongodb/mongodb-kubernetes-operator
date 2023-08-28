@@ -69,7 +69,6 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 }
 
 func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
-	stm := automationconfig.StringAsFloat("1")
 	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "my-rs",
@@ -85,8 +84,8 @@ func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
 				},
 			},
 			AgentConfiguration: mdbv1.AgentConfiguration{
-				LogRotate: &automationconfig.LogRotate{
-					SizeThresholdMB: &stm,
+				LogRotate: &automationconfig.CrdLogRotate{
+					SizeThresholdMB: "1",
 				},
 				SystemLog: &automationconfig.SystemLog{
 					Destination: automationconfig.File,

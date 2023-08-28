@@ -716,12 +716,13 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 // which can be used to merge.
 func OverrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
 	var processes []automationconfig.Process
-	for _, p := range override.Processes {
-		processes = append(processes, automationconfig.Process{
-			Name:      p.Name,
-			Disabled:  p.Disabled,
-			LogRotate: p.LogRotate,
-		})
+	for _, o := range override.Processes {
+		p := automationconfig.Process{
+			Name:      o.Name,
+			Disabled:  o.Disabled,
+			LogRotate: automationconfig.ConvertCrdLogRotateToAC(o.LogRotate),
+		}
+		processes = append(processes, p)
 	}
 
 	return automationconfig.AutomationConfig{

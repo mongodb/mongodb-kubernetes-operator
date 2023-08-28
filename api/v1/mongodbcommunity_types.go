@@ -327,9 +327,9 @@ type AutomationConfigOverride struct {
 
 // OverrideProcess contains fields that we can override on the AutomationConfig processes.
 type OverrideProcess struct {
-	Name      string                      `json:"name"`
-	Disabled  bool                        `json:"disabled"`
-	LogRotate *automationconfig.LogRotate `json:"LogRotate,omitempty"`
+	Name      string                         `json:"name"`
+	Disabled  bool                           `json:"disabled"`
+	LogRotate *automationconfig.CrdLogRotate `json:"logRotate,omitempty"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
@@ -358,7 +358,7 @@ type AgentConfiguration struct {
 	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
 	// +optional
 	// LogRotate if enabled, will enable LogRotate for all processes.
-	LogRotate *automationconfig.LogRotate `json:"logRotate,omitempty"`
+	LogRotate *automationconfig.CrdLogRotate `json:"logRotate,omitempty"`
 	// +optional
 	// SystemLog configures system log of mongod
 	SystemLog *automationconfig.SystemLog `json:"systemLog,omitempty"`

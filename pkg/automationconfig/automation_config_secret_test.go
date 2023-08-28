@@ -38,17 +38,18 @@ func TestEnsureSecret(t *testing.T) {
 
 	})
 
-	t.Run("test logRotate marshal and unmarshal", func(t *testing.T) {
-		sizeThresholdMB := StringAsFloat("0.0001")
-		percent := StringAsFloat("1")
+	t.Run("test LogRotate marshal and unmarshal", func(t *testing.T) {
 
 		desiredAutomationConfig, err = NewBuilder().SetMembers(3).AddProcessModification(func(i_ int, p *Process) {
-			p.SetLogRotate(&LogRotate{
-				SizeThresholdMB:    &sizeThresholdMB,
-				TimeThresholdHrs:   1,
-				NumUncompressed:    1,
-				NumTotal:           1,
-				PercentOfDiskspace: &percent,
+			p.SetLogRotate(&CrdLogRotate{
+				SizeThresholdMB: "0.001",
+				LogRotate: LogRotate{
+					TimeThresholdHrs:                1,
+					NumUncompressed:                 1,
+					NumTotal:                        1,
+					IncludeAuditLogsWithMongoDBLogs: false,
+				},
+				PercentOfDiskspace: "1",
 			})
 		}).Build()
 		assert.NoError(t, err)
@@ -67,8 +68,8 @@ func TestEnsureSecret(t *testing.T) {
 		bytes := s.Data[ConfigKey]
 		acFromBytes, err := FromBytes(bytes)
 		assert.NoError(t, err)
-		assert.Equal(t, acFromBytes.Processes[0].LogRotate.SizeThresholdMB, &sizeThresholdMB)
-		assert.Equal(t, acFromBytes.Processes[0].LogRotate.PercentOfDiskspace, &percent)
+		assert.Equal(t, 0.001, acFromBytes.Processes[0].LogRotate.SizeThresholdMB)
+		assert.Equal(t, float64(1), acFromBytes.Processes[0].LogRotate.PercentOfDiskspace)
 	})
 
 	t.Run("When the existing Automation Config is different the Automation Config Changes", func(t *testing.T) {

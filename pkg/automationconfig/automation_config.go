@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
 	"go.uber.org/zap"
@@ -83,30 +82,27 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
-type StringAsFloat string
-
-// MarshalJSON We are sending this as a float, because the agent internally represents this as a float
-// and because using float64 as a type in a crd is strongly discouraged.
-func (s *StringAsFloat) MarshalJSON() ([]byte, error) {
-	// This env var is only set if we re-use the mdb type as a library to send it the values to kube.
-	// If this is set, we want to make sure to send the value as a string, otherwise openapi will complain.
-	//
-	// The non-test case is when we send this value to the agent, which needs to be of float64
-	if isTest := envvar.ReadBool("MDB_RUN_AS_TEST"); isTest {
-		return json.Marshal(string(*s))
-	}
-	return json.Marshal(cast.ToFloat64(string(*s)))
+// CrdLogRotate is the crd definition of LogRotate including fields in strings while the agent supports them as float64
+type CrdLogRotate struct {
+	LogRotate `json:",inline"`
+	// Maximum size for an individual log file before rotation.
+	// The string needs to be able to be converted to float64.
+	// Fractional values of MB are supported.
+	SizeThresholdMB string `json:"sizeThresholdMB"`
+	// Maximum percentage of the total disk space these log files should take up.
+	// The string needs to be able to be converted to float64
+	// +optional
+	PercentOfDiskspace string `json:"percentOfDiskspace,omitempty"`
 }
 
-// UnmarshalJSON we handle internally (operator) this as a string.
-func (s *StringAsFloat) UnmarshalJSON(data []byte) error {
-	var f interface{}
-	if err := json.Unmarshal(data, &f); err != nil {
-		return err
-	}
-	stm := cast.ToString(f)
-	*s = StringAsFloat(stm)
-	return nil
+// AcLogRotate is the internal agent representation of LogRotate
+type AcLogRotate struct {
+	LogRotate `json:",inline"`
+	// Maximum size for an individual log file before rotation.
+	SizeThresholdMB float64 `json:"sizeThresholdMB"`
+	// Maximum percentage of the total disk space these log files should take up.
+	// +optional
+	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
 }
 
 // LogRotate matches the setting defined here:
@@ -114,9 +110,6 @@ func (s *StringAsFloat) UnmarshalJSON(data []byte) error {
 // and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate
 // +kubebuilder:object:generate=true
 type LogRotate struct {
-	// Maximum size for an individual log file before rotation.
-	// The string needs to be able to be converted to float64
-	SizeThresholdMB *StringAsFloat `json:"sizeThresholdMB"`
 	// maximum hours for an individual log file before rotation
 	TimeThresholdHrs int `json:"timeThresholdHrs"`
 	// maximum number of log files to leave uncompressed
@@ -125,10 +118,6 @@ type LogRotate struct {
 	// maximum number of log files to have total
 	// +optional
 	NumTotal int `json:"numTotal,omitempty"`
-	// Maximum percentage of the total disk space these log files should take up.
-	// The string needs to be able to be converted to float64
-	// +optional
-	PercentOfDiskspace *StringAsFloat `json:"percentOfDiskspace,omitempty"`
 	// set to 'true' to have the Automation Agent rotate the audit files along
 	// with mongodb log files
 	// +optional
@@ -144,7 +133,7 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-	LogRotate                   *LogRotate  `json:"logRotate,omitempty"`
+	LogRotate                   AcLogRotate `json:"LogRotate,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -183,9 +172,28 @@ func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 		SetArgs26Field("systemLog.logAppend", systemLog.LogAppend)
 }
 
-func (p *Process) SetLogRotate(logRotate *LogRotate) *Process {
-	p.LogRotate = logRotate
+// SetLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
+func (p *Process) SetLogRotate(lr *CrdLogRotate) *Process {
+	p.LogRotate = ConvertCrdLogRotateToAC(lr)
 	return p
+}
+
+// ConvertCrdLogRotateToAC converts a CrdLogRotate to an AcLogRotate representation.
+func ConvertCrdLogRotateToAC(lr *CrdLogRotate) AcLogRotate {
+	if lr == nil {
+		return AcLogRotate{}
+	}
+
+	return AcLogRotate{
+		LogRotate: LogRotate{
+			TimeThresholdHrs:                lr.TimeThresholdHrs,
+			NumUncompressed:                 lr.NumUncompressed,
+			NumTotal:                        lr.NumTotal,
+			IncludeAuditLogsWithMongoDBLogs: lr.IncludeAuditLogsWithMongoDBLogs,
+		},
+		SizeThresholdMB:    cast.ToFloat64(lr.SizeThresholdMB),
+		PercentOfDiskspace: cast.ToFloat64(lr.PercentOfDiskspace),
+	}
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
@@ -459,17 +467,17 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 	return ac, nil
 }
 
-func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *LogRotate, p *Process) {
+func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, p *Process) {
 	if systemLog != nil {
 		p.SetSystemLog(*systemLog)
 	}
 
 	if logRotate != nil {
 		if systemLog == nil {
-			zap.S().Warn("Configuring logRotate without systemLog will not work")
+			zap.S().Warn("Configuring LogRotate without systemLog will not work")
 		}
 		if systemLog != nil && systemLog.Destination == Syslog {
-			zap.S().Warn("Configuring logRotate with systemLog.Destination = Syslog will not work")
+			zap.S().Warn("Configuring LogRotate with systemLog.Destination = Syslog will not work")
 		}
 		p.SetLogRotate(logRotate)
 	}

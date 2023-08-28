@@ -32,18 +32,16 @@ func TestReplicaSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Setenv("MDB_RUN_AS_TEST", "true")
-
-	sizeThresholdMB := automationconfig.StringAsFloat("0.0001")
-	percent := automationconfig.StringAsFloat("1")
-
-	lcr := automationconfig.LogRotate{
-		SizeThresholdMB:                 &sizeThresholdMB,
-		TimeThresholdHrs:                1,
-		NumUncompressed:                 10,
-		NumTotal:                        10,
-		PercentOfDiskspace:              &percent,
-		IncludeAuditLogsWithMongoDBLogs: false,
+	lcr := automationconfig.CrdLogRotate{
+		// fractional values are supported
+		SizeThresholdMB: "0.1",
+		LogRotate: automationconfig.LogRotate{
+			TimeThresholdHrs:                1,
+			NumUncompressed:                 10,
+			NumTotal:                        10,
+			IncludeAuditLogsWithMongoDBLogs: false,
+		},
+		PercentOfDiskspace: "1",
 	}
 
 	systemLog := automationconfig.SystemLog{
@@ -52,7 +50,7 @@ func TestReplicaSet(t *testing.T) {
 		LogAppend:   false,
 	}
 
-	// LogRotate can only be configured if systemLog to file has been configured
+	// logRotate can only be configured if systemLog to file has been configured
 	mdb.Spec.AgentConfiguration.LogRotate = &lcr
 	mdb.Spec.AgentConfiguration.SystemLog = &systemLog
 
@@ -64,9 +62,9 @@ func TestReplicaSet(t *testing.T) {
 	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
 	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
-	t.Run("AutomationConfig has the correct logRotateConfig", mongodbtests.AutomationConfigHasLogRotationConfig(&mdb, lcr))
+	t.Run("AutomationConfig has the correct logRotateConfig", mongodbtests.AutomationConfigHasLogRotationConfig(&mdb, &lcr))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet((mdb.Name))))
+	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 	t.Run("Test Basic Connectivity with generated connection string secret",
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
 	t.Run("Test SRV Connectivity with generated connection string secret",

@@ -32,8 +32,8 @@ func (in *AgentConfiguration) DeepCopyInto(out *AgentConfiguration) {
 	*out = *in
 	if in.LogRotate != nil {
 		in, out := &in.LogRotate, &out.LogRotate
-		*out = new(automationconfig.LogRotate)
-		(*in).DeepCopyInto(*out)
+		*out = new(automationconfig.CrdLogRotate)
+		**out = **in
 	}
 	if in.SystemLog != nil {
 		in, out := &in.SystemLog, &out.SystemLog
@@ -336,8 +336,8 @@ func (in *OverrideProcess) DeepCopyInto(out *OverrideProcess) {
 	*out = *in
 	if in.LogRotate != nil {
 		in, out := &in.LogRotate, &out.LogRotate
-		*out = new(automationconfig.LogRotate)
-		(*in).DeepCopyInto(*out)
+		*out = new(automationconfig.CrdLogRotate)
+		**out = **in
 	}
 }
 

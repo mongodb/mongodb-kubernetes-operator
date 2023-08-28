@@ -93,7 +93,7 @@ spec:
                       sizeThresholdMB:
                         description: Maximum size for an individual log file before
                           rotation. The string needs to be able to be converted to
-                          float64
+                          float64. Fractional values of MB are supported.
                         type: string
                       timeThresholdHrs:
                         description: maximum hours for an individual log file before
@@ -135,10 +135,12 @@ spec:
                       description: OverrideProcess contains fields that we can override
                         on the AutomationConfig processes.
                       properties:
-                        LogRotate:
-                          description: 'LogRotate matches the setting defined here:
-                            https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
-                            and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate'
+                        disabled:
+                          type: boolean
+                        logRotate:
+                          description: CrdLogRotate is the crd definition of LogRotate
+                            including fields in strings while the agent supports them
+                            as float64
                           properties:
                             includeAuditLogsWithMongoDBLogs:
                               description: set to 'true' to have the Automation Agent
@@ -158,7 +160,8 @@ spec:
                             sizeThresholdMB:
                               description: Maximum size for an individual log file
                                 before rotation. The string needs to be able to be
-                                converted to float64
+                                converted to float64. Fractional values of MB are
+                                supported.
                               type: string
                             timeThresholdHrs:
                               description: maximum hours for an individual log file
@@ -168,8 +171,6 @@ spec:
                           - sizeThresholdMB
                           - timeThresholdHrs
                           type: object
-                        disabled:
-                          type: boolean
                         name:
                           type: string
                       required:
