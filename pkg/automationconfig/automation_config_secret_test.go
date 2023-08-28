@@ -38,6 +38,40 @@ func TestEnsureSecret(t *testing.T) {
 
 	})
 
+	t.Run("test LogRotate marshal and unmarshal", func(t *testing.T) {
+
+		desiredAutomationConfig, err = NewBuilder().SetMembers(3).AddProcessModification(func(i_ int, p *Process) {
+			p.SetLogRotate(&CrdLogRotate{
+				SizeThresholdMB: "0.001",
+				LogRotate: LogRotate{
+					TimeThresholdHrs:                1,
+					NumUncompressed:                 1,
+					NumTotal:                        1,
+					IncludeAuditLogsWithMongoDBLogs: false,
+				},
+				PercentOfDiskspace: "1",
+			})
+		}).Build()
+		assert.NoError(t, err)
+
+		s := secret.Builder().
+			SetName(secretNsName.Name).
+			SetNamespace(secretNsName.Namespace).
+			Build()
+
+		secretGetUpdateCreator := &mockSecretGetUpdateCreator{secret: &s}
+
+		ac, err := EnsureSecret(secretGetUpdateCreator, secretNsName, []metav1.OwnerReference{}, desiredAutomationConfig)
+		assert.NoError(t, err)
+		assert.Equal(t, desiredAutomationConfig, ac, "The config should be returned if there is not one currently.")
+
+		bytes := s.Data[ConfigKey]
+		acFromBytes, err := FromBytes(bytes)
+		assert.NoError(t, err)
+		assert.Equal(t, 0.001, acFromBytes.Processes[0].LogRotate.SizeThresholdMB)
+		assert.Equal(t, float64(1), acFromBytes.Processes[0].LogRotate.PercentOfDiskspace)
+	})
+
 	t.Run("When the existing Automation Config is different the Automation Config Changes", func(t *testing.T) {
 
 		oldAc, err := newAutomationConfig()

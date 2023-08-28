@@ -557,6 +557,9 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
+		AddProcessModification(func(_ int, p *automationconfig.Process) {
+			automationconfig.ConfigureAgentConfiguration(mdb.Spec.AgentConfiguration.SystemLog, mdb.Spec.AgentConfiguration.LogRotate, p)
+		}).
 		Build()
 }
 
@@ -703,24 +706,25 @@ func (r ReplicaSetReconciler) buildAutomationConfig(mdb mdbv1.MongoDBCommunity) 
 	}
 
 	if mdb.Spec.AutomationConfigOverride != nil {
-		automationConfig = merge.AutomationConfigs(automationConfig, overrideToAutomationConfig(*mdb.Spec.AutomationConfigOverride))
+		automationConfig = merge.AutomationConfigs(automationConfig, OverrideToAutomationConfig(*mdb.Spec.AutomationConfigOverride))
 	}
 
 	return automationConfig, nil
 }
 
-// overrideToAutomationConfig turns an automation config override from the resource spec into an automation config
+// OverrideToAutomationConfig turns an automation config override from the resource spec into an automation config
 // which can be used to merge.
-func overrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
+func OverrideToAutomationConfig(override mdbv1.AutomationConfigOverride) automationconfig.AutomationConfig {
 	var processes []automationconfig.Process
-	for _, p := range override.Processes {
-		processes = append(processes, automationconfig.Process{
-			Name:     p.Name,
-			Disabled: p.Disabled,
-		})
+	for _, o := range override.Processes {
+		p := automationconfig.Process{
+			Name:      o.Name,
+			Disabled:  o.Disabled,
+			LogRotate: automationconfig.ConvertCrdLogRotateToAC(o.LogRotate),
+		}
+		processes = append(processes, p)
 	}
 
-	// TODO: currently we are just merging processes. Other fields can be added here.
 	return automationconfig.AutomationConfig{
 		Processes: processes,
 	}

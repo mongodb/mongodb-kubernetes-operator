@@ -206,6 +206,10 @@ func DeployOperator(config TestConfig, resourceName string, withTLS bool, defaul
 		"create-namespace": "",
 	}
 
+	if config.LocalOperator {
+		helmArgs["operator.replicas"] = "0"
+	}
+
 	if err := helm.DependencyUpdate(config.HelmChartPath); err != nil {
 		return err
 	}

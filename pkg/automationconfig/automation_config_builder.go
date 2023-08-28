@@ -337,7 +337,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		members[i] = newReplicaSetMember(process.Name, replicaSetIndex, horizon, isArbiter, isVotingMember)
 
 		if len(b.memberOptions) > i {
-			// override the member options if expliclty specified in the spec
+			// override the member options if explicitly specified in the spec
 			members[i].Votes = b.memberOptions[i].Votes
 			members[i].Priority = b.memberOptions[i].GetPriority()
 			members[i].Tags = b.memberOptions[i].Tags

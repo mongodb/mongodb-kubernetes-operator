@@ -130,7 +130,7 @@ type MongoDBCommunitySpec struct {
 	AdditionalConnectionStringConfig MapWrapper `json:"additionalConnectionStringConfig,omitempty"`
 }
 
-// Wrapper for a map to be used by other structs.
+// MapWrapper is a wrapper for a map to be used by other structs.
 // The CRD generator does not support map[string]interface{}
 // on the top level and hence we need to work around this with
 // a wrapping struct.
@@ -327,8 +327,9 @@ type AutomationConfigOverride struct {
 
 // OverrideProcess contains fields that we can override on the AutomationConfig processes.
 type OverrideProcess struct {
-	Name     string `json:"name"`
-	Disabled bool   `json:"disabled"`
+	Name      string                         `json:"name"`
+	Disabled  bool                           `json:"disabled"`
+	LogRotate *automationconfig.CrdLogRotate `json:"logRotate,omitempty"`
 }
 
 // StatefulSetConfiguration holds the optional custom StatefulSet
@@ -355,6 +356,12 @@ type AgentConfiguration struct {
 	LogLevel LogLevel `json:"logLevel"`
 	// +optional
 	MaxLogFileDurationHours int `json:"maxLogFileDurationHours"`
+	// +optional
+	// LogRotate if enabled, will enable LogRotate for all processes.
+	LogRotate *automationconfig.CrdLogRotate `json:"logRotate,omitempty"`
+	// +optional
+	// SystemLog configures system log of mongod
+	SystemLog *automationconfig.SystemLog `json:"systemLog,omitempty"`
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation

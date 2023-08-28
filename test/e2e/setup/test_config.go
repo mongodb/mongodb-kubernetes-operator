@@ -13,6 +13,7 @@ const (
 	clusterWideEnvName              = "CLUSTER_WIDE"
 	performCleanupEnvName           = "PERFORM_CLEANUP"
 	helmChartPathEnvName            = "HELM_CHART_PATH"
+	LocalOperatorEnvName            = "MDB_LOCAL_OPERATOR"
 )
 
 type TestConfig struct {
@@ -28,6 +29,7 @@ type TestConfig struct {
 	HelmChartPath           string
 	MongoDBImage            string
 	MongoDBRepoUrl          string
+	LocalOperator           bool
 }
 
 func LoadTestConfigFromEnv() TestConfig {
@@ -44,5 +46,6 @@ func LoadTestConfigFromEnv() TestConfig {
 		PerformCleanup:          envvar.ReadBool(performCleanupEnvName),
 		ReadinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
 		HelmChartPath:           envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-charts/charts/community-operator"),
+		LocalOperator:           envvar.ReadBool(LocalOperatorEnvName),
 	}
 }

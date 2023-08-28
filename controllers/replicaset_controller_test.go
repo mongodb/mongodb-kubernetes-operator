@@ -68,6 +68,34 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 	}
 }
 
+func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
+	return mdbv1.MongoDBCommunity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "my-rs",
+			Namespace:   "my-ns",
+			Annotations: map[string]string{},
+		},
+		Spec: mdbv1.MongoDBCommunitySpec{
+			Members: 3,
+			Version: "6.0.5",
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
+			AgentConfiguration: mdbv1.AgentConfiguration{
+				LogRotate: &automationconfig.CrdLogRotate{
+					SizeThresholdMB: "1",
+				},
+				SystemLog: &automationconfig.SystemLog{
+					Destination: automationconfig.File,
+					Path:        "/tmp/test",
+				},
+			},
+		},
+	}
+}
+
 func newScramReplicaSet(users ...mdbv1.MongoDBUser) mdbv1.MongoDBCommunity {
 	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{

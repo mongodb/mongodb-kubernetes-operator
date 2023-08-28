@@ -3,10 +3,10 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -82,6 +82,48 @@ type MonitoringVersion struct {
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
 }
 
+// CrdLogRotate is the crd definition of LogRotate including fields in strings while the agent supports them as float64
+type CrdLogRotate struct {
+	LogRotate `json:",inline"`
+	// Maximum size for an individual log file before rotation.
+	// The string needs to be able to be converted to float64.
+	// Fractional values of MB are supported.
+	SizeThresholdMB string `json:"sizeThresholdMB"`
+	// Maximum percentage of the total disk space these log files should take up.
+	// The string needs to be able to be converted to float64
+	// +optional
+	PercentOfDiskspace string `json:"percentOfDiskspace,omitempty"`
+}
+
+// AcLogRotate is the internal agent representation of LogRotate
+type AcLogRotate struct {
+	LogRotate `json:",inline"`
+	// Maximum size for an individual log file before rotation.
+	SizeThresholdMB float64 `json:"sizeThresholdMB"`
+	// Maximum percentage of the total disk space these log files should take up.
+	// +optional
+	PercentOfDiskspace float64 `json:"percentOfDiskspace,omitempty"`
+}
+
+// LogRotate matches the setting defined here:
+// https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances
+// and https://www.mongodb.com/docs/rapid/reference/command/logRotate/#mongodb-dbcommand-dbcmd.logRotate
+// +kubebuilder:object:generate=true
+type LogRotate struct {
+	// maximum hours for an individual log file before rotation
+	TimeThresholdHrs int `json:"timeThresholdHrs"`
+	// maximum number of log files to leave uncompressed
+	// +optional
+	NumUncompressed int `json:"numUncompressed,omitempty"`
+	// maximum number of log files to have total
+	// +optional
+	NumTotal int `json:"numTotal,omitempty"`
+	// set to 'true' to have the Automation Agent rotate the audit files along
+	// with mongodb log files
+	// +optional
+	IncludeAuditLogsWithMongoDBLogs bool `json:"includeAuditLogsWithMongoDBLogs,omitempty"`
+}
+
 type Process struct {
 	Name                        string      `json:"name"`
 	Disabled                    bool        `json:"disabled"`
@@ -91,6 +133,7 @@ type Process struct {
 	ProcessType                 ProcessType `json:"processType"`
 	Version                     string      `json:"version"`
 	AuthSchemaVersion           int         `json:"authSchemaVersion"`
+	LogRotate                   AcLogRotate `json:"LogRotate,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -123,8 +166,34 @@ func (p *Process) SetReplicaSetName(replSetName string) *Process {
 
 func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 	return p.SetArgs26Field("systemLog.path", systemLog.Path).
-		SetArgs26Field("systemLog.destination", systemLog.Destination).
+		// since Destination is a go type wrapper around string, we will need to force it back to string otherwise
+		// SetArgs value boxing takes the upper (Destination) type instead of string.
+		SetArgs26Field("systemLog.destination", string(systemLog.Destination)).
 		SetArgs26Field("systemLog.logAppend", systemLog.LogAppend)
+}
+
+// SetLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
+func (p *Process) SetLogRotate(lr *CrdLogRotate) *Process {
+	p.LogRotate = ConvertCrdLogRotateToAC(lr)
+	return p
+}
+
+// ConvertCrdLogRotateToAC converts a CrdLogRotate to an AcLogRotate representation.
+func ConvertCrdLogRotateToAC(lr *CrdLogRotate) AcLogRotate {
+	if lr == nil {
+		return AcLogRotate{}
+	}
+
+	return AcLogRotate{
+		LogRotate: LogRotate{
+			TimeThresholdHrs:                lr.TimeThresholdHrs,
+			NumUncompressed:                 lr.NumUncompressed,
+			NumTotal:                        lr.NumTotal,
+			IncludeAuditLogsWithMongoDBLogs: lr.IncludeAuditLogsWithMongoDBLogs,
+		},
+		SizeThresholdMB:    cast.ToFloat64(lr.SizeThresholdMB),
+		PercentOfDiskspace: cast.ToFloat64(lr.PercentOfDiskspace),
+	}
 }
 
 func (p *Process) SetWiredTigerCache(cacheSizeGb *float32) *Process {
@@ -159,10 +228,17 @@ const (
 
 type ProcessType string
 
+type Destination string
+
+const (
+	File   Destination = "file"
+	Syslog Destination = "syslog"
+)
+
 type SystemLog struct {
-	Destination string `json:"destination"`
-	Path        string `json:"path"`
-	LogAppend   bool   `json:"logAppend"`
+	Destination Destination `json:"destination"`
+	Path        string      `json:"path"`
+	LogAppend   bool        `json:"logAppend"`
 }
 
 type WiredTiger struct {
@@ -332,11 +408,6 @@ type TLS struct {
 	ClientCertificateMode ClientCertificateMode `json:"clientCertificateMode"`
 }
 
-type LogRotate struct {
-	SizeThresholdMB  int `json:"sizeThresholdMB"`
-	TimeThresholdHrs int `json:"timeThresholdHrs"`
-}
-
 type ToolsVersion struct {
 	Version string                       `json:"version"`
 	URLs    map[string]map[string]string `json:"urls"`
@@ -368,8 +439,8 @@ type MongoDbVersionConfig struct {
 	Builds []BuildConfig `json:"builds"`
 }
 
-// AreEqual returns whether or not the given AutomationConfigs have the same contents.
-// the comparison does not take version into account.
+// AreEqual returns whether the given AutomationConfigs have the same contents.
+// the comparison does not take the version into account.
 func AreEqual(ac0, ac1 AutomationConfig) (bool, error) {
 	// Here we compare the bytes of the two automationconfigs,
 	// we can't use reflect.DeepEqual() as it treats nil entries as different from empty ones,
@@ -394,4 +465,21 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 		return AutomationConfig{}, err
 	}
 	return ac, nil
+}
+
+func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, p *Process) {
+	if systemLog != nil {
+		p.SetSystemLog(*systemLog)
+	}
+
+	if logRotate != nil {
+		if systemLog == nil {
+			zap.S().Warn("Configuring LogRotate without systemLog will not work")
+		}
+		if systemLog != nil && systemLog.Destination == Syslog {
+			zap.S().Warn("Configuring LogRotate with systemLog.Destination = Syslog will not work")
+		}
+		p.SetLogRotate(logRotate)
+	}
+
 }
