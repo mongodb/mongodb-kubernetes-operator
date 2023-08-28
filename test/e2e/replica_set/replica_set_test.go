@@ -46,7 +46,7 @@ func TestReplicaSet(t *testing.T) {
 
 	systemLog := automationconfig.SystemLog{
 		Destination: automationconfig.File,
-		Path:        "/tmp/path",
+		Path:        "/tmp/mongod.log",
 		LogAppend:   false,
 	}
 
