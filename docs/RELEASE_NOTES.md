@@ -13,8 +13,8 @@
     - For these users, `scramCredentialsSecretName` and `passwordSecretRef` should **not** be set.
     - Sample resource [yaml](config/samples/mongodb.com_v1_mongodbcommunity_x509.yaml)
     - Sample agent certificate [yaml](config/samples/external_access/agent-certificate.yaml)
-  - Add support for configuring [logRotate](https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances) on the automation-agent. The settings can be found under `processes[n].logRotate.<setting>`
-  - additionally, [systemLog](https://www.mongodb.com/docs/manual/reference/configuration-options/#systemlog-options) can now be configured. In particular the settings: `path`, `destination` and `logAppend`.
+  - Add support for configuring [logRotate](https://www.mongodb.com/docs/ops-manager/current/reference/cluster-configuration/#mongodb-instances) on the automation-agent. The settings can be found under `processes[n].logRotate.<setting>`.
+  - Additionally, [systemLog](https://www.mongodb.com/docs/manual/reference/configuration-options/#systemlog-options) can now be configured. In particular the settings: `path`, `destination` and `logAppend`.
 
 # MongoDB Kubernetes Operator 0.8.2
 
