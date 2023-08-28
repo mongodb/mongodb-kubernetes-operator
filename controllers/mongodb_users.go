@@ -5,6 +5,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -12,24 +13,24 @@ import (
 // ensureUserResources will check that the configured user password secrets can be found
 // and will start monitor them so that the reconcile process is triggered every time these secrets are updated
 func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) error {
-	for _, user := range mdb.GetScramUsers() {
-		secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
-		if _, err := secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName); err != nil {
-			if apiErrors.IsNotFound(err) {
-				// check for SCRAM secret as well
-
-				scramSecretName := types.NamespacedName{Name: user.ScramCredentialsSecretName, Namespace: mdb.Namespace}
-				_, err = r.client.GetSecret(scramSecretName)
+	for _, user := range mdb.GetAuthUsers() {
+		if user.Database != constants.ExternalDB {
+			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
+			if _, err := secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName); err != nil {
 				if apiErrors.IsNotFound(err) {
-					return fmt.Errorf(`user password secret: %s and scram secret: %s not found`, secretNamespacedName, scramSecretName)
+					// check for SCRAM secret as well
+					scramSecretName := types.NamespacedName{Name: user.ScramCredentialsSecretName, Namespace: mdb.Namespace}
+					_, err = r.client.GetSecret(scramSecretName)
+					if apiErrors.IsNotFound(err) {
+						return fmt.Errorf(`user password secret: %s and scram secret: %s not found`, secretNamespacedName, scramSecretName)
+					}
+					r.log.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
+					continue
 				}
-				r.log.Errorf(`user password secret "%s" not found: %s`, secretNamespacedName, err)
-				continue
+				return err
 			}
-			return err
+			r.secretWatcher.Watch(secretNamespacedName, mdb.NamespacedName())
 		}
-
-		r.secretWatcher.Watch(secretNamespacedName, mdb.NamespacedName())
 	}
 
 	return nil
@@ -38,12 +39,7 @@ func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) er
 // updateConnectionStringSecrets updates secrets where user specific connection strings are stored.
 // The client applications can mount these secrets and connect to the mongodb cluster
 func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCommunity, clusterDomain string) error {
-	for _, user := range mdb.GetScramUsers() {
-		secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
-		pwd, err := secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName)
-		if err != nil {
-			return err
-		}
+	for _, user := range mdb.GetAuthUsers() {
 		secretName := user.ConnectionStringSecretName
 		existingSecret, err := r.client.GetSecret(types.NamespacedName{
 			Name:      secretName,
@@ -54,6 +50,16 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 		}
 		if err == nil && !secret.HasOwnerReferences(existingSecret, mdb.GetOwnerReferences()) {
 			return fmt.Errorf("connection string secret %s already exists and is not managed by the operator", secretName)
+		}
+
+		pwd := ""
+
+		if user.Database != constants.ExternalDB {
+			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
+			pwd, err = secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName)
+			if err != nil {
+				return err
+			}
 		}
 
 		connectionStringSecret := secret.Builder().

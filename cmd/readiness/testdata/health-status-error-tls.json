@@ -1,0 +1,146 @@
+{
+  "statuses": {
+    "test-tls-base-rs-require-ssl-1": {
+      "IsInGoalState": false,
+      "LastMongoUpTime": 0,
+      "ExpectedToBeUp": true,
+      "ReplicationStatus": -1
+    }
+  },
+  "mmsStatus": {
+    "test-tls-base-rs-require-ssl-1": {
+      "name": "test-tls-base-rs-require-ssl-1",
+      "lastGoalVersionAchieved": -1,
+      "plans": [
+        {
+          "automationConfigVersion": 5,
+          "started": "2023-07-13T07:01:44.951990751Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "DownloadMongosh",
+              "moveDoc": "Download Mongosh",
+              "steps": [
+                {
+                  "step": "DownloadMongosh",
+                  "stepDoc": "Download mongosh (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:01:44.952016495Z",
+                  "completed": null,
+                  "result": "error"
+                }
+              ]
+            },
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitRsInit",
+              "moveDoc": "Wait for the replica set to be initialized by another member",
+              "steps": [
+                {
+                  "step": "WaitRsInit",
+                  "stepDoc": "Wait for the replica set to be initialized by another member",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "automationConfigVersion": 5,
+          "started": "2023-07-13T07:01:49.72582887Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:01:49.725856903Z",
+                  "completed": null,
+                  "result": "error"
+                }
+              ]
+            },
+            {
+              "move": "UpdateSymLink",
+              "moveDoc": "Update the mongosh binary symlink",
+              "steps": [
+                {
+                  "step": "UpdateSymLink",
+                  "stepDoc": "Update the mongosh binary symlink",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitRsInit",
+              "moveDoc": "Wait for the replica set to be initialized by another member",
+              "steps": [
+                {
+                  "step": "WaitRsInit",
+                  "stepDoc": "Wait for the replica set to be initialized by another member",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCode": 0,
+      "errorString": "\u003ctest-tls-base-rs-require-ssl-1\u003e [07:03:13.893] Plan execution failed on step StartFresh as part of move Start : \u003ctest-tls-base-rs-require-ssl-1\u003e [07:03:13.893] Failed to apply action. Result = \u003cnil\u003e : \u003ctest-tls-base-rs-require-ssl-1\u003e [07:03:13.893] Error starting mongod : \u003ctest-tls-base-rs-require-ssl-1\u003e [07:03:13.893] Error running start command. cmd=[Args=[/var/lib/mongodb-mms-automation/mongodb-linux-x86_64-6.0.5-ent/bin/mongod -f /data/automation-mongod.conf]], stip=[args={\"net\":{\"bindIp\":\"0.0.0.0\",\"port\":27017,\"tls\":{\"CAFile\":\"/mongodb-automation/tls/ca/ca-pem\",\"FIPSMode\":true,\"allowConnectionsWithoutCertificates\":true,\"certificateKeyFile\":\"/mongodb-automation/tls/ZQHTF7GVI23UNJD4IHNM23NCX7Z6PUCB3PPAWCJ7TO3NB2WIHRDA\",\"mode\":\"requireTLS\"}},\"replication\":{\"replSetName\":\"test-tls-base-rs-require-ssl\"},\"storage\":{\"dbPath\":\"/data\"},\"systemLog\":{\"destination\":\"file\",\"path\":\"/var/log/mongodb-mms-automation/mongodb.log\"}}[],confPath=/data/automation-mongod.conf,version=6.0.5-ent-c9a99c120371d4d4c52cbb15dac34a36ce8d3b1d(enterprise),isKmipRotateMasterKey=false,useOldConfFile=false]\n\t,\nConfig Used:\n# THIS FILE IS MAINTAINED BY https://cloud-qa.mongodb.com . DO NOT MODIFY AS IT WILL BE OVERWRITTEN.\n# To make changes to your MongoDB deployment, please visit https://cloud-qa.mongodb.com . Your Group ID is 64a3eb7b7b02b627c635ea2b .\nnet:\n  bindIp: 0.0.0.0\n  port: 27017\n  tls:\n    CAFile: /mongodb-automation/tls/ca/ca-pem\n    FIPSMode: true\n    allowConnectionsWithoutCertificates: true\n    certificateKeyFile: /mongodb-automation/tls/ZQHTF7GVI23UNJD4IHNM23NCX7Z6PUCB3PPAWCJ7TO3NB2WIHRDA\n    mode: requireTLS\nprocessManagement:\n  fork: \"true\"\nreplication:\n  replSetName: test-tls-base-rs-require-ssl\nstorage:\n  dbPath: /data\nsystemLog:\n  destination: file\n  path: /var/log/mongodb-mms-automation/mongodb.log\n\t- Output (stdout/stderr): \nabout to fork child process, waiting until server is ready for connections.\nforked process: 823\nERROR: child process failed, exited with 1\nTo see additional information in this output, start without the \"--fork\" option.\n\n\t- Mongo Logs: \n{\"t\":{\"$date\":\"2023-07-13T07:03:13.883+00:00\"},\"s\":\"I\",  \"c\":\"NETWORK\",  \"id\":23172,   \"ctx\":\"-\",\"msg\":\"FIPS 140-2 mode activated\"}\n{\"t\":{\"$date\":\"2023-07-13T07:03:13.884+00:00\"},\"s\":\"I\",  \"c\":\"NETWORK\",  \"id\":4915701, \"ctx\":\"main\",\"msg\":\"Initialized wire specification\",\"attr\":{\"spec\":{\"incomingExternalClient\":{\"minWireVersion\":0,\"maxWireVersion\":17},\"incomingInternalClient\":{\"minWireVersion\":0,\"maxWireVersion\":17},\"outgoing\":{\"minWireVersion\":6,\"maxWireVersion\":17},\"isInternalClient\":true}}}\n{\"t\":{\"$date\":\"2023-07-13T07:03:13.888+00:00\"},\"s\":\"E\",  \"c\":\"NETWORK\",  \"id\":23248,   \"ctx\":\"main\",\"msg\":\"Cannot read certificate file\",\"attr\":{\"keyFile\":\"/mongodb-automation/tls/ZQHTF7GVI23UNJD4IHNM23NCX7Z6PUCB3PPAWCJ7TO3NB2WIHRDA\",\"error\":\"error:02001002:system library:fopen:No such file or directory\"}}\n{\"t\":{\"$date\":\"2023-07-13T07:03:13.888+00:00\"},\"s\":\"F\",  \"c\":\"CONTROL\",  \"id\":20574,   \"ctx\":\"main\",\"msg\":\"Error during global initialization\",\"attr\":{\"error\":{\"code\":140,\"codeName\":\"InvalidSSLConfiguration\",\"errmsg\":\"Can not set up PEM key file.\"}}}\n : exit status 1"
+    }
+  }
+}

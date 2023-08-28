@@ -503,36 +503,6 @@ func VolumeMount(original, override corev1.VolumeMount) corev1.VolumeMount {
 	return merged
 }
 
-func Tolerations(defaultTolerations, overrideTolerations []corev1.Toleration) []corev1.Toleration {
-	mergedTolerations := make([]corev1.Toleration, 0)
-	defaultMap := createTolerationsMap(defaultTolerations)
-	for _, v := range overrideTolerations {
-		defaultMap[v.Key] = v
-	}
-
-	for _, v := range defaultMap {
-		mergedTolerations = append(mergedTolerations, v)
-	}
-
-	if len(mergedTolerations) == 0 {
-		return nil
-	}
-
-	sort.SliceStable(mergedTolerations, func(i, j int) bool {
-		return mergedTolerations[i].Key < mergedTolerations[j].Key
-	})
-
-	return mergedTolerations
-}
-
-func createTolerationsMap(tolerations []corev1.Toleration) map[string]corev1.Toleration {
-	tolerationsMap := make(map[string]corev1.Toleration)
-	for _, t := range tolerations {
-		tolerationsMap[t.Key] = t
-	}
-	return tolerationsMap
-}
-
 func Volumes(defaultVolumes []corev1.Volume, overrideVolumes []corev1.Volume) []corev1.Volume {
 	defaultVolumesMap := createVolumesMap(defaultVolumes)
 	overrideVolumesMap := createVolumesMap(overrideVolumes)

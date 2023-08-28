@@ -91,7 +91,9 @@ func PodTemplateSpecs(original, override corev1.PodTemplateSpec) corev1.PodTempl
 		merged.Spec.SchedulerName = override.Spec.SchedulerName
 	}
 
-	merged.Spec.Tolerations = Tolerations(original.Spec.Tolerations, override.Spec.Tolerations)
+	if override.Spec.Tolerations != nil {
+		merged.Spec.Tolerations = override.Spec.Tolerations
+	}
 
 	merged.Spec.HostAliases = HostAliases(original.Spec.HostAliases, override.Spec.HostAliases)
 

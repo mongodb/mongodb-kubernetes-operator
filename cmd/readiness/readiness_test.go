@@ -22,123 +22,219 @@ import (
 // TestDeadlockDetection verifies that if the agent is stuck in "WaitAllRsMembersUp" phase (started > 15 seconds ago)
 // then the function returns "ready"
 func TestDeadlockDetection(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked.json"))
-	assert.True(t, ready)
-	assert.NoError(t, err)
-}
-
-func TestDeadlockDetectionDuringVersionChange(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-deadlocked-with-prev-config.json"))
-	assert.True(t, ready)
-	assert.NoError(t, err)
-}
-
-// TestNoDeadlock verifies that if the agent has started (but not finished) "WaitRsInit" and then there is another
-// started phase ("WaitFeatureCompatibilityVersionCorrect") then no deadlock is found as the latter is considered to
-// be the "current" step
-func TestNoDeadlock(t *testing.T) {
-	health, err := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
-	assert.NoError(t, err)
-	stepStatus := findCurrentStep(health.ProcessPlans)
-
-	assert.Equal(t, "WaitFeatureCompatibilityVersionCorrect", stepStatus.Step)
-
-	ready, err := isPodReady(testConfig("testdata/health-status-no-deadlock.json"))
-	assert.False(t, ready)
-	assert.NoError(t, err)
-}
-
-// TestDeadlockDetection verifies that if the agent is in "WaitAllRsMembersUp" phase but started < 15 seconds ago
-// then the function returns "not ready". To achieve this "started" is put into some long future.
-// Note, that the status file is artificial: it has two plans (the first one is complete and has no moves) to make sure
-// the readiness logic takes only the last plan for consideration
-func TestNotReadyWaitingForRsReady(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-pending.json"))
-	assert.False(t, ready)
-	assert.NoError(t, err)
-}
-
-// TestNotReadyHealthFileHasNoPlans verifies that the readiness script doesn't panic if the health file has unexpected
-// data (there are no plans at all)
-func TestNotReadyHealthFileHasNoPlans(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-no-plans.json"))
-	assert.False(t, ready)
-	assert.NoError(t, err)
-}
-
-// TestNotReadyHealthFileHasNoProcesses verifies that the readiness script doesn't panic if the health file has unexpected
-// data (there are no processes at all)
-func TestNotReadyHealthFileHasNoProcesses(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-no-processes.json"))
-	assert.False(t, ready)
-	assert.NoError(t, err)
-}
-
-func TestNotReadyMongodIsDown(t *testing.T) {
-	t.Run("Mongod is down for 90 seconds", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*90))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 1 hour", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*1))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 2 days", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*48))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-}
-
-func TestReadyMongodIsUp(t *testing.T) {
-	t.Run("Mongod is down for 30 seconds", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-	t.Run("Mongod is down for 1 second", func(t *testing.T) {
-		ready, err := isPodReady(testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*1))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-}
-
-// TestReady verifies that the probe reports "ready" despite "WaitRsInit" stage reporting as not reached
-// (this is some bug in Automation Agent which we can work with)
-func TestReady(t *testing.T) {
-	ready, err := isPodReady(testConfig("testdata/health-status-ok.json"))
-	assert.True(t, ready)
-	assert.NoError(t, err)
-}
-
-// TestNoDeadlockForDownloadProcess verifies that the steps not listed as "riskySteps" (like "download") are not
-// considered as stuck
-func TestNoDeadlockForDownloadProcess(t *testing.T) {
-	before := time.Now().Add(time.Duration(-30) * time.Second)
-	downloadStatus := &health.StepStatus{
-		Step:      "Download",
-		Started:   &before,
-		Completed: nil,
-		Result:    "",
+	type TestConfig struct {
+		conf            config.Config
+		isErrorExpected bool
+		isReadyExpected bool
 	}
-
-	assert.False(t, isDeadlocked(downloadStatus))
+	tests := map[string]TestConfig{
+		"Ready but deadlocked on WaitAllRsMembersUp": {
+			conf:            testConfig("testdata/health-status-deadlocked.json"),
+			isReadyExpected: true,
+		},
+		"Ready but deadlocked on WaitCanUpdate while changing the versions with multiple plans": {
+			conf:            testConfig("testdata/health-status-deadlocked-with-prev-config.json"),
+			isReadyExpected: true,
+		},
+		"Ready but deadlocked on WaitHasCorrectAutomationCredentials (HELP-39937, HELP-39966)": {
+			conf:            testConfig("testdata/health-status-deadlocked-waiting-for-correct-automation-credentials.json"),
+			isReadyExpected: true,
+		},
+		"Ready and no deadlock detected": {
+			conf:            testConfig("testdata/health-status-no-deadlock.json"),
+			isReadyExpected: true,
+		},
+		"Ready and positive scenario": {
+			conf:            testConfig("testdata/health-status-ok.json"),
+			isReadyExpected: true,
+		},
+		"Ready and Pod readiness is correctly checked when no ReplicationStatus is present on the file": {
+			conf:            testConfig("testdata/health-status-no-replication.json"),
+			isReadyExpected: true,
+		},
+		"Ready and MongoDB replication state is reported by agents": {
+			conf:            testConfig("testdata/health-status-ok-no-replica-status.json"),
+			isReadyExpected: true,
+		},
+		"Not Ready If replication state is not PRIMARY or SECONDARY, Pod is not ready": {
+			conf:            testConfig("testdata/health-status-not-readable-state.json"),
+			isReadyExpected: false,
+		},
+		"Not Ready because of less than 15 seconds passed by after the health file update": {
+			conf:            testConfig("testdata/health-status-pending.json"),
+			isReadyExpected: false,
+		},
+		"Not Ready because there are no plans": {
+			conf:            testConfig("testdata/health-status-no-plans.json"),
+			isReadyExpected: false,
+		},
+		"Not Ready because there are no statuses": {
+			conf:            testConfig("testdata/health-status-no-plans.json"),
+			isReadyExpected: false,
+		},
+		"Not Ready because there are no processes": {
+			conf:            testConfig("testdata/health-status-no-processes.json"),
+			isReadyExpected: false,
+		},
+		"Not Ready because mongod is down for 90 seconds": {
+			conf:            testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*90),
+			isReadyExpected: false,
+		},
+		"Not Ready because mongod is down for 1 hour": {
+			conf:            testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*1),
+			isReadyExpected: false,
+		},
+		"Not Ready because mongod is down for 2 days": {
+			conf:            testConfigWithMongoUp("testdata/health-status-ok.json", time.Hour*48),
+			isReadyExpected: false,
+		},
+		"Ready and mongod is up for 30 seconds": {
+			conf:            testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30),
+			isReadyExpected: true,
+		},
+		"Ready and mongod is up for 1 second": {
+			conf:            testConfigWithMongoUp("testdata/health-status-ok.json", time.Second*30),
+			isReadyExpected: true,
+		},
+		"Not Ready because of mongod bootstrap errors": {
+			conf:            testConfigWithMongoUp("testdata/health-status-error-tls.json", time.Second*30),
+			isReadyExpected: false,
+		},
+		"Not Ready because of waiting on an upgrade start in a recomputed plan (a real scenario for an interrupted start in EA)": {
+			conf:            testConfigWithMongoUp("testdata/health-status-enterprise-upgrade-interrupted.json", time.Second*30),
+			isReadyExpected: false,
+		},
+	}
+	for testName, _ := range tests {
+		testConfig := tests[testName]
+		t.Run(testName, func(t *testing.T) {
+			ready, err := isPodReady(testConfig.conf)
+			if testConfig.isErrorExpected {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, testConfig.isReadyExpected, ready)
+		})
+	}
 }
 
-// TestNoDeadlockForImmediateWaitRs verifies the "WaitRsInit" step is not marked as deadlocked if
-// it was started < 15 seconds ago
-func TestNoDeadlockForImmediateWaitRs(t *testing.T) {
-	before := time.Now().Add(time.Duration(-10) * time.Second)
-	downloadStatus := &health.StepStatus{
-		Step:      "WaitRsInit",
-		Started:   &before,
-		Completed: nil,
-		Result:    "Wait",
-	}
+func TestObtainingCurrentStep(t *testing.T) {
+	noDeadlockHealthExample, _ := parseHealthStatus(testConfig("testdata/health-status-no-deadlock.json").HealthStatusReader)
+	now := time.Now()
+	tenMinutesAgo := time.Now().Add(-time.Minute * 10)
 
-	assert.False(t, isDeadlocked(downloadStatus))
+	type TestConfig struct {
+		processStatuses map[string]health.MmsDirectorStatus
+		expectedStep    string
+	}
+	tests := map[string]TestConfig{
+		"No deadlock example should point to WaitFeatureCompatibilityVersionCorrect": {
+			processStatuses: noDeadlockHealthExample.MmsStatus,
+			expectedStep:    "WaitFeatureCompatibilityVersionCorrect",
+		},
+		"Find single Started Step": {
+			processStatuses: map[string]health.MmsDirectorStatus{
+				"ignore": {
+					Plans: []*health.PlanStatus{
+						{
+							Moves: []*health.MoveStatus{
+								{
+									Steps: []*health.StepStatus{
+										{
+											Step:      "will be ignored as completed",
+											Started:   &tenMinutesAgo,
+											Completed: &now,
+										},
+										{
+											Step:    "test",
+											Started: &tenMinutesAgo,
+										},
+										{
+											Step:      "will be ignored as completed",
+											Started:   &tenMinutesAgo,
+											Completed: &now,
+										},
+									},
+								},
+							},
+							Started: &tenMinutesAgo,
+						},
+					},
+				},
+			},
+			expectedStep: "test",
+		},
+		"Find no Step in completed plan": {
+			processStatuses: map[string]health.MmsDirectorStatus{
+				"ignore": {
+					Plans: []*health.PlanStatus{
+						{
+							Moves: []*health.MoveStatus{
+								{
+									Steps: []*health.StepStatus{
+										{
+											Step:    "test",
+											Started: &tenMinutesAgo,
+										},
+									},
+								},
+							},
+							Started:   &tenMinutesAgo,
+							Completed: &now,
+						},
+					},
+				},
+			},
+			expectedStep: "",
+		},
+		"Find single Started step in the latest plan only": {
+			processStatuses: map[string]health.MmsDirectorStatus{
+				"ignore": {
+					Plans: []*health.PlanStatus{
+						{
+							Moves: []*health.MoveStatus{
+								{
+									Steps: []*health.StepStatus{
+										{
+											Step:    "will be ignored as only the last plan is evaluated",
+											Started: &tenMinutesAgo,
+										},
+									},
+								},
+							},
+							Started: &tenMinutesAgo,
+						},
+						{
+							Moves: []*health.MoveStatus{
+								{
+									Steps: []*health.StepStatus{
+										{
+											Step:    "test",
+											Started: &tenMinutesAgo,
+										},
+									},
+								},
+							},
+							Started: &tenMinutesAgo,
+						},
+					},
+				},
+			},
+			expectedStep: "test",
+		},
+	}
+	for testName, _ := range tests {
+		testConfig := tests[testName]
+		t.Run(testName, func(t *testing.T) {
+			step := findCurrentStep(testConfig.processStatuses)
+			if len(testConfig.expectedStep) == 0 {
+				assert.Nil(t, step)
+			} else {
+				assert.Equal(t, testConfig.expectedStep, step.Step)
+			}
+		})
+	}
 }
 
 // TestHeadlessAgentHasntReachedGoal verifies that the probe reports "false" if the config version is higher than the
@@ -170,26 +266,6 @@ func TestHeadlessAgentReachedGoal(t *testing.T) {
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
 }
 
-func TestPodReadiness(t *testing.T) {
-	t.Run("Pod readiness is correctly checked when no ReplicationStatus is present on the file ", func(t *testing.T) {
-		ready, err := isPodReady(testConfig("testdata/health-status-no-replication.json"))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-
-	t.Run("MongoDB replication state is reported by agents", func(t *testing.T) {
-		ready, err := isPodReady(testConfig("testdata/health-status-ok-no-replica-status.json"))
-		assert.True(t, ready)
-		assert.NoError(t, err)
-	})
-
-	t.Run("If replication state is not PRIMARY or SECONDARY, Pod is not ready", func(t *testing.T) {
-		ready, err := isPodReady(testConfig("testdata/health-status-not-readable-state.json"))
-		assert.False(t, ready)
-		assert.NoError(t, err)
-	})
-}
-
 func testConfig(healthFilePath string) config.Config {
 	return testConfigWithMongoUp(healthFilePath, 15*time.Second)
 }
@@ -206,10 +282,10 @@ func testConfigWithMongoUp(healthFilePath string, timeSinceMongoLastUp time.Dura
 		panic(err)
 	}
 
-	for key, processHealth := range status.Healthiness {
+	for key, processHealth := range status.Statuses {
 		processHealth.LastMongoUpTime = time.Now().Add(-timeSinceMongoLastUp).Unix()
 		// Need to reassign the object back to map as 'processHealth' is a copy of the struct
-		status.Healthiness[key] = processHealth
+		status.Statuses[key] = processHealth
 	}
 
 	return config.Config{

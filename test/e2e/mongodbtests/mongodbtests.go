@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"strings"
 	"testing"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/wait"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scram"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
@@ -162,6 +165,18 @@ func ServiceUsesCorrectPort(mdb *mdbv1.MongoDBCommunity, expectedPort int32) fun
 	}
 }
 
+func AgentX509SecretsExists(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		agentCertSecret := corev1.Secret{}
+		err := e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificateSecretNamespacedName(), &agentCertSecret)
+		assert.NoError(t, err)
+
+		agentCertPemSecret := corev1.Secret{}
+		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), &agentCertPemSecret)
+		assert.NoError(t, err)
+	}
+}
+
 func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	checkSecret := func(t *testing.T, resourceNamespacedName types.NamespacedName) {
 		secret := corev1.Secret{}
@@ -181,7 +196,7 @@ func AgentSecretsHaveOwnerReference(mdb *mdbv1.MongoDBCommunity, expectedOwnerRe
 // and that they have the expected owner reference
 func ConnectionStringSecretsAreConfigured(mdb *mdbv1.MongoDBCommunity, expectedOwnerReference metav1.OwnerReference) func(t *testing.T) {
 	return func(t *testing.T) {
-		for _, user := range mdb.GetScramUsers() {
+		for _, user := range mdb.GetAuthUsers() {
 			secret := corev1.Secret{}
 			secretNamespacedName := types.NamespacedName{Name: user.ConnectionStringSecretName, Namespace: mdb.Namespace}
 			err := e2eutil.TestClient.Get(context.TODO(), secretNamespacedName, &secret)
@@ -217,6 +232,7 @@ func containsVolume(volumes []corev1.PersistentVolume, volumeName string) bool {
 	}
 	return false
 }
+
 func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *testing.T) {
 	return func(t *testing.T) {
 		volumeList, err := getPersistentVolumesList()
@@ -228,6 +244,77 @@ func HasExpectedPersistentVolumes(volumes []corev1.PersistentVolume) func(t *tes
 		for _, v := range volumes {
 			assert.True(t, containsVolume(actualVolumes, v.Name))
 		}
+	}
+}
+func HasExpectedMetadata(mdb *mdbv1.MongoDBCommunity, expectedLabels map[string]string, expectedAnnotations map[string]string) func(t *testing.T) {
+	return func(t *testing.T) {
+		namespace := mdb.Namespace
+
+		statefulSetList := appsv1.StatefulSetList{}
+		err := e2eutil.TestClient.Client.List(context.TODO(), &statefulSetList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, statefulSetList.Items)
+		for _, s := range statefulSetList.Items {
+			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "statefulset "+s.Name)
+		}
+
+		volumeList := corev1.PersistentVolumeList{}
+		err = e2eutil.TestClient.Client.List(context.TODO(), &volumeList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, volumeList.Items)
+		for _, s := range volumeList.Items {
+			volName := s.Name
+			if strings.HasPrefix(volName, "data-volume-") || strings.HasPrefix(volName, "logs-volume-") {
+				containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "volume "+volName)
+			}
+		}
+
+		podList := corev1.PodList{}
+		err = e2eutil.TestClient.Client.List(context.TODO(), &podList, client.InNamespace(namespace))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, podList.Items)
+
+		for _, s := range podList.Items {
+			// only consider stateful-sets (as opposite to the controller replica set)
+			for _, owner := range s.OwnerReferences {
+				if owner.Kind == "ReplicaSet" {
+					continue
+				}
+			}
+			// Ignore non-owned pods
+			if len(s.OwnerReferences) == 0 {
+				continue
+			}
+
+			// Ensure we are considering pods owned by a stateful set
+			hasStatefulSetOwner := false
+			for _, owner := range s.OwnerReferences {
+				if owner.Kind == "StatefulSet" {
+					hasStatefulSetOwner = true
+				}
+			}
+			if !hasStatefulSetOwner {
+				continue
+			}
+
+			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "pod "+s.Name)
+		}
+	}
+}
+
+func containsMetadata(t *testing.T, metadata *metav1.ObjectMeta, expectedLabels map[string]string, expectedAnnotations map[string]string, msg string) {
+	labels := metadata.Labels
+	for k, v := range expectedLabels {
+		assert.Contains(t, labels, k, msg+" has label "+k)
+		value := labels[k]
+		assert.Equal(t, v, value, msg+" has label "+k+" with value "+v)
+	}
+
+	annotations := metadata.Annotations
+	for k, v := range expectedAnnotations {
+		assert.Contains(t, annotations, k, msg+" has annotation "+k)
+		value := annotations[k]
+		assert.Equal(t, v, value, msg+" has annotation "+k+" with value "+v)
 	}
 }
 
@@ -340,7 +427,7 @@ func DeleteMongoDBResource(mdb *mdbv1.MongoDBCommunity, ctx *e2eutil.Context) fu
 }
 
 // GetConnectionStringSecret returnes the secret generated by the operator that is storing the connection string for a specific user
-func GetConnectionStringSecret(mdb mdbv1.MongoDBCommunity, user scram.User) corev1.Secret {
+func GetConnectionStringSecret(mdb mdbv1.MongoDBCommunity, user authtypes.User) corev1.Secret {
 	secret := corev1.Secret{}
 	secretNamespacedName := types.NamespacedName{Name: user.ConnectionStringSecretName, Namespace: mdb.Namespace}
 	_ = e2eutil.TestClient.Get(context.TODO(), secretNamespacedName, &secret)
@@ -348,12 +435,12 @@ func GetConnectionStringSecret(mdb mdbv1.MongoDBCommunity, user scram.User) core
 }
 
 // GetConnectionStringForUser returns the mongodb standard connection string for a user
-func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) string {
+func GetConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user authtypes.User) string {
 	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standard"])
 }
 
 // GetSrvConnectionStringForUser returns the mongodb service connection string for a user
-func GetSrvConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user scram.User) string {
+func GetSrvConnectionStringForUser(mdb mdbv1.MongoDBCommunity, user authtypes.User) string {
 	return string(GetConnectionStringSecret(mdb, user).Data["connectionString.standardSrv"])
 }
 
@@ -386,6 +473,18 @@ func BasicFunctionality(mdb *mdbv1.MongoDBCommunity, skipStatusCheck ...bool) fu
 					CurrentStatefulSetReplicas: mdb.Spec.Members,
 				}))
 		}
+	}
+}
+
+func BasicFunctionalityX509(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		mdbOwnerReference := getOwnerReference(mdb)
+		t.Run("Secret Was Correctly Created", AutomationConfigSecretExists(mdb))
+		t.Run("Stateful Set Reaches Ready State", StatefulSetBecomesReady(mdb))
+		t.Run("MongoDB Reaches Running Phase", MongoDBReachesRunningPhase(mdb))
+		t.Run("Stateful Set Has OwnerReference", StatefulSetHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Service Set Has OwnerReference", ServiceHasOwnerReference(mdb, mdbOwnerReference))
+		t.Run("Connection string secrets are configured", ConnectionStringSecretsAreConfigured(mdb, mdbOwnerReference))
 	}
 }
 
@@ -514,6 +613,42 @@ func ChangePort(mdb *mdbv1.MongoDBCommunity, newPort int) func(*testing.T) {
 	}
 }
 
+func AddConnectionStringOption(mdb *mdbv1.MongoDBCommunity, key string, value interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Adding %s:%v to connection string", key, value)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.AdditionalConnectionStringConfig.SetOption(key, value)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ResetConnectionStringOptions(mdb *mdbv1.MongoDBCommunity) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.AdditionalConnectionStringConfig = mdbv1.NewMapWrapper()
+			db.Spec.Users[0].AdditionalConnectionStringConfig = mdbv1.NewMapWrapper()
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func AddConnectionStringOptionToUser(mdb *mdbv1.MongoDBCommunity, key string, value interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Adding %s:%v to connection string to first user", key, value)
+		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users[0].AdditionalConnectionStringConfig.SetOption(key, value)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerName string, condition func(c corev1.Container) bool) func(*testing.T) {
 	return func(t *testing.T) {
 		sts := appsv1.StatefulSet{}
@@ -529,6 +664,20 @@ func StatefulSetContainerConditionIsTrue(mdb *mdbv1.MongoDBCommunity, containerN
 
 		if !condition(*existingContainer) {
 			t.Fatalf(`Container "%s" does not satisfy condition`, containerName)
+		}
+	}
+}
+
+func StatefulSetConditionIsTrue(mdb *mdbv1.MongoDBCommunity, condition func(s appsv1.StatefulSet) bool) func(*testing.T) {
+	return func(t *testing.T) {
+		sts := appsv1.StatefulSet{}
+		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: mdb.Name, Namespace: mdb.Namespace}, &sts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !condition(sts) {
+			t.Fatalf(`StatefulSet "%s" does not satisfy condition`, mdb.Name)
 		}
 	}
 }

@@ -27,7 +27,7 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 	mdb.Spec.Arbiters = 1
 	mdb.Spec.Members = 2
@@ -83,7 +83,7 @@ func TestReplicaSetOperatorUpgradeFrom0_7_2(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, "")
-	scramUser := mdb.GetScramUsers()[0]
+	scramUser := mdb.GetAuthUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
 	_, err := setup.GeneratePasswordForUser(ctx, user, "")

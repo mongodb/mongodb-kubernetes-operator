@@ -6,13 +6,15 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
-
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/generate"
 )
 
 const (
@@ -26,87 +28,27 @@ const (
 	sha256StoredKeyKey = "sha-256-stored-key"
 )
 
-// Configurable is an interface which any resource which can configure ScramSha authentication should implement.
-type Configurable interface {
-	// GetScramOptions returns a set of Options which can be used for fine grained configuration.
-	GetScramOptions() Options
-
-	// GetScramUsers returns a list of users which will be mapped to users in the AutomationConfig.
-	GetScramUsers() []User
-
-	// GetAgentPasswordSecretNamespacedName returns the NamespacedName of the secret which stores the generated password for the agent.
-	GetAgentPasswordSecretNamespacedName() types.NamespacedName
-
-	// GetAgentKeyfileSecretNamespacedName returns the NamespacedName of the secret which stores the keyfile for the agent.
-	GetAgentKeyfileSecretNamespacedName() types.NamespacedName
-
-	// NamespacedName returns the NamespacedName for the resource that is being configured.
-	NamespacedName() types.NamespacedName
-
-	// GetOwnerReferences returns the OwnerReferences pointing to the current resource.
-	GetOwnerReferences() []metav1.OwnerReference
-}
-
-// Role is a struct which will map to automationconfig.Role.
-type Role struct {
-	// Name is the name of the role.
-	Name string
-
-	// Database is the database this role applies to.
-	Database string
-}
-
-// User is a struct which holds all of the values required to create an AutomationConfig user
-// and references to the credentials for the specific user.
-type User struct {
-	// Username is the username of the user.
-	Username string
-
-	// Database is the database this user will be created in.
-	Database string
-
-	// Roles is a slice of roles that this user should have.
-	Roles []Role
-
-	// PasswordSecretKey is the key which maps to the value of the user's password.
-	PasswordSecretKey string
-
-	// PasswordSecretName is the name of the secret which stores this user's password.
-	PasswordSecretName string
-
-	// ScramCredentialsSecretName returns the name of the secret which stores the generated credentials
-	// for this user. These credentials will be generated if they do not exist, or used if they do.
-	// Note: there will be one secret with credentials per user created.
-	ScramCredentialsSecretName string
-
-	// ConnectionStringSecretName is the name of the secret object created by the operator
-	// which exposes the connection strings for the user.
-	// Note: there will be one secret with connection strings per user created.
-	ConnectionStringSecretName string
-}
-
-// Options contains a set of values that can be used for more fine grained configuration of authentication.
-type Options struct {
-	// AuthoritativeSet indicates whether or not the agents will remove users not defined in the AutomationConfig.
-	AuthoritativeSet bool
-
-	// KeyFile is the path on disk to the keyfile that will be used for the deployment.
-	KeyFile string
-
-	// AutoAuthMechanisms is a list of valid authentication mechanisms that the agents can use.
-	AutoAuthMechanisms []string
-
-	// AgentName is username that the Automation Agent will have.
-	AgentName string
-
-	// AutoAuthMechanism is the desired authentication mechanism that the agents will use.
-	AutoAuthMechanism string
-}
-
 // Enable will configure all of the required Kubernetes resources for SCRAM-SHA to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) error {
+func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) error {
+	opts := mdb.GetAuthOptions()
+
+	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter, mdb)
+	if err != nil {
+		return fmt.Errorf("could not convert users to Automation Config users: %s", err)
+	}
+
+	if opts.AutoAuthMechanism == constants.Sha256 || opts.AutoAuthMechanism == constants.Sha1 {
+		if err := ensureAgent(auth, secretGetUpdateCreateDeleter, mdb); err != nil {
+			return err
+		}
+	}
+
+	return enableClientAuthentication(auth, opts, desiredUsers)
+}
+
+func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) error {
 	generatedPassword, err := generate.RandomFixedLengthStringOfSize(20)
 	if err != nil {
 		return fmt.Errorf("could not generate password: %s", err)
@@ -117,32 +59,24 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 		return fmt.Errorf("could not generate keyfile contents: %s", err)
 	}
 
-	desiredUsers, err := convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter, mdb)
-	if err != nil {
-		return fmt.Errorf("could not convert users to Automation Config users: %s", err)
-	}
-
 	// ensure that the agent password secret exists or read existing password.
-	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), mdb.GetOwnerReferences(), AgentPasswordKey, generatedPassword)
+	agentPassword, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentPasswordSecretNamespacedName(), mdb.GetOwnerReferences(), constants.AgentPasswordKey, generatedPassword)
 	if err != nil {
 		return err
 	}
 
 	// ensure that the agent keyfile secret exists or read existing keyfile.
-	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), AgentKeyfileKey, generatedContents)
+	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), constants.AgentKeyfileKey, generatedContents)
 	if err != nil {
 		return err
 	}
 
-	return configureScramInAutomationConfig(auth,
-		agentPassword,
-		agentKeyFile, desiredUsers, mdb.GetScramOptions(),
-	)
+	return enableAgentAuthentication(auth, agentPassword, agentKeyFile, mdb.GetAuthOptions())
 }
 
 // ensureScramCredentials will ensure that the ScramSha1 & ScramSha256 credentials exist and are stored in the credentials
 // secret corresponding to user of the given MongoDB deployment.
-func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user User, mdbNamespacedName types.NamespacedName, ownerRef []metav1.OwnerReference) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
+func ensureScramCredentials(getUpdateCreator secret.GetUpdateCreator, user authtypes.User, mdbNamespacedName types.NamespacedName, ownerRef []metav1.OwnerReference) (scramcredentials.ScramCreds, scramcredentials.ScramCreds, error) {
 
 	password, err := secret.ReadKey(getUpdateCreator, user.PasswordSecretKey, types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdbNamespacedName.Namespace})
 	if err != nil {
@@ -305,21 +239,23 @@ func readExistingCredentials(secretGetter secret.Getter, mdbObjectKey types.Name
 }
 
 // convertMongoDBResourceUsersToAutomationConfigUsers returns a list of users that are able to be set in the AutomationConfig
-func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb Configurable) ([]automationconfig.MongoDBUser, error) {
+func convertMongoDBResourceUsersToAutomationConfigUsers(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable) ([]automationconfig.MongoDBUser, error) {
 	var usersWanted []automationconfig.MongoDBUser
-	for _, u := range mdb.GetScramUsers() {
-		acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), mdb.GetOwnerReferences(), u)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert scram user %s to Automation Config user: %s", u.Username, err)
+	for _, u := range mdb.GetAuthUsers() {
+		if u.Database != constants.ExternalDB {
+			acUser, err := convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter, mdb.NamespacedName(), mdb.GetOwnerReferences(), u)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert scram user %s to Automation Config user: %s", u.Username, err)
+			}
+			usersWanted = append(usersWanted, acUser)
 		}
-		usersWanted = append(usersWanted, acUser)
 	}
 	return usersWanted, nil
 }
 
 // convertMongoDBUserToAutomationConfigUser converts a single user configured in the MongoDB resource and converts it to a user
 // that can be added directly to the AutomationConfig.
-func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, ownerRef []metav1.OwnerReference, user User) (automationconfig.MongoDBUser, error) {
+func convertMongoDBUserToAutomationConfigUser(secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdbNsName types.NamespacedName, ownerRef []metav1.OwnerReference, user authtypes.User) (automationconfig.MongoDBUser, error) {
 	acUser := automationconfig.MongoDBUser{
 		Username: user.Username,
 		Database: user.Database,

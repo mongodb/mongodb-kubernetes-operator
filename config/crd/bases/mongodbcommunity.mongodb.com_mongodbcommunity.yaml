@@ -52,6 +52,12 @@ spec:
           spec:
             description: MongoDBCommunitySpec defines the desired state of MongoDB
             properties:
+              additionalConnectionStringConfig:
+                description: Additional options to be appended to the connection string.
+                  These options apply to the entire resource and to each user.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               additionalMongodConfig:
                 description: 'AdditionalMongodConfig is additional configuration that
                   can be passed to each data-bearing mongod at runtime. Uses the same
@@ -167,6 +173,29 @@ spec:
                 properties:
                   authentication:
                     properties:
+                      agentCertificateSecretRef:
+                        description: 'AgentCertificateSecret is a reference to a Secret
+                          containing the certificate and the key for the automation
+                          agent The secret needs to have available: - certificate
+                          under key: "tls.crt" - private key under key: "tls.key"
+                          If additionally, tls.pem is present, then it needs to be
+                          equal to the concatenation of tls.crt and tls.key'
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      agentMode:
+                        description: AgentMode contains the authentication mode used
+                          by the automation agent.
+                        enum:
+                        - SCRAM
+                        - SCRAM-SHA-256
+                        - SCRAM-SHA-1
+                        - X509
+                        type: string
                       ignoreUnknownUsers:
                         default: true
                         nullable: true
@@ -179,6 +208,7 @@ spec:
                           - SCRAM
                           - SCRAM-SHA-256
                           - SCRAM-SHA-1
+                          - X509
                           type: string
                         type: array
                     required:
@@ -331,6 +361,19 @@ spec:
                 description: StatefulSetConfiguration holds the optional custom StatefulSet
                   that should be merged into the operator created one.
                 properties:
+                  metadata:
+                    description: StatefulSetMetadataWrapper is a wrapper around Labels
+                      and Annotations
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
                   spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -348,6 +391,13 @@ spec:
                   in your deployment
                 items:
                   properties:
+                    additionalConnectionStringConfig:
+                      description: Additional options to be appended to the connection
+                        string. These options apply only to this user and will override
+                        any existing options in the resource.
+                      nullable: true
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     connectionStringSecretName:
                       description: ConnectionStringSecretName is the name of the secret
                         object created by the operator which exposes the connection
@@ -402,9 +452,7 @@ spec:
                       type: string
                   required:
                   - name
-                  - passwordSecretRef
                   - roles
-                  - scramCredentialsSecretName
                   type: object
                 type: array
               version:

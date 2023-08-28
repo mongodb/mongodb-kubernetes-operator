@@ -63,23 +63,15 @@ func PerformCheckHeadlessMode(health health.Status, conf config.Config) (bool, e
 
 // readCurrentAgentInfo returns the version the Agent has reached and the rs member name
 func readCurrentAgentInfo(health health.Status, targetVersion int64) int64 {
-	for _, v := range health.ProcessPlans {
+	for _, v := range health.MmsStatus {
 		zap.S().Debugf("Automation Config version: %d, Agent last version: %d", targetVersion, v.LastGoalStateClusterConfigVersion)
 		return v.LastGoalStateClusterConfigVersion
 	}
-	// The edge case: if the scale down operation is happening and the member + process are removed
-	// from the Automation Config - the Agent just doesn't write the 'mmsStatus' at all so there is no indication of
-	// the version it has achieved (though health file contains 'IsInGoalState=true')
-	// Let's return the desired version in case if the Agent is in goal state and no plans exist in the health file
-	for _, v := range health.Healthiness {
-		if v.IsInGoalState {
-			return targetVersion
-		}
-		return -1
-	}
 
-	// There's a small theoretical probability that the Pod got restarted right when the Agent shutdown the Mongodb
-	// on scale down - in this case the 'health' file is empty - so we return the target version to avoid locking
-	// the Operator waiting for the annotation
+	// If there are no plans, we always return target version.
+	// Previously we relied on IsInGoalState, but the agent started sometimes returning IsInGoalState=false when scaling down members.
+	// No plans will occur if the agent is just starting or if the current process is not in the process list in automation config.
+	// Either way this is not a blocker for the operator to perform necessary statefulset changes on it.
+
 	return targetVersion
 }

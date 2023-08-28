@@ -1,35 +1,30 @@
-# MongoDB Kubernetes Operator 0.8.0
+# MongoDB Kubernetes Operator 0.X.X
+
+## MongoDBCommunity Resource
+
+- Changes
+  - Introduced support for X.509 authentication for client and agent
+    - `spec.security.authentication.modes` now supports value `X509`
+    - The agent authentication mode will default to the value in `spec.security.authentication.modes` if there is only one specified. 
+    - Otherwise, agent authentication will need to be specified through `spec.security.authentication.agentMode`.
+    - When agent authentication is set to `X509`, the field `spec.security.authentication.agentCertificateSecretRef` can be set (default is `agent-certs`).
+    - The secret that `agentCertificateSecretRef` points to should contain a signed X.509 certificate (under the `tls.crt` key) and a private key (under `tls.key`) for the agent.
+    - X.509 users can be added the same way as before under `spec.users`. The `db` field must be set to `$external` for X.509 authentication.
+    - For these users, `scramCredentialsSecretName` and `passwordSecretRef` should **not** be set.
+    - Sample resource [yaml](config/samples/mongodb.com_v1_mongodbcommunity_x509.yaml)
+    - Sample agent certificate [yaml](config/samples/external_access/agent-certificate.yaml)
+
+# MongoDB Kubernetes Operator 0.8.2
 
 ## Kubernetes Operator
 
 - Changes
-  - The Operator now uses the official [MongoDB Community Server images](https://hub.docker.com/r/mongodb/mongodb-community-server).
-    It is still possible to use the Docker Inc. images by altering the JSON configuration file:
-    ```
-          mongodb_image_name=mongo
-          mongodb_image_repo_url=docker.io
-    ```
-    Alternatively, it is possible to the Operator environmental variables to:
-    ```
-          MONGODB_IMAGE=mongo
-          MONGODB_REPO_URL=docker.io
-    ```
-    The upgrade process for the official MongoDB images is automatic when using the default settings provided by both,
-    [kubectl](install-upgrade.md#install-the-operator-using-kubectl) and [Helm](install-upgrade.md#install-the-operator-using-helm)
-    operator installation methods. Once the Operator boots up, it will replace `image` tags in the StatefulSets. If however,
-    you're using customized deployments (by modifying `MONGODB_IMAGE` or `MONGODB_REPO_URL` environment variable in the Operator
-    Deployment), please check if your settings are correct and if they are pointing to the right coordinates. The Operator
-    still provides basic backwards compatibility with previous images (`docker.io/mongo`).
-
-- `mongodb-readiness-hook` and `mongodb-version-upgrade-hook` images are now rebuilt daily, incorporating updates to system packages and security fixes. The binaries are built only once during the release process and used without changes in daily rebuilt
-
+  - Fix a bug when overriding tolerations causing an endless reconciliation loop ([1344](https://github.com/mongodb/mongodb-kubernetes-operator/issues/1344)).
 
 ## Updated Image Tags
 
-- mongodb-kubernetes-operator:0.8.0
-- mongodb-agent:12.0.21.7698-1
-- mongodb-kubernetes-readinessprobe:1.0.14
-- mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.7
+- mongodb-kubernetes-operator:0.8.2
+- mongodb-agent:12.0.25.7724-1
 
 _All the images can be found in:_
 

@@ -78,6 +78,26 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 	return newTester(&mdb, clientOpts...), nil
 }
 
+func FromX509Resource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
+	var clientOpts []*options.ClientOptions
+
+	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
+
+	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
+
+	users := mdb.Spec.Users
+	if len(users) == 1 {
+		clientOpts = WithX509().ApplyOption(clientOpts...)
+	}
+
+	// add any additional options
+	for _, opt := range opts {
+		clientOpts = opt.ApplyOption(clientOpts...)
+	}
+
+	return newTester(&mdb, clientOpts...), nil
+}
+
 // ConnectivitySucceeds performs a basic check that ensures that it is possible
 // to connect to the MongoDB resource
 func (m *Tester) ConnectivitySucceeds(opts ...OptionApplier) func(t *testing.T) {
@@ -88,6 +108,24 @@ func (m *Tester) ConnectivitySucceeds(opts ...OptionApplier) func(t *testing.T) 
 // to connect to the MongoDB resource
 func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
+}
+
+func (m *Tester) ConnectivityRejected(opts ...OptionApplier) func(t *testing.T) {
+	clientOpts := make([]*options.ClientOptions, 0)
+	for _, optApplier := range opts {
+		clientOpts = optApplier.ApplyOption(clientOpts...)
+	}
+
+	return func(t *testing.T) {
+		// We can optionally skip connectivity tests locally
+		if testing.Short() {
+			t.Skip()
+		}
+
+		if err := m.ensureClient(clientOpts...); err == nil {
+			t.Fatalf("No error, but it should have failed")
+		}
+	}
 }
 
 func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testing.T) {
@@ -439,6 +477,16 @@ func WithScramWithAuth(username, password string, authenticationMechanism string
 	}
 }
 
+func WithX509() OptionApplier {
+	return clientOptionAdder{
+		option: &options.ClientOptions{
+			Auth: &options.Credential{
+				AuthMechanism: "MONGODB-X509",
+			},
+		},
+	}
+}
+
 // WithHosts configures the hosts of the deployment
 func WithHosts(hosts []string) OptionApplier {
 	return clientOptionAdder{
@@ -507,6 +555,20 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 
 }
 
+// GetAgentCert reads the agent key certificate
+func GetAgentCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+	certSecret := corev1.Secret{}
+	certSecretName := mdb.AgentCertificateSecretNamespacedName()
+	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(certSecret.Data["tls.crt"])
+	if block == nil {
+		return nil, fmt.Errorf("error decoding client cert key")
+	}
+	return x509.ParseCertificate(block.Bytes)
+}
+
 // GetClientCert reads the client key certificate
 func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
@@ -519,6 +581,23 @@ func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 		return nil, fmt.Errorf("error decoding client cert key")
 	}
 	return x509.ParseCertificate(block.Bytes)
+}
+
+func GetUserCert(mdb mdbv1.MongoDBCommunity, userCertSecret string) (string, error) {
+	certSecret := corev1.Secret{}
+	certSecretName := types.NamespacedName{Name: userCertSecret, Namespace: mdb.Namespace}
+	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+		return "", err
+	}
+	crt, _ := pem.Decode(certSecret.Data["tls.crt"])
+	if crt == nil {
+		return "", fmt.Errorf("error decoding client cert key")
+	}
+	key, _ := pem.Decode(certSecret.Data["tls.key"])
+	if key == nil {
+		return "", fmt.Errorf("error decoding client cert key")
+	}
+	return string(crt.Bytes) + string(key.Bytes), nil
 }
 
 // defaults returns the default connectivity options

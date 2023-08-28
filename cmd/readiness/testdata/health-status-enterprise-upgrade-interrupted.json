@@ -1,0 +1,271 @@
+{
+  "statuses": {
+    "my-replica-set-0": {
+      "IsInGoalState": false,
+      "LastMongoUpTime": 1689233828,
+      "ExpectedToBeUp": true,
+      "ReplicationStatus": 2
+    }
+  },
+  "mmsStatus": {
+    "my-replica-set-0": {
+      "name": "my-replica-set-0",
+      "lastGoalVersionAchieved": 8,
+      "plans": [
+        {
+          "automationConfigVersion": 8,
+          "started": "2023-07-13T07:31:43.706340549Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "Download",
+              "moveDoc": "Download mongodb binaries",
+              "steps": [
+                {
+                  "step": "Download",
+                  "stepDoc": "Download mongodb binaries (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:31:43.706368293Z",
+                  "completed": "2023-07-13T07:31:52.545770428Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "DownloadMongosh",
+              "moveDoc": "Download Mongosh",
+              "steps": [
+                {
+                  "step": "DownloadMongosh",
+                  "stepDoc": "Download mongosh (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:31:52.545834821Z",
+                  "completed": null,
+                  "result": "error"
+                }
+              ]
+            },
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitAllRsMembersUp",
+              "moveDoc": "Wait until all members of this process' repl set are up",
+              "steps": [
+                {
+                  "step": "WaitAllRsMembersUp",
+                  "stepDoc": "Wait until all members of this process' repl set are up",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "RsInit",
+              "moveDoc": "Initialize a replica set including the current MongoDB process",
+              "steps": [
+                {
+                  "step": "RsInit",
+                  "stepDoc": "Initialize a replica set",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "automationConfigVersion": 8,
+          "started": "2023-07-13T07:32:02.715922827Z",
+          "completed": "2023-07-13T07:32:20.938102204Z",
+          "moves": [
+            {
+              "move": "Start",
+              "moveDoc": "Start the process",
+              "steps": [
+                {
+                  "step": "StartFresh",
+                  "stepDoc": "Start a mongo instance  (start fresh)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:32:02.715947483Z",
+                  "completed": "2023-07-13T07:32:09.844613082Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "UpdateSymLink",
+              "moveDoc": "Update the mongosh binary symlink",
+              "steps": [
+                {
+                  "step": "UpdateSymLink",
+                  "stepDoc": "Update the mongosh binary symlink",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:32:09.844681639Z",
+                  "completed": "2023-07-13T07:32:14.893961595Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "WaitAllRsMembersUp",
+              "moveDoc": "Wait until all members of this process' repl set are up",
+              "steps": [
+                {
+                  "step": "WaitAllRsMembersUp",
+                  "stepDoc": "Wait until all members of this process' repl set are up",
+                  "isWaitStep": true,
+                  "started": "2023-07-13T07:32:14.894030206Z",
+                  "completed": null,
+                  "result": "wait"
+                }
+              ]
+            },
+            {
+              "move": "RsInit",
+              "moveDoc": "Initialize a replica set including the current MongoDB process",
+              "steps": [
+                {
+                  "step": "RsInit",
+                  "stepDoc": "Initialize a replica set",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            },
+            {
+              "move": "WaitFeatureCompatibilityVersionCorrect",
+              "moveDoc": "Wait for featureCompatibilityVersion to be right",
+              "steps": [
+                {
+                  "step": "WaitFeatureCompatibilityVersionCorrect",
+                  "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                  "isWaitStep": true,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "automationConfigVersion": 9,
+          "started": "2023-07-13T07:35:56.706945979Z",
+          "completed": null,
+          "moves": [
+            {
+              "move": "Download",
+              "moveDoc": "Download mongodb binaries",
+              "steps": [
+                {
+                  "step": "Download",
+                  "stepDoc": "Download mongodb binaries (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:35:56.706976268Z",
+                  "completed": "2023-07-13T07:36:01.116832943Z",
+                  "result": "success"
+                }
+              ]
+            },
+            {
+              "move": "ChangeVersion",
+              "moveDoc": "Change MongoDB Version",
+              "steps": [
+                {
+                  "step": "CheckWrongVersion",
+                  "stepDoc": "Check that MongoDB version is wrong",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:36:01.11709619Z",
+                  "completed": "2023-07-13T07:36:01.11734988Z",
+                  "result": "success"
+                },
+                {
+                  "step": "CheckRsCorrect",
+                  "stepDoc": "Check that replica set configuration is correct",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:36:01.117352255Z",
+                  "completed": "2023-07-13T07:36:01.117626127Z",
+                  "result": "success"
+                },
+                {
+                  "step": "WaitCanUpdate",
+                  "stepDoc": "Wait until the update can be made",
+                  "isWaitStep": true,
+                  "started": "2023-07-13T07:36:01.117628516Z",
+                  "completed": "2023-07-13T07:36:01.117818709Z",
+                  "result": "success"
+                },
+                {
+                  "step": "DisableBalancerIfFirst",
+                  "stepDoc": "Disable the balancer (may take a while)",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:36:01.117821034Z",
+                  "completed": "2023-07-13T07:36:01.18783613Z",
+                  "result": "success"
+                },
+                {
+                  "step": "Stop",
+                  "stepDoc": "Shutdown the process",
+                  "isWaitStep": false,
+                  "started": "2023-07-13T07:36:01.187839391Z",
+                  "completed": null,
+                  "result": ""
+                },
+                {
+                  "step": "RemoveDbFilesIfArbiterDowngrade",
+                  "stepDoc": "Delete db files if this is an arbiter downgrade.",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                },
+                {
+                  "step": "StartWithUpgrade",
+                  "stepDoc": "Start a mongo instance  (upgrade)",
+                  "isWaitStep": false,
+                  "started": null,
+                  "completed": null,
+                  "result": ""
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "errorCode": 0,
+      "errorString": ""
+    }
+  }
+}

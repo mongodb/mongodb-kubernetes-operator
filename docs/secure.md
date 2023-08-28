@@ -15,13 +15,13 @@ certificates to encrypt traffic between:
 - Client applications and MongoDB deployments.
 
 The Operator automates TLS configuration through its integration with 
-[cert-manager](cert-manager.io), a certificate management tool for 
+[cert-manager](https://cert-manager.io/), a certificate management tool for 
 Kubernetes.
 
 ### Prerequisites
 
 Before you secure MongoDBCommunity resource connections using TLS, you 
-must [Create a database user](docs/users) to authenticate to your 
+must [Create a database user](../docs/users.md) to authenticate to your 
 MongoDBCommunity resource.
 
 ### Procedure
@@ -46,9 +46,10 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
 1. Create a TLS-secured MongoDBCommunity resource:
 
    ```
-   helm upgrade community-operator mongodb/community-operator \
-   --namespace cko-namespace --set resource.tls.useCertManager=true \
-   --set createResource=true --set resource.tls.enabled=true
+   helm upgrade --install community-operator mongodb/community-operator \
+   --namespace mongodb --set resource.tls.useCertManager=true \
+   --set createResource=true --set resource.tls.enabled=true \
+   --set namespace=mongodb --create-namespace
    ```
 
   This creates a resource secured with TLS and generates the necessary

@@ -1,6 +1,6 @@
 # used to run the operator locally
 namePrefix: ""
 
-bases:
+resources:
   - ../crd
   - ../rbac

@@ -101,8 +101,6 @@ jobs:
           distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
-        - test-name: replica_set_recovery
-          distro: ubi
         - test-name: replica_set_mongod_readiness
           distro: ubi
         - test-name: replica_set_scale
@@ -116,8 +114,6 @@ jobs:
         - test-name: prometheus
           distro: ubi
         - test-name: replica_set_tls
-          distro: ubi
-        - test-name: replica_set_tls_pem_file
           distro: ubi
         - test-name: replica_set_tls_recreate_mdbc
           distro: ubi
@@ -147,6 +143,10 @@ jobs:
         - test-name: replica_set_mongod_port_change_with_arbiters
           distro: ubi
         - test-name: replica_set_operator_upgrade
+          distro: ubi
+        - test-name: replica_set_connection_string_options
+          distro: ubi
+        - test-name: replica_set_x509
           distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
