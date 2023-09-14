@@ -3,6 +3,7 @@ package automationconfig
 import (
 	"bytes"
 	"encoding/json"
+
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/scramcredentials"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
@@ -249,11 +250,16 @@ type EngineConfig struct {
 	CacheSizeGB float32 `json:"cacheSizeGB"`
 }
 
+type ReplSetForceConfig struct {
+	CurrentVersion int64 `json:"currentVersion"`
+}
+
 type ReplicaSet struct {
-	Id              string             `json:"_id"`
-	Members         []ReplicaSetMember `json:"members"`
-	ProtocolVersion string             `json:"protocolVersion"`
-	NumberArbiters  int                `json:"numberArbiters"`
+	Id              string              `json:"_id"`
+	Members         []ReplicaSetMember  `json:"members"`
+	ProtocolVersion string              `json:"protocolVersion"`
+	NumberArbiters  int                 `json:"numberArbiters"`
+	Force           *ReplSetForceConfig `json:"force,omitempty"`
 }
 
 type ReplicaSetMember struct {
