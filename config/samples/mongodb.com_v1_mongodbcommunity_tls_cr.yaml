@@ -12,10 +12,19 @@ spec:
       modes: ["SCRAM"]
     tls:
       enabled: true
+      optional: true
       certificateKeySecretRef:
         name: tls-secret-name
       caConfigMapRef:
         name: tls-ca-configmap-name
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mongodb-agent
+            useSslForAllConnections: true
+            sslRequireValidServerCertificates: false
   users:
     - name: my-user
       db: admin
