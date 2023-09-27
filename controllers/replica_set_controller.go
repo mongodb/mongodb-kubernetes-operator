@@ -632,7 +632,7 @@ func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *
 			r.log.Warnf("could not parse version %v", mdb.Spec.Version)
 		} else {
 			if semverVersion.Major >= 7 {
-				return fmt.Errorf("monggodb >= 7 is not supported"), nil
+				return fmt.Errorf("mongodb >= 7.0.0 is not supported"), nil
 			}
 		}
 	}
