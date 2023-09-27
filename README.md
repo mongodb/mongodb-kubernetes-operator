@@ -9,11 +9,11 @@ If you are a MongoDB Enterprise customer, or need Enterprise features such as Ba
 Here is a talk from MongoDB Live 2020 about the Community Operator:
 * [Run it in Kubernetes! Community and Enterprise MongoDB in Containers](https://www.youtube.com/watch?v=2Xszdg-4T6A&t=1368s)
 
-> **Note** 
-> 
-> Hi, I'm Dan Mckean 👋 I'm the Product Manager for MongoDB's support of Kubernetes. 
-> 
-> The [Community Operator](https://github.com/mongodb/mongodb-kubernetes-operator) is something I inherited when I started, but it doesn't get as much attention from us as we'd like, and we're trying to understand how it's used in order to establish it's future. It will help us establish exactly what level of support we can offer, and what sort of timeframe we aim to provide support in 🙂 
+> **Note**
+>
+> Hi, I'm Dan Mckean 👋 I'm the Product Manager for MongoDB's support of Kubernetes.
+>
+> The [Community Operator](https://github.com/mongodb/mongodb-kubernetes-operator) is something I inherited when I started, but it doesn't get as much attention from us as we'd like, and we're trying to understand how it's used in order to establish it's future. It will help us establish exactly what level of support we can offer, and what sort of timeframe we aim to provide support in 🙂
 >
 >Here's a super short survey (it's much easier for us to review all the feedback that way!): [https://docs.google.com/forms/d/e/1FAIpQLSfwrwyxBSlUyJ6AmC-eYlgW_3JEdfA48SB2i5--_WpiynMW2w/viewform?usp=sf_link](https://docs.google.com/forms/d/e/1FAIpQLSfwrwyxBSlUyJ6AmC-eYlgW_3JEdfA48SB2i5--_WpiynMW2w/viewform?usp=sf_link)
 >
@@ -41,6 +41,9 @@ See the [documentation](docs) to learn how to:
 ## Supported Features
 
 The MongoDB Community Kubernetes Operator supports the following features:
+
+> Warning: Currently the operator doesn't support Replicaset deployment with server version >= 7.0. We are working on adding the support for it.
+
 
 - Create [replica sets](https://www.mongodb.com/docs/manual/replication/)
 - Upgrade and downgrade MongoDB server version
