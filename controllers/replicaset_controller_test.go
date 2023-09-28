@@ -171,6 +171,20 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	assert.NotEmpty(t, s.Data[automationconfig.ConfigKey])
 }
 
+func TestKubernetesResources_MongoDB7IsRejected(t *testing.T) {
+	mdb := newTestReplicaSet()
+	mdb.Spec.Version = "7.0.0"
+
+	mgr := client.NewManager(&mdb)
+	r := NewReconciler(mgr)
+
+	res, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
+
+	assert.NoError(t, err)
+	assert.Equal(t, true, res.Requeue)
+	assert.Equal(t, time.Duration(0), res.RequeueAfter)
+}
+
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
 	t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
