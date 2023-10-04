@@ -114,7 +114,7 @@ class DevConfig:
 
     @property
     def mongodb_image_repo_url(self) -> str:
-        return self._config.get("mongodb_image_repo_url", "docker.io/mongodb")
+        return self._config.get("mongodb_image_repo_url", "quay.io/mongodb")
 
     @property
     def agent_dev_image_ubi(self) -> str:

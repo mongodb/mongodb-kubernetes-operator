@@ -53,7 +53,7 @@ spec:
         - name: MONGODB_IMAGE
           value: mongodb-community-server
         - name: MONGODB_REPO_URL
-          value: docker.io/mongodb
+          value: quay.io/mongodb
         image: quay.io/mongodb/mongodb-kubernetes-operator:0.8.2
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
