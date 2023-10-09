@@ -15,6 +15,7 @@ const (
 	DefaultMongoDBDataDir               string      = "/data"
 	DefaultDBPort                       int         = 27017
 	DefaultAgentLogPath                 string      = "/var/log/mongodb-mms-automation"
+	DefaultAgentLogFile                 string      = "/var/log/mongodb-mms-automation/automation-agent.log"
 	DefaultAgentMaxLogFileDurationHours int         = 24
 )
 

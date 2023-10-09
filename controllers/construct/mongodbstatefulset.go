@@ -2,10 +2,11 @@ package construct
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -53,13 +54,14 @@ const (
 	VersionUpgradeHookImageEnv      = "VERSION_UPGRADE_HOOK_IMAGE"
 	ReadinessProbeImageEnv          = "READINESS_PROBE_IMAGE"
 	agentLogLevelEnv                = "AGENT_LOG_LEVEL"
+	agentLogFileEnv                 = "AGENT_LOG_FILE"
 	agentMaxLogFileDurationHoursEnv = "AGENT_MAX_LOG_FILE_DURATION_HOURS"
 
 	automationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
 
 	automationAgentOptions    = " -skipMongoStart -noDaemonize -useLocalMongoDbTools"
-	automationAgentLogOptions = " -logFile /var/log/mongodb-mms-automation/automation-agent.log -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
+	automationAgentLogOptions = " -logFile ${AGENT_LOG_FILE} -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
 
 	MongodbUserCommand = `current_uid=$(id -u)
 AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
@@ -98,6 +100,8 @@ type MongoDBStatefulSetOwner interface {
 	LogsVolumeName() string
 	// GetAgentLogLevel returns the log level for the MongoDB automation agent.
 	GetAgentLogLevel() mdbv1.LogLevel
+	// GetAgentLogFile returns the log file for the MongoDB automation agent.
+	GetAgentLogFile() string
 	// GetAgentMaxLogFileDurationHours returns the number of hours after which the log file should be rolled.
 	GetAgentMaxLogFileDurationHours() int
 
@@ -177,6 +181,11 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		agentLogLevel = string(mdb.GetAgentLogLevel())
 	}
 
+	agentLogFile := automationconfig.DefaultAgentLogFile
+	if mdb.GetAgentLogFile() != "" {
+		agentLogFile = mdb.GetAgentLogFile()
+	}
+
 	agentMaxLogFileDurationHours := automationconfig.DefaultAgentMaxLogFileDurationHours
 	if mdb.GetAgentMaxLogFileDurationHours() != 0 {
 		agentMaxLogFileDurationHours = mdb.GetAgentMaxLogFileDurationHours()
@@ -204,7 +213,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentMaxLogFileDurationHours)),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
@@ -220,7 +229,7 @@ func AutomationAgentCommand() []string {
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, maxLogFileDurationHours int) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
@@ -256,6 +265,10 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 			corev1.EnvVar{
 				Name:  agentLogLevelEnv,
 				Value: logLevel,
+			},
+			corev1.EnvVar{
+				Name:  agentLogFileEnv,
+				Value: logFile,
 			},
 			corev1.EnvVar{
 				Name:  agentMaxLogFileDurationHoursEnv,
