@@ -35,6 +35,7 @@ class DevConfig:
         self._distro = distro
         self.include_tags: List[str] = []
         self.skip_tags: List[str] = []
+        self.gh_run_id = ""
 
     def ensure_tag_is_run(self, tag: str) -> None:
         if tag not in self.include_tags:
@@ -113,7 +114,7 @@ class DevConfig:
 
     @property
     def mongodb_image_repo_url(self) -> str:
-        return self._config.get("mongodb_image_repo_url", "docker.io/mongodb")
+        return self._config.get("mongodb_image_repo_url", "quay.io/mongodb")
 
     @property
     def agent_dev_image_ubi(self) -> str:
@@ -160,7 +161,7 @@ class DevConfig:
 
 
 def load_config(
-    config_file_path: Optional[str] = None, distro: Distro = Distro.UBUNTU
+    config_file_path: Optional[str] = None, distro: Distro = Distro.UBI
 ) -> DevConfig:
     if config_file_path is None:
         config_file_path = get_config_path()

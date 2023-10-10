@@ -247,7 +247,7 @@ def parse_args() -> argparse.Namespace:
         "--distro",
         help="The distro of images that should be used",
         type=str,
-        default="ubuntu",
+        default="ubi",
     )
     parser.add_argument("--config_file", help="Path to the config file")
     return parser.parse_args()

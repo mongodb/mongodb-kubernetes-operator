@@ -179,9 +179,9 @@ for MongoDB Docker images:
    - MongoDB tests, maintains, and supports them.
 
    | Environment Variable | Description | Default                      |
-   |----|------------------------------|----|
+   |----|------------------------------|------------------------------|
    | `MONGODB_IMAGE` | From the `MONGODB_REPO_URL`, absolute path to the MongoDB Docker image that you want to deploy. | `"mongodb-community-server"` |
-   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"docker.io/mongodb"`        |
+   | `MONGODB_REPO_URL` | URL of the container registry that contains the MongoDB Docker image that you want to deploy. | `"quay.io/mongodb"`          |
 
    ```yaml
        spec:
