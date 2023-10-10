@@ -18,3 +18,4 @@
   - MongoDB 7.0.0 and onwards is not supported. Supporting it requires a newer Automation Agent version. Until a new version is available, the Operator will fail all deployments with this version. To ignore this error and force the Operator to reconcile these resources, use `IGNORE_MDB_7_ERROR` environment variable and set it to `true`.
   - Introduced support for ARM64 architecture
     - A manifest supporting both AMD64 and ARCH64 architectures is released for each version.
+  - `ubuntu` based images are deprecated, users should move to `ubi` images next release.
