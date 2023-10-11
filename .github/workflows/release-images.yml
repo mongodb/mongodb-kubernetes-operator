@@ -8,7 +8,6 @@ on:
 jobs:
   release-images:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator') && github.event.review.state == 'approved'
     strategy:
       matrix:
         include:
@@ -56,7 +55,6 @@ jobs:
         uses: docker/setup-qemu-action@v2
 
       - name: Publish Image To Quay
-        if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release true
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
