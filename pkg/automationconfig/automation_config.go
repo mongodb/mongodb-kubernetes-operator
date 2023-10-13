@@ -251,6 +251,9 @@ type EngineConfig struct {
 	CacheSizeGB float32 `json:"cacheSizeGB"`
 }
 
+// ReplSetForceConfig setting enables us to force reconfigure automation agent when the MongoDB deployment
+// is in a broken state - for ex: doesn't have a primary.
+// More info: https://www.mongodb.com/docs/ops-manager/current/reference/api/automation-config/automation-config-parameters/#replica-sets
 type ReplSetForceConfig struct {
 	CurrentVersion int64 `json:"currentVersion"`
 }
