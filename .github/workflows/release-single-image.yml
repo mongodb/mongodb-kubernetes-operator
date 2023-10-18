@@ -40,6 +40,10 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
+      # template: .action_templates/steps/set-up-qemu.yaml
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
       - name: Publish Image To Quay
         if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release true
