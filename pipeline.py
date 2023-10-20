@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import subprocess
 from typing import Dict, Optional
 
 from sonar.sonar import process_image
@@ -42,17 +43,32 @@ def _build_agent_args(config: DevConfig) -> Dict[str, str]:
 
 
 def build_agent_image_ubi(config: DevConfig) -> None:
-    image_name = "agent-ubi"
     args = _build_agent_args(config)
     args["agent_image"] = config.agent_image_ubi
     args["agent_image_dev"] = config.agent_dev_image_ubi
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        image_name,
+        "agent-ubi-amd64",
         config,
         args=args,
     )
+    sonar_build_image(
+        "agent-ubi-arm64",
+        config,
+        args=args,
+    )
+
+    create_and_push_manifest(config, config.agent_dev_image_ubi)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(config, config.agent_dev_image_ubi, config.gh_run_id)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(config, config.agent_image_ubi, args["agent_version"])
+        create_and_push_manifest(
+            config, config.agent_image_ubi, args["agent_version"] + "-context"
+        )
 
 
 def build_agent_image_ubuntu(config: DevConfig) -> None:
@@ -75,7 +91,7 @@ def build_readiness_probe_image(config: DevConfig) -> None:
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        "readiness-probe-init",
+        "readiness-probe-init-amd64",
         config,
         args={
             "builder": "true",
@@ -89,6 +105,38 @@ def build_readiness_probe_image(config: DevConfig) -> None:
         },
     )
 
+    sonar_build_image(
+        "readiness-probe-init-arm64",
+        config,
+        args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "registry": config.repo_url,
+            "release_version": release["readiness-probe"],
+            "readiness_probe_image": config.readiness_probe_image,
+            "readiness_probe_image_dev": config.readiness_probe_image_dev,
+            "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
+        },
+    )
+
+    create_and_push_manifest(config, config.readiness_probe_image_dev)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(
+            config, config.readiness_probe_image_dev, config.gh_run_id
+        )
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.readiness_probe_image, release["readiness-probe"]
+        )
+        create_and_push_manifest(
+            config,
+            config.readiness_probe_image,
+            release["readiness-probe"] + "-context",
+        )
+
 
 def build_version_post_start_hook_image(config: DevConfig) -> None:
     release = _load_release()
@@ -96,7 +144,7 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
     config.ensure_tag_is_run("ubi")
 
     sonar_build_image(
-        "version-post-start-hook-init",
+        "version-post-start-hook-init-amd64",
         config,
         args={
             "builder": "true",
@@ -110,12 +158,59 @@ def build_version_post_start_hook_image(config: DevConfig) -> None:
         },
     )
 
+    sonar_build_image(
+        "version-post-start-hook-init-arm64",
+        config,
+        args={
+            "builder": "true",
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "registry": config.repo_url,
+            "release_version": release["version-upgrade-hook"],
+            "version_post_start_hook_image": config.version_upgrade_hook_image,
+            "version_post_start_hook_image_dev": config.version_upgrade_hook_image_dev,
+            "builder_image": release["golang-builder-image"],
+            "s3_bucket": config.s3_bucket,
+        },
+    )
+
+    create_and_push_manifest(config, config.version_upgrade_hook_image_dev)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(
+            config, config.version_upgrade_hook_image_dev, config.gh_run_id
+        )
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.version_upgrade_hook_image, release["version-upgrade-hook"]
+        )
+        create_and_push_manifest(
+            config,
+            config.version_upgrade_hook_image,
+            release["version-upgrade-hook"] + "-context",
+        )
+
 
 def build_operator_ubi_image(config: DevConfig) -> None:
     release = _load_release()
     config.ensure_tag_is_run("ubi")
     sonar_build_image(
-        "operator-ubi",
+        "operator-ubi-amd64",
+        config,
+        args={
+            "registry": config.repo_url,
+            "builder": "true",
+            "builder_image": release["golang-builder-image"],
+            "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+            "operator_image": config.operator_image,
+            "operator_image_dev": config.operator_image_dev,
+            "release_version": release["mongodb-kubernetes-operator"],
+            "s3_bucket": config.s3_bucket,
+        },
+        inventory="inventories/operator-inventory.yaml",
+    )
+    sonar_build_image(
+        "operator-ubi-arm64",
         config,
         args={
             "registry": config.repo_url,
@@ -130,11 +225,26 @@ def build_operator_ubi_image(config: DevConfig) -> None:
         inventory="inventories/operator-inventory.yaml",
     )
 
+    create_and_push_manifest(config, config.operator_image_dev)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(config, config.operator_image_dev, config.gh_run_id)
+
+    if "release" in config.include_tags:
+        create_and_push_manifest(
+            config, config.operator_image, release["mongodb-kubernetes-operator"]
+        )
+        create_and_push_manifest(
+            config,
+            config.operator_image,
+            release["mongodb-kubernetes-operator"] + "-context",
+        )
+
 
 def build_e2e_image(config: DevConfig) -> None:
     release = _load_release()
     sonar_build_image(
-        "e2e",
+        "e2e-arm64",
         config,
         args={
             "registry": config.repo_url,
@@ -143,6 +253,67 @@ def build_e2e_image(config: DevConfig) -> None:
         },
         inventory="inventories/e2e-inventory.yaml",
     )
+    sonar_build_image(
+        "e2e-amd64",
+        config,
+        args={
+            "registry": config.repo_url,
+            "base_image": release["golang-builder-image"],
+            "e2e_image": config.e2e_image,
+        },
+        inventory="inventories/e2e-inventory.yaml",
+    )
+
+    create_and_push_manifest(config, config.e2e_image)
+
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        create_and_push_manifest(config, config.e2e_image, config.gh_run_id)
+
+
+"""
+Generates docker manifests by running the following commands:
+1. Clear existing manifests
+docker manifest rm config.repo_url/image:tag
+2. Create the manifest
+docker manifest create config.repo_url/image:tag --amend config.repo_url/image:tag-amd64 --amend config.repo_url/image:tag-arm64
+3. Push the manifest
+docker manifest push config.repo_url/image:tag
+"""
+
+
+def create_and_push_manifest(
+    config: DevConfig, image: str, tag: str = "latest"
+) -> None:
+    final_manifest = "{0}/{1}:{2}".format(config.repo_url, image, tag)
+    args = ["docker", "manifest", "rm", final_manifest]
+    args_str = " ".join(args)
+    print(f"removing existing manifest: {args_str}")
+    subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    args = [
+        "docker",
+        "manifest",
+        "create",
+        final_manifest,
+        "--amend",
+        final_manifest + "-amd64",
+        "--amend",
+        final_manifest + "-arm64",
+    ]
+    args_str = " ".join(args)
+    print(f"creating new manifest: {args_str}")
+    cp = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if cp.returncode != 0:
+        raise Exception(cp.stderr)
+
+    args = ["docker", "manifest", "push", final_manifest]
+    args_str = " ".join(args)
+    print(f"pushing new manifest: {args_str}")
+    cp = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if cp.returncode != 0:
+        raise Exception(cp.stderr)
 
 
 def sonar_build_image(
@@ -165,6 +336,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-name", type=str)
     parser.add_argument("--release", type=lambda x: x.lower() == "true")
+    parser.add_argument("--tag", type=str)
     return parser.parse_args()
 
 
@@ -183,6 +355,8 @@ def main() -> int:
     # by default we do not want to run any release tasks. We must explicitly
     # use the --release flag to run them.
     config.ensure_skip_tag("release")
+
+    config.gh_run_id = args.tag
 
     # specify --release to release the image
     if args.release:

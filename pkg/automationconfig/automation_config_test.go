@@ -28,13 +28,15 @@ func defaultMongoDbVersion(version string) MongoDbVersionConfig {
 }
 
 func TestBuildAutomationConfig(t *testing.T) {
-	ac, err := NewBuilder().
+	builder := NewBuilder().
 		SetName("my-rs").
 		SetDomain("my-ns.svc.cluster.local").
 		SetMongoDBVersion("4.2.0").
 		SetMembers(3).
 		SetFCV("4.0").
-		Build()
+		SetForceReconfigureToVersion(-1)
+
+	ac, err := builder.Build()
 
 	assert.NoError(t, err)
 	assert.Len(t, ac.Processes, 3)
@@ -56,6 +58,8 @@ func TestBuildAutomationConfig(t *testing.T) {
 	rs := ac.ReplicaSets[0]
 	assert.Equal(t, rs.Id, "my-rs", "The name provided should be configured to be the rs id")
 	assert.Len(t, rs.Members, 3, "there should be the number of replicas provided")
+	require.NotNil(t, rs.Force)
+	assert.Equal(t, ReplSetForceConfig{CurrentVersion: -1}, *rs.Force)
 
 	for i, member := range rs.Members {
 		assert.Equal(t, 1, *member.Votes)
@@ -63,6 +67,13 @@ func TestBuildAutomationConfig(t *testing.T) {
 		assert.Equal(t, i, member.Id)
 		assert.Equal(t, ac.Processes[i].Name, member.Host)
 	}
+
+	builder.SetForceReconfigureToVersion(1)
+	ac, err = builder.Build()
+	assert.NoError(t, err)
+	rs = ac.ReplicaSets[0]
+	require.NotNil(t, rs.Force)
+	assert.Equal(t, ReplSetForceConfig{CurrentVersion: 1}, *rs.Force)
 }
 
 func TestBuildAutomationConfigArbiters(t *testing.T) {

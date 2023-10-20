@@ -39,19 +39,20 @@ type Builder struct {
 	mongodbVersion     string
 	previousAC         AutomationConfig
 	// MongoDB installable versions
-	versions             []MongoDbVersionConfig
-	backupVersions       []BackupVersion
-	monitoringVersions   []MonitoringVersion
-	options              Options
-	processModifications []func(int, *Process)
-	modifications        []Modification
-	auth                 *Auth
-	cafilePath           string
-	sslConfig            *TLS
-	tlsConfig            *TLS
-	dataDir              string
-	port                 int
-	memberOptions        []MemberOptions
+	versions                  []MongoDbVersionConfig
+	backupVersions            []BackupVersion
+	monitoringVersions        []MonitoringVersion
+	options                   Options
+	processModifications      []func(int, *Process)
+	modifications             []Modification
+	auth                      *Auth
+	cafilePath                string
+	sslConfig                 *TLS
+	tlsConfig                 *TLS
+	dataDir                   string
+	port                      int
+	memberOptions             []MemberOptions
+	forceReconfigureToVersion *int64
 }
 
 func NewBuilder() *Builder {
@@ -188,6 +189,11 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 
 func (b *Builder) SetAuth(auth Auth) *Builder {
 	b.auth = &auth
+	return b
+}
+
+func (b *Builder) SetForceReconfigureToVersion(version int64) *Builder {
+	b.forceReconfigureToVersion = &version
 	return b
 }
 
@@ -354,6 +360,11 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		b.versions = append(b.versions, dummyConfig)
 	}
 
+	var replSetForceConfig *ReplSetForceConfig
+	if b.forceReconfigureToVersion != nil {
+		replSetForceConfig = &ReplSetForceConfig{CurrentVersion: *b.forceReconfigureToVersion}
+	}
+
 	currentAc := AutomationConfig{
 		Version:   b.previousAC.Version,
 		Processes: processes,
@@ -363,6 +374,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				Members:         members,
 				ProtocolVersion: "1",
 				NumberArbiters:  b.arbiters,
+				Force:           replSetForceConfig,
 			},
 		},
 		MonitoringVersions: b.monitoringVersions,
@@ -434,6 +446,18 @@ func buildDummyMongoDbVersionConfig(version string) MongoDbVersionConfig {
 				Platform:     "linux",
 				Architecture: "amd64",
 				Flavor:       "ubuntu",
+				Modules:      []string{},
+			},
+			{
+				Platform:     "linux",
+				Architecture: "aarch64",
+				Flavor:       "ubuntu",
+				Modules:      []string{},
+			},
+			{
+				Platform:     "linux",
+				Architecture: "aarch64",
+				Flavor:       "rhel",
 				Modules:      []string{},
 			},
 		},
