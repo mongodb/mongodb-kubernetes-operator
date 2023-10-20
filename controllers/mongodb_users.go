@@ -41,9 +41,10 @@ func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) er
 func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCommunity, clusterDomain string) error {
 	for _, user := range mdb.GetAuthUsers() {
 		secretName := user.ConnectionStringSecretName
+		secretNamespace := user.connectionStringSecretNamespace
 		existingSecret, err := r.client.GetSecret(types.NamespacedName{
 			Name:      secretName,
-			Namespace: mdb.Namespace,
+			Namespace: secretNamespace,
 		})
 		if err != nil && !apiErrors.IsNotFound(err) {
 			return err
@@ -55,7 +56,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 		pwd := ""
 
 		if user.Database != constants.ExternalDB {
-			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
+			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: secretNamespace}
 			pwd, err = secret.ReadKey(r.client, user.PasswordSecretKey, secretNamespacedName)
 			if err != nil {
 				return err
@@ -64,7 +65,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCom
 
 		connectionStringSecret := secret.Builder().
 			SetName(secretName).
-			SetNamespace(mdb.Namespace).
+			SetNamespace(secretNamespace).
 			SetField("connectionString.standard", mdb.MongoAuthUserURI(user, pwd, clusterDomain)).
 			SetField("connectionString.standardSrv", mdb.MongoAuthUserSRVURI(user, pwd, clusterDomain)).
 			SetField("username", user.Username).

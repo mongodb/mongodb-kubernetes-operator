@@ -282,6 +282,35 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 			},
 			"scram-credential-secret-name-1-scram-credentials",
 		},
+		{
+			MongoDBUser{
+				Name: "mdb-2",
+				DB:   "admin",
+				Roles: []Role{
+					// roles on testing db for general connectivity
+					{
+						DB:   "testing",
+						Name: "readWrite",
+					},
+					{
+						DB:   "testing",
+						Name: "clusterAdmin",
+					},
+					// admin roles for reading FCV
+					{
+						DB:   "admin",
+						Name: "readWrite",
+					},
+					{
+						DB:   "admin",
+						Name: "clusterAdmin",
+					},
+				},
+				ScramCredentialsSecretName: "scram-credential-secret-name-2",
+				ConnectionStringSecretNamespace: "other-namespace"
+			},
+			"scram-credential-secret-name-2-scram-credentials",
+		},
 	}
 
 	for _, tt := range testusers {
@@ -325,6 +354,16 @@ func TestGetConnectionStringSecretName(t *testing.T) {
 				DB:                         "admin",
 				ScramCredentialsSecretName: "scram-credential-secret-name-0",
 				ConnectionStringSecretName: "connection-string-secret",
+			},
+			"connection-string-secret",
+		},
+		{
+			MongoDBUser{
+				Name:                       "mdb-2",
+				DB:                         "admin",
+				ScramCredentialsSecretName: "scram-credential-secret-name-2",
+				ConnectionStringSecretName: "connection-string-secret-2",
+				ConnectionStringSecretNamespace: "other-namespace",
 			},
 			"connection-string-secret",
 		},

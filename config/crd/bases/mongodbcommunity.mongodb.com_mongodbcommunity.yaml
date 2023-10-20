@@ -486,6 +486,11 @@ spec:
                         strings for the user. If provided, this secret must be different
                         for each user in a deployment.
                       type: string
+                    connectionStringSecretNamespace:
+                      description: ConnectionStringSecretNamespace is the namespace of the secret
+                        object created by the operator which exposes the connection
+                        strings for the user.
+                      type: string
                     db:
                       default: admin
                       description: DB is the database the user is stored in. Defaults
