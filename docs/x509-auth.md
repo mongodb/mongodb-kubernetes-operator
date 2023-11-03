@@ -52,10 +52,10 @@ Operator with X.509 Authentication enabled for the MongoDB Agent and
 client.
 
 1. To install the MongoDB Community Kubernetes Operator, see 
-   [Install the Operator using kubectl](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#install-the-operator-using-kubectl)
+   [Install the Operator using kubectl](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#install-the-operator-using-kubectl).
 
 1. To create a CA, ConfigMap, secrets, issuer, and certificate, see 
-   [Enable External Access to a MongoDB Deployment](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/external_access.md)
+   [Enable External Access to a MongoDB Deployment](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/external_access.md).
 
 1. Create a YAML file for the  MongoDB Agent certificate. For an example, 
    see [agent-certificate.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/config/samples/external_access/agent-certificate.yaml).
@@ -85,7 +85,7 @@ client.
    - For the `spec.security.tls.certificateKeySecretRef.name` parameter,
      specify a reference to the secret that contains the private key and
      certificate to use for TLS. The operator expects the PEM encoded key 
-     and certidicate available at "tls.key" and "tls.crt". Use the same 
+     and certificate available at "tls.key" and "tls.crt". Use the same 
      format used for the standard "kubernetes.io/tls" Secret type, but no 
      specific type is required. Alternatively, you can provide 
      an entry called "tls.pem" that contains the concatenation of the 
@@ -118,7 +118,7 @@ client.
    ```
 
 1. Create a YAML file for the client certificate. For an example, see 
-   [cert-x509.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/config/samples/external_access/certy_x509.yaml).
+   [cert-x509.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/config/samples/external_access/cert-x509.yaml).
 
 1. To apply the file, copy and paste the following command and replace 
    the `<client-certificate>` variable with the name of your client 
