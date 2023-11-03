@@ -26,19 +26,8 @@ You can use Helm to install and deploy the MongoDB Community Kubernetes
 Operator with X.509 Authentication enabled for the MongoDB Agent and 
 client. To learn more, see [Install the Operator using Helm](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#install-the-operator-using-helm).
 
-1. To install the MongoDB Community Kubernetes Operator, copy and paste 
-   the following command and replace the `<namespace>` variable with the 
-   namespace:
-
-   ```
-   helm upgrade --install community-operator mongodb/community-operator \
-   --namespace <namespace> --set namespace=<namespace> --create-namespace \
-   --set resource.tls.useCertManager=true --set resource.tls.enabled=true \
-   --set resource.tls.useX509=true
-   ```
-
 1. To deploy the MongoDB Community Kubernetes Operator, copy and paste 
-   the following command and replaces the `<namespace>` variable with the 
+   the following command and replace the `<namespace>` variable with the 
    namespace:
 
    ```
@@ -87,7 +76,15 @@ client.
    **Note:**
 
    - For the `spec.security.tls.certificateKeySecretRef.name` parameter,
-     specify the secret that the MongoDB server certificate generates.
+     specify a reference to the secret that contains the private key and
+     certificate to use for TLS. The operator expects the PEM encoded key 
+     and certidicate available at "tls.key" and "tls.crt". Use the same 
+     format used for the standard "kubernetes.io/tls" Secret type, but no 
+     specific type is required. Alternatively, you can provide 
+     an entry called "tls.pem" that contains the concatenation of the 
+     certificate and key. If all of "tls.pem", "tls.crt" and "tls.key" 
+     are present, the "tls.pem" entry needs to equal the concatenation 
+     of "tls.crt" and "tls.key".
 
    - For the `spec.security.tls.caConfigMapRef.name` parameter, specify
      the ConfigMap that you created previously.
@@ -113,31 +110,8 @@ client.
    kubectl apply -f <replica-set>.yaml --namespace <namespace>
    ```
 
-1. Create a YAML file for the client certificate.
-
-   **Example:**
-
-   ```
-   apiVersion: cert-manager.io/v1
-   kind: Certificate
-   metadata:
-     name: x509-user-cert
-   spec:
-     commonName: my-x509-authenticated-user
-     duration: 240h0m0s
-     issuerRef:
-       name: ca-issuer
-     renewBefore: 120h0m0s
-     secretName: x509-client-cert
-     subject:
-       organizationalUnits:
-         - organizationalunit
-       organizations:
-         - organization
-     usages:
-       - digital signature
-       - client auth
-   ```
+1. Create a YAML file for the client certificate. For an example, see 
+   [cert-x509.yaml](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/config/samples/external_access/certy_x509.yaml).
 
 1. To apply the file, copy and paste the following command and replace 
    the `<client-certificate>` variable with the name of your client 
