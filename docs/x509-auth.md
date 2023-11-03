@@ -30,6 +30,13 @@ client. To learn more, see [Install the Operator using Helm](https://github.com/
    the following command and replace the `<namespace>` variable with the 
    namespace:
 
+   **Note:**
+
+   The following command deploys a sample resource with X.509 enabled
+   for both the MongoDB Agent and client authentication. It also creates
+   a sample X.509 user and the certificate that the user can use to 
+   authenticate.
+
    ```
    helm upgrade --install community-operator mongodb/community-operator \
    --namespace <namespace> --set namespace=<namespace> --create-namespace \
