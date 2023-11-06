@@ -27,6 +27,8 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 	defer ctx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
+	// Prior operator versions did not support MDB7
+	mdb.Spec.Version = "6.0.5"
 	scramUser := mdb.GetAuthUsers()[0]
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 	mdb.Spec.Arbiters = 1
