@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"os"
 	"strconv"
 	"strings"
@@ -54,8 +52,6 @@ const (
 
 	lastSuccessfulConfiguration = "mongodb.com/v1.lastSuccessfulConfiguration"
 	lastAppliedMongoDBVersion   = "mongodb.com/v1.lastAppliedMongoDBVersion"
-
-	ignoreMdb7ErrorEnvVar = "IGNORE_MDB_7_ERROR"
 )
 
 func init() {
@@ -626,16 +622,6 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
 // The validation also returns the lastSuccessFulConfiguration Spec as mdbv1.MongoDBCommunitySpec.
 func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *mdbv1.MongoDBCommunitySpec) {
-	if !envvar.ReadBool(ignoreMdb7ErrorEnvVar) {
-		semverVersion, err := semver.Make(mdb.Spec.Version)
-		if err != nil {
-			r.log.Warnf("could not parse version %v", mdb.Spec.Version)
-		} else {
-			if semverVersion.Major >= 7 {
-				return fmt.Errorf("mongodb >= 7.0.0 is not supported"), nil
-			}
-		}
-	}
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
