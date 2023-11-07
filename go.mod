@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/go-logr/logr v1.2.4
+	github.com/go-logr/logr v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.15
 	github.com/spf13/cast v1.5.1
