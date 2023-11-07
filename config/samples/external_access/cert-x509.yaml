@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: x509-user-cert
+  spec:
+    commonName: my-x509-authenticated-user
+    duration: 240h0m0s
+    issuerRef:
+      name: ca-issuer
+    renewBefore: 120h0m0s
+    secretName: x509-client-cert
+    subject:
+      organizationalUnits:
+        - organizationalunit
+      organizations:
+        - organization
+    usages:
+      - digital signature
+      - client auth
+      

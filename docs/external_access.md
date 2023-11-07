@@ -1,4 +1,4 @@
-## Enabling External Access to MongoDB deployment
+## Enable External Access to a MongoDB Deployment
 
 This guide assumes that the operator is installed and a MongoDB deployment is yet to be done but you have a chosen namespace that you are installing into. We will install cert-manager and then generate certificates and configure split-horizon to support internal and external DNS names for configuring external access to the replicaset.
 
