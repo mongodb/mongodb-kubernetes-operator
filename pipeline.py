@@ -4,7 +4,7 @@ import subprocess
 import sys
 from typing import Dict, List, Set
 
-from scripts.dev.dev_config import load_config
+from scripts.dev.dev_config import load_config, DevConfig
 from sonar.sonar import process_image
 
 # These image names must correspond to prefixes in release.json, developer configuration and inventories
@@ -22,7 +22,7 @@ def load_release() -> Dict:
         return json.load(f)
 
 
-def build_image_args(config, image_name: str) -> Dict[str, str]:
+def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
     release = load_release()
 
     # Naming in pipeline : readiness-probe, naming in dev config : readiness_probe_image
@@ -61,7 +61,7 @@ def build_image_args(config, image_name: str) -> Dict[str, str]:
     return arguments
 
 
-def build_and_push_image(image_name: str, config, args: Dict[str, str], architectures: Set[str], should_push: bool):
+def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str], should_push: bool):
     for arch in architectures:
         image_tag = f"{image_name}-{arch}"
         process_image(
@@ -86,7 +86,7 @@ docker manifest push config.repo_url/image:tag
 """
 
 
-def push_manifest(config, image_tag: str):
+def push_manifest(config: DevConfig, image_tag: str):
     print(f"Pushing manifest for {image_tag}")
     final_manifest = "{0}/{1}".format(config.repo_url, image_tag)
     args = ["docker", "manifest", "rm", final_manifest]
@@ -145,7 +145,7 @@ def main() -> int:
     )
     args = parser.parse_args()
     image_name = args.image_name
-    config = load_config()
+    config: DevConfig = load_config()
 
     if args.arch:
         arch_set = set(args.arch)
