@@ -59,8 +59,7 @@ to be able to run properly. Create a json file with the following content:
   "operator_image": "mongodb-kubernetes-operator",
   "e2e_image": "community-operator-e2e",
   "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
-  "agent_image_ubuntu": "mongodb-agent-dev",
-  "agent_image_ubi": "mongodb-agent-ubi-dev",
+  "agent_image": "mongodb-agent-ubi-dev",
   "readiness_probe_image": "mongodb-kubernetes-readiness",
   "s3_bucket": ""
 }
@@ -73,10 +72,8 @@ to be able to run properly. Create a json file with the following content:
 3. `operator_image` will be used as the name of the operator deployment, and the name of the operator image when build.
 4. `e2e_image` the name of e2e test image that will be built.
 5. `version_upgrade_hook_image` the name of the version upgrade post start hook image.
-6. `image_type` this can be either `ubi` or `ubuntu` and determines the distro of the images built. (currently only the agent image has multiple distros)
-7. `agent_image_ubuntu` the name of the ubuntu agent image.
-8. `agent_image_ubi` the name of the ubi agent image.
-9. `s3_bucket` the S3 bucket that Dockerfiles will be pushed to as part of the release process. Note: this is only required when running the release tasks locally.
+6. `agent_image` the name of the agent image.
+7. `s3_bucket` the S3 bucket that Dockerfiles will be pushed to as part of the release process. Note: this is only required when running the release tasks locally.
 
 
 You can set the `MONGODB_COMMUNITY_CONFIG` environment variable to be the absolute path of this file.
