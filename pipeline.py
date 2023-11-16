@@ -52,6 +52,7 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
         arguments["inventory"] = "inventories/operator-inventory.yaml"
 
     if image_name == "e2e":
+        arguments.pop("builder", None)
         arguments["base_image"] = release["golang-builder-image"]
         arguments["inventory"] = "inventories/e2e-inventory.yaml"
 
