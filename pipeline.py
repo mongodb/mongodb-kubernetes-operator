@@ -195,9 +195,21 @@ Many parameters are defined in the dev configuration, default path is : ~/.commu
 
 def main() -> int:
     args = _parse_args()
+
     image_name = args.image_name
+    if image_name not in VALID_IMAGE_NAMES:
+        print(
+            f"Invalid image name: {image_name}. Valid options are: {VALID_IMAGE_NAMES}"
+        )
+        return 1
+
+    # Handle dev config
     config: DevConfig = load_config()
     config.gh_run_id = args.tag
+    # Must explicitly set the --release flag to run these tasks
+    config.ensure_skip_tag("release")
+    if args.release:
+        config.ensure_tag_is_run("release")
 
     if args.arch:
         arch_set = set(args.arch)
@@ -205,12 +217,6 @@ def main() -> int:
         # Default is multi-arch
         arch_set = ["amd64", "arm64"]
     print("Building for architectures:", ", ".join(map(str, arch_set)))
-
-    if image_name not in VALID_IMAGE_NAMES:
-        print(
-            f"Invalid image name: {image_name}. Valid options are: {VALID_IMAGE_NAMES}"
-        )
-        return 1
 
     image_args = build_image_args(config, image_name)
 
