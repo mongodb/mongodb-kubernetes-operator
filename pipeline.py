@@ -61,7 +61,8 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
     return arguments
 
 
-def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str], release: bool):
+def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str],
+                         release: bool):
     for arch in architectures:
         image_tag = f"{image_name}-{arch}"
         process_image(
@@ -101,7 +102,7 @@ def push_manifest(config: DevConfig, architectures: Set[str], image_name: str, i
         "manifest",
         "create",
         final_manifest,
-        ]
+    ]
 
     for arch in architectures:
         create_args.extend(["--amend", final_manifest + "-" + arch])
