@@ -44,7 +44,7 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
         "inventory": "inventory.yaml",
         # These two options below can probably be removed
         "skip_tags": config.skip_tags,  # Include skip_tags
-        "include_tags": config.include_tags  # Include include_tags
+        "include_tags": config.include_tags,  # Include include_tags
     }
 
     # Handle special cases
@@ -61,8 +61,13 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
     return arguments
 
 
-def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str],
-                         release: bool):
+def build_and_push_image(
+    image_name: str,
+    config: DevConfig,
+    args: Dict[str, str],
+    architectures: Set[str],
+    release: bool,
+):
     for arch in architectures:
         image_tag = f"{image_name}-{arch}"
         process_image(
@@ -70,13 +75,15 @@ def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str
             build_args=args,
             inventory=args["inventory"],
             skip_tags=args["skip_tags"],
-            include_tags=args["include_tags"]
+            include_tags=args["include_tags"],
         )
     if release:
         # TODO : is the release with gh_run_id still needed ?
         push_manifest(config, architectures, args["image_dev"])
         push_manifest(config, architectures, args["image"], args["release_version"])
-        push_manifest(config, architectures, args["image"], args["release_version"] + "-context")
+        push_manifest(
+            config, architectures, args["image"], args["release_version"] + "-context"
+        )
 
 
 """
@@ -90,7 +97,12 @@ docker manifest push config.repo_url/image:tag
 """
 
 
-def push_manifest(config: DevConfig, architectures: Set[str], image_name: str, image_tag: str = "latest"):
+def push_manifest(
+    config: DevConfig,
+    architectures: Set[str],
+    image_name: str,
+    image_tag: str = "latest",
+):
     print(f"Pushing manifest for {image_tag}")
     final_manifest = "{0}/{1}:{2}".format(config.repo_url, image_name, image_tag)
     remove_args = ["docker", "manifest", "rm", final_manifest]
@@ -120,7 +132,13 @@ def run_cli_command(args: List[str], raise_exception: bool = True):
     command = " ".join(args)
     print(f"Running: {command}")
     try:
-        cp = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, check=False)
+        cp = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            check=False,
+        )
     except Exception as e:
         print(f"Error executing command: {e}")
         if raise_exception:
@@ -175,10 +193,12 @@ def main() -> int:
     else:
         # Default is multi-arch
         arch_set = ["amd64", "arm64"]
-    print("Building for architectures:", ', '.join(map(str, arch_set)))
+    print("Building for architectures:", ", ".join(map(str, arch_set)))
 
     if image_name not in VALID_IMAGE_NAMES:
-        print(f"Invalid image name: {image_name}. Valid options are: {VALID_IMAGE_NAMES}")
+        print(
+            f"Invalid image name: {image_name}. Valid options are: {VALID_IMAGE_NAMES}"
+        )
         return 1
 
     image_args = build_image_args(config, image_name)
