@@ -214,10 +214,12 @@ def main() -> int:
     # Handle dev config
     config: DevConfig = load_config()
     config.gh_run_id = args.tag
+    # TODO fix usage of 'ensure skip' and 'ensure is run', is it useful ? Do we need to explicitly use "ubi" tag everywhere as in the old pipeline ?
+
     # Must explicitly set the --release flag to run these tasks
-    config.ensure_skip_tag("release")
-    if args.release:
-        config.ensure_tag_is_run("release")
+    #config.ensure_skip_tag("release")
+    #if args.release:
+    #    config.ensure_tag_is_run("release")
 
     if args.arch:
         arch_set = set(args.arch)
