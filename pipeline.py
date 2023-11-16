@@ -88,7 +88,7 @@ def build_and_push_image(
         raise Exception("Dev image must be specified")
 
     push_manifest(config, architectures, image_to_push)
-    
+
     if config.gh_run_id:
         push_manifest(config, architectures, image_to_push, config.gh_run_id)
 
