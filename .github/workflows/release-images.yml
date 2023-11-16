@@ -12,16 +12,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - pipeline-argument: operator-ubi
-            release-key: mongodb-kubernetes-operator
-          - pipeline-argument: version-post-start-hook-init
+          - pipeline-argument: operator
+            release-key: operator
+          - pipeline-argument: version-upgrade-hook
             release-key: version-upgrade-hook
-          - pipeline-argument: readiness-probe-init
+          - pipeline-argument: readiness-probe
             release-key: readiness-probe
-          - pipeline-argument: agent-ubi
+          - pipeline-argument: mongodb-agent
             release-key: mongodb-agent
-          - pipeline-argument: agent-ubuntu
-            release-key: mongodb-agent
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2

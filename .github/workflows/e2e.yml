@@ -40,10 +40,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - pipeline-argument: operator-ubi
-        - pipeline-argument: version-post-start-hook-init
-        - pipeline-argument: readiness-probe-init
-        - pipeline-argument: agent-ubi
+        - pipeline-argument: operator
+        - pipeline-argument: version-upgrade-hook
+        - pipeline-argument: readiness-probe
+        - pipeline-argument: mongodb-agent
         - pipeline-argument: e2e
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
       || (github.event.pull_request.head.repo.full_name == github.repository && github.actor
