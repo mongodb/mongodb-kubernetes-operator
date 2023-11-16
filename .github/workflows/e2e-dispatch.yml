@@ -43,7 +43,7 @@ jobs:
         - pipeline-argument: operator
         - pipeline-argument: version-upgrade-hook
         - pipeline-argument: readiness-probe
-        - pipeline-argument: mongodb-agent
+        - pipeline-argument: agent
         - pipeline-argument: e2e
     steps:
     # template: .action_templates/steps/checkout.yaml

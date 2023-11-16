@@ -7,5 +7,5 @@ setup:
         - pipeline-argument: mongodb-kubernetes-operator
         - pipeline-argument: version-upgrade-hook
         - pipeline-argument: readiness-probe
-        - pipeline-argument: mongodb-agent
+        - pipeline-argument: agent
         - pipeline-argument: e2e

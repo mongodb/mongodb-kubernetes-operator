@@ -36,7 +36,7 @@ jobs:
         - pipeline-argument: operator
         - pipeline-argument: version-upgrade-hook
         - pipeline-argument: readiness-probe
-        - pipeline-argument: mongodb-agent
+        - pipeline-argument: agent
         - pipeline-argument: e2e
     if: contains(github.event.pull_request.labels.*.name, 'dependencies') || contains(github.event.pull_request.labels.*.name,
       'safe-to-test')

@@ -18,8 +18,8 @@ jobs:
             release-key: version-upgrade-hook
           - pipeline-argument: readiness-probe
             release-key: readiness-probe
-          - pipeline-argument: mongodb-agent
-            release-key: mongodb-agent
+          - pipeline-argument: agent
+            release-key: agent
 
     steps:
       - name: Checkout Code

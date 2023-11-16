@@ -151,7 +151,7 @@ e2e-image: ## Build and push e2e test image
 
 agent-image: ## Build and push agent image
 	python pipeline.py --image-name agent-ubuntu
-	python pipeline.py --image-name mongodb-agent
+	python pipeline.py --image-name agent
 
 readiness-probe-image: ## Build and push readiness probe image
 	python pipeline.py --image-name readiness-probe
