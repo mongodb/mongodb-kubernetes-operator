@@ -60,7 +60,7 @@ def build_agent_image_ubi(config: DevConfig) -> None:
     )
 
     create_and_push_manifest(config, config.agent_dev_image_ubi)
-
+    #useless comment
     if config.gh_run_id is not None and config.gh_run_id != "":
         create_and_push_manifest(config, config.agent_dev_image_ubi, config.gh_run_id)
 
