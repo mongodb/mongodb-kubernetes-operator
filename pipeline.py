@@ -79,9 +79,10 @@ def build_and_push_image(
             include_tags=args["include_tags"],
         )
 
-    push_manifest(config, architectures, args["image_dev"])
-    if config.gh_run_id is not None and config.gh_run_id != "":
-        push_manifest(config, architectures, args["image_dev"], config.gh_run_id)
+    if args["image_dev"]:
+        push_manifest(config, architectures, args["image_dev"])
+        if config.gh_run_id is not None and config.gh_run_id != "":
+            push_manifest(config, architectures, args["image_dev"], config.gh_run_id)
 
     if release:
         push_manifest(config, architectures, args["image"], args["release_version"])
