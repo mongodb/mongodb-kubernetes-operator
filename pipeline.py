@@ -61,7 +61,7 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
     return arguments
 
 
-def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str], should_push: bool):
+def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str], architectures: Set[str], release: bool):
     for arch in architectures:
         image_tag = f"{image_name}-{arch}"
         process_image(
@@ -71,8 +71,11 @@ def build_and_push_image(image_name: str, config: DevConfig, args: Dict[str, str
             skip_tags=args["skip_tags"],
             include_tags=args["include_tags"]
         )
-        if should_push:
-            push_manifest(config, image_tag)
+    if release:
+        # TODO : is the release with gh_run_id still needed ?
+        push_manifest(config, architectures, args["image_dev"])
+        push_manifest(config, architectures, args["image"], args["release_version"])
+        push_manifest(config, architectures, args["image"], args["release_version"] + "-context")
 
 
 """
@@ -86,37 +89,56 @@ docker manifest push config.repo_url/image:tag
 """
 
 
-def push_manifest(config: DevConfig, image_tag: str):
+def push_manifest(config: DevConfig, architectures: Set[str], image_name: str, image_tag: str = "latest"):
     print(f"Pushing manifest for {image_tag}")
-    final_manifest = "{0}/{1}".format(config.repo_url, image_tag)
-    args = ["docker", "manifest", "rm", final_manifest]
-    print("removing existing manifest")
-    run_cli_command(args, raise_exception=False)
+    final_manifest = "{0}/{1}:{2}".format(config.repo_url, image_name, image_tag)
+    remove_args = ["docker", "manifest", "rm", final_manifest]
+    print("Removing existing manifest")
+    run_cli_command(remove_args, raise_exception=False)
 
-    args = [
+    create_args = [
         "docker",
         "manifest",
         "create",
         final_manifest,
-        "--amend",
-        final_manifest + "-amd64",
-        "--amend",
-        final_manifest + "-arm64",
         ]
-    print("creating new manifest")
-    run_cli_command(args)
 
-    args = ["docker", "manifest", "push", final_manifest]
-    print("pushing new manifest")
-    run_cli_command(args)
+    for arch in architectures:
+        create_args.extend(["--amend", final_manifest + "-" + arch])
+
+    print("Creating new manifest")
+    run_cli_command(create_args)
+
+    push_args = ["docker", "manifest", "push", final_manifest]
+    print("Pushing new manifest")
+    run_cli_command(push_args)
 
 
+# Raises exceptions by default but this can be deactivated
 def run_cli_command(args: List[str], raise_exception: bool = True):
     command = " ".join(args)
-    print(f"Running: {command} ...")
-    cp = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if cp.returncode != 0 and raise_exception:
-        raise Exception(cp.stderr)
+    print(f"Running: {command}")
+    try:
+        cp = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, check=False)
+    except Exception as e:
+        print(f"Error executing command: {e}")
+        if raise_exception:
+            raise Exception
+        else:
+            print("Continuing...")
+            return
+
+    if cp.returncode != 0:
+        error_msg = cp.stderr.decode().strip()
+        stdout = cp.stdout.decode().strip()
+        print(f"Error running command")
+        print(f"stdout:\n{stdout}")
+        print(f"stderr:\n{error_msg}")
+        if raise_exception:
+            raise Exception
+        else:
+            print("Continuing...")
+            return
 
 
 """
@@ -159,9 +181,8 @@ def main() -> int:
         return 1
 
     image_args = build_image_args(config, image_name)
-    should_push = args.release
 
-    build_and_push_image(image_name, config, image_args, arch_set, should_push)
+    build_and_push_image(image_name, config, image_args, arch_set, args.release)
     return 0
 
 
