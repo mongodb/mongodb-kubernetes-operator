@@ -83,6 +83,9 @@ def build_and_push_image(
         push_manifest(config, architectures, args["image_dev"])
         if config.gh_run_id is not None and config.gh_run_id != "":
             push_manifest(config, architectures, args["image_dev"], config.gh_run_id)
+    else:
+        # If no image dev (only e2e is concerned) we push the manifest anyway
+        push_manifest(config, architectures, args["image"])
 
     if release:
         push_manifest(config, architectures, args["image"], args["release_version"])
