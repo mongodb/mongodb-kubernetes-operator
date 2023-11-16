@@ -80,12 +80,17 @@ def build_and_push_image(
         )
 
     if args["image_dev"]:
-        push_manifest(config, architectures, args["image_dev"])
-        if config.gh_run_id is not None and config.gh_run_id != "":
-            push_manifest(config, architectures, args["image_dev"], config.gh_run_id)
+        image_to_push = args["image_dev"]
+    elif image_name == "e2e":
+        # If no image dev (only e2e is concerned) we push the normal image
+        image_to_push = args["image"]
     else:
-        # If no image dev (only e2e is concerned) we push the manifest anyway
-        push_manifest(config, architectures, args["image"])
+        raise Exception("Dev image must be specified")
+
+    push_manifest(config, architectures, image_to_push)
+    
+    if config.gh_run_id:
+        push_manifest(config, architectures, image_to_push, config.gh_run_id)
 
     if release:
         push_manifest(config, architectures, args["image"], args["release_version"])
