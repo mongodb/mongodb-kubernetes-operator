@@ -1,6 +1,6 @@
 - name: Build and Push Images
   run: |
-    python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false --tag ${{ github.run_id }}
+    python pipeline.py --image-name ${{ matrix.pipeline-argument }}  --tag ${{ github.run_id }}
   env:
     MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
     version_id: "${{ github.run_id }}"
