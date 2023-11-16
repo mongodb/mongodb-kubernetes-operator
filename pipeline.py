@@ -77,9 +77,12 @@ def build_and_push_image(
             skip_tags=args["skip_tags"],
             include_tags=args["include_tags"],
         )
+
+    push_manifest(config, architectures, args["image_dev"])
+    if config.gh_run_id is not None and config.gh_run_id != "":
+        push_manifest(config, architectures, args["image_dev"], config.gh_run_id)
+
     if release:
-        # TODO : is the release with gh_run_id still needed ?
-        push_manifest(config, architectures, args["image_dev"])
         push_manifest(config, architectures, args["image"], args["release_version"])
         push_manifest(
             config, architectures, args["image"], args["release_version"] + "-context"
@@ -160,6 +163,20 @@ def run_cli_command(args: List[str], raise_exception: bool = True):
             return
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image-name", type=str)
+    parser.add_argument("--release", action="store_true", default=False)
+    parser.add_argument(
+        "--arch",
+        choices=["amd64", "arm64"],
+        nargs="+",
+        help="for daily builds only, specify the list of architectures to build for images",
+    )
+    parser.add_argument("--tag", type=str)
+    return parser.parse_args()
+
+
 """
 Takes arguments:
 --image-name : The name of the image to build, must be one of VALID_IMAGE_NAMES
@@ -175,18 +192,10 @@ Many parameters are defined in the dev configuration, default path is : ~/.commu
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--image-name", type=str)
-    parser.add_argument("--release", action="store_true", default=False)
-    parser.add_argument(
-        "--arch",
-        choices=["amd64", "arm64"],
-        nargs="+",
-        help="for daily builds only, specify the list of architectures to build for images",
-    )
-    args = parser.parse_args()
+    args = _parse_args()
     image_name = args.image_name
     config: DevConfig = load_config()
+    config.gh_run_id = args.tag
 
     if args.arch:
         arch_set = set(args.arch)
