@@ -120,7 +120,7 @@ def push_manifest(
     final_manifest = "{0}/{1}:{2}".format(config.repo_url, image_name, image_tag)
     remove_args = ["docker", "manifest", "rm", final_manifest]
     print("Removing existing manifest")
-    run_cli_command(remove_args, raise_exception=False)
+    run_cli_command(remove_args, fail_on_error=False)
 
     create_args = [
         "docker",
@@ -140,8 +140,8 @@ def push_manifest(
     run_cli_command(push_args)
 
 
-# Raises exceptions by default but this can be deactivated
-def run_cli_command(args: List[str], raise_exception: bool = True):
+# Raises exceptions by default
+def run_cli_command(args: List[str], fail_on_error: bool = True):
     command = " ".join(args)
     print(f"Running: {command}")
     try:
@@ -153,8 +153,8 @@ def run_cli_command(args: List[str], raise_exception: bool = True):
             check=False,
         )
     except Exception as e:
-        print(f"Error executing command: {e}")
-        if raise_exception:
+        print(f" Command raised the following exception: {e}")
+        if fail_on_error:
             raise Exception
         else:
             print("Continuing...")
@@ -166,7 +166,7 @@ def run_cli_command(args: List[str], raise_exception: bool = True):
         print(f"Error running command")
         print(f"stdout:\n{stdout}")
         print(f"stderr:\n{error_msg}")
-        if raise_exception:
+        if fail_on_error:
             raise Exception
         else:
             print("Continuing...")
