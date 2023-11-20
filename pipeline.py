@@ -42,7 +42,6 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
         "builder_image": release["golang-builder-image"],
         "base_image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
         "inventory": "inventory.yaml",
-        # These two options below can probably be removed
         "skip_tags": config.skip_tags,  # Include skip_tags
         "include_tags": config.include_tags,  # Include include_tags
     }
@@ -214,12 +213,10 @@ def main() -> int:
     # Handle dev config
     config: DevConfig = load_config()
     config.gh_run_id = args.tag
-    # TODO fix usage of 'ensure skip' and 'ensure is run', is it useful ? Do we need to explicitly use "ubi" tag everywhere as in the old pipeline ?
 
-    # Must explicitly set the --release flag to run these tasks
-    #config.ensure_skip_tag("release")
-    #if args.release:
-    #    config.ensure_tag_is_run("release")
+    # Skipping release tasks by default
+    if not args.release:
+        config.ensure_skip_tag("release")
 
     if args.arch:
         arch_set = set(args.arch)
