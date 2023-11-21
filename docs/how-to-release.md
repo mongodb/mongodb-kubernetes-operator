@@ -1,6 +1,5 @@
 
 ## How to Release
-
 * Prepare release PR:
     * Pull the changes in the helm-charts sub module folder to get the latest main.
       * `cd helm-charts && git pull origin main`.
