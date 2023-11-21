@@ -1,4 +1,4 @@
-# MongoDB Kubernetes Operator 0.8.4
+# MongoDB Kubernetes Operator 0.9.0
 
 ## MongoDBCommunity Resource
 
