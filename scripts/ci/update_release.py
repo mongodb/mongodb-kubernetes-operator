@@ -49,7 +49,7 @@ def update_operator_deployment(operator_deployment: Dict, release: Dict) -> None
         0
     ]
     operator_container["image"] = _replace_tag(
-        operator_container["image"], release["mongodb-kubernetes-operator"]
+        operator_container["image"], release["operator"]
     )
     operator_envs = operator_container["env"]
     for env in operator_envs:
@@ -59,24 +59,24 @@ def update_operator_deployment(operator_deployment: Dict, release: Dict) -> None
             env["value"] = _replace_tag(env["value"], release["readiness-probe"])
         if env["name"] == "AGENT_IMAGE":
             env["value"] = _replace_tag(
-                env["value"], release["mongodb-agent"]["version"]
+                env["value"], release["agent"]["version"]
             )
 
 
 def update_chart_values(values: Dict, release: Dict) -> None:
-    values["agent"]["version"] = release["mongodb-agent"]["version"]
+    values["agent"]["version"] = release["agent"]
     values["versionUpgradeHook"]["version"] = release["version-upgrade-hook"]
     values["readinessProbe"]["version"] = release["readiness-probe"]
-    values["operator"]["version"] = release["mongodb-kubernetes-operator"]
+    values["operator"]["version"] = release["operator"]
 
 
 def update_chart(chart: Dict, release: Dict) -> None:
-    chart["version"] = release["mongodb-kubernetes-operator"]
-    chart["appVersion"] = release["mongodb-kubernetes-operator"]
+    chart["version"] = release["operator"]
+    chart["appVersion"] = release["operator"]
 
     for dependency in chart.get("dependencies", []):
         if dependency["name"] == "community-operator-crds":
-            dependency["version"] = release["mongodb-kubernetes-operator"]
+            dependency["version"] = release["operator"]
 
 
 def main() -> int:
