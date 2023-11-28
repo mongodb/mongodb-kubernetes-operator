@@ -117,32 +117,12 @@ class DevConfig:
         return self._config.get("mongodb_image_repo_url", "quay.io/mongodb")
 
     @property
-    def agent_dev_image_ubi(self) -> str:
-        return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
-
-    @property
-    def agent_dev_image_ubuntu(self) -> str:
-        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
-
-    @property
-    def agent_image_ubuntu(self) -> str:
-        return self._config["agent_image_ubuntu"]
-
-    @property
-    def agent_image_ubi(self) -> str:
-        return self._config["agent_image_ubi"]
-
-    @property
-    def agent_dev_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self._get_dev_image("agent_image_ubi_dev", "agent_image_ubi")
-        return self._get_dev_image("agent_image_ubuntu_dev", "agent_image_ubuntu")
-
-    @property
     def agent_image(self) -> str:
-        if self._distro == Distro.UBI:
-            return self.agent_dev_image_ubi
-        return self.agent_dev_image_ubuntu
+        return self._config["agent_image"]
+
+    @property
+    def agent_image_dev(self) -> str:
+        return self._get_dev_image("agent_image_dev", "agent_image")
 
     @property
     def image_type(self) -> str:

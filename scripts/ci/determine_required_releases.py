@@ -11,7 +11,7 @@ import requests
 
 # contains a map of the quay urls to fetch data about the corresponding images.
 QUAY_URL_MAP: Dict[str, List[str]] = {
-    "mongodb-agent": [
+    "agent": [
         "https://quay.io/api/v1/repository/mongodb/mongodb-agent-ubi",
         "https://quay.io/api/v1/repository/mongodb/mongodb-agent",
     ],
@@ -21,7 +21,7 @@ QUAY_URL_MAP: Dict[str, List[str]] = {
     "version-upgrade-hook": [
         "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook"
     ],
-    "mongodb-kubernetes-operator": [
+    "operator": [
         "https://quay.io/api/v1/repository/mongodb/mongodb-kubernetes-operator"
     ],
 }
@@ -48,8 +48,6 @@ def _load_image_name_to_version_map() -> Dict[str, str]:
     with open("release.json") as f:
         release = json.loads(f.read())
 
-    # agent section is a sub object, we change the mapping so the key corresponds to the version directly.
-    release["mongodb-agent"] = release["mongodb-agent"]["version"]
     return release
 
 

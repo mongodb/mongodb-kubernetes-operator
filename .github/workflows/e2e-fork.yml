@@ -33,10 +33,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - pipeline-argument: operator-ubi
-        - pipeline-argument: version-post-start-hook-init
-        - pipeline-argument: readiness-probe-init
-        - pipeline-argument: agent-ubi
+        - pipeline-argument: operator
+        - pipeline-argument: version-upgrade-hook
+        - pipeline-argument: readiness-probe
+        - pipeline-argument: agent
         - pipeline-argument: e2e
     if: contains(github.event.pull_request.labels.*.name, 'dependencies') || contains(github.event.pull_request.labels.*.name,
       'safe-to-test')
@@ -78,7 +78,7 @@ jobs:
     # template: .action_templates/steps/build-and-push-development-images.yaml
     - name: Build and Push Images
       run: |
-        python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release false --tag ${{ github.run_id }}
+        python pipeline.py --image-name ${{ matrix.pipeline-argument }}  --tag ${{ github.run_id }}
       env:
         MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
         version_id: ${{ github.run_id }}

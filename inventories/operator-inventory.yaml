@@ -2,14 +2,14 @@ vars:
   registry: <registry>
 
 images:
-  - name: operator-ubi-amd64
+  - name: operator-amd64
     vars:
       context: .
       template_context: scripts/dev/templates/operator
 
     inputs:
-      - operator_image
-      - operator_image_dev
+      - image
+      - image_dev
 
     platform: linux/amd64
 
@@ -29,7 +29,7 @@ images:
           quay.expires-after: 48h
 
         output:
-        - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+        - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
           tag: $(inputs.params.version_id)-context-amd64
 
       - name: operator-template-dev
@@ -51,15 +51,15 @@ images:
           - version_id
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image_dev):$(inputs.params.version_id)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-amd64
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
             tag: $(inputs.params.version_id)-amd64
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
             tag: latest-amd64
 
 #
@@ -82,7 +82,7 @@ images:
           builder_image: $(inputs.params.builder_image)
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.release_version)-context-amd64
 
       - name: operator-template-release
@@ -107,23 +107,23 @@ images:
         dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image):$(inputs.params.release_version)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-amd64
 
         labels:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.release_version)-amd64
 
-  - name: operator-ubi-arm64
+  - name: operator-arm64
     vars:
       context: .
       template_context: scripts/dev/templates/operator
 
     inputs:
-      - operator_image
-      - operator_image_dev
+      - image
+      - image_dev
 
     platform: linux/arm64
 
@@ -143,7 +143,7 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
             tag: $(inputs.params.version_id)-context-arm64
 
       - name: operator-template-dev
@@ -165,15 +165,15 @@ images:
           - version_id
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image_dev):$(inputs.params.version_id)-context-arm64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-arm64
 
         labels:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
             tag: $(inputs.params.version_id)-arm64
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image_dev)
+          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
             tag: latest-arm64
 
       #
@@ -196,7 +196,7 @@ images:
           builder_image: $(inputs.params.builder_image)
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.release_version)-context-arm64
 
       - name: operator-template-release
@@ -221,11 +221,11 @@ images:
         dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.operator_image):$(inputs.params.release_version)-context-arm64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-arm64
 
         labels:
           quay.expires-after: Never
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.operator_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.release_version)-arm64

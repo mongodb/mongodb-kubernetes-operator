@@ -7,7 +7,7 @@ images:
       context: .
       template_context: scripts/dev/templates
     inputs:
-      - e2e_image
+      - image
     platform: linux/arm64
     stages:
       - name: e2e-template
@@ -30,9 +30,9 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.version_id)-arm64
-          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: latest-arm64
 
   - name: e2e-amd64
@@ -40,7 +40,7 @@ images:
       context: .
       template_context: scripts/dev/templates
     inputs:
-      - e2e_image
+      - image
     platform: linux/amd64
     stages:
       - name: e2e-template
@@ -63,8 +63,8 @@ images:
           quay.expires-after: 48h
 
         output:
-          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.version_id)-amd64
-          - registry: $(inputs.params.registry)/$(inputs.params.e2e_image)
+          - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: latest-amd64
 

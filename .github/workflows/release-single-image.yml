@@ -46,7 +46,7 @@ jobs:
 
       - name: Publish Image To Quay
         if: steps.release_status.outputs.OUTPUT == 'unreleased'
-        run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release true
+        run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
           AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"

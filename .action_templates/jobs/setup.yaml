@@ -4,8 +4,8 @@ setup:
     fail-fast: false
     matrix:
       include:
-        - pipeline-argument: operator-ubi
-        - pipeline-argument: version-post-start-hook-init
-        - pipeline-argument: readiness-probe-init
-        - pipeline-argument: agent-ubi
+        - pipeline-argument: mongodb-kubernetes-operator
+        - pipeline-argument: version-upgrade-hook
+        - pipeline-argument: readiness-probe
+        - pipeline-argument: agent
         - pipeline-argument: e2e

@@ -144,20 +144,19 @@ generate-env-file: ## generates a local-test.env for local testing
 ##@ Image
 
 operator-image: ## Build and push the operator image
-	python pipeline.py --image-name operator-ubi
+	python pipeline.py --image-name operator
 
 e2e-image: ## Build and push e2e test image
 	python pipeline.py --image-name e2e
 
 agent-image: ## Build and push agent image
-	python pipeline.py --image-name agent-ubuntu
-	python pipeline.py --image-name agent-ubi
+	python pipeline.py --image-name agent
 
 readiness-probe-image: ## Build and push readiness probe image
-	python pipeline.py --image-name readiness-probe-init
+	python pipeline.py --image-name readiness-probe
 
 version-upgrade-post-start-hook-image: ## Build and push version upgrade post start hook image
-	python pipeline.py --image-name version-post-start-hook-init
+	python pipeline.py --image-name version-upgrade-hook
 
 all-images: operator-image e2e-image agent-image readiness-probe-image version-upgrade-post-start-hook-image ## create all required images
 
