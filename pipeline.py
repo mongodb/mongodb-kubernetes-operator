@@ -214,6 +214,10 @@ def main() -> int:
     config: DevConfig = load_config()
     config.gh_run_id = args.tag
 
+    # Warn user if trying to release E2E tests
+    if args.release and image_name == "e2e":
+        print("Warning : releasing E2E test will fail because E2E image has no release version")
+
     # Skipping release tasks by default
     if not args.release:
         config.ensure_skip_tag("release")
