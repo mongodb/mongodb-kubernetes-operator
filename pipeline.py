@@ -216,7 +216,9 @@ def main() -> int:
 
     # Warn user if trying to release E2E tests
     if args.release and image_name == "e2e":
-        print("Warning : releasing E2E test will fail because E2E image has no release version")
+        print(
+            "Warning : releasing E2E test will fail because E2E image has no release version"
+        )
 
     # Skipping release tasks by default
     if not args.release:
