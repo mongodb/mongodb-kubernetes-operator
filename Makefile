@@ -48,7 +48,7 @@ test: generate fmt vet manifests ## Run unit tests
 manager: generate fmt vet ## Build operator binary
 	go build -o bin/manager ./cmd/manager/main.go
 
-run: install install-rbac ## Run the operator against the configured Kubernetes cluster in ~/.kube/config
+run: install ## Run the operator against the configured Kubernetes cluster in ~/.kube/config
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go run ./cmd/manager/main.go
 
@@ -115,7 +115,10 @@ manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 
 # Run e2e tests locally using go build while also setting up a proxy in the shell to allow
 # the test to run as if it were inside the cluster. This enables mongodb connectivity while running locally.
+# "MDB_LOCAL_OPERATOR=true" ensures the operator pod is not spun up while running the e2e test - since you're
+# running it locally.
 e2e-telepresence: cleanup-e2e install ## Run e2e tests locally using go build while also setting up a proxy e.g. make e2e-telepresence test=replica_set cleanup=true
+	export MDB_LOCAL_OPERATOR=true; \
 	telepresence connect; \
 	eval $$(scripts/dev/get_e2e_env_vars.py $(cleanup)); \
 	go test -v -timeout=30m -failfast $(options) ./test/e2e/$(test) ; \
@@ -139,7 +142,8 @@ cleanup-e2e: ## Cleans up e2e test env
 	kubectl delete pv --all -n $(NAMESPACE) || true
 
 generate-env-file: ## generates a local-test.env for local testing
-	python scripts/dev/get_e2e_env_vars.py  | cut -d' ' -f2 > .community-operator-dev/local-test.env
+	mkdir -p .community-operator-dev
+	{ python scripts/dev/get_e2e_env_vars.py | tee >(cut -d' ' -f2 > .community-operator-dev/local-test.env) ;} > .community-operator-dev/local-test.export.env
 
 ##@ Image
 
