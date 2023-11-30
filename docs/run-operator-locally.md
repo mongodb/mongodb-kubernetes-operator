@@ -12,7 +12,7 @@ Being able to run and build the binary locally can help with faster feedback-cyc
     - `KUBECONFIG` environment variable pointing at a file
     - **Note**: either of these are necessary to be able to run the operator locally
 - Have a folder `.community-operator-dev`
-- *Optional - if you want to export the environment variables, you can run the following command*: `source .community-operator-dev/local-test.export.env`
+- *Optional - if you want to export the environment variables, you can run the following command*: `source .community-operator-dev/local-test.export.env`. ( These environment variables are generated with the `make generate-env-file`)
 ## Goals
 - Run the operator locally as a binary (optionally in debug mode) in command line or in an IDE
 - Run e2e tests locally
