@@ -1,6 +1,6 @@
 # Quick start for building and running the operator locally
 
-This document contains a quickstart guide to build and running (+debugging) the operator locally.
+This document contains a quickstart guide to build and running and debugging the operator locally.
 Being able to run and build the binary locally can help with faster feedback-cycles.
 
 ## Prerequisites
@@ -12,6 +12,7 @@ Being able to run and build the binary locally can help with faster feedback-cyc
     - `KUBECONFIG` environment variable pointing at a file
     - **Note**: either of these are necessary to be able to run the operator locally
 - Have a folder `.community-operator-dev`
+- *Optional - if you want to export the environment variables, you can run the following command*: `source .community-operator-dev/local-test.export.env`
 ## Goals
 - Run the operator locally as a binary (optionally in debug mode) in command line or in an IDE
 - Run e2e tests locally
@@ -20,7 +21,7 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 1. Use the dedicated make target which exports the needed environment variables and builds & runs the operator binary
 
 ```sh
-make run 
+make run
 ```
 
 2.  For debugging one can use the following make target, which uses [dlv](https://github.com/go-delve/delve):
