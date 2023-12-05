@@ -53,6 +53,7 @@ type PlanStatus struct {
 
 type MoveStatus struct {
 	Steps []*StepStatus `json:"steps"`
+	Move  string        `json:"move"`
 }
 type StepStatus struct {
 	Step       string     `json:"step"`

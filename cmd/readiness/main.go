@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
@@ -72,6 +73,13 @@ func isPodReady(conf config.Config) (bool, error) {
 		return true, nil
 	}
 
+	currentMove := findCurrentMove(healthStatus.MmsStatus)
+
+	if currentMove != nil && strings.ToLower(currentMove.Move) == "changeversionkube" && inReadyState {
+		logger.Info("Making changeversionkube to return ready!")
+		return true, nil
+	}
+
 	// Fallback logic: the agent is not in goal state and got stuck in some steps
 	if !inGoalState && isOnWaitingStep(healthStatus) {
 		logger.Info("The Agent is on wait Step. Returning ready.")
@@ -84,6 +92,7 @@ func isPodReady(conf config.Config) (bool, error) {
 
 // isOnWaitingStep returns true if the agent is stuck on waiting for the other Agents or something else to happen.
 func isOnWaitingStep(health health.Status) bool {
+
 	currentStep := findCurrentStep(health.MmsStatus)
 	if currentStep != nil {
 		return isWaitStep(currentStep)
@@ -134,6 +143,47 @@ func findCurrentStep(processStatuses map[string]health.MmsDirectorStatus) *healt
 	}
 
 	return lastStartedStep
+}
+
+// findCurrentStep returns the step which the Agent is working now.
+// The algorithm (described in https://github.com/10gen/ops-manager-kubernetes/pull/401#discussion_r333071555):
+//   - Obtain the latest plan (the last one in the plans array)
+//   - Find the last step, which has Started not nil and Completed nil. The Steps are processed as a tree in a BFS fashion.
+//     The last element is very likely to be the Step the Agent is performing at the moment. There are some chances that
+//     this is a waiting step, use isWaitStep to verify this.
+func findCurrentMove(processStatuses map[string]health.MmsDirectorStatus) *health.MoveStatus {
+	logger.Info("Finding current move")
+
+	var currentPlan *health.PlanStatus
+	if len(processStatuses) == 0 {
+		// Seems shouldn't happen but let's check anyway - may be needs to be changed to Info if this happens
+		logger.Warnf("There is no information about Agent process plans")
+		return nil
+	}
+	if len(processStatuses) > 1 {
+		logger.Errorf("Only one process status is expected but got %d!", len(processStatuses))
+		return nil
+	}
+
+	// There is always only one process managed by the Agent - so there will be only one loop
+	for processName, processStatus := range processStatuses {
+		if len(processStatus.Plans) == 0 {
+			logger.Errorf("The process %s doesn't contain any plans!", processName)
+			return nil
+		}
+		currentPlan = processStatus.Plans[len(processStatus.Plans)-1]
+	}
+
+	if currentPlan.Completed != nil {
+		logger.Debugf("The Agent hasn't reported working on the new config yet, the last plan finished at %s",
+			currentPlan.Completed.Format(time.RFC3339))
+		return nil
+	}
+
+	lastStartedMove := currentPlan.Moves[len(currentPlan.Moves)-1]
+	logger.Debugf("Current Move: %s", lastStartedMove.Move)
+
+	return lastStartedMove
 }
 
 // isWaitStep returns true is the Agent is currently waiting for something to happen.

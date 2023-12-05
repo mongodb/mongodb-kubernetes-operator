@@ -1,0 +1,146 @@
+{
+    "statuses": {
+        "my-replica-set-2": {
+            "IsInGoalState": false,
+            "LastMongoUpTime": 1697534279,
+            "ExpectedToBeUp": true,
+            "ReplicationStatus": 8
+        }
+    },
+    "mmsStatus": {
+        "my-replica-set-2": {
+            "name": "my-replica-set-2",
+            "lastGoalVersionAchieved": -1,
+            "plans": [
+                {
+                    "automationConfigVersion": 2,
+                    "started": "2023-10-17T09:16:50.340423612Z",
+                    "completed": null,
+                    "moves": [
+                        {
+                            "move": "Start",
+                            "moveDoc": "Start the process",
+                            "steps": [
+                                {
+                                    "step": "StartFresh",
+                                    "stepDoc": "Start a mongo instance  (start fresh)",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:16:50.340448835Z",
+                                    "completed": null,
+                                    "result": "error"
+                                }
+                            ]
+                        },
+                        {
+                            "move": "WaitRsInit",
+                            "moveDoc": "Wait for the replica set to be initialized by another member",
+                            "steps": [
+                                {
+                                    "step": "WaitRsInit",
+                                    "stepDoc": "Wait for the replica set to be initialized by another member",
+                                    "isWaitStep": true,
+                                    "started": null,
+                                    "completed": null,
+                                    "result": ""
+                                }
+                            ]
+                        },
+                        {
+                            "move": "WaitFeatureCompatibilityVersionCorrect",
+                            "moveDoc": "Wait for featureCompatibilityVersion to be right",
+                            "steps": [
+                                {
+                                    "step": "WaitFeatureCompatibilityVersionCorrect",
+                                    "stepDoc": "Wait for featureCompatibilityVersion to be right",
+                                    "isWaitStep": true,
+                                    "started": null,
+                                    "completed": null,
+                                    "result": ""
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "automationConfigVersion": 2,
+                    "started": "2023-10-17T09:16:52.72943033Z",
+                    "completed": null,
+                    "moves": [
+                        {
+                            "move": "ChangeVersionKube",
+                            "moveDoc": "Change MongoDB Version",
+                            "steps": [
+                                {
+                                    "step": "CheckWrongVersion",
+                                    "stepDoc": "Check that MongoDB version is wrong",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:16:52.72945587Z",
+                                    "completed": "2023-10-17T09:16:52.72965925Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "CheckRsCorrect",
+                                    "stepDoc": "Check that replica set configuration is correct",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:16:52.729661497Z",
+                                    "completed": "2023-10-17T09:16:52.729932439Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "WaitAllRouterConfigsFlushedForUpgrade",
+                                    "stepDoc": "Wait until flushRouterConfig has been run on all mongoses",
+                                    "isWaitStep": true,
+                                    "started": "2023-10-17T09:16:52.729937288Z",
+                                    "completed": "2023-10-17T09:16:52.730140084Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "WaitCanUpdate",
+                                    "stepDoc": "Wait until the update can be made",
+                                    "isWaitStep": true,
+                                    "started": "2023-10-17T09:16:52.730142421Z",
+                                    "completed": "2023-10-17T09:16:52.730326363Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "DisableBalancerIfFirst",
+                                    "stepDoc": "Disable the balancer (may take a while)",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:16:52.730328642Z",
+                                    "completed": "2023-10-17T09:16:52.790512333Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "Stop",
+                                    "stepDoc": "Shutdown the process",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:16:52.790516813Z",
+                                    "completed": "2023-10-17T09:17:53.221577128Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "RemoveDbFilesIfArbiterDowngrade",
+                                    "stepDoc": "Delete db files if this is an arbiter downgrade.",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:17:53.221580106Z",
+                                    "completed": "2023-10-17T09:17:53.328152196Z",
+                                    "result": "success"
+                                },
+                                {
+                                    "step": "StartWithUpgrade",
+                                    "stepDoc": "Start a mongo instance  (upgrade)",
+                                    "isWaitStep": false,
+                                    "started": "2023-10-17T09:17:53.328156144Z",
+                                    "completed": null,
+                                    "result": "error"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "errorCode": 0,
+            "errorString": ""
+        }
+    }
+}
