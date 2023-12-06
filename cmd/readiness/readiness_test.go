@@ -237,6 +237,17 @@ func TestObtainingCurrentStep(t *testing.T) {
 	}
 }
 
+// TestReadyWithWaitForCorrectBinaries tests the Static Containers Architecture mode for the Agent.
+// In this case, the Readiness Probe needs to return Ready and let the StatefulSet Controller to proceed
+// with the Pod rollout.
+func TestReadyWithWaitForCorrectBinaries(t *testing.T) {
+	c := testConfigWithMongoUp("testdata/health-status-ok-with-WaitForCorrectBinaries.json", time.Second*30)
+	ready, err := isPodReady(c)
+
+	assert.True(t, ready)
+	assert.NoError(t, err)
+}
+
 // TestHeadlessAgentHasntReachedGoal verifies that the probe reports "false" if the config version is higher than the
 // last achieved version of the Agent
 // Note that the edge case is checked here: the health-status-ok.json has the "WaitRsInit" phase stuck in the last plan
