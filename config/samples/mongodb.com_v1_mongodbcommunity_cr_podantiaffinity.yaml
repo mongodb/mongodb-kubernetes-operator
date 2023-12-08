@@ -25,13 +25,13 @@ spec:
     spec:
       selector:
         matchLabels:
-          app: mongodb
+          app_affinity: mongodb
       template:
         metadata:
-          # label the pod which is used by the "labelSelector" in podAntiAffinty
+          # label the pod which is used by the "labelSelector" in podAntiAffinity
           # you can label it witch some other labels as well -- make sure it change the podAntiAffinity labelselector accordingly
           labels:
-            app: mongodb
+            app_affinity: mongodb
         spec:
           affinity:
             podAntiAffinity:
@@ -40,7 +40,7 @@ spec:
                   podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                        - key: app
+                        - key: app_affinity
                           operator: In
                           values:
                             - mongodb
