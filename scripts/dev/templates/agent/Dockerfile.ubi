@@ -5,7 +5,7 @@
 {% block packages -%}
 RUN microdnf install -y --disableplugin=subscription-manager --setopt=install_weak_deps=0 nss_wrapper
 RUN microdnf install -y --disableplugin=subscription-manager curl \
-    hostname tar gzip procps\
+    hostname tar gzip procps jq\
     && microdnf upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
