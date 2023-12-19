@@ -4,5 +4,5 @@
   "version-upgrade-hook": "1.0.8",
   "readiness-probe": "1.0.17",
   "agent": "107.0.0.8465-1",
-  "agent-tools-version": "100.9.0"
+  "agent-tools-version": "100.9.4"
 }
