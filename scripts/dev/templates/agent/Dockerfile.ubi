@@ -4,8 +4,11 @@
 
 {% block packages -%}
 RUN microdnf install -y --disableplugin=subscription-manager --setopt=install_weak_deps=0 nss_wrapper
+# Copy-pasted from https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-red-hat-tarball/
+RUN microdnf install -y --disableplugin=subscription-manager --setopt=install_weak_deps=0 \
+ cyrus-sasl cyrus-sasl-gssapi cyrus-sasl-plain krb5-libs libcurl openldap openssl xz-libs
 RUN microdnf install -y --disableplugin=subscription-manager curl \
-    hostname tar gzip procps jq\
+    hostname tar gzip procps jq \
     && microdnf upgrade -y  \
     && rm -rf /var/lib/apt/lists/*
 
