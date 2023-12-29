@@ -284,6 +284,7 @@ func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modifica
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
 		container.WithImage(os.Getenv(VersionUpgradeHookImageEnv)),
+		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 		containerSecurityContext,
@@ -324,6 +325,7 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
+		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		containerSecurityContext,
 	)
 }

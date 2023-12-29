@@ -44,6 +44,15 @@ spec:
                 requests:
                   cpu: "0.2"
                   memory: 200M
+          initContainers:
+            - name: mongodb-agent-readinessprobe
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 200M
+                requests:
+                  cpu: "1"
+                  memory: 100M
 # the user credentials will be generated from this secret
 # once the credentials are generated, this secret is no longer required
 ---
