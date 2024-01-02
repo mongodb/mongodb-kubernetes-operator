@@ -4,7 +4,7 @@ setup:
     fail-fast: false
     matrix:
       include:
-        - pipeline-argument: mongodb-kubernetes-operator
+        - pipeline-argument: operator
         - pipeline-argument: version-upgrade-hook
         - pipeline-argument: readiness-probe
         - pipeline-argument: agent
