@@ -28,6 +28,10 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+BASE_GO_PACKAGE = github.com/mongodb/mongodb-kubernetes-operator
+GO_LICENSES = go-licenses
+DISALLOWED_LICENSES = restricted # found reciprocal MPL-2.0
+
 all: manager
 
 ##@ Development
@@ -41,8 +45,25 @@ vet: ## Run go vet against code
 generate: controller-gen ## Generate code
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+$(GO-LICENSES):
+	go install github.com/google/go-licenses@latest
+
+licenses.csv: go.mod ## Track licenses in a CSV file
+	@echo "Tracking licenses into file $@"
+	@echo "========================================"
+	GOOS=linux GOARCH=amd64 $(GO_LICENSES) csv --include_tests $(BASE_GO_PACKAGE)/... > $@
+
+.PHONY: check-licenses
+check-licenses: licenses.csv  ## Check licenses
+	@echo "Checking licenses not to be: $(DISALLOWED_LICENSES)"
+	@echo "============================================"
+	GOOS=linux GOARCH=amd64 $(GO_LICENSES) check --include_tests $(BASE_GO_PACKAGE)/... \
+	--disallowed_types $(DISALLOWED_LICENSES)
+	@echo "--------------------"
+	@echo "Licenses check: PASS"
+
 TEST ?= ./pkg/... ./api/... ./cmd/... ./controllers/... ./test/e2e/util/mongotester/...
-test: generate fmt vet manifests ## Run unit tests
+test: generate fmt vet manifests check-licenses ## Run unit tests
 	go test $(options) $(TEST) -coverprofile cover.out
 
 manager: generate fmt vet ## Build operator binary
