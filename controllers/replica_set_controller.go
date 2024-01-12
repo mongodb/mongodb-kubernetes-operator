@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/imdario/mergo"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -80,8 +79,8 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, r.configMapWatcher).
+		Watches(&corev1.Secret{}, r.secretWatcher).
+		Watches(&corev1.ConfigMap{}, r.configMapWatcher).
 		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
