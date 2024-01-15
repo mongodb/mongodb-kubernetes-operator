@@ -39,5 +39,8 @@ RUN tar xfz /agent/mongodb-agent.tar.gz \
 
 RUN tar xfz /agent/mongodb-tools.tgz --directory /var/lib/mongodb-mms-automation/ && rm /agent/mongodb-tools.tgz
 
+# This is required for static containers
+RUN mkdir /tools && cp -r /var/lib/mongodb-mms-automation/mongodb-database-tools-*/* /tools
+
 USER 2000
 CMD ["/agent/mongodb-agent", "-cluster=/var/lib/automation/config/automation-config.json"]
