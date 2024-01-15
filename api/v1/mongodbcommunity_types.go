@@ -775,12 +775,12 @@ func (m *MongoDBCommunity) GetAuthUsers() []authtypes.User {
 		}
 
 		users[i] = authtypes.User{
-			Username:                   u.Name,
-			Database:                   u.DB,
-			Roles:                      roles,
-			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
-			ConnectionStringSecretNamespace: u.GetConnectionStringSecretName(m.Namespace),
-			ConnectionStringOptions:    u.AdditionalConnectionStringConfig.Object,
+			Username:                        u.Name,
+			Database:                        u.DB,
+			Roles:                           roles,
+			ConnectionStringSecretName:      u.GetConnectionStringSecretName(m.Name),
+			ConnectionStringSecretNamespace: u.GetConnectionStringSecretNamespace(m.Namespace),
+			ConnectionStringOptions:         u.AdditionalConnectionStringConfig.Object,
 		}
 
 		if u.DB != constants.ExternalDB {

@@ -41,7 +41,12 @@ func (r ReplicaSetReconciler) ensureUserResources(mdb mdbv1.MongoDBCommunity) er
 func (r ReplicaSetReconciler) updateConnectionStringSecrets(mdb mdbv1.MongoDBCommunity, clusterDomain string) error {
 	for _, user := range mdb.GetAuthUsers() {
 		secretName := user.ConnectionStringSecretName
-		secretNamespace := user.connectionStringSecretNamespace
+
+		secretNamespace := mdb.Namespace
+		if user.ConnectionStringSecretNamespace != "" {
+			secretNamespace = user.ConnectionStringSecretNamespace
+		}
+
 		existingSecret, err := r.client.GetSecret(types.NamespacedName{
 			Name:      secretName,
 			Namespace: secretNamespace,

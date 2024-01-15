@@ -306,8 +306,8 @@ func TestGetScramCredentialsSecretName(t *testing.T) {
 						Name: "clusterAdmin",
 					},
 				},
-				ScramCredentialsSecretName: "scram-credential-secret-name-2",
-				ConnectionStringSecretNamespace: "other-namespace"
+				ScramCredentialsSecretName:      "scram-credential-secret-name-2",
+				ConnectionStringSecretNamespace: "other-namespace",
 			},
 			"scram-credential-secret-name-2-scram-credentials",
 		},
@@ -359,13 +359,13 @@ func TestGetConnectionStringSecretName(t *testing.T) {
 		},
 		{
 			MongoDBUser{
-				Name:                       "mdb-2",
-				DB:                         "admin",
-				ScramCredentialsSecretName: "scram-credential-secret-name-2",
-				ConnectionStringSecretName: "connection-string-secret-2",
+				Name:                            "mdb-2",
+				DB:                              "admin",
+				ScramCredentialsSecretName:      "scram-credential-secret-name-2",
+				ConnectionStringSecretName:      "connection-string-secret-2",
 				ConnectionStringSecretNamespace: "other-namespace",
 			},
-			"connection-string-secret",
+			"connection-string-secret-2",
 		},
 	}
 
@@ -560,11 +560,12 @@ func TestMongoDBCommunity_GetAuthUsers(t *testing.T) {
 			Database: "admin",
 			Name:     "readWriteAnyDatabase",
 		}},
-		PasswordSecretKey:          "password",
-		PasswordSecretName:         "my-user-password",
-		ScramCredentialsSecretName: "my-scram-scram-credentials",
-		ConnectionStringSecretName: "mdb-admin-my-user",
-		ConnectionStringOptions:    nil,
+		PasswordSecretKey:               "password",
+		PasswordSecretName:              "my-user-password",
+		ScramCredentialsSecretName:      "my-scram-scram-credentials",
+		ConnectionStringSecretName:      "mdb-admin-my-user",
+		ConnectionStringSecretNamespace: mdb.Namespace,
+		ConnectionStringOptions:         nil,
 	}, authUsers[0])
 	assert.Equal(t, authtypes.User{
 		Username: "CN=my-x509-authenticated-user,OU=organizationalunit,O=organization",
@@ -573,11 +574,12 @@ func TestMongoDBCommunity_GetAuthUsers(t *testing.T) {
 			Database: "admin",
 			Name:     "readWriteAnyDatabase",
 		}},
-		PasswordSecretKey:          "",
-		PasswordSecretName:         "",
-		ScramCredentialsSecretName: "",
-		ConnectionStringSecretName: "mdb-external-cn-my-x509-authenticated-user-ou-organizationalunit-o-organization",
-		ConnectionStringOptions:    nil,
+		PasswordSecretKey:               "",
+		PasswordSecretName:              "",
+		ScramCredentialsSecretName:      "",
+		ConnectionStringSecretName:      "mdb-external-cn-my-x509-authenticated-user-ou-organizationalunit-o-organization",
+		ConnectionStringSecretNamespace: mdb.Namespace,
+		ConnectionStringOptions:         nil,
 	}, authUsers[1])
 }
 
