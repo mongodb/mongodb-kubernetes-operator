@@ -429,9 +429,9 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       enabled:
                         type: boolean
-                        x-kubernetes-map-type: atomic
                       optional:
                         description: Optional configures if TLS should be required
                           or optional for connections
