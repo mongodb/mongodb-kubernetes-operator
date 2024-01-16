@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/authtypes"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -32,6 +34,11 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 		return
 	}
 	t.Run(msg, f)
+}
+
+func strPointer(n float32) *string {
+	s := strconv.FormatFloat(float64(n), 'f', -1, 64)
+	return &s
 }
 
 // StatefulSetBecomesReady ensures that the underlying stateful set
@@ -413,6 +420,20 @@ func AutomationConfigHasTheExpectedCustomRoles(mdb *mdbv1.MongoDBCommunity, role
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(t, mdb)
 		assert.ElementsMatch(t, roles, currentAc.Roles)
+	}
+}
+
+func AutomationConfigHasVoteTagPriorityConfigured(mdb *mdbv1.MongoDBCommunity, memberOptions []automationconfig.MemberOptions) func(t *testing.T) {
+	acMemberOptions := make([]automationconfig.MemberOptions, 0)
+
+	return func(t *testing.T) {
+		currentAc := getAutomationConfig(t, mdb)
+		rsMemebers := currentAc.ReplicaSets
+
+		for _, m := range rsMemebers[0].Members {
+			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: strPointer(m.Priority), Tags: m.Tags})
+		}
+		assert.ElementsMatch(t, memberOptions, acMemberOptions)
 	}
 }
 

@@ -128,6 +128,10 @@ type MongoDBCommunitySpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalConnectionStringConfig MapWrapper `json:"additionalConnectionStringConfig,omitempty"`
+
+	// MemberConfig
+	// +optional
+	MemberConfig []automationconfig.MemberOptions `json:"memberConfig,omitempty"`
 }
 
 // MapWrapper is a wrapper for a map to be used by other structs.
