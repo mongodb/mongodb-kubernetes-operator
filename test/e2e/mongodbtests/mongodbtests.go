@@ -433,10 +433,7 @@ func AutomationConfigHasVoteTagPriorityConfigured(mdb *mdbv1.MongoDBCommunity, m
 		for _, m := range rsMemebers[0].Members {
 			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: strPointer(m.Priority), Tags: m.Tags})
 		}
-
-		for n := 0; n < 3; n++ {
-			assert.Equal(t, memberOptions[n], acMemberOptions[n])
-		}
+		assert.ElementsMatch(t, memberOptions, acMemberOptions)
 	}
 }
 
