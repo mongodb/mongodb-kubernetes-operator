@@ -581,10 +581,7 @@ func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
 		}
 	}
 	if len(overriddenImage) > 0 {
-		if strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName) {
-			return true
-		}
-		return false
+		return strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName)
 	}
 	return os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName
 }

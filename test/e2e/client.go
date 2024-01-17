@@ -170,7 +170,7 @@ func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (
 	if err != nil {
 		return "", err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
