@@ -180,8 +180,21 @@ spec:
                       - name
                       type: object
                     type: array
+                  replicaSets:
+                    items:
+                      properties:
+                        settings:
+                          description: MapWrapper is a wrapper for a map to be used
+                            by other structs. The CRD generator does not support map[string]interface{}
+                            on the top level and hence we need to work around this
+                            with a wrapping struct.
+                          type: object
+                      type: object
+                    type: array
+                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - processes
+                - replicaSets
                 type: object
               featureCompatibilityVersion:
                 description: FeatureCompatibilityVersion configures the feature compatibility
