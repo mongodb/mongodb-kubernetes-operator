@@ -132,6 +132,9 @@ type MongoDBCommunitySpec struct {
 	// MemberConfig
 	// +optional
 	MemberConfig []automationconfig.MemberOptions `json:"memberConfig,omitempty"`
+
+	// +optional
+	CombineDataAndLogsVolumes bool `json:"combineDataAndLogsVolumes,omitempty"`
 }
 
 // MapWrapper is a wrapper for a map to be used by other structs.
@@ -1152,7 +1155,7 @@ func (m *MongoDBCommunity) getLastVersion() string {
 }
 
 func (m *MongoDBCommunity) HasSeparateDataAndLogsVolumes() bool {
-	return true
+	return !m.Spec.CombineDataAndLogsVolumes
 }
 
 func (m *MongoDBCommunity) GetAnnotations() map[string]string {

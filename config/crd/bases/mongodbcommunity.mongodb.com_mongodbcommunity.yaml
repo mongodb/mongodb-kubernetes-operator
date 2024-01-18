@@ -183,6 +183,8 @@ spec:
                 required:
                 - processes
                 type: object
+              combineDataAndLogsVolumes:
+                type: boolean
               featureCompatibilityVersion:
                 description: FeatureCompatibilityVersion configures the feature compatibility
                   version that will be set for the deployment
