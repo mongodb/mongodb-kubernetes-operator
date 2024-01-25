@@ -325,14 +325,14 @@ type AuthenticationRestriction struct {
 type AutomationConfigOverride struct {
 	Processes []OverrideProcess `json:"processes,omitempty"`
 	// +kubebuilder:validation:Type=object
-	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +nullable
 	ReplicaSet OverrideReplicaSet `json:"replicaSet,omitempty"`
 }
 
 type OverrideReplicaSet struct {
-	MapWrapper `json:"-"`
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Settings MapWrapper `json:"settings,omitempty"`
 }
 
 // type OverrideReplicaSetEntry struct {
