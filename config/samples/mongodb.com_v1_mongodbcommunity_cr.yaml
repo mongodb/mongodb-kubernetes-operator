@@ -7,6 +7,10 @@ spec:
   members: 3
   type: ReplicaSet
   version: "6.0.5"
+  automationConfig:
+    replicaSet:
+      foo: bar
+        # baz: zap
   security:
     authentication:
       modes: ["SCRAM"]
