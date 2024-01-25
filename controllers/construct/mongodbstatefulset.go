@@ -64,7 +64,7 @@ const (
 	automationAgentLogOptions = " -logFile ${AGENT_LOG_FILE} -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
 
 	MongodbUserCommand = `current_uid=$(id -u)
-AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
+AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey 2>/dev/null)"
 declare -r current_uid
 if ! grep -q "${current_uid}" /etc/passwd ; then
 sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
