@@ -323,9 +323,7 @@ type AuthenticationRestriction struct {
 
 // AutomationConfigOverride contains fields which will be overridden in the operator created config.
 type AutomationConfigOverride struct {
-	Processes []OverrideProcess `json:"processes,omitempty"`
-	// +kubebuilder:validation:Type=object
-	// +kubebuilder:pruning:PreserveUnknownFields
+	Processes  []OverrideProcess  `json:"processes,omitempty"`
 	ReplicaSet OverrideReplicaSet `json:"replicaSet,omitempty"`
 }
 
@@ -334,14 +332,6 @@ type OverrideReplicaSet struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Settings MapWrapper `json:"settings,omitempty"`
 }
-
-// type OverrideReplicaSetEntry struct {
-// 	Settings OverrideReplicaSet `json:"settings,omitempty"`
-// }
-
-// type OverrideReplicaSet struct {
-// 	MapWrapper MapWrapper `json:"-"` // Ignored during JSON decoding
-// }
 
 // Note: We do not use the automationconfig.Process type directly here as unmarshalling cannot happen directly
 // with the Args26 which is a map[string]interface{}

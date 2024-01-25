@@ -7,10 +7,6 @@ spec:
   members: 3
   type: ReplicaSet
   version: "6.0.5"
-  automationConfig:
-    replicaSet:
-      settings:
-        electionTimeoutMillis: 20
   security:
     authentication:
       modes: ["SCRAM"]
@@ -37,4 +33,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: pass
+  password: <your-password-here>
