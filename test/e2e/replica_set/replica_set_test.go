@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -77,6 +78,13 @@ func TestReplicaSet(t *testing.T) {
 	}
 	mdb.Spec.MemberConfig = memberOptions
 
+	settings := map[string]interface{}{
+		"electionTimeoutMillis": float64(20),
+	}
+	mdb.Spec.AutomationConfigOverride = &v1.AutomationConfigOverride{
+		ReplicaSet: v1.OverrideReplicaSet{Settings: v1.MapWrapper{Object: settings}},
+	}
+
 	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
@@ -94,5 +102,6 @@ func TestReplicaSet(t *testing.T) {
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("AutomationCondig has correct member options", mongodbtests.AutomationConfigHasVoteTagPriorityConfigured(&mdb, memberOptions))
+	t.Run("AutomationConfig has correct member options", mongodbtests.AutomationConfigHasVoteTagPriorityConfigured(&mdb, memberOptions))
+	t.Run("AutomationConfig has correct settings", mongodbtests.AutomationConfigHasSettings(&mdb, settings))
 }

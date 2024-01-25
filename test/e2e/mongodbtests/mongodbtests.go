@@ -398,6 +398,13 @@ func AutomationConfigHasLogRotationConfig(mdb *mdbv1.MongoDBCommunity, lrc *auto
 	}
 }
 
+func AutomationConfigHasSettings(mdb *mdbv1.MongoDBCommunity, settings map[string]interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		currentAc := getAutomationConfig(t, mdb)
+		assert.Equal(t, currentAc.ReplicaSets[0].Settings, settings)
+	}
+}
+
 // AutomationConfigReplicaSetsHaveExpectedArbiters verifies that the automation config has the expected version.
 func AutomationConfigReplicaSetsHaveExpectedArbiters(mdb *mdbv1.MongoDBCommunity, expectedArbiters int) func(t *testing.T) {
 	return func(t *testing.T) {
