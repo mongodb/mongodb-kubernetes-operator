@@ -53,6 +53,7 @@ type Builder struct {
 	port                      int
 	memberOptions             []MemberOptions
 	forceReconfigureToVersion *int64
+	settings                  map[string]interface{}
 }
 
 func NewBuilder() *Builder {
@@ -189,6 +190,11 @@ func (b *Builder) SetPreviousAutomationConfig(previousAC AutomationConfig) *Buil
 
 func (b *Builder) SetAuth(auth Auth) *Builder {
 	b.auth = &auth
+	return b
+}
+
+func (b *Builder) SetSettings(settings map[string]interface{}) *Builder {
+	b.settings = settings
 	return b
 }
 
@@ -375,6 +381,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 				ProtocolVersion: "1",
 				NumberArbiters:  b.arbiters,
 				Force:           replSetForceConfig,
+				Settings:        b.settings,
 			},
 		},
 		MonitoringVersions: b.monitoringVersions,

@@ -10,7 +10,7 @@ spec:
   automationConfig:
     replicaSet:
       settings:
-        foo: bar
+        electionTimeoutMillis: 20
   security:
     authentication:
       modes: ["SCRAM"]
@@ -37,4 +37,4 @@ metadata:
   name: my-user-password
 type: Opaque
 stringData:
-  password: <your-password-here>
+  password: pass

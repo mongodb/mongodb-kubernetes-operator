@@ -553,6 +553,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetSettings(mdb.Spec.AutomationConfigOverride.ReplicaSet.Settings.Object).
 		SetMemberOptions(mdb.Spec.MemberConfig).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
 		AddModifications(getMongodConfigModification(mdb)).
