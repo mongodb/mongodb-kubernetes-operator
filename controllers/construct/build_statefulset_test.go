@@ -177,7 +177,7 @@ func TestMongod_Container(t *testing.T) {
 }
 
 func TestMongoDBAgentLogging_Container(t *testing.T) {
-	c := container.New(mongodbAgentContainer("test-mongodb-automation-config", []corev1.VolumeMount{}, "INFO", "/var/log/mongodb-mms-automation/automation-agent.log", 24))
+	c := container.New(mongodbAgentContainer("test-mongodb-automation-config", []corev1.VolumeMount{}, "INFO", "/var/log/mongodb-mms-automation/automation-agent.log", 24, false))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 7)

@@ -1163,6 +1163,9 @@ func (m MongoDBCommunity) GetAgentLogFile() string {
 func (m MongoDBCommunity) GetAgentMaxLogFileDurationHours() int {
 	return m.Spec.AgentConfiguration.MaxLogFileDurationHours
 }
+func (m MongoDBCommunity) IsAppDB() bool {
+	return false
+}
 
 type automationConfigReplicasScaler struct {
 	current, desired       int

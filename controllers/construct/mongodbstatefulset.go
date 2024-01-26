@@ -64,7 +64,18 @@ const (
 	automationAgentLogOptions = " -logFile ${AGENT_LOG_FILE} -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
 
 	MongodbUserCommand = `current_uid=$(id -u)
-AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey 2>/dev/null)"
+declare -r current_uid
+if ! grep -q "${current_uid}" /etc/passwd ; then
+sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
+echo "mongodb:x:$(id -u):$(id -g):,,,:/:/bin/bash" >> /tmp/passwd
+export NSS_WRAPPER_PASSWD=/tmp/passwd
+export LD_PRELOAD=libnss_wrapper.so
+export NSS_WRAPPER_GROUP=/etc/group
+fi
+
+`
+	MongodbUserCommandWithAPIKeyExport = `current_uid=$(id -u)
+AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
 declare -r current_uid
 if ! grep -q "${current_uid}" /etc/passwd ; then
 sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
@@ -110,6 +121,9 @@ type MongoDBStatefulSetOwner interface {
 
 	// NeedsAutomationConfigVolume returns whether the statefulset needs to have a volume for the automationconfig.
 	NeedsAutomationConfigVolume() bool
+
+	// IsAppDB returns whether the statefulset owner is AppDB.
+	IsAppDB() bool
 }
 
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
@@ -213,7 +227,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours)),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, mdb.IsAppDB())),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
@@ -225,11 +239,16 @@ func BaseAgentCommand() string {
 	return "agent/mongodb-agent -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
 }
 
-func AutomationAgentCommand() []string {
+// AutomationAgentCommand withAgentAPIKeyExport detects whether we want to deploy this agent with the agent api key exported
+// it can be used to register the agent with OM.
+func AutomationAgentCommand(withAgentAPIKeyExport bool) []string {
+	if withAgentAPIKeyExport {
+		return []string{"/bin/bash", "-c", MongodbUserCommandWithAPIKeyExport + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
+	}
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int, withAgentAPIKeyExport bool) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
@@ -238,7 +257,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand(AutomationAgentCommand()),
+		container.WithCommand(AutomationAgentCommand(withAgentAPIKeyExport)),
 		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
