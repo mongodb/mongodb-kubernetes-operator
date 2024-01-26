@@ -224,7 +224,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, false)),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
@@ -245,7 +245,7 @@ func AutomationAgentCommand(withAgentAPIKeyExport bool) []string {
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int, withAgentAPIKeyExport bool) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
@@ -254,7 +254,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand(AutomationAgentCommand(withAgentAPIKeyExport)),
+		container.WithCommand(AutomationAgentCommand(false)),
 		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
