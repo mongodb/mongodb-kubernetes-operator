@@ -259,11 +259,12 @@ type ReplSetForceConfig struct {
 }
 
 type ReplicaSet struct {
-	Id              string              `json:"_id"`
-	Members         []ReplicaSetMember  `json:"members"`
-	ProtocolVersion string              `json:"protocolVersion"`
-	NumberArbiters  int                 `json:"numberArbiters"`
-	Force           *ReplSetForceConfig `json:"force,omitempty"`
+	Id              string                 `json:"_id"`
+	Members         []ReplicaSetMember     `json:"members"`
+	ProtocolVersion string                 `json:"protocolVersion"`
+	NumberArbiters  int                    `json:"numberArbiters"`
+	Force           *ReplSetForceConfig    `json:"force,omitempty"`
+	Settings        map[string]interface{} `json:"settings,omitempty"`
 }
 
 type ReplicaSetMember struct {
