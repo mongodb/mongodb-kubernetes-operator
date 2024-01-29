@@ -1,6 +1,0 @@
-ARG imagebase
-FROM ${imagebase} AS builder
-
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
-
-COPY --from=builder /probes/readinessprobe /probes/readinessprobe
