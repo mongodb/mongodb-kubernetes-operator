@@ -127,15 +127,15 @@ type LogRotate struct {
 }
 
 type Process struct {
-	Name                        string      `json:"name"`
-	Disabled                    bool        `json:"disabled"`
-	HostName                    string      `json:"hostname"`
-	Args26                      objx.Map    `json:"args2_6"`
-	FeatureCompatibilityVersion string      `json:"featureCompatibilityVersion"`
-	ProcessType                 ProcessType `json:"processType"`
-	Version                     string      `json:"version"`
-	AuthSchemaVersion           int         `json:"authSchemaVersion"`
-	LogRotate                   AcLogRotate `json:"LogRotate,omitempty"`
+	Name                        string       `json:"name"`
+	Disabled                    bool         `json:"disabled"`
+	HostName                    string       `json:"hostname"`
+	Args26                      objx.Map     `json:"args2_6"`
+	FeatureCompatibilityVersion string       `json:"featureCompatibilityVersion"`
+	ProcessType                 ProcessType  `json:"processType"`
+	Version                     string       `json:"version"`
+	AuthSchemaVersion           int          `json:"authSchemaVersion"`
+	LogRotate                   *AcLogRotate `json:"LogRotate,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -181,12 +181,12 @@ func (p *Process) SetLogRotate(lr *CrdLogRotate) *Process {
 }
 
 // ConvertCrdLogRotateToAC converts a CrdLogRotate to an AcLogRotate representation.
-func ConvertCrdLogRotateToAC(lr *CrdLogRotate) AcLogRotate {
+func ConvertCrdLogRotateToAC(lr *CrdLogRotate) *AcLogRotate {
 	if lr == nil {
-		return AcLogRotate{}
+		return &AcLogRotate{}
 	}
 
-	return AcLogRotate{
+	return &AcLogRotate{
 		LogRotate: LogRotate{
 			TimeThresholdHrs:                lr.TimeThresholdHrs,
 			NumUncompressed:                 lr.NumUncompressed,
