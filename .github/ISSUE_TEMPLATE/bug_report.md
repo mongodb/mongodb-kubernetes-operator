@@ -52,6 +52,8 @@ mongo   Running   4.4.0
 ```
  - The Pod logs:
    - `kubectl logs mongo-0`
+ - The agent clusterconfig of the faulty members:
+   - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/lib/automation/config/cluster-config.json`
  - The agent health status of the faulty members:
    - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/healthstatus/agent-health-status.json`
  - The verbose agent logs of the faulty members:
