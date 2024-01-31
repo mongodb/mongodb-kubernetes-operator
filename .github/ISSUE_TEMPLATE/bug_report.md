@@ -35,8 +35,6 @@ If applicable, add screenshots to help explain your problem.
 Add any other context about the problem here.
 
 If possible, please include:
- - `kubectl describe` output
- - yaml definitions for your objects (for instance replica-set)
  - The operator logs
  - Below we are assuming your replicasets database pods is named `mongo`. For instance: 
 ```                                                                                      
@@ -49,6 +47,10 @@ mongo-1   2/2     Running   0          19h
 NAME    PHASE     VERSION
 mongo   Running   4.4.0
 ```
+ - yaml definitions for your of your MongoDB Deployment
+   - `kubectl get mdbc -oyaml`
+ - yaml definitions for your kubernetes objects like the statefulset
+   - `kubectl get sts -oyaml`
  - The Pod logs:
    - `kubectl logs mongo-0`
  - The agent clusterconfig of the faulty members:
