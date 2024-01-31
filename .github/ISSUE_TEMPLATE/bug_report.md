@@ -38,7 +38,7 @@ If possible, please include:
  - `kubectl describe` output
  - yaml definitions for your objects (for instance replica-set)
  - The operator logs
- - Below we are assuming the database pods of your replicasets are named `mongo`. For instance: 
+ - Below we are assuming your replicasets database pods is named `mongo`. For instance: 
 ```                                                                                      
 ❯ k get pods
 NAME      READY   STATUS    RESTARTS   AGE
