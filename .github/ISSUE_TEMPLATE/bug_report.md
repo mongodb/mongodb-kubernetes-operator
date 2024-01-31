@@ -36,7 +36,7 @@ Add any other context about the problem here.
 
 If possible, please include:
  - The operator logs
- - Below we are assuming your replicasets database pods is named `mongo`. For instance: 
+ - Below we assume that your replicaset database pods are named `mongo-<>`. For instance: 
 ```                                                                                      
 ❯ k get pods
 NAME      READY   STATUS    RESTARTS   AGE
@@ -47,9 +47,9 @@ mongo-1   2/2     Running   0          19h
 NAME    PHASE     VERSION
 mongo   Running   4.4.0
 ```
- - yaml definitions for your of your MongoDB Deployment
+ - yaml definitions of your MongoDB Deployment(s)
    - `kubectl get mdbc -oyaml`
- - yaml definitions for your kubernetes objects like the statefulset
+ - yaml definitions for your kubernetes objects like the statefulset(s)
    - `kubectl get sts -oyaml`
  - The Pod logs:
    - `kubectl logs mongo-0`
@@ -59,5 +59,5 @@ mongo   Running   4.4.0
    - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/healthstatus/agent-health-status.json`
  - The verbose agent logs of the faulty members:
    - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/automation-agent-verbose.log`
- - You might not have the verbose ones, in that case the non-verbose agent logs works as well:
+ - You might not have the verbose ones, in that case the non-verbose agent logs:
    - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/automation-agent.log`
