@@ -38,14 +38,13 @@ If possible, please include:
  - `kubectl describe` output
  - yaml definitions for your objects (for instance replica-set)
  - The operator logs
- - Below we are assuming the database pods of your replicasets are named `mongo-0`. For instance: 
-```
-1.21.0 ~/projects/ops-manager-kubernetes master                                                                                        kind-kind/nnguyen-evg-single 10:57:30 AM
+ - Below we are assuming the database pods of your replicasets are named `mongo`. For instance: 
+```                                                                                      
 ❯ k get pods
 NAME      READY   STATUS    RESTARTS   AGE
 mongo-0   2/2     Running   0          19h
 mongo-1   2/2     Running   0          19h
-1.21.0 ~/projects/ops-manager-kubernetes master                                                                                        kind-kind/nnguyen-evg-single 11:19:15 AM
+                                                                                     
 ❯ k get mdbc
 NAME    PHASE     VERSION
 mongo   Running   4.4.0
