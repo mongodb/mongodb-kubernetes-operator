@@ -47,9 +47,9 @@ mongo-1   2/2     Running   0          19h
 NAME    PHASE     VERSION
 mongo   Running   4.4.0
 ```
- - yaml definitions of your MongoDB Deployment(s)
+ - yaml definitions of your MongoDB Deployment(s):
    - `kubectl get mdbc -oyaml`
- - yaml definitions for your kubernetes objects like the statefulset(s)
+ - yaml definitions of your kubernetes objects like the statefulset(s):
    - `kubectl get sts -oyaml`
  - The Pod logs:
    - `kubectl logs mongo-0`
