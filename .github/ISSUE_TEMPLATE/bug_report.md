@@ -37,4 +37,11 @@ Add any other context about the problem here.
 If possible, please include:
  - `kubectl describe` output
  - yaml definitions for your objects
- - log files for the operator and database pods
+ - The operator logs
+ - Your Custom Resource below assuming the pods are named `mongo-0`
+ - The Pod logs:
+   - `kubectl logs mongo-0`
+ - The agent health status of the faulty members:
+   - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/healthstatus/agent-health-status.json`
+ - The agent logs of the faulty members:
+   - `kubectl exec -it mongo-0 -c mongodb-agent -- cat /var/log/mongodb-mms-automation/automation-agent-verbose.log`
