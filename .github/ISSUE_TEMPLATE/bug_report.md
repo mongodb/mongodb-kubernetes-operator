@@ -49,8 +49,9 @@ mongo   Running   4.4.0
 ```
  - yaml definitions of your MongoDB Deployment(s):
    - `kubectl get mdbc -oyaml`
- - yaml definitions of your kubernetes objects like the statefulset(s):
+ - yaml definitions of your kubernetes objects like the statefulset(s), pods (we need to see the state of the containers):
    - `kubectl get sts -oyaml`
+   - `kubectl get pods -oyaml`
  - The Pod logs:
    - `kubectl logs mongo-0`
  - The agent clusterconfig of the faulty members:
