@@ -121,6 +121,14 @@ class DevConfig:
         return self._config["agent_image"]
 
     @property
+    def local_operator(self) -> str:
+        return self._config["mdb_local_operator"]
+
+    @property
+    def kube_config(self) -> str:
+        return self._config["kubeconfig"]
+
+    @property
     def agent_image_dev(self) -> str:
         return self._get_dev_image("agent_image_dev", "agent_image")
 

@@ -108,7 +108,7 @@ install-chart: uninstall-crd
 install-chart-local-operator: uninstall-crd
 	$(HELM) upgrade --install $(STRING_SET_VALUES_LOCAL) $(RELEASE_NAME_HELM) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace
 
-prepare-local-dev: generate-env-file install-chart-local-operator setup-sas
+prepare-local-dev: generate-env-file install-chart-local-operator install-rbac setup-sas
 
 # patches all sas to use the local-image-registry
 setup-sas:
