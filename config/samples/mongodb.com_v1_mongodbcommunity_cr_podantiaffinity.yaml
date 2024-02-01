@@ -22,10 +22,18 @@ spec:
           db: admin
       scramCredentialsSecretName: my-scram
   statefulSet:
-# NOTE: Overwriting labelSelectors and pod labels via the sts wrapper is currently not supported since this labelselector is not
-# getting propagated to the service.
+# NOTE: Overwriting the "app" labelSelectors via the sts wrapper is not supported since this labelselector is not
+# getting propagated to the service. You can add others like defined below
     spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: mongodb
       template:
+        metadata:
+          # label the pod which is used by the "labelSelector" in podAntiAffinty
+          # you can label it witch some other labels as well -- make sure it change the podAntiAffinity labelselector accordingly
+          labels:
+           app.kubernetes.io/name: mongodb
         spec:
           affinity:
             podAntiAffinity:
@@ -34,10 +42,10 @@ spec:
                   podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                        - key: app
+                        - key: app.kubernetes.io/name
                           operator: In
                           values:
-                            - example-mongodb-svc # this is the default labelSelector created for the mdb pods based on the name of the replicaset set above
+                            - mongodb
                     topologyKey: kubernetes.io/hostname
 
 # the user credentials will be generated from this secret
