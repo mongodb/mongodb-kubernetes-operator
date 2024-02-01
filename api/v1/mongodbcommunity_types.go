@@ -128,6 +128,10 @@ type MongoDBCommunitySpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +nullable
 	AdditionalConnectionStringConfig MapWrapper `json:"additionalConnectionStringConfig,omitempty"`
+
+	// MemberConfig
+	// +optional
+	MemberConfig []automationconfig.MemberOptions `json:"memberConfig,omitempty"`
 }
 
 // MapWrapper is a wrapper for a map to be used by other structs.
@@ -319,7 +323,14 @@ type AuthenticationRestriction struct {
 
 // AutomationConfigOverride contains fields which will be overridden in the operator created config.
 type AutomationConfigOverride struct {
-	Processes []OverrideProcess `json:"processes"`
+	Processes  []OverrideProcess  `json:"processes,omitempty"`
+	ReplicaSet OverrideReplicaSet `json:"replicaSet,omitempty"`
+}
+
+type OverrideReplicaSet struct {
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Settings MapWrapper `json:"settings,omitempty"`
 }
 
 // Note: We do not use the automationconfig.Process type directly here as unmarshalling cannot happen directly
@@ -471,6 +482,10 @@ type MongoDBUser struct {
 	// +optional
 	ConnectionStringSecretName string `json:"connectionStringSecretName,omitempty"`
 
+	// ConnectionStringSecretNamespace is the namespace of the secret object created by the operator which exposes the connection strings for the user.
+	// +optional
+	ConnectionStringSecretNamespace string `json:"connectionStringSecretNamespace,omitempty"`
+
 	// Additional options to be appended to the connection string.
 	// These options apply only to this user and will override any existing options in the resource.
 	// +kubebuilder:validation:Type=object
@@ -501,6 +516,16 @@ func (m MongoDBUser) GetConnectionStringSecretName(resourceName string) string {
 	}
 
 	return normalizeName(fmt.Sprintf("%s-%s-%s", resourceName, m.DB, m.Name))
+}
+
+// GetConnectionStringSecretNamespace gets the connection string secret namespace provided by the user or generated
+// from the SCRAM user configuration.
+func (m MongoDBUser) GetConnectionStringSecretNamespace(resourceNamespace string) string {
+	if m.ConnectionStringSecretNamespace != "" {
+		return m.ConnectionStringSecretNamespace
+	}
+
+	return resourceNamespace
 }
 
 // normalizeName returns a string that conforms to RFC-1123
@@ -761,11 +786,12 @@ func (m *MongoDBCommunity) GetAuthUsers() []authtypes.User {
 		}
 
 		users[i] = authtypes.User{
-			Username:                   u.Name,
-			Database:                   u.DB,
-			Roles:                      roles,
-			ConnectionStringSecretName: u.GetConnectionStringSecretName(m.Name),
-			ConnectionStringOptions:    u.AdditionalConnectionStringConfig.Object,
+			Username:                        u.Name,
+			Database:                        u.DB,
+			Roles:                           roles,
+			ConnectionStringSecretName:      u.GetConnectionStringSecretName(m.Name),
+			ConnectionStringSecretNamespace: u.GetConnectionStringSecretNamespace(m.Namespace),
+			ConnectionStringOptions:         u.AdditionalConnectionStringConfig.Object,
 		}
 
 		if u.DB != constants.ExternalDB {

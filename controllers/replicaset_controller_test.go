@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/authentication/x509"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 
@@ -673,7 +674,7 @@ func assertConnectionStringSecretPorts(t *testing.T, c k8sClient.Client, mdb mdb
 	connectionStringSecret := corev1.Secret{}
 	scramUsers := mdb.GetAuthUsers()
 	require.Len(t, scramUsers, 1)
-	secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: mdb.Namespace}
+	secretNamespacedName := types.NamespacedName{Name: scramUsers[0].ConnectionStringSecretName, Namespace: scramUsers[0].ConnectionStringSecretNamespace}
 	err := c.Get(context.TODO(), secretNamespacedName, &connectionStringSecret)
 	require.NoError(t, err)
 	require.Contains(t, connectionStringSecret.Data, "connectionString.standard")

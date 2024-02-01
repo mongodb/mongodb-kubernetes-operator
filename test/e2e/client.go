@@ -170,7 +170,7 @@ func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (
 	if err != nil {
 		return "", err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
@@ -194,8 +194,8 @@ func RunTest(m *testing.M) (int, error) {
 	testEnv = &envtest.Environment{
 		UseExistingCluster:       &useExistingCluster,
 		AttachControlPlaneOutput: true,
-		KubeAPIServerFlags:       []string{"--authorization-mode=RBAC"},
 	}
+	testEnv.ControlPlane.GetAPIServer().Configure().Set("--authorization-mode", "RBAC")
 
 	fmt.Println("Starting test environment")
 	cfg, err = testEnv.Start()

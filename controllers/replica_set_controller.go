@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/imdario/mergo"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -80,8 +79,8 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, r.configMapWatcher).
+		Watches(&corev1.Secret{}, r.secretWatcher).
+		Watches(&corev1.ConfigMap{}, r.configMapWatcher).
 		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
@@ -540,6 +539,11 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		arbitersCount = mdb.Status.CurrentMongoDBArbiters
 	}
 
+	var acOverrideSettings map[string]interface{}
+	if mdb.Spec.AutomationConfigOverride != nil {
+		acOverrideSettings = mdb.Spec.AutomationConfigOverride.ReplicaSet.Settings.Object
+	}
+
 	return automationconfig.NewBuilder().
 		IsEnterprise(guessEnterprise(mdb)).
 		SetTopology(automationconfig.ReplicaSetTopology).
@@ -554,6 +558,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetSettings(acOverrideSettings).
+		SetMemberOptions(mdb.Spec.MemberConfig).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
@@ -581,10 +587,7 @@ func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
 		}
 	}
 	if len(overriddenImage) > 0 {
-		if strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName) {
-			return true
-		}
-		return false
+		return strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName)
 	}
 	return os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName
 }

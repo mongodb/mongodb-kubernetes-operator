@@ -76,8 +76,8 @@ Use one of the following procedures to install the Operator using Helm:
 
 ##### Install in the Default Namespace using Helm
 
-To install the Custom Resource Definitions and the Community Operator in 
-the `default` namespace using Helm, run the install command from the 
+To install the Custom Resource Definitions and the Community Operator in
+the `default` namespace using Helm, run the install command from the
 terminal:
    ```
    helm install community-operator mongodb/community-operator
@@ -91,9 +91,9 @@ include `--set community-operator-crds.enabled=false` when installing the Operat
 
 ##### Install in a Different Namespace using Helm
 
-To install the Custom Resource Definitions and the Community Operator in 
-a different namespace using Helm, run the install 
-command with the `--namespace` flag from the terminal. Include the `--create-namespace` 
+To install the Custom Resource Definitions and the Community Operator in
+a different namespace using Helm, run the install
+command with the `--namespace` flag from the terminal. Include the `--create-namespace`
 flag if you are creating a new namespace.
    ```
    helm install community-operator mongodb/community-operator --namespace mongodb [--create-namespace]
@@ -159,6 +159,10 @@ To configure the Operator to watch resources in other namespaces:
    kubectl apply -k config/rbac --namespace <my-namespace>
    ```
 
+   *Note: If you need the operator to have permission over multiple namespaces, for ex: when configuring the operator to have the `connectionStringSecret` in a different `namespace`, make sure
+   to apply the `RBAC` in all the relevant namespaces.*
+
+
 5. [Install the operator](#procedure-using-kubectl).
 
 ##### Configure the MongoDB Docker Image or Container Registry
@@ -170,11 +174,11 @@ for MongoDB Docker images:
 
 1. In the Operator [resource definition](../config/manager/manager.yaml), set the `MONGODB_IMAGE` and `MONGODB_REPO_URL` environment variables:
 
-   **NOTE:** Use the official 
-   [MongoDB Community Server images](https://hub.docker.com/r/mongodb/mongodb-community-server). 
+   **NOTE:** Use the official
+   [MongoDB Community Server images](https://hub.docker.com/r/mongodb/mongodb-community-server).
    Official images provide the following advantages:
 
-   - They are rebuilt daily for the latest upstream 
+   - They are rebuilt daily for the latest upstream
      vulnerability fixes.
    - MongoDB tests, maintains, and supports them.
 
@@ -290,7 +294,7 @@ Make sure you run commands in the correct namespace.
       ```
       kubectl delete pod <sts-name>-0
       ```
-   d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.   
+   d. You're done. Now Kubernetes will create the pod fresh, causing the migration to run and then the pod to start up. Then kubernetes will proceed creating the next pod until it reaches the number specified in your cr.
 
 ## Rotating TLS certificate for the MongoDB deployment
 
@@ -306,4 +310,4 @@ kubectl apply -f -
 *`secret_name` is what you've specified under `Spec.Security.TLS.CertificateKeySecret.Name`*.
 
 If you're using a tool like cert-manager, you can follow [these instructions](https://cert-manager.io/docs/usage/certificate/#renewal) to rotate the certificate.
-The operator should would watch the secret change and re-trigger a reconcile process. 
+The operator should would watch the secret change and re-trigger a reconcile process.

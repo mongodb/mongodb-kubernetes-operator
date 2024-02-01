@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	v1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -19,6 +20,9 @@ func TestMain(m *testing.M) {
 	}
 	os.Exit(code)
 }
+
+func intPtr(x int) *int       { return &x }
+func strPtr(s string) *string { return &s }
 
 func TestReplicaSet(t *testing.T) {
 	ctx := setup.Setup(t)
@@ -54,6 +58,33 @@ func TestReplicaSet(t *testing.T) {
 	mdb.Spec.AgentConfiguration.LogRotate = &lcr
 	mdb.Spec.AgentConfiguration.SystemLog = &systemLog
 
+	// config member options
+	memberOptions := []automationconfig.MemberOptions{
+		{
+			Votes:    intPtr(1),
+			Tags:     map[string]string{"foo1": "bar1"},
+			Priority: strPtr("1.5"),
+		},
+		{
+			Votes:    intPtr(1),
+			Tags:     map[string]string{"foo2": "bar2"},
+			Priority: strPtr("1"),
+		},
+		{
+			Votes:    intPtr(1),
+			Tags:     map[string]string{"foo3": "bar3"},
+			Priority: strPtr("2.5"),
+		},
+	}
+	mdb.Spec.MemberConfig = memberOptions
+
+	settings := map[string]interface{}{
+		"electionTimeoutMillis": float64(20),
+	}
+	mdb.Spec.AutomationConfigOverride = &v1.AutomationConfigOverride{
+		ReplicaSet: v1.OverrideReplicaSet{Settings: v1.MapWrapper{Object: settings}},
+	}
+
 	tester, err := FromResource(t, mdb)
 	if err != nil {
 		t.Fatal(err)
@@ -71,4 +102,6 @@ func TestReplicaSet(t *testing.T) {
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has correct member options", mongodbtests.AutomationConfigHasVoteTagPriorityConfigured(&mdb, memberOptions))
+	t.Run("AutomationConfig has correct settings", mongodbtests.AutomationConfigHasSettings(&mdb, settings))
 }

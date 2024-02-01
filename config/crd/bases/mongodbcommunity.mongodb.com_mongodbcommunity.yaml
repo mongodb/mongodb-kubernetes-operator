@@ -180,13 +180,35 @@ spec:
                       - name
                       type: object
                     type: array
-                required:
-                - processes
+                  replicaSet:
+                    properties:
+                      settings:
+                        description: MapWrapper is a wrapper for a map to be used
+                          by other structs. The CRD generator does not support map[string]interface{}
+                          on the top level and hence we need to work around this with
+                          a wrapping struct.
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                    type: object
                 type: object
               featureCompatibilityVersion:
                 description: FeatureCompatibilityVersion configures the feature compatibility
                   version that will be set for the deployment
                 type: string
+              memberConfig:
+                description: MemberConfig
+                items:
+                  properties:
+                    priority:
+                      type: string
+                    tags:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    votes:
+                      type: integer
+                  type: object
+                type: array
               members:
                 description: Members is the number of members in the replica set
                 type: integer
@@ -485,6 +507,11 @@ spec:
                         object created by the operator which exposes the connection
                         strings for the user. If provided, this secret must be different
                         for each user in a deployment.
+                      type: string
+                    connectionStringSecretNamespace:
+                      description: ConnectionStringSecretNamespace is the namespace
+                        of the secret object created by the operator which exposes
+                        the connection strings for the user.
                       type: string
                     db:
                       default: admin
