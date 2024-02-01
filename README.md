@@ -42,9 +42,6 @@ See the [documentation](docs) to learn how to:
 
 The MongoDB Community Kubernetes Operator supports the following features:
 
-> Warning: Currently the operator doesn't support Replicaset deployment with server version >= 7.0. We are working on adding the support for it.
-
-
 - Create [replica sets](https://www.mongodb.com/docs/manual/replication/)
 - Upgrade and downgrade MongoDB server version
 - Scale replica sets up and down
@@ -56,9 +53,6 @@ The MongoDB Community Kubernetes Operator supports the following features:
 - Create users with [SCRAM](https://www.mongodb.com/docs/manual/core/security-scram/) authentication
 - Create custom roles
 - Enable a [metrics target that can be used with Prometheus](docs/prometheus/README.md)
-
-### Planned Features
-- Server internal authentication via keyfile
 
 ## Contribute
 

@@ -33,6 +33,8 @@ def _get_e2e_test_envs(dev_config: DevConfig) -> Dict[str, str]:
         "MONGODB_REPO_URL": dev_config.mongodb_image_repo_url,
         "HELM_CHART_PATH": os.path.abspath("./helm-charts/charts/community-operator"),
         "MDB_IMAGE_TYPE": dev_config.image_type,
+        "MDB_LOCAL_OPERATOR": dev_config.local_operator,
+        "KUBECONFIG": dev_config.kube_config,
     }
 
 

@@ -22,16 +22,18 @@ spec:
           db: admin
       scramCredentialsSecretName: my-scram
   statefulSet:
+# NOTE: Overwriting the "app" labelSelectors via the sts wrapper is not supported since this labelselector is not
+# getting propagated to the service. You can add others like defined below
     spec:
       selector:
         matchLabels:
-          app: mongodb
+          app.kubernetes.io/name: mongodb
       template:
         metadata:
           # label the pod which is used by the "labelSelector" in podAntiAffinty
           # you can label it witch some other labels as well -- make sure it change the podAntiAffinity labelselector accordingly
           labels:
-            app: mongodb
+           app.kubernetes.io/name: mongodb
         spec:
           affinity:
             podAntiAffinity:
@@ -40,7 +42,7 @@ spec:
                   podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                        - key: app
+                        - key: app.kubernetes.io/name
                           operator: In
                           values:
                             - mongodb

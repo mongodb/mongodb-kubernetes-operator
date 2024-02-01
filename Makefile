@@ -14,6 +14,7 @@ AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubi < $(MONGODB_COMMUNITY_CONFIG)
 HELM_CHART ?= ./helm-charts/charts/community-operator
 
 STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=latest,readinessProbe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
+STRING_SET_VALUES_LOCAL := $(STRING_SET_VALUES) --set operator.replicas=0
 
 DOCKERFILE ?= operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -101,11 +102,21 @@ install: manifests helm install-crd ## Install CRDs into a cluster
 install-crd:
 	kubectl apply -f config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
 
-install-chart:
+install-chart: uninstall-crd
 	$(HELM) upgrade --install $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace
+
+install-chart-local-operator: uninstall-crd
+	$(HELM) upgrade --install $(STRING_SET_VALUES_LOCAL) $(RELEASE_NAME_HELM) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace
+
+prepare-local-dev: generate-env-file install-chart-local-operator install-rbac setup-sas
+
+# patches all sas to use the local-image-registry
+setup-sas:
+	scripts/dev/setup_sa.sh
 
 install-chart-with-tls-enabled:
 	$(HELM) upgrade --install --set createResource=true $(STRING_SET_VALUES) $(RELEASE_NAME_HELM) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace
+
 install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/database_roles.yaml $(HELM_CHART) | kubectl apply -f -
 	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml $(HELM_CHART) | kubectl apply -f -
@@ -165,6 +176,7 @@ cleanup-e2e: ## Cleans up e2e test env
 generate-env-file: ## generates a local-test.env for local testing
 	mkdir -p .community-operator-dev
 	{ python scripts/dev/get_e2e_env_vars.py | tee >(cut -d' ' -f2 > .community-operator-dev/local-test.env) ;} > .community-operator-dev/local-test.export.env
+	. .community-operator-dev/local-test.export.env
 
 ##@ Image
 
