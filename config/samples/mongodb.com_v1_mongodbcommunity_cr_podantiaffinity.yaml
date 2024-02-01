@@ -22,18 +22,10 @@ spec:
           db: admin
       scramCredentialsSecretName: my-scram
   statefulSet:
-# NOTE: Overwriting labelSelectors via the sts wrapper is currently not supported since this labelselector is not
+# NOTE: Overwriting labelSelectors and pod labels via the sts wrapper is currently not supported since this labelselector is not
 # getting propagated to the service.
     spec:
-#      selector:
-#        matchLabels:
-#          app: mongodb
       template:
-#        metadata:
-#          # label the pod which is used by the "labelSelector" in podAntiAffinty
-#          # you can label it witch some other labels as well -- make sure it change the podAntiAffinity labelselector accordingly
-#          labels:
-#            app: mongodb
         spec:
           affinity:
             podAntiAffinity:
