@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -11,7 +12,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	controllerConfig "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -43,18 +44,6 @@ func (m *MockedManager) Elected() <-chan struct{} {
 	return nil
 }
 
-func (m *MockedManager) AddHealthzCheck(name string, check healthz.Checker) error {
-	return nil
-}
-
-func (m *MockedManager) GetHTTPClient() *http.Client {
-	return nil
-}
-
-func (m *MockedManager) GetWebhookServer() webhook.Server {
-	return nil
-}
-
 // SetFields will set any dependencies on an object for which the object has implemented the inject
 // interface - e.g. inject.Client.
 func (m *MockedManager) SetFields(interface{}) error {
@@ -80,12 +69,8 @@ func (m *MockedManager) GetScheme() *runtime.Scheme {
 // GetAdmissionDecoder returns the runtime.Decoder based on the scheme.
 func (m *MockedManager) GetAdmissionDecoder() admission.Decoder {
 	// just returning nothing
-	d := admission.NewDecoder(runtime.NewScheme())
+	d, _ := admission.NewDecoder(runtime.NewScheme())
 	return *d
-}
-
-func (m *MockedManager) GetControllerOptions() controllerConfig.Controller {
-	return controllerConfig.Controller{}
 }
 
 // GetAPIReader returns the client reader
@@ -122,7 +107,16 @@ func (m *MockedManager) GetRESTMapper() meta.RESTMapper {
 	return nil
 }
 
+func (m *MockedManager) GetWebhookServer() *webhook.Server {
+	return nil
+}
+
 func (m *MockedManager) AddMetricsExtraHandler(path string, handler http.Handler) error {
+	return nil
+}
+
+// AddHealthzCheck allows you to add Healthz checker
+func (m *MockedManager) AddHealthzCheck(name string, check healthz.Checker) error {
 	return nil
 }
 
@@ -133,4 +127,11 @@ func (m *MockedManager) AddReadyzCheck(name string, check healthz.Checker) error
 
 func (m *MockedManager) GetLogger() logr.Logger {
 	return logr.Logger{}
+}
+
+func (m *MockedManager) GetControllerOptions() v1alpha1.ControllerConfigurationSpec {
+	var duration = time.Duration(0)
+	return v1alpha1.ControllerConfigurationSpec{
+		CacheSyncTimeout: &duration,
+	}
 }

@@ -1,8 +1,6 @@
 package watch
 
 import (
-	"context"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/contains"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,19 +38,19 @@ func (w ResourceWatcher) Watch(watchedName, dependentName types.NamespacedName) 
 	w.watched[watchedName] = append(existing, dependentName)
 }
 
-func (w ResourceWatcher) Create(ctx context.Context, event event.CreateEvent, queue workqueue.RateLimitingInterface) {
+func (w ResourceWatcher) Create(event event.CreateEvent, queue workqueue.RateLimitingInterface) {
 	w.handleEvent(event.Object, queue)
 }
 
-func (w ResourceWatcher) Update(ctx context.Context, event event.UpdateEvent, queue workqueue.RateLimitingInterface) {
+func (w ResourceWatcher) Update(event event.UpdateEvent, queue workqueue.RateLimitingInterface) {
 	w.handleEvent(event.ObjectOld, queue)
 }
 
-func (w ResourceWatcher) Delete(ctx context.Context, event event.DeleteEvent, queue workqueue.RateLimitingInterface) {
+func (w ResourceWatcher) Delete(event event.DeleteEvent, queue workqueue.RateLimitingInterface) {
 	w.handleEvent(event.Object, queue)
 }
 
-func (w ResourceWatcher) Generic(ctx context.Context, event event.GenericEvent, queue workqueue.RateLimitingInterface) {
+func (w ResourceWatcher) Generic(event event.GenericEvent, queue workqueue.RateLimitingInterface) {
 	w.handleEvent(event.Object, queue)
 }
 
