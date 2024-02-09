@@ -4,18 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strings"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"reflect"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"strings"
 )
 
 var (
@@ -96,14 +93,6 @@ func (m mockedClient) Patch(_ context.Context, obj k8sClient.Object, patch k8sCl
 	obj.SetAnnotations(objectAnnotations)
 	relevantMap[objKey] = obj
 	return nil
-}
-
-func (m mockedClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
-	return apiutil.GVKForObject(obj, m.Scheme())
-}
-
-func (m mockedClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
-	return apiutil.IsObjectNamespaced(obj, m.Scheme(), m.RESTMapper())
 }
 
 type mockedStatusWriter struct {
