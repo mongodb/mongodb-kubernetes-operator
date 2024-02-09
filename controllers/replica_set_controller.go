@@ -753,7 +753,7 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(construct.AgentImageEnv))
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),

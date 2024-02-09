@@ -126,7 +126,7 @@ type MongoDBStatefulSetOwner interface {
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
 // MongoDBStatefulSetOwner.
 // It doesn't configure TLS or additional containers/env vars that the statefulset might need.
-func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler) statefulset.Modification {
+func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, agentImage string) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -224,7 +224,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours)),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
 				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
@@ -245,11 +245,11 @@ func AutomationAgentCommand(withAgentAPIKeyExport bool) []string {
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel string, logFile string, maxLogFileDurationHours int, agentImage string) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
-		container.WithImage(os.Getenv(AgentImageEnv)),
+		container.WithImage(agentImage),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
