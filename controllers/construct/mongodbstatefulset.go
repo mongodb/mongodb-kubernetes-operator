@@ -126,7 +126,7 @@ type MongoDBStatefulSetOwner interface {
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
 // MongoDBStatefulSetOwner.
 // It doesn't configure TLS or additional containers/env vars that the statefulset might need.
-func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, agentImage string) statefulset.Modification {
+func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, agentImage string, withInitContainers bool) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -138,13 +138,10 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	agentHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/var/log/mongodb-mms-automation/healthstatus")
 	mongodHealthStatusVolumeMount := statefulset.CreateVolumeMount(healthStatusVolume.Name, "/healthstatus")
 
-	// hooks volume is only required on the mongod pod.
-	hooksVolume := statefulset.CreateVolumeFromEmptyDir("hooks")
-	hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
-
-	// scripts volume is only required on the mongodb-agent pod.
-	scriptsVolume := statefulset.CreateVolumeFromEmptyDir("agent-scripts")
-	scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
+	hooksVolume := corev1.Volume{}
+	scriptsVolume := corev1.Volume{}
+	upgradeInitContainer := podtemplatespec.NOOP()
+	readinessInitContainer := podtemplatespec.NOOP()
 
 	// tmp volume is required by the mongodb-agent and mongod
 	tmpVolume := statefulset.CreateVolumeFromEmptyDir("tmp")
@@ -155,7 +152,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	keyFileVolumeVolumeMount := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 	keyFileVolumeVolumeMountMongod := statefulset.CreateVolumeMount(keyFileVolume.Name, "/var/lib/mongodb-mms-automation/authentication", statefulset.WithReadOnly(false))
 
-	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, scriptsVolumeMount, keyFileVolumeVolumeMount, tmpVolumeMount}
+	mongodbAgentVolumeMounts := []corev1.VolumeMount{agentHealthStatusVolumeMount, keyFileVolumeVolumeMount, tmpVolumeMount}
 
 	automationConfigVolumeFunc := podtemplatespec.NOOP()
 	if mdb.NeedsAutomationConfigVolume() {
@@ -164,7 +161,25 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		automationConfigVolumeMount := statefulset.CreateVolumeMount(automationConfigVolume.Name, "/var/lib/automation/config", statefulset.WithReadOnly(true))
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, automationConfigVolumeMount)
 	}
-	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, hooksVolumeMount, keyFileVolumeVolumeMountMongod, tmpVolumeMount}
+	mongodVolumeMounts := []corev1.VolumeMount{mongodHealthStatusVolumeMount, keyFileVolumeVolumeMountMongod, tmpVolumeMount}
+
+	if withInitContainers {
+		// hooks volume is only required on the mongod pod.
+		hooksVolume = statefulset.CreateVolumeFromEmptyDir("hooks")
+		hooksVolumeMount := statefulset.CreateVolumeMount(hooksVolume.Name, "/hooks", statefulset.WithReadOnly(false))
+
+		// scripts volume is only required on the mongodb-agent pod.
+		scriptsVolume = statefulset.CreateVolumeFromEmptyDir("agent-scripts")
+		scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
+
+		upgradeInitContainer = podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount}))
+		readinessInitContainer = podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount}))
+
+		mongodVolumeMounts = append(mongodVolumeMounts, hooksVolumeMount)
+		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, scriptsVolumeMount)
+
+	}
+
 	dataVolumeClaim := statefulset.NOOP()
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
@@ -226,8 +241,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage)),
 				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
-				podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount})),
-				podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount})),
+				upgradeInitContainer,
+				readinessInitContainer,
 			),
 		))
 }
