@@ -96,7 +96,7 @@ type MongoDBStatefulSetOwner interface {
 	// GetNamespace returns the namespace the resource is defined in.
 	GetNamespace() string
 	// GetMongoDBVersion returns the version of MongoDB to be used for this resource.
-	GetMongoDBVersion() string
+	GetMongoDBVersion(annotations map[string]string) string
 	// AutomationConfigSecretName returns the name of the secret which will contain the automation config.
 	AutomationConfigSecretName() string
 	// GetUpdateStrategyType returns the UpdateStrategyType of the statefulset.
@@ -246,7 +246,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage)),
-				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(), mongodVolumeMounts, mdb.GetMongodConfiguration())),
+				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(nil), mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				upgradeInitContainer,
 				readinessInitContainer,
 			),
