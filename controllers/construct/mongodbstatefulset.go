@@ -165,6 +165,9 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 
 	hooksVolumeMod := podtemplatespec.NOOP()
 	scriptsVolumeMod := podtemplatespec.NOOP()
+
+	// This is temporary code;
+	// once we make the operator fully deploy static workloads, we will remove those init containers.
 	if withInitContainers {
 		// hooks volume is only required on the mongod pod.
 		hooksVolume = statefulset.CreateVolumeFromEmptyDir("hooks")
@@ -181,7 +184,6 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 
 		mongodVolumeMounts = append(mongodVolumeMounts, hooksVolumeMount)
 		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, scriptsVolumeMount)
-
 	}
 
 	dataVolumeClaim := statefulset.NOOP()
