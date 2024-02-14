@@ -122,9 +122,6 @@ func WithVolumes(volumes []corev1.Volume) Modification {
 // WithVolume ensures given volume is present in the PodTemplateSpec. It merges the volume if it already exists.
 func WithVolume(volume corev1.Volume) Modification {
 	return func(template *corev1.PodTemplateSpec) {
-		if template == nil {
-			return
-		}
 		for i := range template.Spec.Volumes {
 			if template.Spec.Volumes[i].Name == volume.Name {
 				template.Spec.Volumes[i] = merge.Volume(template.Spec.Volumes[i], volume)
