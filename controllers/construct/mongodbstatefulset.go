@@ -64,17 +64,6 @@ const (
 	automationAgentLogOptions = " -logFile ${AGENT_LOG_FILE} -maxLogFileDurationHrs ${AGENT_MAX_LOG_FILE_DURATION_HOURS} -logLevel ${AGENT_LOG_LEVEL}"
 
 	MongodbUserCommand = `current_uid=$(id -u)
-declare -r current_uid
-if ! grep -q "${current_uid}" /etc/passwd ; then
-sed -e "s/^mongodb:/builder:/" /etc/passwd > /tmp/passwd
-echo "mongodb:x:$(id -u):$(id -g):,,,:/:/bin/bash" >> /tmp/passwd
-export NSS_WRAPPER_PASSWD=/tmp/passwd
-export LD_PRELOAD=libnss_wrapper.so
-export NSS_WRAPPER_GROUP=/etc/group
-fi
-
-`
-	MongodbUserCommandWithAPIKeyExport = `current_uid=$(id -u)
 AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
 declare -r current_uid
 if ! grep -q "${current_uid}" /etc/passwd ; then
@@ -236,12 +225,7 @@ func BaseAgentCommand() string {
 	return "agent/mongodb-agent -healthCheckFilePath=" + agentHealthStatusFilePathValue + " -serveStatusPort=5000"
 }
 
-// AutomationAgentCommand withAgentAPIKeyExport detects whether we want to deploy this agent with the agent api key exported
-// it can be used to register the agent with OM.
-func AutomationAgentCommand(withAgentAPIKeyExport bool) []string {
-	if withAgentAPIKeyExport {
-		return []string{"/bin/bash", "-c", MongodbUserCommandWithAPIKeyExport + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
-	}
+func AutomationAgentCommand() []string {
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + automationAgentLogOptions}
 }
 
@@ -254,7 +238,7 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 		container.WithReadinessProbe(DefaultReadiness()),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithVolumeMounts(volumeMounts),
-		container.WithCommand(AutomationAgentCommand(false)),
+		container.WithCommand(AutomationAgentCommand()),
 		containerSecurityContext,
 		container.WithEnvs(
 			corev1.EnvVar{
