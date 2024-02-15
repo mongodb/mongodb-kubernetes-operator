@@ -30,3 +30,6 @@ jobs:
 
     - name: Test mongotester
       run: go test -v ./test/e2e/util/mongotester/...
+
+    - name: Check licenses
+      run: make check-licenses
