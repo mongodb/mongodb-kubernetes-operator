@@ -41,7 +41,7 @@ func TestStatefulSetDelete(t *testing.T) {
 			mdbv1.MongoDBCommunityStatus{
 				MongoURI:              mdb.MongoURI(""),
 				Phase:                 mdbv1.Running,
-				Version:               mdb.GetMongoDBVersion(),
+				Version:               mdb.GetMongoDBVersion(nil),
 				CurrentMongoDBMembers: mdb.DesiredReplicas(),
 			}))
 	})

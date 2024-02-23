@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/imdario/mergo"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
@@ -79,8 +80,8 @@ func (r *ReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 3}).
 		For(&mdbv1.MongoDBCommunity{}, builder.WithPredicates(predicates.OnlyOnSpecChange())).
-		Watches(&corev1.Secret{}, r.secretWatcher).
-		Watches(&corev1.ConfigMap{}, r.configMapWatcher).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, r.secretWatcher).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, r.configMapWatcher).
 		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
@@ -235,7 +236,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase().
-			withVersion(mdb.GetMongoDBVersion()),
+			withVersion(mdb.GetMongoDBVersion(nil)),
 	)
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
@@ -753,7 +754,7 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(construct.AgentImageEnv), true)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),

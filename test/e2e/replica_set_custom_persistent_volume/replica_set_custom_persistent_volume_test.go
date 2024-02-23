@@ -94,7 +94,7 @@ func getPvc(pvcType string, mdb v1.MongoDBCommunity) corev1.PersistentVolumeClai
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"type": pvcType},
 			},
-			Resources: corev1.VolumeResourceRequirements{
+			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{"storage": *resource.NewScaledQuantity(int64(8), resource.Giga)},
 			},
 			StorageClassName: &defaultStorageClass,
