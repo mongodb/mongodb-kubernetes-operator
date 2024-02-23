@@ -236,7 +236,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 			withMessage(None, "").
 			withRunningPhase().
-			withVersion(mdb.GetMongoDBVersion()),
+			withVersion(mdb.GetMongoDBVersion(nil)),
 	)
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
@@ -754,7 +754,7 @@ func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
 }
 
 func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(construct.AgentImageEnv), true)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),

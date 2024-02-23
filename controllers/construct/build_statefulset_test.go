@@ -45,7 +45,7 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 	t.Setenv(AgentImageEnv, "agent-image")
 
 	mdb := newTestReplicaSet()
-	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(AgentImageEnv), true)
 	sts := &appsv1.StatefulSet{}
 
 	t.Run("1st Call", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestManagedSecurityContext(t *testing.T) {
 	t.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
 
 	mdb := newTestReplicaSet()
-	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb)
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(AgentImageEnv), true)
 
 	sts := &appsv1.StatefulSet{}
 	stsFunc(sts)
@@ -177,7 +177,7 @@ func TestMongod_Container(t *testing.T) {
 }
 
 func TestMongoDBAgentLogging_Container(t *testing.T) {
-	c := container.New(mongodbAgentContainer("test-mongodb-automation-config", []corev1.VolumeMount{}, "INFO", "/var/log/mongodb-mms-automation/automation-agent.log", 24))
+	c := container.New(mongodbAgentContainer("test-mongodb-automation-config", []corev1.VolumeMount{}, "INFO", "/var/log/mongodb-mms-automation/automation-agent.log", 24, "image"))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 7)
