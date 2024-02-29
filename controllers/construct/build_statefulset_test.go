@@ -176,18 +176,19 @@ func TestMongod_Container(t *testing.T) {
 	})
 }
 
-func TestMongoDBAgentLogging_Container(t *testing.T) {
-	c := container.New(mongodbAgentContainer("test-mongodb-automation-config", []corev1.VolumeMount{}, "INFO", "/var/log/mongodb-mms-automation/automation-agent.log", 24, "image"))
+func TestMongoDBAgentCommand(t *testing.T) {
+	cmd := AutomationAgentCommand(false, "INFO", "testfile", 24)
+	baseCmd := MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions
+	assert.Len(t, cmd, 3)
+	assert.Equal(t, cmd[0], "/bin/bash")
+	assert.Equal(t, cmd[1], "-c")
+	assert.Equal(t, cmd[2], baseCmd+" -logFile testfile -logLevel INFO -maxLogFileDurationHrs 24")
 
-	t.Run("Has correct Env vars", func(t *testing.T) {
-		assert.Len(t, c.Env, 7)
-		assert.Equal(t, agentLogFileEnv, c.Env[0].Name)
-		assert.Equal(t, "/var/log/mongodb-mms-automation/automation-agent.log", c.Env[0].Value)
-		assert.Equal(t, agentLogLevelEnv, c.Env[1].Name)
-		assert.Equal(t, "INFO", c.Env[1].Value)
-		assert.Equal(t, agentMaxLogFileDurationHoursEnv, c.Env[2].Name)
-		assert.Equal(t, "24", c.Env[2].Value)
-	})
+	cmd = AutomationAgentCommand(false, "INFO", "/dev/stdout", 24)
+	assert.Len(t, cmd, 3)
+	assert.Equal(t, cmd[0], "/bin/bash")
+	assert.Equal(t, cmd[1], "-c")
+	assert.Equal(t, cmd[2], baseCmd+" -logLevel INFO")
 }
 
 func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity, sts *appsv1.StatefulSet) {
@@ -197,7 +198,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assert.Equal(t, mdb.Name, sts.Name)
 	assert.Equal(t, mdb.Namespace, sts.Namespace)
 	assert.Equal(t, mongodbDatabaseServiceAccountName, sts.Spec.Template.Spec.ServiceAccountName)
-	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 7)
+	assert.Len(t, sts.Spec.Template.Spec.Containers[0].Env, 4)
 	assert.Len(t, sts.Spec.Template.Spec.Containers[1].Env, 1)
 
 	managedSecurityContext := envvar.ReadBool(podtemplatespec.ManagedSecurityContextEnv)
