@@ -9,8 +9,8 @@ black==22.3.0
 mypy==0.961
 tqdm==v4.49.0
 boto3==1.16.21
-pymongo==3.11.4
-dnspython==2.0.0
+pymongo==4.6.2
+dnspython==2.6.1
 requests==2.31.0
 ruamel.yaml==0.17.9
 semver==2.13.0
