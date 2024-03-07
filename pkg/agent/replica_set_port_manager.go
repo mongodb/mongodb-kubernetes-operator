@@ -128,7 +128,7 @@ func (r *ReplicaSetPortManager) calculateExpectedPorts() (processPortMap map[str
 	for _, podState := range r.currentPodStates {
 		if !podState.ReachedGoalState {
 			r.log.Debugf("Port change required but not all pods reached goal state, abandoning port change")
-			return processPortMap, portChangeRequired, oldPort
+			return processPortMap, true, oldPort
 		}
 	}
 
@@ -143,5 +143,5 @@ func (r *ReplicaSetPortManager) calculateExpectedPorts() (processPortMap map[str
 		}
 	}
 
-	return processPortMap, portChangeRequired, oldPort
+	return processPortMap, true, oldPort
 }

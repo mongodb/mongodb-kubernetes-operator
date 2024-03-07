@@ -307,14 +307,24 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 	}
 }
 
+// EnsureMongodConfig is mostly used for checking port changes. Port changes take some until they finish.
+// We cannot fully rely on the statefulset or resource being ready/running since it will change its state multiple
+// times during a port change. That means a resource might leave, go into and leave running multiple times until
+// it truly finished its port change.
 func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(*testing.T) {
 	return func(t *testing.T) {
-		opts, err := m.getCommandLineOptions()
+		connectivityOpts := defaults()
+		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+			opts, err := m.getCommandLineOptions()
+			assert.NoError(t, err)
+
+			parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+
+			return expected == parsed.Get(selector).Data(), nil
+		})
+
 		assert.NoError(t, err)
 
-		// The options are stored under the key "parsed"
-		parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
-		assert.Equal(t, expected, parsed.Get(selector).Data())
 	}
 }
 
