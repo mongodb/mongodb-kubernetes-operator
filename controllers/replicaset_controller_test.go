@@ -1250,6 +1250,21 @@ func TestVolumeClaimTemplates_Configuration(t *testing.T) {
 	assert.Contains(t, pvcSpec.AccessModes, corev1.ReadWriteOnce)
 }
 
+func TestVolumeClaimCombineTemplates_Configuration(t *testing.T) {
+	sts, _ := performReconciliationAndGetStatefulSet(t, "data_log_volume_claim_combine_mdb.yaml")
+
+	assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
+
+	pvcSpec := sts.Spec.VolumeClaimTemplates[0].Spec
+
+	storage := pvcSpec.Resources.Requests[corev1.ResourceStorage]
+	storageRef := &storage
+
+	assert.Equal(t, "10G", storageRef.String())
+	assert.Len(t, pvcSpec.AccessModes, 1)
+	assert.Contains(t, pvcSpec.AccessModes, corev1.ReadWriteOnce)
+}
+
 func TestChangeDataVolume_Configuration(t *testing.T) {
 	sts, _ := performReconciliationAndGetStatefulSet(t, "change_data_volume.yaml")
 	assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
