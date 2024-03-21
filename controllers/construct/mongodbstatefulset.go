@@ -384,11 +384,13 @@ func getMongoDBImage(version string) string {
 func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
 	filePath := additionalMongoDBConfig.GetDBDataDir() + "/" + automationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
-#run post-start hook to handle version changes
-/hooks/version-upgrade
+if [ -e "/hooks/version-upgrade" ]; then
+	#run post-start hook to handle version changes (if exists)
+    /hooks/version-upgrade
+fi
 
 # wait for config and keyfile to be created by the agent
- while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
+while ! [ -f %s -a -f %s ]; do sleep 3 ; done ; sleep 2 ;
 
 # start mongod with this configuration
 exec mongod -f %s;
