@@ -33,7 +33,6 @@ type Config struct {
 	AutomationConfigSecretName string
 	HealthStatusReader         io.Reader
 	LogFilePath                string
-	Logger                     *lumberjack.Logger
 }
 
 func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file *os.File) (Config, error) {
@@ -56,13 +55,6 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file
 		}
 	}
 
-	logger := &lumberjack.Logger{
-		Filename:   readinessProbeLogFilePath(),
-		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
-		MaxSize:    readInt(readinessProbeLoggerMaxSize),
-		MaxAge:     readInt(readinessProbeLoggerMaxAge),
-	}
-
 	// Note, that we shouldn't close the file here - it will be closed very soon by the 'ioutil.ReadAll'
 	// in main.go
 	return Config{
@@ -72,8 +64,17 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file
 		Hostname:                   hostname,
 		HealthStatusReader:         file,
 		LogFilePath:                logFilePath,
-		Logger:                     logger,
 	}, nil
+}
+
+func GetLogger() *lumberjack.Logger {
+	logger := &lumberjack.Logger{
+		Filename:   readinessProbeLogFilePath(),
+		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
+		MaxSize:    readInt(readinessProbeLoggerMaxSize),
+		MaxAge:     readInt(readinessProbeLoggerMaxAge),
+	}
+	return logger
 }
 
 func readinessProbeLogFilePath() string {

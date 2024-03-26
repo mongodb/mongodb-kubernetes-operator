@@ -221,12 +221,15 @@ func main() {
 		panic(err)
 	}
 
+	initLogger(config.GetLogger())
+
 	healthStatusFilePath := config.GetEnvOrDefault(config.AgentHealthStatusFilePathEnv, config.DefaultAgentHealthStatusFilePath)
 	file, err := os.Open(healthStatusFilePath)
 	// The agent might be slow in creating the health status file.
 	// In that case, we don't want to panic to show the message
 	// in the kubernetes description. That would be a red herring, since that will solve itself with enough time.
 	if err != nil {
+		logger.Errorf("health status file not avaible yet: %s ", err)
 		os.Exit(1)
 	}
 
@@ -234,8 +237,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	initLogger(cfg.Logger)
 
 	ready, err := isPodReady(cfg)
 	if err != nil {
