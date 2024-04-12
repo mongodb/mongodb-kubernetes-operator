@@ -27,6 +27,7 @@ const (
 )
 
 func main() {
+	ctx := context.Background()
 	logger := setupLogger()
 
 	logger.Info("Running version change post-start hook")
@@ -57,7 +58,7 @@ func main() {
 
 	if shouldDelete {
 		logger.Infof("Pod should be deleted")
-		if err := deletePod(); err != nil {
+		if err := deletePod(ctx); err != nil {
 			// We should not raise an error if the Pod could not be deleted. It can have even
 			// worse consequences: Pod being restarted with the same version, and the agent
 			// killing it immediately after.
@@ -182,7 +183,7 @@ func isWaitingToBeDeleted(healthStatus agent.MmsDirectorStatus) bool {
 }
 
 // deletePod attempts to delete the pod this mongod is running in
-func deletePod() error {
+func deletePod(ctx context.Context) error {
 	thisPod, err := getThisPod()
 	if err != nil {
 		return fmt.Errorf("could not get pod: %s", err)
@@ -192,7 +193,7 @@ func deletePod() error {
 		return fmt.Errorf("could not get client: %s", err)
 	}
 
-	if err := k8sClient.Delete(context.TODO(), &thisPod); err != nil {
+	if err := k8sClient.Delete(ctx, &thisPod); err != nil {
 		return fmt.Errorf("could not delete pod: %s", err)
 	}
 	return nil

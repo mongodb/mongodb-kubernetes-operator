@@ -1,6 +1,7 @@
 package replica_set_authentication
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -11,7 +12,7 @@ import (
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 )
 
 func TestMain(m *testing.M) {
@@ -23,22 +24,23 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetAuthentication(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
-	pw, err := setup.GeneratePasswordForUser(ctx, user, "")
+	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
+	pw, err := setup.GeneratePasswordForUser(testCtx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
 
 	// Run all the possible configuration using sha256 or sha1
-	t.Run("Auth test with SHA-256", testConfigAuthentication(mdb, user, pw))
-	t.Run("Auth test with SHA-256 and SHA-1", testConfigAuthentication(mdb, user, pw, withSha1()))
-	t.Run("Auth test with SHA-256 (using label)", testConfigAuthentication(mdb, user, pw, withLabeledSha256()))
-	t.Run("Auth test with SHA-256 (using label) and SHA-1", testConfigAuthentication(mdb, user, pw, withSha1(), withLabeledSha256()))
-	t.Run("Auth test with SHA-1", testConfigAuthentication(mdb, user, pw, withSha1(), withoutSha256()))
+	t.Run("Auth test with SHA-256", testConfigAuthentication(ctx, mdb, user, pw))
+	t.Run("Auth test with SHA-256 and SHA-1", testConfigAuthentication(ctx, mdb, user, pw, withSha1()))
+	t.Run("Auth test with SHA-256 (using label)", testConfigAuthentication(ctx, mdb, user, pw, withLabeledSha256()))
+	t.Run("Auth test with SHA-256 (using label) and SHA-1", testConfigAuthentication(ctx, mdb, user, pw, withSha1(), withLabeledSha256()))
+	t.Run("Auth test with SHA-1", testConfigAuthentication(ctx, mdb, user, pw, withSha1(), withoutSha256()))
 }
 
 type authOptions struct {
@@ -63,7 +65,7 @@ func withSha1() func(*authOptions) {
 }
 
 // testConfigAuthentication run the tests using the auth options to update mdb and then checks that the resources are correctly configured
-func testConfigAuthentication(mdb mdbv1.MongoDBCommunity, user mdbv1.MongoDBUser, pw string, allOptions ...func(*authOptions)) func(t *testing.T) {
+func testConfigAuthentication(ctx context.Context, mdb mdbv1.MongoDBCommunity, user mdbv1.MongoDBUser, pw string, allOptions ...func(*authOptions)) func(t *testing.T) {
 	return func(t *testing.T) {
 
 		pickedOpts := authOptions{
@@ -92,19 +94,19 @@ func testConfigAuthentication(mdb mdbv1.MongoDBCommunity, user mdbv1.MongoDBUser
 			}
 		}
 
-		err := e2eutil.UpdateMongoDBResource(&mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, &mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Security.Authentication.Modes = acceptedModes
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		tester, err := FromResource(t, mdb)
+		tester, err := FromResource(ctx, t, mdb)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+		t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 		if pickedOpts.sha256 {
 			t.Run("Test Basic Connectivity with accepted auth", tester.ConnectivitySucceeds(WithScramWithAuth(user.Name, pw, "SCRAM-SHA-256")))
 		} else {

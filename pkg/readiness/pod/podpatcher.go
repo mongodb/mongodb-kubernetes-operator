@@ -24,10 +24,10 @@ func NewKubernetesPodPatcher(clientSet kubernetes.Interface) Patcher {
 	return Patcher{clientset: clientSet}
 }
 
-func (p Patcher) patchPod(namespace, podName string, payload []patchValue) (*v1.Pod, error) {
+func (p Patcher) patchPod(ctx context.Context, namespace, podName string, payload []patchValue) (*v1.Pod, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
-	return p.clientset.CoreV1().Pods(namespace).Patch(context.TODO(), podName, types.JSONPatchType, data, metav1.PatchOptions{})
+	return p.clientset.CoreV1().Pods(namespace).Patch(ctx, podName, types.JSONPatchType, data, metav1.PatchOptions{})
 }

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/pod"
@@ -27,9 +28,9 @@ type PodState struct {
 
 // AllReachedGoalState returns whether the agents associated with a given StatefulSet have reached goal state.
 // it achieves this by reading the Pod annotations and checking to see if they have reached the expected config versions.
-func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) (bool, error) {
+func AllReachedGoalState(ctx context.Context, sts appsv1.StatefulSet, podGetter pod.Getter, desiredMemberCount, targetConfigVersion int, log *zap.SugaredLogger) (bool, error) {
 	// AllReachedGoalState does not use desiredArbitersCount for backwards compatibility
-	podStates, err := GetAllDesiredMembersAndArbitersPodState(types.NamespacedName{
+	podStates, err := GetAllDesiredMembersAndArbitersPodState(ctx, types.NamespacedName{
 		Namespace: sts.Namespace,
 		Name:      sts.Name,
 	}, podGetter, desiredMemberCount, 0, targetConfigVersion, log)
@@ -63,7 +64,7 @@ func AllReachedGoalState(sts appsv1.StatefulSet, podGetter pod.Getter, desiredMe
 // GetAllDesiredMembersAndArbitersPodState returns states of all desired pods in a replica set.
 // Pod names to search for are calculated using desiredMemberCount and desiredArbitersCount. Each pod is then checked if it exists
 // or if it reached goal state vs targetConfigVersion.
-func GetAllDesiredMembersAndArbitersPodState(namespacedName types.NamespacedName, podGetter pod.Getter, desiredMembersCount, desiredArbitersCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
+func GetAllDesiredMembersAndArbitersPodState(ctx context.Context, namespacedName types.NamespacedName, podGetter pod.Getter, desiredMembersCount, desiredArbitersCount, targetConfigVersion int, log *zap.SugaredLogger) ([]PodState, error) {
 	podStates := make([]PodState, desiredMembersCount+desiredArbitersCount)
 
 	membersPodNames := statefulSetPodNames(namespacedName.Name, desiredMembersCount)
@@ -78,7 +79,7 @@ func GetAllDesiredMembersAndArbitersPodState(namespacedName types.NamespacedName
 			IsArbiter:        i >= len(membersPodNames),
 		}
 
-		p, err := podGetter.GetPod(podNamespacedName)
+		p, err := podGetter.GetPod(ctx, podNamespacedName)
 		if err != nil {
 			if apiErrors.IsNotFound(err) {
 				// we can skip below iteration and check for our goal state since the pod is not available yet

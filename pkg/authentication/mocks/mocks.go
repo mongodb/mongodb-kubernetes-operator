@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,21 +27,21 @@ func NewMockedSecretGetUpdateCreateDeleter(secrets ...corev1.Secret) secret.GetU
 	return mockSecretGetUpdateCreateDeleter
 }
 
-func (c MockSecretGetUpdateCreateDeleter) DeleteSecret(objectKey client.ObjectKey) error {
-	delete(c.secrets, objectKey)
+func (c MockSecretGetUpdateCreateDeleter) DeleteSecret(_ context.Context, key client.ObjectKey) error {
+	delete(c.secrets, key)
 	return nil
 }
 
-func (c MockSecretGetUpdateCreateDeleter) UpdateSecret(s corev1.Secret) error {
+func (c MockSecretGetUpdateCreateDeleter) UpdateSecret(_ context.Context, s corev1.Secret) error {
 	c.secrets[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	return nil
 }
 
-func (c MockSecretGetUpdateCreateDeleter) CreateSecret(secret corev1.Secret) error {
-	return c.UpdateSecret(secret)
+func (c MockSecretGetUpdateCreateDeleter) CreateSecret(ctx context.Context, secret corev1.Secret) error {
+	return c.UpdateSecret(ctx, secret)
 }
 
-func (c MockSecretGetUpdateCreateDeleter) GetSecret(objectKey client.ObjectKey) (corev1.Secret, error) {
+func (c MockSecretGetUpdateCreateDeleter) GetSecret(_ context.Context, objectKey client.ObjectKey) (corev1.Secret, error) {
 	if s, ok := c.secrets[objectKey]; !ok {
 		return corev1.Secret{}, &errors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
 	} else {

@@ -12,6 +12,7 @@ import (
 )
 
 func TestMockedClient(t *testing.T) {
+	ctx := context.Background()
 	mockedClient := NewMockedClient()
 
 	cm := configmap.Builder().
@@ -21,11 +22,11 @@ func TestMockedClient(t *testing.T) {
 		SetData(map[string]string{"key-2": "field-2"}).
 		Build()
 
-	err := mockedClient.Create(context.TODO(), &cm)
+	err := mockedClient.Create(ctx, &cm)
 	assert.NoError(t, err)
 
 	newCm := corev1.ConfigMap{}
-	err = mockedClient.Get(context.TODO(), types.NamespacedName{Name: "cm-name", Namespace: "cm-namespace"}, &newCm)
+	err = mockedClient.Get(ctx, types.NamespacedName{Name: "cm-name", Namespace: "cm-namespace"}, &newCm)
 	assert.NoError(t, err)
 	assert.Equal(t, "cm-namespace", newCm.Namespace)
 	assert.Equal(t, "cm-name", newCm.Name)
@@ -37,11 +38,11 @@ func TestMockedClient(t *testing.T) {
 		SetServiceType("service-type").
 		Build()
 
-	err = mockedClient.Create(context.TODO(), &svc)
+	err = mockedClient.Create(ctx, &svc)
 	assert.NoError(t, err)
 
 	newSvc := corev1.Service{}
-	err = mockedClient.Get(context.TODO(), types.NamespacedName{Name: "svc-name", Namespace: "svc-namespace"}, &newSvc)
+	err = mockedClient.Get(ctx, types.NamespacedName{Name: "svc-name", Namespace: "svc-namespace"}, &newSvc)
 	assert.NoError(t, err)
 	assert.Equal(t, "svc-namespace", newSvc.Namespace)
 	assert.Equal(t, "svc-name", newSvc.Name)

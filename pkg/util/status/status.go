@@ -19,13 +19,13 @@ type OptionBuilder interface {
 }
 
 // Update takes the options provided by the given option builder, applies them all and then updates the resource
-func Update(statusWriter client.StatusWriter, mdb *mdbv1.MongoDBCommunity, optionBuilder OptionBuilder) (reconcile.Result, error) {
+func Update(ctx context.Context, statusWriter client.StatusWriter, mdb *mdbv1.MongoDBCommunity, optionBuilder OptionBuilder) (reconcile.Result, error) {
 	options := optionBuilder.GetOptions()
 	for _, opt := range options {
 		opt.ApplyOption(mdb)
 	}
 
-	if err := statusWriter.Update(context.TODO(), mdb); err != nil {
+	if err := statusWriter.Update(ctx, mdb); err != nil {
 		return reconcile.Result{}, err
 	}
 

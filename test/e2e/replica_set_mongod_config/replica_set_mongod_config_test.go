@@ -1,6 +1,7 @@
 package replica_set_mongod_config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -22,12 +23,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(testCtx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,19 +55,19 @@ func TestReplicaSet(t *testing.T) {
 
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 	for i := range settings {
 		t.Run(fmt.Sprintf("Mongod setting %s has been set", settings[i]), tester.EnsureMongodConfig(settings[i], values[i]))
 	}
 	t.Run("Mongod setting net.port has been set", tester.EnsureMongodConfig("net.port", int32(40333)))
-	t.Run("Service has the correct port", mongodbtests.ServiceUsesCorrectPort(&mdb, 40333))
+	t.Run("Service has the correct port", mongodbtests.ServiceUsesCorrectPort(ctx, &mdb, 40333))
 }

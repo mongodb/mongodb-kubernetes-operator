@@ -1,6 +1,7 @@
 package replica_set
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -25,13 +26,14 @@ func intPtr(x int) *int       { return &x }
 func strPtr(s string) *string { return &s }
 
 func TestReplicaSet(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
 	scramUser := mdb.GetAuthUsers()[0]
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(testCtx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,23 +87,23 @@ func TestReplicaSet(t *testing.T) {
 		ReplicaSet: v1.OverrideReplicaSet{Settings: v1.MapWrapper{Object: settings}},
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
-	t.Run("AutomationConfig has the correct logRotateConfig", mongodbtests.AutomationConfigHasLogRotationConfig(&mdb, &lcr))
+	t.Run("AutomationConfig has the correct logRotateConfig", mongodbtests.AutomationConfigHasLogRotationConfig(ctx, &mdb, &lcr))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 	t.Run("Test Basic Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Test SRV Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("AutomationConfig has correct member options", mongodbtests.AutomationConfigHasVoteTagPriorityConfigured(&mdb, memberOptions))
-	t.Run("AutomationConfig has correct settings", mongodbtests.AutomationConfigHasSettings(&mdb, settings))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
+	t.Run("AutomationConfig has correct member options", mongodbtests.AutomationConfigHasVoteTagPriorityConfigured(ctx, &mdb, memberOptions))
+	t.Run("AutomationConfig has correct settings", mongodbtests.AutomationConfigHasSettings(ctx, &mdb, settings))
 }

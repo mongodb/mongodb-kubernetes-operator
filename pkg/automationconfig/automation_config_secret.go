@@ -1,6 +1,7 @@
 package automationconfig
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/secret"
@@ -12,8 +13,8 @@ const ConfigKey = "cluster-config.json"
 
 // ReadFromSecret returns the AutomationConfig present in the given Secret. If the Secret is not
 // found, it is not considered an error and an empty AutomationConfig is returned.
-func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
-	acSecret, err := secretGetter.GetSecret(secretNsName)
+func ReadFromSecret(ctx context.Context, secretGetter secret.Getter, secretNsName types.NamespacedName) (AutomationConfig, error) {
+	acSecret, err := secretGetter.GetSecret(ctx, secretNsName)
 	if err != nil {
 		if secret.SecretNotExist(err) {
 			err = nil
@@ -27,11 +28,11 @@ func ReadFromSecret(secretGetter secret.Getter, secretNsName types.NamespacedNam
 // if the desired config is the same as the current contents, no change is made.
 // The most recent AutomationConfig is returned. If no change is made, it will return the existing one, if there
 // is a change, the new AutomationConfig is returned.
-func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
-	existingSecret, err := secretGetUpdateCreator.GetSecret(secretNsName)
+func EnsureSecret(ctx context.Context, secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomationConfig AutomationConfig) (AutomationConfig, error) {
+	existingSecret, err := secretGetUpdateCreator.GetSecret(ctx, secretNsName)
 	if err != nil {
 		if secret.SecretNotExist(err) {
-			return createNewAutomationConfigSecret(secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
+			return createNewAutomationConfigSecret(ctx, secretGetUpdateCreator, secretNsName, owner, desiredAutomationConfig)
 		}
 		return AutomationConfig{}, err
 	}
@@ -62,10 +63,10 @@ func EnsureSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName t
 
 	existingSecret.Name = secretNsName.Name
 	existingSecret.Namespace = secretNsName.Namespace
-	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(existingSecret)
+	return desiredAutomationConfig, secretGetUpdateCreator.UpdateSecret(ctx, existingSecret)
 }
 
-func createNewAutomationConfigSecret(secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomation AutomationConfig) (AutomationConfig, error) {
+func createNewAutomationConfigSecret(ctx context.Context, secretGetUpdateCreator secret.GetUpdateCreator, secretNsName types.NamespacedName, owner []metav1.OwnerReference, desiredAutomation AutomationConfig) (AutomationConfig, error) {
 	acBytes, err := json.Marshal(desiredAutomation)
 	if err != nil {
 		return AutomationConfig{}, err
@@ -78,7 +79,7 @@ func createNewAutomationConfigSecret(secretGetUpdateCreator secret.GetUpdateCrea
 		SetOwnerReferences(owner).
 		Build()
 
-	if err := secretGetUpdateCreator.CreateSecret(newSecret); err != nil {
+	if err := secretGetUpdateCreator.CreateSecret(ctx, newSecret); err != nil {
 		return AutomationConfig{}, err
 	}
 	return desiredAutomation, nil

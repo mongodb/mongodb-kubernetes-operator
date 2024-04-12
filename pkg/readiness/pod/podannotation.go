@@ -13,7 +13,7 @@ import (
 
 const mongodbAgentVersionAnnotation = "agent.mongodb.com/version"
 
-func PatchPodAnnotation(podNamespace string, lastVersionAchieved int64, memberName string, clientSet kubernetes.Interface) error {
+func PatchPodAnnotation(ctx context.Context, podNamespace string, lastVersionAchieved int64, memberName string, clientSet kubernetes.Interface) error {
 	pod, err := clientSet.CoreV1().Pods(podNamespace).Get(context.Background(), memberName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func PatchPodAnnotation(podNamespace string, lastVersionAchieved int64, memberNa
 	})
 
 	patcher := NewKubernetesPodPatcher(clientSet)
-	updatedPod, err := patcher.patchPod(podNamespace, memberName, payload)
+	updatedPod, err := patcher.patchPod(ctx, podNamespace, memberName, payload)
 	if updatedPod != nil {
 		zap.S().Debugf("Updated Pod annotation: %v (%s)", pod.Annotations, memberName)
 	}

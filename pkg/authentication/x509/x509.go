@@ -2,6 +2,7 @@ package x509
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -27,13 +28,13 @@ import (
 // Enable will configure all of the required Kubernetes resources for X509 to be enabled.
 // The agent password and keyfile contents will be configured and stored in a secret.
 // the user credentials will be generated if not present, or existing credentials will be read.
-func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
+func Enable(ctx context.Context, auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
 	opts := mdb.GetAuthOptions()
 
 	desiredUsers := convertMongoDBResourceUsersToAutomationConfigUsers(mdb)
 
 	if opts.AutoAuthMechanism == constants.X509 {
-		if err := ensureAgent(auth, secretGetUpdateCreateDeleter, mdb, agentCertSecret); err != nil {
+		if err := ensureAgent(ctx, auth, secretGetUpdateCreateDeleter, mdb, agentCertSecret); err != nil {
 			return err
 		}
 	}
@@ -41,19 +42,19 @@ func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.Get
 	return enableClientAuthentication(auth, opts, desiredUsers)
 }
 
-func ensureAgent(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
+func ensureAgent(ctx context.Context, auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
 	generatedContents, err := generate.KeyFileContents()
 	if err != nil {
 		return fmt.Errorf("could not generate keyfile contents: %s", err)
 	}
 
 	// ensure that the agent keyfile secret exists or read existing keyfile.
-	agentKeyFile, err := secret.EnsureSecretWithKey(secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), constants.AgentKeyfileKey, generatedContents)
+	agentKeyFile, err := secret.EnsureSecretWithKey(ctx, secretGetUpdateCreateDeleter, mdb.GetAgentKeyfileSecretNamespacedName(), mdb.GetOwnerReferences(), constants.AgentKeyfileKey, generatedContents)
 	if err != nil {
 		return err
 	}
 
-	agentCert, err := secret.ReadKey(secretGetUpdateCreateDeleter, "tls.crt", agentCertSecret)
+	agentCert, err := secret.ReadKey(ctx, secretGetUpdateCreateDeleter, "tls.crt", agentCertSecret)
 	if err != nil {
 		return err
 	}
