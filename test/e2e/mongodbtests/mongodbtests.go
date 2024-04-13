@@ -738,7 +738,7 @@ func PodContainerBecomesReady(ctx context.Context, mdb *mdbv1.MongoDBCommunity, 
 func ExecInContainer(mdb *mdbv1.MongoDBCommunity, podNum int, containerName, command string) func(*testing.T) {
 	return func(t *testing.T) {
 		pod := podFromMongoDBCommunity(mdb, podNum)
-		_, err := e2eutil.TestClient.Execute(pod, containerName, command)
+		_, err := e2eutil.TestClient.Execute(ctx, pod, containerName, command)
 		assert.NoError(t, err)
 	}
 }

@@ -246,7 +246,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 			t.Skip()
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
+		ctx, cancel := context.WithTimeout(m.ctx, connectivityOpts.ContextTimeout)
 		defer cancel()
 
 		if err := m.ensureClient(ctx, clientOpts...); err != nil {
@@ -359,7 +359,7 @@ func bsonToMap(m bson.M) map[string]interface{} {
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
 // with the defined interval. A cancel function is returned, which can be called to stop testing connectivity.
 func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration, opts ...OptionApplier) func() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(m.ctx)
 	t.Logf("Starting background connectivity test")
 
 	// start a go routine which will periodically check basic MongoDB connectivity

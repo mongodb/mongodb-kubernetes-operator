@@ -14,7 +14,7 @@ import (
 const mongodbAgentVersionAnnotation = "agent.mongodb.com/version"
 
 func PatchPodAnnotation(ctx context.Context, podNamespace string, lastVersionAchieved int64, memberName string, clientSet kubernetes.Interface) error {
-	pod, err := clientSet.CoreV1().Pods(podNamespace).Get(context.Background(), memberName, metav1.GetOptions{})
+	pod, err := clientSet.CoreV1().Pods(podNamespace).Get(ctx, memberName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

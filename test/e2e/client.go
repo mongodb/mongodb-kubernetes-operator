@@ -150,7 +150,7 @@ func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj c
 	return c.Client.Get(ctx, key, obj)
 }
 
-func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (string, error) {
+func (c *E2ETestClient) Execute(ctx context.Context, pod corev1.Pod, containerName, command string) (string, error) {
 	req := c.CoreV1Client.RESTClient().
 		Post().
 		Namespace(pod.Namespace).
@@ -172,7 +172,7 @@ func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (
 	if err != nil {
 		return "", err
 	}
-	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
