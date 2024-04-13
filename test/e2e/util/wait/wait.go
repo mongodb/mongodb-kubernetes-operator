@@ -57,7 +57,7 @@ func ForMongoDBMessageStatus(ctx context.Context, t *testing.T, mdb *mdbv1.Mongo
 // waitForMongoDBCondition polls and waits for a given condition to be true
 func waitForMongoDBCondition(ctx context.Context, mdb *mdbv1.MongoDBCommunity, retryInterval, timeout time.Duration, condition func(mdbv1.MongoDBCommunity) bool) error {
 	mdbNew := mdbv1.MongoDBCommunity{}
-	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, retryInterval, timeout, false, func(ctx context.Context) (done bool, err error) {
 		err = e2eutil.TestClient.Get(ctx, mdb.NamespacedName(), &mdbNew)
 		if err != nil {
 			return false, err
@@ -144,7 +144,7 @@ func waitForStatefulSetConditionWithSpecificSts(ctx context.Context, t *testing.
 	if statefulSetType == ArbitersStatefulSet {
 		name = mdb.ArbiterNamespacedName()
 	}
-	return wait.Poll(waitOpts.RetryInterval, waitOpts.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, waitOpts.RetryInterval, waitOpts.Timeout, false, func(ctx context.Context) (done bool, err error) {
 		err = e2eutil.TestClient.Get(ctx, name, &sts)
 		if err != nil {
 			return false, err
@@ -167,7 +167,7 @@ func waitForStatefulSetConditionArbiters(ctx context.Context, t *testing.T, mdb 
 }
 
 func ForPodReadiness(ctx context.Context, t *testing.T, isReady bool, containerName string, timeout time.Duration, pod corev1.Pod) error {
-	return wait.Poll(time.Second*3, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, time.Second*3, timeout, false, func(ctx context.Context) (done bool, err error) {
 		err = e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)
 		if err != nil {
 			return false, err
@@ -183,7 +183,7 @@ func ForPodReadiness(ctx context.Context, t *testing.T, isReady bool, containerN
 }
 
 func ForPodPhase(ctx context.Context, t *testing.T, timeout time.Duration, pod corev1.Pod, podPhase corev1.PodPhase) error {
-	return wait.Poll(time.Second*3, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, time.Second*3, timeout, false, func(ctx context.Context) (done bool, err error) {
 		err = e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)
 		if err != nil {
 			return false, err
@@ -196,7 +196,7 @@ func ForPodPhase(ctx context.Context, t *testing.T, timeout time.Duration, pod c
 // waitForRuntimeObjectToExist waits until a runtime.Object of the given name exists
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToExist(ctx context.Context, name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
-	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, retryInterval, timeout, false, func(ctx context.Context) (done bool, err error) {
 		return runtimeObjectExists(ctx, name, obj, namespace)
 	})
 }
@@ -204,7 +204,7 @@ func waitForRuntimeObjectToExist(ctx context.Context, name string, retryInterval
 // waitForRuntimeObjectToBeDeleted waits until a runtime.Object of the given name is deleted
 // using the provided retryInterval and timeout provided.
 func waitForRuntimeObjectToBeDeleted(ctx context.Context, name string, retryInterval, timeout time.Duration, obj client.Object, namespace string) error {
-	return wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, retryInterval, timeout, false, func(ctx context.Context) (done bool, err error) {
 		exists, err := runtimeObjectExists(ctx, name, obj, namespace)
 		return !exists, err
 	})

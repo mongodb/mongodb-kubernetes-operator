@@ -92,7 +92,7 @@ func rotateCertManagerSecret(ctx context.Context, secretName types.NamespacedNam
 	assert.NoError(t, err)
 
 	newSecret := corev1.Secret{}
-	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 1*time.Minute, false, func(ctx context.Context) (done bool, err error) {
 		if err := e2eutil.TestClient.Get(ctx, secretName, &newSecret); err != nil {
 			return false, nil
 		}

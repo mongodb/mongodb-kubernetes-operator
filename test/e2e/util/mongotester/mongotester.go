@@ -255,7 +255,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 
 		attempts := 0
 		// There can be a short time before the user can auth as the user
-		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+		err := wait.PollUntilContextTimeout(ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			attempts++
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
@@ -299,7 +299,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 		}
 
 		// Ping the cluster until it succeeds. The ping will only succeed with the right certificate.
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(m.ctx, 5*time.Second, 5*time.Minute, false, func(ctx context.Context) (done bool, err error) {
 			if err := m.mongoClient.Ping(m.ctx, nil); err != nil {
 				return false, nil
 			}
@@ -316,7 +316,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(*testing.T) {
 	return func(t *testing.T) {
 		connectivityOpts := defaults()
-		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+		err := wait.PollUntilContextTimeout(m.ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			opts, err := m.getCommandLineOptions()
 			assert.NoError(t, err)
 
@@ -408,7 +408,7 @@ func (m *Tester) PrometheusEndpointIsReachable(username, password string, useTls
 	client := &http.Client{Transport: customTransport}
 
 	return func(t *testing.T) {
-		_ = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		_ = wait.PollUntilContextTimeout(m.ctx, 5*time.Second, 60*time.Second, false, func(ctx context.Context) (bool, error) {
 			var idx int
 
 			// Verify that the Prometheus port is enabled and responding with 200

@@ -237,7 +237,7 @@ func DeployOperator(ctx context.Context, config TestConfig, resourceName string,
 		return err
 	}
 
-	if err := wait.PollImmediate(time.Second, 60*time.Second, hasDeploymentRequiredReplicas(ctx, &dep)); err != nil {
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, 60*time.Second, true, hasDeploymentRequiredReplicas(&dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
@@ -265,8 +265,8 @@ func deployCertManager(config TestConfig) error {
 
 // hasDeploymentRequiredReplicas returns a condition function that indicates whether the given deployment
 // currently has the required amount of replicas in the ready state as specified in spec.replicas
-func hasDeploymentRequiredReplicas(ctx context.Context, dep *appsv1.Deployment) wait.ConditionFunc {
-	return func() (bool, error) {
+func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionWithContextFunc {
+	return func(ctx context.Context) (bool, error) {
 		err := e2eutil.TestClient.Get(ctx,
 			types.NamespacedName{Name: dep.Name,
 				Namespace: e2eutil.OperatorNamespace},
