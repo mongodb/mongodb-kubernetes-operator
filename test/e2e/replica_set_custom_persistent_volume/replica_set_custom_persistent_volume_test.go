@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -65,7 +65,7 @@ func getPersistentVolumeLocal(name string, localPath string, label string) corev
 
 // getVolumes returns two persistentVolumes for each of the `members` pod.
 // one volume will be for the `data` claim and the other will be for the `logs` claim
-func getVolumes(ctx *e2eutil.Context, volumeType string, members int) []corev1.PersistentVolume {
+func getVolumes(ctx *e2eutil.TestContext, volumeType string, members int) []corev1.PersistentVolume {
 	volumes := make([]corev1.PersistentVolume, members)
 	for i := 0; i < members; i++ {
 		volumes[i] = getPersistentVolumeLocal(
@@ -103,43 +103,44 @@ func getPvc(pvcType string, mdb v1.MongoDBCommunity) corev1.PersistentVolumeClai
 }
 
 func TestReplicaSetCustomPersistentVolumes(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
 	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
 		getPvc("data", mdb),
 		getPvc("logs", mdb),
 	}
-	volumesToCreate := getVolumes(ctx, "data", mdb.Spec.Members)
-	volumesToCreate = append(volumesToCreate, getVolumes(ctx, "logs", mdb.Spec.Members)...)
+	volumesToCreate := getVolumes(testCtx, "data", mdb.Spec.Members)
+	volumesToCreate = append(volumesToCreate, getVolumes(testCtx, "logs", mdb.Spec.Members)...)
 
 	for i := range volumesToCreate {
-		err := e2eutil.TestClient.Create(context.TODO(), &volumesToCreate[i], &e2eutil.CleanupOptions{TestContext: ctx})
+		err := e2eutil.TestClient.Create(ctx, &volumesToCreate[i], &e2eutil.CleanupOptions{TestContext: testCtx})
 		assert.NoError(t, err)
 	}
 	scramUser := mdb.GetAuthUsers()[0]
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(testCtx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tester, err := FromResource(t, mdb)
+	tester, err := FromResource(ctx, t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Keyfile authentication is configured", tester.HasKeyfileAuth(3))
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet((mdb.Name))))
 	t.Run("Test Basic Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Test SRV Connectivity with generated connection string secret",
-		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser))))
+		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
-	t.Run("Cluster has the expected persistent volumes", mongodbtests.HasExpectedPersistentVolumes(volumesToCreate))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
+	t.Run("Cluster has the expected persistent volumes", mongodbtests.HasExpectedPersistentVolumes(ctx, volumesToCreate))
 }

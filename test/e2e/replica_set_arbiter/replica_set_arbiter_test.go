@@ -1,13 +1,14 @@
 package replica_set
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,8 +26,9 @@ func Test(t *testing.T) {
 }
 
 func TestReplicaSetArbiter(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
 	type args struct {
 		numberOfArbiters     int
@@ -70,41 +72,41 @@ func TestReplicaSetArbiter(t *testing.T) {
 	for testName, _ := range tests {
 		t.Run(testName, func(t *testing.T) {
 			testConfig, _ := tests[testName]
-			mdb, user := e2eutil.NewTestMongoDB(ctx, testConfig.resourceName, "")
+			mdb, user := e2eutil.NewTestMongoDB(testCtx, testConfig.resourceName, "")
 			mdb.Spec.Arbiters = testConfig.numberOfArbiters
 			mdb.Spec.Members = testConfig.numberOfMembers
 			// FIXME: This behavior has been changed in 6.x timeline and now the arbiter (nor the RS) can't reach the goal state.
 			mdb.Spec.Version = "4.4.19"
-			pwd, err := setup.GeneratePasswordForUser(ctx, user, "")
+			pwd, err := setup.GeneratePasswordForUser(testCtx, user, "")
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
+			t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
 			if len(testConfig.expectedErrorMessage) > 0 {
-				t.Run("Check status", mongodbtests.StatefulSetMessageIsReceived(&mdb, ctx, testConfig.expectedErrorMessage))
+				t.Run("Check status", mongodbtests.StatefulSetMessageIsReceived(&mdb, testCtx, testConfig.expectedErrorMessage))
 			} else {
-				t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(&mdb))
-				t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(&mdb, testConfig.numberOfArbiters))
+				t.Run("Check that the stateful set becomes ready", mongodbtests.StatefulSetBecomesReady(ctx, &mdb))
+				t.Run("Check the number of arbiters", mongodbtests.AutomationConfigReplicaSetsHaveExpectedArbiters(ctx, &mdb, testConfig.numberOfArbiters))
 
 				if testConfig.numberOfArbiters != testConfig.scaleArbitersTo {
-					t.Run(fmt.Sprintf("Scale Arbiters to %v", testConfig.scaleArbitersTo), mongodbtests.ScaleArbiters(&mdb, testConfig.scaleArbitersTo))
-					t.Run("Arbiters Stateful Set Scaled Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(&mdb))
+					t.Run(fmt.Sprintf("Scale Arbiters to %v", testConfig.scaleArbitersTo), mongodbtests.ScaleArbiters(ctx, &mdb, testConfig.scaleArbitersTo))
+					t.Run("Arbiters Stateful Set Scaled Correctly", mongodbtests.ArbitersStatefulSetBecomesReady(ctx, &mdb))
 				}
 
-				t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+				t.Run("MongoDB Reaches Running Phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 				t.Run("Test SRV Connectivity with generated connection string secret", func(t *testing.T) {
-					tester, err := mongotester.FromResource(t, mdb)
+					tester, err := mongotester.FromResource(ctx, t, mdb)
 					if err != nil {
 						t.Fatal(err)
 					}
 					scramUser := mdb.GetAuthUsers()[0]
 					expectedCnxStr := fmt.Sprintf("mongodb+srv://%s-user:%s@%s-svc.%s.svc.cluster.local/admin?replicaSet=%s&ssl=false", mdb.Name, pwd, mdb.Name, mdb.Namespace, mdb.Name)
-					cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(mdb, scramUser)
+					cnxStrSrv := mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser)
 					assert.Equal(t, expectedCnxStr, cnxStrSrv)
 					tester.ConnectivitySucceeds(mongotester.WithURI(cnxStrSrv))
 				})
 			}
-			t.Run("Delete MongoDB Resource", mongodbtests.DeleteMongoDBResource(&mdb, ctx))
+			t.Run("Delete MongoDB Resource", mongodbtests.DeleteMongoDBResource(&mdb, testCtx))
 		})
 	}
 }

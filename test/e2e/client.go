@@ -34,14 +34,16 @@ var OperatorNamespace string
 
 // CleanupOptions are a way to register cleanup functions on object creation using the test client.
 type CleanupOptions struct {
-	TestContext *Context
+	TestContext *TestContext
 }
 
 // ApplyToCreate is a required method for CleanupOptions passed to the Create api.
 func (*CleanupOptions) ApplyToCreate(*client.CreateOptions) {}
 
-// Context tracks cleanup functions to be called at the end of a test.
-type Context struct {
+// TestContext tracks cleanup functions to be called at the end of a test.
+type TestContext struct {
+	Ctx context.Context
+
 	// shouldPerformCleanup indicates whether or not cleanup should happen after this test
 	shouldPerformCleanup bool
 
@@ -57,17 +59,17 @@ type Context struct {
 }
 
 // NewContext creates a context.
-func NewContext(t *testing.T, performCleanup bool) (*Context, error) {
+func NewContext(ctx context.Context, t *testing.T, performCleanup bool) (*TestContext, error) {
 	testId, err := generate.RandomValidDNS1123Label(10)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Context{t: t, ExecutionId: testId, shouldPerformCleanup: performCleanup}, nil
+	return &TestContext{Ctx: ctx, t: t, ExecutionId: testId, shouldPerformCleanup: performCleanup}, nil
 }
 
 // Teardown is called at the end of a test.
-func (ctx *Context) Teardown() {
+func (ctx *TestContext) Teardown() {
 	if !ctx.shouldPerformCleanup {
 		return
 	}
@@ -80,7 +82,7 @@ func (ctx *Context) Teardown() {
 }
 
 // AddCleanupFunc adds a cleanup function to the context to be called at the end of a test.
-func (ctx *Context) AddCleanupFunc(fn func() error) {
+func (ctx *TestContext) AddCleanupFunc(fn func() error) {
 	ctx.cleanupFuncs = append(ctx.cleanupFuncs, fn)
 }
 
@@ -148,7 +150,7 @@ func (c *E2ETestClient) Get(ctx context.Context, key types.NamespacedName, obj c
 	return c.Client.Get(ctx, key, obj)
 }
 
-func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (string, error) {
+func (c *E2ETestClient) Execute(ctx context.Context, pod corev1.Pod, containerName, command string) (string, error) {
 	req := c.CoreV1Client.RESTClient().
 		Post().
 		Namespace(pod.Namespace).
@@ -170,7 +172,7 @@ func (c *E2ETestClient) Execute(pod corev1.Pod, containerName, command string) (
 	if err != nil {
 		return "", err
 	}
-	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})

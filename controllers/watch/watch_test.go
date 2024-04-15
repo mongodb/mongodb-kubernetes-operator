@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"context"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -19,6 +20,7 @@ import (
 )
 
 func TestWatcher(t *testing.T) {
+	ctx := context.Background()
 	obj := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod",
@@ -45,9 +47,9 @@ func TestWatcher(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
 
-		watcher.Create(event.CreateEvent{
+		watcher.Create(ctx, event.CreateEvent{
 			Object: obj,
-		}, queue)
+		}, &queue)
 
 		// Ensure no reconciliation is queued if object is not watched.
 		assert.Equal(t, 0, queue.Len())
@@ -56,12 +58,12 @@ func TestWatcher(t *testing.T) {
 	t.Run("Multiple objects to reconcile", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Watch(objNsName, mdb1.NamespacedName())
-		watcher.Watch(objNsName, mdb2.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb1.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb2.NamespacedName())
 
-		watcher.Create(event.CreateEvent{
+		watcher.Create(ctx, event.CreateEvent{
 			Object: obj,
-		}, queue)
+		}, &queue)
 
 		// Ensure multiple reconciliations are enqueued.
 		assert.Equal(t, 2, queue.Len())
@@ -70,11 +72,11 @@ func TestWatcher(t *testing.T) {
 	t.Run("Create event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Watch(objNsName, mdb1.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb1.NamespacedName())
 
-		watcher.Create(event.CreateEvent{
+		watcher.Create(ctx, event.CreateEvent{
 			Object: obj,
-		}, queue)
+		}, &queue)
 
 		assert.Equal(t, 1, queue.Len())
 	})
@@ -82,12 +84,12 @@ func TestWatcher(t *testing.T) {
 	t.Run("Update event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Watch(objNsName, mdb1.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb1.NamespacedName())
 
-		watcher.Update(event.UpdateEvent{
+		watcher.Update(ctx, event.UpdateEvent{
 			ObjectOld: obj,
 			ObjectNew: obj,
-		}, queue)
+		}, &queue)
 
 		assert.Equal(t, 1, queue.Len())
 	})
@@ -95,11 +97,11 @@ func TestWatcher(t *testing.T) {
 	t.Run("Delete event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Watch(objNsName, mdb1.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb1.NamespacedName())
 
-		watcher.Delete(event.DeleteEvent{
+		watcher.Delete(ctx, event.DeleteEvent{
 			Object: obj,
-		}, queue)
+		}, &queue)
 
 		assert.Equal(t, 1, queue.Len())
 	})
@@ -107,17 +109,18 @@ func TestWatcher(t *testing.T) {
 	t.Run("Generic event", func(t *testing.T) {
 		watcher := New()
 		queue := controllertest.Queue{Interface: workqueue.New()}
-		watcher.Watch(objNsName, mdb1.NamespacedName())
+		watcher.Watch(ctx, objNsName, mdb1.NamespacedName())
 
-		watcher.Generic(event.GenericEvent{
+		watcher.Generic(ctx, event.GenericEvent{
 			Object: obj,
-		}, queue)
+		}, &queue)
 
 		assert.Equal(t, 1, queue.Len())
 	})
 }
 
 func TestWatcherAdd(t *testing.T) {
+	ctx := context.Background()
 	watcher := New()
 	assert.Empty(t, watcher.watched)
 
@@ -137,17 +140,17 @@ func TestWatcherAdd(t *testing.T) {
 	}
 
 	// Ensure single object can be added to empty watchlist.
-	watcher.Watch(watchedName, mdb1.NamespacedName())
+	watcher.Watch(ctx, watchedName, mdb1.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{mdb1.NamespacedName()}, watcher.watched[watchedName])
 
 	// Ensure object can only be watched once.
-	watcher.Watch(watchedName, mdb1.NamespacedName())
+	watcher.Watch(ctx, watchedName, mdb1.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{mdb1.NamespacedName()}, watcher.watched[watchedName])
 
 	// Ensure a single object can be watched for multiple reconciliations.
-	watcher.Watch(watchedName, mdb2.NamespacedName())
+	watcher.Watch(ctx, watchedName, mdb2.NamespacedName())
 	assert.Len(t, watcher.watched, 1)
 	assert.Equal(t, []types.NamespacedName{
 		mdb1.NamespacedName(),

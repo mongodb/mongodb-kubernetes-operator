@@ -1,6 +1,7 @@
 package x509
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 )
 
 func TestEnable(t *testing.T) {
+	ctx := context.Background()
 	t.Run("X509 agent", func(t *testing.T) {
 		auth := automationconfig.Auth{}
 		mdb := buildX509Configurable("mdb", mocks.BuildX509MongoDBUser("my-user"), mocks.BuildScramMongoDBUser("my-scram-user"))
@@ -28,7 +30,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret, keyfileSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		expected := automationconfig.Auth{
@@ -70,7 +72,7 @@ func TestEnable(t *testing.T) {
 
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter()
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		expected := automationconfig.Auth{
@@ -100,18 +102,19 @@ func TestEnable(t *testing.T) {
 }
 
 func Test_ensureAgent(t *testing.T) {
+	ctx := context.Background()
 	auth := automationconfig.Auth{}
 	mdb := buildX509Configurable("mdb")
 	secrets := mocks.NewMockedSecretGetUpdateCreateDeleter()
 
-	err := ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+	err := ensureAgent(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 
 	auth = automationconfig.Auth{}
 	agentSecret := CreateAgentCertificateSecret("tls.pem", false, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+	err = ensureAgent(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "key \"tls.crt\" not present in the Secret")
 
@@ -119,7 +122,7 @@ func Test_ensureAgent(t *testing.T) {
 	agentSecret = CreateAgentCertificateSecret("tls.crt", true, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+	err = ensureAgent(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "x509: malformed certificate")
 
@@ -127,7 +130,7 @@ func Test_ensureAgent(t *testing.T) {
 	agentSecret = CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 	secrets = mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-	err = ensureAgent(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+	err = ensureAgent(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 	assert.NoError(t, err)
 }
 

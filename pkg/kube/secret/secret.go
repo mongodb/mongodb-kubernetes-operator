@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -15,19 +16,19 @@ import (
 )
 
 type Getter interface {
-	GetSecret(objectKey client.ObjectKey) (corev1.Secret, error)
+	GetSecret(ctx context.Context, objectKey client.ObjectKey) (corev1.Secret, error)
 }
 
 type Updater interface {
-	UpdateSecret(secret corev1.Secret) error
+	UpdateSecret(ctx context.Context, secret corev1.Secret) error
 }
 
 type Creator interface {
-	CreateSecret(secret corev1.Secret) error
+	CreateSecret(ctx context.Context, secret corev1.Secret) error
 }
 
 type Deleter interface {
-	DeleteSecret(objectKey client.ObjectKey) error
+	DeleteSecret(ctx context.Context, key client.ObjectKey) error
 }
 
 type GetUpdater interface {
@@ -48,8 +49,8 @@ type GetUpdateCreateDeleter interface {
 	Deleter
 }
 
-func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, error) {
-	data, err := ReadStringData(getter, objectKey)
+func ReadKey(ctx context.Context, getter Getter, key string, objectKey client.ObjectKey) (string, error) {
+	data, err := ReadStringData(ctx, getter, objectKey)
 	if err != nil {
 		return "", err
 	}
@@ -60,8 +61,8 @@ func ReadKey(getter Getter, key string, objectKey client.ObjectKey) (string, err
 }
 
 // ReadByteData reads the Data field of the secret with the given objectKey
-func ReadByteData(getter Getter, objectKey client.ObjectKey) (map[string][]byte, error) {
-	secret, err := getter.GetSecret(objectKey)
+func ReadByteData(ctx context.Context, getter Getter, objectKey client.ObjectKey) (map[string][]byte, error) {
+	secret, err := getter.GetSecret(ctx, objectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +70,8 @@ func ReadByteData(getter Getter, objectKey client.ObjectKey) (map[string][]byte,
 }
 
 // ReadStringData reads the StringData field of the secret with the given objectKey
-func ReadStringData(getter Getter, key client.ObjectKey) (map[string]string, error) {
-	secret, err := getter.GetSecret(key)
+func ReadStringData(ctx context.Context, getter Getter, key client.ObjectKey) (map[string]string, error) {
+	secret, err := getter.GetSecret(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -87,25 +88,25 @@ func dataToStringData(data map[string][]byte) map[string]string {
 }
 
 // UpdateField updates a single field in the secret with the provided objectKey
-func UpdateField(getUpdater GetUpdater, objectKey client.ObjectKey, key, value string) error {
-	secret, err := getUpdater.GetSecret(objectKey)
+func UpdateField(ctx context.Context, getUpdater GetUpdater, objectKey client.ObjectKey, key, value string) error {
+	secret, err := getUpdater.GetSecret(ctx, objectKey)
 	if err != nil {
 		return err
 	}
 	secret.Data[key] = []byte(value)
-	return getUpdater.UpdateSecret(secret)
+	return getUpdater.UpdateSecret(ctx, secret)
 }
 
 // CreateOrUpdate creates the Secret if it doesn't exist, other wise it updates it
-func CreateOrUpdate(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
-	_, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
+func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
+	_, err := getUpdateCreator.GetSecret(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
 		if SecretNotExist(err) {
-			return getUpdateCreator.CreateSecret(secret)
+			return getUpdateCreator.CreateSecret(ctx, secret)
 		}
 		return err
 	}
-	return getUpdateCreator.UpdateSecret(secret)
+	return getUpdateCreator.UpdateSecret(ctx, secret)
 }
 
 // HasAllKeys returns true if the provided secret contains an element for every
@@ -121,8 +122,8 @@ func HasAllKeys(secret corev1.Secret, keys ...string) bool {
 
 // EnsureSecretWithKey makes sure the Secret with the given name has a key with the given value if the key is not already present.
 // if the key is present, it will return the existing value associated with this key.
-func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, nsName types.NamespacedName, ownerReferences []metav1.OwnerReference, key, value string) (string, error) {
-	existingSecret, err0 := secretGetUpdateCreateDeleter.GetSecret(nsName)
+func EnsureSecretWithKey(ctx context.Context, secretGetUpdateCreateDeleter GetUpdateCreateDeleter, nsName types.NamespacedName, ownerReferences []metav1.OwnerReference, key, value string) (string, error) {
+	existingSecret, err0 := secretGetUpdateCreateDeleter.GetSecret(ctx, nsName)
 	if err0 != nil {
 		if SecretNotExist(err0) {
 			s := Builder().
@@ -132,7 +133,7 @@ func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, ns
 				SetOwnerReferences(ownerReferences).
 				Build()
 
-			if err1 := secretGetUpdateCreateDeleter.CreateSecret(s); err1 != nil {
+			if err1 := secretGetUpdateCreateDeleter.CreateSecret(ctx, s); err1 != nil {
 				return "", err1
 			}
 			return value, nil
@@ -143,8 +144,8 @@ func EnsureSecretWithKey(secretGetUpdateCreateDeleter GetUpdateCreateDeleter, ns
 }
 
 // CopySecret copies secret object(data) from one cluster client to another, the from and to cluster-client can belong to the same or different clusters
-func CopySecret(fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName, destNsName types.NamespacedName) error {
-	s, err := fromClient.GetSecret(sourceSecretNsName)
+func CopySecret(ctx context.Context, fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName, destNsName types.NamespacedName) error {
+	s, err := fromClient.GetSecret(ctx, sourceSecretNsName)
 	if err != nil {
 		return err
 	}
@@ -156,12 +157,12 @@ func CopySecret(fromClient Getter, toClient GetUpdateCreator, sourceSecretNsName
 		SetDataType(s.Type).
 		Build()
 
-	return CreateOrUpdate(toClient, secretCopy)
+	return CreateOrUpdate(ctx, toClient, secretCopy)
 }
 
 // Exists return whether a secret with the given namespaced name exists
-func Exists(secretGetter Getter, nsName types.NamespacedName) (bool, error) {
-	_, err := secretGetter.GetSecret(nsName)
+func Exists(ctx context.Context, secretGetter Getter, nsName types.NamespacedName) (bool, error) {
+	_, err := secretGetter.GetSecret(ctx, nsName)
 
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
@@ -184,12 +185,12 @@ func HasOwnerReferences(secret corev1.Secret, ownerRefs []metav1.OwnerReference)
 }
 
 // CreateOrUpdateIfNeeded creates a secret if it doesn't exist, or updates it if needed.
-func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
+func CreateOrUpdateIfNeeded(ctx context.Context, getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
 	// Check if the secret exists
-	oldSecret, err := getUpdateCreator.GetSecret(types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
+	oldSecret, err := getUpdateCreator.GetSecret(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
 	if err != nil {
 		if apiErrors.IsNotFound(err) {
-			return getUpdateCreator.CreateSecret(secret)
+			return getUpdateCreator.CreateSecret(ctx, secret)
 		}
 		return err
 	}
@@ -200,7 +201,7 @@ func CreateOrUpdateIfNeeded(getUpdateCreator GetUpdateCreator, secret corev1.Sec
 	}
 
 	// They are different so we need to update it
-	return getUpdateCreator.UpdateSecret(secret)
+	return getUpdateCreator.UpdateSecret(ctx, secret)
 }
 
 func SecretNotExist(err error) bool {

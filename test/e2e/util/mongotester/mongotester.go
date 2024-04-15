@@ -29,13 +29,15 @@ import (
 )
 
 type Tester struct {
+	ctx         context.Context
 	mongoClient *mongo.Client
 	clientOpts  []*options.ClientOptions
 	resource    *mdbv1.MongoDBCommunity
 }
 
-func newTester(mdb *mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
+func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
 	t := &Tester{
+		ctx:      ctx,
 		resource: mdb,
 	}
 	t.clientOpts = append(t.clientOpts, opts...)
@@ -51,7 +53,7 @@ type OptionApplier interface {
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
 // and the hosts from the resource.
-func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
+func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
 	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
@@ -62,7 +64,7 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 	if len(users) == 1 {
 		user := users[0]
 		passwordSecret := corev1.Secret{}
-		err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
+		err := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: user.PasswordSecretRef.Name, Namespace: mdb.Namespace}, &passwordSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -75,10 +77,10 @@ func FromResource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplie
 		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
-	return newTester(&mdb, clientOpts...), nil
+	return newTester(ctx, &mdb, clientOpts...), nil
 }
 
-func FromX509Resource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
+func FromX509Resource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
 	var clientOpts []*options.ClientOptions
 
 	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
@@ -95,7 +97,7 @@ func FromX509Resource(t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionAp
 		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
-	return newTester(&mdb, clientOpts...), nil
+	return newTester(ctx, &mdb, clientOpts...), nil
 }
 
 // ConnectivitySucceeds performs a basic check that ensures that it is possible
@@ -110,7 +112,7 @@ func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 	return m.connectivityCheck(false, opts...)
 }
 
-func (m *Tester) ConnectivityRejected(opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) ConnectivityRejected(ctx context.Context, opts ...OptionApplier) func(t *testing.T) {
 	clientOpts := make([]*options.ClientOptions, 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
@@ -122,7 +124,7 @@ func (m *Tester) ConnectivityRejected(opts ...OptionApplier) func(t *testing.T) 
 			t.Skip()
 		}
 
-		if err := m.ensureClient(clientOpts...); err == nil {
+		if err := m.ensureClient(ctx, clientOpts...); err == nil {
 			t.Fatalf("No error, but it should have failed")
 		}
 	}
@@ -171,7 +173,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 	return m.hasAdminCommandResult(func(t *testing.T) bool {
 		var result CustomRolesResult
 		err := m.mongoClient.Database("admin").
-			RunCommand(context.TODO(),
+			RunCommand(m.ctx,
 				bson.D{
 					{Key: "rolesInfo", Value: 1},
 					{Key: "showPrivileges", Value: true},
@@ -195,7 +197,7 @@ func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, 
 	}
 
 	return func(t *testing.T) {
-		if err := m.ensureClient(clientOpts...); err != nil {
+		if err := m.ensureClient(m.ctx, clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
@@ -216,7 +218,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 	return m.hasAdminCommandResult(func(t *testing.T) bool {
 		var result map[string]interface{}
 		err := m.mongoClient.Database("admin").
-			RunCommand(context.TODO(), bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
+			RunCommand(m.ctx, bson.D{{Key: "getParameter", Value: 1}, {Key: key, Value: 1}}).
 			Decode(&result)
 		if err != nil {
 			t.Logf("Unable to get admin setting %s with error : %s", key, err)
@@ -244,16 +246,16 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 			t.Skip()
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), connectivityOpts.ContextTimeout)
+		ctx, cancel := context.WithTimeout(m.ctx, connectivityOpts.ContextTimeout)
 		defer cancel()
 
-		if err := m.ensureClient(clientOpts...); err != nil {
+		if err := m.ensureClient(ctx, clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
 		attempts := 0
 		// There can be a short time before the user can auth as the user
-		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+		err := wait.PollUntilContextTimeout(ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			attempts++
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
@@ -280,7 +282,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 
 func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCertSerialNumber *big.Int) func(*testing.T) {
 	return func(t *testing.T) {
-		tls, err := getClientTLSConfig(mdb)
+		tls, err := getClientTLSConfig(m.ctx, mdb)
 		assert.NoError(t, err)
 
 		// Reject all server certificates that don't have the expected serial number
@@ -292,13 +294,13 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 			return nil
 		}
 
-		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tls}); err != nil {
+		if err := m.ensureClient(m.ctx, &options.ClientOptions{TLSConfig: tls}); err != nil {
 			t.Fatal(err)
 		}
 
 		// Ping the cluster until it succeeds. The ping will only succeed with the right certificate.
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			if err := m.mongoClient.Ping(context.TODO(), nil); err != nil {
+		err = wait.PollUntilContextTimeout(m.ctx, 5*time.Second, 5*time.Minute, false, func(ctx context.Context) (done bool, err error) {
+			if err := m.mongoClient.Ping(m.ctx, nil); err != nil {
 				return false, nil
 			}
 			return true, nil
@@ -314,7 +316,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(*testing.T) {
 	return func(t *testing.T) {
 		connectivityOpts := defaults()
-		err := wait.Poll(connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, func() (done bool, err error) {
+		err := wait.PollUntilContextTimeout(m.ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			opts, err := m.getCommandLineOptions()
 			assert.NoError(t, err)
 
@@ -334,7 +336,7 @@ func (m *Tester) getCommandLineOptions() (bson.M, error) {
 	var result bson.M
 	err := m.mongoClient.
 		Database("admin").
-		RunCommand(context.TODO(), bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
+		RunCommand(m.ctx, bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
 		Decode(&result)
 
 	return result, err
@@ -357,7 +359,7 @@ func bsonToMap(m bson.M) map[string]interface{} {
 // StartBackgroundConnectivityTest starts periodically checking connectivity to the MongoDB deployment
 // with the defined interval. A cancel function is returned, which can be called to stop testing connectivity.
 func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Duration, opts ...OptionApplier) func() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(m.ctx)
 	t.Logf("Starting background connectivity test")
 
 	// start a go routine which will periodically check basic MongoDB connectivity
@@ -375,17 +377,17 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 	return func() {
 		cancel()
 		if t != nil {
-			t.Log("Context cancelled, no longer checking connectivity")
+			t.Log("TestContext cancelled, no longer checking connectivity")
 		}
 	}
 }
 
 // ensureClient establishes a mongo client connection applying any addition
 // client options on top of what were provided at construction.
-func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
+func (t *Tester) ensureClient(ctx context.Context, opts ...*options.ClientOptions) error {
 	allOpts := t.clientOpts
 	allOpts = append(allOpts, opts...)
-	mongoClient, err := mongo.Connect(context.TODO(), allOpts...)
+	mongoClient, err := mongo.Connect(ctx, allOpts...)
 	if err != nil {
 		return err
 	}
@@ -406,7 +408,7 @@ func (m *Tester) PrometheusEndpointIsReachable(username, password string, useTls
 	client := &http.Client{Transport: customTransport}
 
 	return func(t *testing.T) {
-		_ = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		_ = wait.PollUntilContextTimeout(m.ctx, 5*time.Second, 60*time.Second, false, func(ctx context.Context) (bool, error) {
 			var idx int
 
 			// Verify that the Prometheus port is enabled and responding with 200
@@ -507,8 +509,8 @@ func WithHosts(hosts []string) OptionApplier {
 }
 
 // WithTls configures the client to use tls
-func WithTls(mdb mdbv1.MongoDBCommunity) OptionApplier {
-	tlsConfig, err := getClientTLSConfig(mdb)
+func WithTls(ctx context.Context, mdb mdbv1.MongoDBCommunity) OptionApplier {
+	tlsConfig, err := getClientTLSConfig(ctx, mdb)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve TLS config: %s", err))
 	}
@@ -550,10 +552,10 @@ func WithReplicaSet(rsname string) OptionApplier {
 }
 
 // getClientTLSConfig reads in the tls fixtures
-func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
+func getClientTLSConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 	caSecret := corev1.Secret{}
 	caSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CaCertificateSecret.Name, Namespace: mdb.Namespace}
-	if err := e2eutil.TestClient.Get(context.TODO(), caSecretName, &caSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, caSecretName, &caSecret); err != nil {
 		return nil, err
 	}
 	caPEM := caSecret.Data["ca.crt"]
@@ -566,10 +568,10 @@ func getClientTLSConfig(mdb mdbv1.MongoDBCommunity) (*tls.Config, error) {
 }
 
 // GetAgentCert reads the agent key certificate
-func GetAgentCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+func GetAgentCert(ctx context.Context, mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := mdb.AgentCertificateSecretNamespacedName()
-	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, certSecretName, &certSecret); err != nil {
 		return nil, err
 	}
 	block, _ := pem.Decode(certSecret.Data["tls.crt"])
@@ -580,10 +582,10 @@ func GetAgentCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 }
 
 // GetClientCert reads the client key certificate
-func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
+func GetClientCert(ctx context.Context, mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := types.NamespacedName{Name: mdb.Spec.Security.TLS.CertificateKeySecret.Name, Namespace: mdb.Namespace}
-	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, certSecretName, &certSecret); err != nil {
 		return nil, err
 	}
 	block, _ := pem.Decode(certSecret.Data["tls.crt"])
@@ -593,10 +595,10 @@ func GetClientCert(mdb mdbv1.MongoDBCommunity) (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func GetUserCert(mdb mdbv1.MongoDBCommunity, userCertSecret string) (string, error) {
+func GetUserCert(ctx context.Context, mdb mdbv1.MongoDBCommunity, userCertSecret string) (string, error) {
 	certSecret := corev1.Secret{}
 	certSecretName := types.NamespacedName{Name: userCertSecret, Namespace: mdb.Namespace}
-	if err := e2eutil.TestClient.Get(context.TODO(), certSecretName, &certSecret); err != nil {
+	if err := e2eutil.TestClient.Get(ctx, certSecretName, &certSecret); err != nil {
 		return "", err
 	}
 	crt, _ := pem.Decode(certSecret.Data["tls.crt"])

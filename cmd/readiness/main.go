@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,7 +43,7 @@ func init() {
 // - If MongoDB: then just the 'statuses[0].IsInGoalState` field is used to learn if the Agent has reached the goal
 // - if AppDB: the 'mmsStatus[0].lastGoalVersionAchieved' field is compared with the one from mounted automation config
 // Additionally if the previous check hasn't returned 'true' an additional check for wait steps is being performed
-func isPodReady(conf config.Config) (bool, error) {
+func isPodReady(ctx context.Context, conf config.Config) (bool, error) {
 	healthStatus, err := parseHealthStatus(conf.HealthStatusReader)
 	if err != nil {
 		logger.Errorf("There was problem parsing health status file: %s", err)
@@ -56,7 +57,7 @@ func isPodReady(conf config.Config) (bool, error) {
 	}
 
 	// If the agent has reached the goal state
-	inGoalState, err := isInGoalState(healthStatus, conf)
+	inGoalState, err := isInGoalState(ctx, healthStatus, conf)
 	if err != nil {
 		logger.Errorf("There was problem checking the health status: %s", err)
 		return false, err
@@ -159,9 +160,9 @@ func isWaitStep(status *health.StepStatus) bool {
 	return false
 }
 
-func isInGoalState(health health.Status, conf config.Config) (bool, error) {
+func isInGoalState(ctx context.Context, health health.Status, conf config.Config) (bool, error) {
 	if isHeadlessMode() {
-		return headless.PerformCheckHeadlessMode(health, conf)
+		return headless.PerformCheckHeadlessMode(ctx, health, conf)
 	}
 	return performCheckOMMode(health), nil
 }
@@ -216,6 +217,7 @@ func initLogger(l *lumberjack.Logger) {
 }
 
 func main() {
+	ctx := context.Background()
 	clientSet, err := kubernetesClientset()
 	if err != nil {
 		panic(err)
@@ -238,7 +240,7 @@ func main() {
 		panic(err)
 	}
 
-	ready, err := isPodReady(cfg)
+	ready, err := isPodReady(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}

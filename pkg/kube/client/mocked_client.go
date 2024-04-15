@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,14 @@ type patchValue struct {
 // mockedClient dynamically creates maps to store instances of k8sClient.Object
 type mockedClient struct {
 	backingMap map[reflect.Type]map[k8sClient.ObjectKey]k8sClient.Object
+}
+
+func (m mockedClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	panic("not implemented")
+}
+
+func (m mockedClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	panic("not implemented")
 }
 
 func (m mockedClient) Create(_ context.Context, obj k8sClient.Object, _ ...k8sClient.CreateOption) error {

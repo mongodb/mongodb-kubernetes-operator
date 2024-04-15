@@ -18,9 +18,9 @@ import (
 )
 
 // EnableTLS will upgrade an existing TLS cluster to use TLS.
-func EnableTLS(mdb *mdbv1.MongoDBCommunity, optional bool) func(*testing.T) {
+func EnableTLS(ctx context.Context, mdb *mdbv1.MongoDBCommunity, optional bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := e2eutil.UpdateMongoDBResource(mdb, func(db *mdbv1.MongoDBCommunity) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Security.TLS = e2eutil.NewTestTLSConfig(optional)
 		})
 		if err != nil {
@@ -29,7 +29,7 @@ func EnableTLS(mdb *mdbv1.MongoDBCommunity, optional bool) func(*testing.T) {
 	}
 }
 
-func ExtendCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func ExtendCACertificate(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		certGVR := schema.GroupVersionResource{
 			Group:    "cert-manager.io",
@@ -56,44 +56,44 @@ func ExtendCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 		}
 		payload, err := json.Marshal(patch)
 		assert.NoError(t, err)
-		_, err = caCertificateClient.Patch(context.TODO(), "tls-selfsigned-ca", types.JSONPatchType, payload, metav1.PatchOptions{})
+		_, err = caCertificateClient.Patch(ctx, "tls-selfsigned-ca", types.JSONPatchType, payload, metav1.PatchOptions{})
 		assert.NoError(t, err)
 	}
 }
 
-func RotateCertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func RotateCertificate(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		certKeySecretName := mdb.TLSSecretNamespacedName()
-		rotateCertManagerSecret(certKeySecretName, t)
+		rotateCertManagerSecret(ctx, certKeySecretName, t)
 	}
 }
 
-func RotateAgentCertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func RotateAgentCertificate(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		agentCertSecretName := mdb.AgentCertificateSecretNamespacedName()
-		rotateCertManagerSecret(agentCertSecretName, t)
+		rotateCertManagerSecret(ctx, agentCertSecretName, t)
 	}
 }
 
-func RotateCACertificate(mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func RotateCACertificate(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		caCertSecretName := mdb.TLSCaCertificateSecretNamespacedName()
-		rotateCertManagerSecret(caCertSecretName, t)
+		rotateCertManagerSecret(ctx, caCertSecretName, t)
 	}
 }
 
-func rotateCertManagerSecret(secretName types.NamespacedName, t *testing.T) {
+func rotateCertManagerSecret(ctx context.Context, secretName types.NamespacedName, t *testing.T) {
 	currentSecret := corev1.Secret{}
-	err := e2eutil.TestClient.Get(context.TODO(), secretName, &currentSecret)
+	err := e2eutil.TestClient.Get(ctx, secretName, &currentSecret)
 	assert.NoError(t, err)
 
 	// delete current cert secret, cert-manager should generate a new one
-	err = e2eutil.TestClient.Delete(context.TODO(), &currentSecret)
+	err = e2eutil.TestClient.Delete(ctx, &currentSecret)
 	assert.NoError(t, err)
 
 	newSecret := corev1.Secret{}
-	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
-		if err := e2eutil.TestClient.Get(context.TODO(), secretName, &newSecret); err != nil {
+	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 1*time.Minute, false, func(ctx context.Context) (done bool, err error) {
+		if err := e2eutil.TestClient.Get(ctx, secretName, &newSecret); err != nil {
 			return false, nil
 		}
 		return true, nil
