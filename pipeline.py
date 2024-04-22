@@ -16,6 +16,14 @@ VALID_IMAGE_NAMES = {
     "e2e",
 }
 
+AGENT_DISTRO_KEY = "agent_distro"
+TOOLS_DISTRO_KEY = "tools_distro"
+
+AGENT_DISTROS_PER_ARCH = {
+    "amd64": {AGENT_DISTRO_KEY: "rhel7_x86_64", TOOLS_DISTRO_KEY: "rhel70-x86_64"},
+    "arm64": {AGENT_DISTRO_KEY: "amzn2_aarch64", TOOLS_DISTRO_KEY: "rhel82-aarch64"},
+}
+
 
 def load_release() -> Dict:
     with open("release.json") as f:
@@ -71,6 +79,9 @@ def build_and_push_image(
     for arch in architectures:
         image_tag = f"{image_name}"
         args["architecture"] = arch
+        if image_name == "agent":
+            args[AGENT_DISTRO_KEY] = AGENT_DISTROS_PER_ARCH[arch][AGENT_DISTRO_KEY]
+            args[TOOLS_DISTRO_KEY] = AGENT_DISTROS_PER_ARCH[arch][TOOLS_DISTRO_KEY]
         process_image(
             image_tag,
             build_args=args,
