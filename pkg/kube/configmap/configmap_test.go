@@ -1,6 +1,7 @@
 package configmap
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ type configMapGetter struct {
 	cm corev1.ConfigMap
 }
 
-func (c configMapGetter) GetConfigMap(objectKey client.ObjectKey) (corev1.ConfigMap, error) {
+func (c configMapGetter) GetConfigMap(ctx context.Context, objectKey client.ObjectKey) (corev1.ConfigMap, error) {
 	if c.cm.Name == objectKey.Name && c.cm.Namespace == objectKey.Namespace {
 		return c.cm, nil
 	}
@@ -29,6 +30,7 @@ func newGetter(cm corev1.ConfigMap) Getter {
 }
 
 func TestReadKey(t *testing.T) {
+	ctx := context.Background()
 	getter := newGetter(
 		Builder().
 			SetName("name").
@@ -38,19 +40,20 @@ func TestReadKey(t *testing.T) {
 			Build(),
 	)
 
-	value, err := ReadKey(getter, "key1", nsName("namespace", "name"))
+	value, err := ReadKey(ctx, getter, "key1", nsName("namespace", "name"))
 	assert.Equal(t, "value1", value)
 	assert.NoError(t, err)
 
-	value, err = ReadKey(getter, "key2", nsName("namespace", "name"))
+	value, err = ReadKey(ctx, getter, "key2", nsName("namespace", "name"))
 	assert.Equal(t, "value2", value)
 	assert.NoError(t, err)
 
-	_, err = ReadKey(getter, "key3", nsName("namespace", "name"))
+	_, err = ReadKey(ctx, getter, "key3", nsName("namespace", "name"))
 	assert.Error(t, err)
 }
 
 func TestReadData(t *testing.T) {
+	ctx := context.Background()
 	getter := newGetter(
 		Builder().
 			SetName("name").
@@ -60,7 +63,7 @@ func TestReadData(t *testing.T) {
 			Build(),
 	)
 
-	data, err := ReadData(getter, nsName("namespace", "name"))
+	data, err := ReadData(ctx, getter, nsName("namespace", "name"))
 	assert.NoError(t, err)
 
 	assert.Contains(t, data, "key1")
@@ -71,6 +74,7 @@ func TestReadData(t *testing.T) {
 }
 
 func TestReadFileLikeField(t *testing.T) {
+	ctx := context.Background()
 	getter := newGetter(
 		Builder().
 			SetName("name").
@@ -79,13 +83,14 @@ func TestReadFileLikeField(t *testing.T) {
 			Build(),
 	)
 
-	data, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key1", "value1")
+	data, err := ReadFileLikeField(ctx, getter, nsName("namespace", "name"), "key1", "value1")
 	assert.NoError(t, err)
 
 	assert.Equal(t, "1", data)
 }
 
 func TestReadFileLikeField_InvalidExternalKey(t *testing.T) {
+	ctx := context.Background()
 	getter := newGetter(
 		Builder().
 			SetName("name").
@@ -94,12 +99,13 @@ func TestReadFileLikeField_InvalidExternalKey(t *testing.T) {
 			Build(),
 	)
 
-	_, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key2", "value1")
+	_, err := ReadFileLikeField(ctx, getter, nsName("namespace", "name"), "key2", "value1")
 	assert.Error(t, err)
 	assert.Equal(t, "key key2 is not present in ConfigMap namespace/name", err.Error())
 }
 
 func TestReadFileLikeField_InvalidInternalKey(t *testing.T) {
+	ctx := context.Background()
 	getter := newGetter(
 		Builder().
 			SetName("name").
@@ -108,7 +114,7 @@ func TestReadFileLikeField_InvalidInternalKey(t *testing.T) {
 			Build(),
 	)
 
-	_, err := ReadFileLikeField(getter, nsName("namespace", "name"), "key1", "value3")
+	_, err := ReadFileLikeField(ctx, getter, nsName("namespace", "name"), "key1", "value3")
 	assert.Error(t, err)
 	assert.Equal(t, "key value3 is not present in the key1 field of ConfigMap namespace/name", err.Error())
 }
@@ -117,14 +123,14 @@ type configMapGetUpdater struct {
 	cm corev1.ConfigMap
 }
 
-func (c configMapGetUpdater) GetConfigMap(objectKey client.ObjectKey) (corev1.ConfigMap, error) {
+func (c configMapGetUpdater) GetConfigMap(ctx context.Context, objectKey client.ObjectKey) (corev1.ConfigMap, error) {
 	if c.cm.Name == objectKey.Name && c.cm.Namespace == objectKey.Namespace {
 		return c.cm, nil
 	}
 	return corev1.ConfigMap{}, notFoundError()
 }
 
-func (c *configMapGetUpdater) UpdateConfigMap(cm corev1.ConfigMap) error {
+func (c *configMapGetUpdater) UpdateConfigMap(ctx context.Context, cm corev1.ConfigMap) error {
 	c.cm = cm
 	return nil
 }
@@ -136,6 +142,7 @@ func newGetUpdater(cm corev1.ConfigMap) GetUpdater {
 }
 
 func TestUpdateField(t *testing.T) {
+	ctx := context.Background()
 	getUpdater := newGetUpdater(
 		Builder().
 			SetName("name").
@@ -144,11 +151,11 @@ func TestUpdateField(t *testing.T) {
 			SetDataField("field2", "value2").
 			Build(),
 	)
-	err := UpdateField(getUpdater, nsName("namespace", "name"), "field1", "newValue")
+	err := UpdateField(ctx, getUpdater, nsName("namespace", "name"), "field1", "newValue")
 	assert.NoError(t, err)
-	val, _ := ReadKey(getUpdater, "field1", nsName("namespace", "name"))
+	val, _ := ReadKey(ctx, getUpdater, "field1", nsName("namespace", "name"))
 	assert.Equal(t, "newValue", val)
-	val2, _ := ReadKey(getUpdater, "field2", nsName("namespace", "name"))
+	val2, _ := ReadKey(ctx, getUpdater, "field2", nsName("namespace", "name"))
 	assert.Equal(t, "value2", val2)
 }
 

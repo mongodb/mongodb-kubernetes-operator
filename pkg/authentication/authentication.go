@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -13,19 +14,19 @@ import (
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/constants"
 )
 
-func Enable(auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
+func Enable(ctx context.Context, auth *automationconfig.Auth, secretGetUpdateCreateDeleter secret.GetUpdateCreateDeleter, mdb authtypes.Configurable, agentCertSecret types.NamespacedName) error {
 	scramEnabled := false
 	for _, authMode := range mdb.GetAuthOptions().AuthMechanisms {
 		switch authMode {
 		case constants.Sha1, constants.Sha256:
 			if !scramEnabled {
-				if err := scram.Enable(auth, secretGetUpdateCreateDeleter, mdb); err != nil {
+				if err := scram.Enable(ctx, auth, secretGetUpdateCreateDeleter, mdb); err != nil {
 					return fmt.Errorf("could not configure scram authentication: %s", err)
 				}
 				scramEnabled = true
 			}
 		case constants.X509:
-			if err := x509.Enable(auth, secretGetUpdateCreateDeleter, mdb, agentCertSecret); err != nil {
+			if err := x509.Enable(ctx, auth, secretGetUpdateCreateDeleter, mdb, agentCertSecret); err != nil {
 				return fmt.Errorf("could not configure x509 authentication: %s", err)
 			}
 		}

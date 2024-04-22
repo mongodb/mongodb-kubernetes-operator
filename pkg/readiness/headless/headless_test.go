@@ -15,6 +15,7 @@ import (
 )
 
 func TestPerformCheckHeadlessMode(t *testing.T) {
+	ctx := context.Background()
 	c := testConfig()
 
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 11))
@@ -24,12 +25,12 @@ func TestPerformCheckHeadlessMode(t *testing.T) {
 		}},
 	}
 
-	achieved, err := PerformCheckHeadlessMode(status, c)
+	achieved, err := PerformCheckHeadlessMode(ctx, status, c)
 
 	require.NoError(t, err)
 	assert.False(t, achieved)
 
-	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
+	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(ctx, c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "10"}, thePod.Annotations)
 }
 

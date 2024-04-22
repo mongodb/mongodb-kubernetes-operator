@@ -1,6 +1,7 @@
 package replica_set
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -22,5 +23,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSet(t *testing.T) {
-	replica_set_enterprise_upgrade.DeployEnterpriseAndUpgradeTest(t, versionsForUpgrades)
+	ctx := context.Background()
+	replica_set_enterprise_upgrade.DeployEnterpriseAndUpgradeTest(ctx, t, versionsForUpgrades)
 }

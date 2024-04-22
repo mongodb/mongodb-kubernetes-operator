@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	kubeClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/stretchr/testify/assert"
@@ -98,6 +99,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 
 }
 func TestReplicaSetReconcilerCleanupPemSecret(t *testing.T) {
+	ctx := context.Background()
 	lastAppliedSpec := mdbv1.MongoDBCommunitySpec{
 		Security: mdbv1.Security{
 			Authentication: mdbv1.Authentication{
@@ -134,21 +136,21 @@ func TestReplicaSetReconcilerCleanupPemSecret(t *testing.T) {
 		},
 	}
 
-	mgr := kubeClient.NewManager(&mdb)
+	mgr := kubeClient.NewManager(ctx, &mdb)
 
 	client := kubeClient.NewClient(mgr.GetClient())
-	err := createAgentCertPemSecret(client, mdb, "CERT", "KEY", "")
+	err := createAgentCertPemSecret(ctx, client, mdb, "CERT", "KEY", "")
 	assert.NoError(t, err)
 
 	r := NewReconciler(mgr)
 
-	secret, err := r.client.GetSecret(mdb.AgentCertificatePemSecretNamespacedName())
+	secret, err := r.client.GetSecret(ctx, mdb.AgentCertificatePemSecretNamespacedName())
 	assert.NoError(t, err)
 	assert.Equal(t, "CERT", string(secret.Data["tls.crt"]))
 	assert.Equal(t, "KEY", string(secret.Data["tls.key"]))
 
-	r.cleanupPemSecret(mdb.Spec, lastAppliedSpec, "my-ns")
+	r.cleanupPemSecret(ctx, mdb.Spec, lastAppliedSpec, "my-ns")
 
-	_, err = r.client.GetSecret(mdb.AgentCertificatePemSecretNamespacedName())
+	_, err = r.client.GetSecret(ctx, mdb.AgentCertificatePemSecretNamespacedName())
 	assert.Error(t, err)
 }

@@ -22,6 +22,7 @@ import (
 // TestDeadlockDetection verifies that if the agent is stuck in "WaitAllRsMembersUp" phase (started > 15 seconds ago)
 // then the function returns "ready"
 func TestDeadlockDetection(t *testing.T) {
+	ctx := context.Background()
 	type TestConfig struct {
 		conf            config.Config
 		isErrorExpected bool
@@ -108,7 +109,7 @@ func TestDeadlockDetection(t *testing.T) {
 	for testName, _ := range tests {
 		testConfig := tests[testName]
 		t.Run(testName, func(t *testing.T) {
-			ready, err := isPodReady(testConfig.conf)
+			ready, err := isPodReady(ctx, testConfig.conf)
 			if testConfig.isErrorExpected {
 				assert.Error(t, err)
 			} else {
@@ -241,8 +242,9 @@ func TestObtainingCurrentStep(t *testing.T) {
 // In this case, the Readiness Probe needs to return Ready and let the StatefulSet Controller to proceed
 // with the Pod rollout.
 func TestReadyWithWaitForCorrectBinaries(t *testing.T) {
+	ctx := context.Background()
 	c := testConfigWithMongoUp("testdata/health-status-ok-with-WaitForCorrectBinaries.json", time.Second*30)
-	ready, err := isPodReady(c)
+	ready, err := isPodReady(ctx, c)
 
 	assert.True(t, ready)
 	assert.NoError(t, err)
@@ -254,26 +256,28 @@ func TestReadyWithWaitForCorrectBinaries(t *testing.T) {
 // (as Agent doesn't marks all the step statuses finished when it reaches the goal) but this doesn't affect the result
 // as the whole plan is complete already
 func TestHeadlessAgentHasntReachedGoal(t *testing.T) {
+	ctx := context.Background()
 	t.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 6))
-	ready, err := isPodReady(c)
+	ready, err := isPodReady(ctx, c)
 	assert.False(t, ready)
 	assert.NoError(t, err)
-	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
+	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(ctx, c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
 }
 
 // TestHeadlessAgentReachedGoal verifies that the probe reports "true" if the config version is equal to the
 // last achieved version of the Agent
 func TestHeadlessAgentReachedGoal(t *testing.T) {
+	ctx := context.Background()
 	t.Setenv(headlessAgent, "true")
 	c := testConfig("testdata/health-status-ok.json")
 	c.ClientSet = fake.NewSimpleClientset(testdata.TestPod(c.Namespace, c.Hostname), testdata.TestSecret(c.Namespace, c.AutomationConfigSecretName, 5))
-	ready, err := isPodReady(c)
+	ready, err := isPodReady(ctx, c)
 	assert.True(t, ready)
 	assert.NoError(t, err)
-	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(context.TODO(), c.Hostname, metav1.GetOptions{})
+	thePod, _ := c.ClientSet.CoreV1().Pods(c.Namespace).Get(ctx, c.Hostname, metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "5"}, thePod.Annotations)
 }
 

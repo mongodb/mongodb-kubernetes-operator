@@ -45,18 +45,18 @@ func TlsTestDataDir() string {
 
 // UpdateMongoDBResource applies the provided function to the most recent version of the MongoDB resource
 // and retries when there are conflicts
-func UpdateMongoDBResource(original *mdbv1.MongoDBCommunity, updateFunc func(*mdbv1.MongoDBCommunity)) error {
-	err := TestClient.Get(context.TODO(), types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
+func UpdateMongoDBResource(ctx context.Context, original *mdbv1.MongoDBCommunity, updateFunc func(*mdbv1.MongoDBCommunity)) error {
+	err := TestClient.Get(ctx, types.NamespacedName{Name: original.Name, Namespace: original.Namespace}, original)
 	if err != nil {
 		return err
 	}
 
 	updateFunc(original)
 
-	return TestClient.Update(context.TODO(), original)
+	return TestClient.Update(ctx, original)
 }
 
-func NewTestMongoDB(ctx *Context, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
+func NewTestMongoDB(ctx *TestContext, name string, namespace string) (mdbv1.MongoDBCommunity, mdbv1.MongoDBUser) {
 	mongodbNamespace := namespace
 	if mongodbNamespace == "" {
 		mongodbNamespace = OperatorNamespace
@@ -166,13 +166,13 @@ func NewTestTLSConfig(optional bool) mdbv1.TLS {
 	}
 }
 
-func NewPrometheusConfig(namespace string) *mdbv1.Prometheus {
+func NewPrometheusConfig(ctx context.Context, namespace string) *mdbv1.Prometheus {
 	sec := secret.Builder().
 		SetName("prom-secret").
 		SetNamespace(namespace).
 		SetField("password", "prom-password").
 		Build()
-	err := TestClient.Create(context.TODO(), &sec, &CleanupOptions{})
+	err := TestClient.Create(ctx, &sec, &CleanupOptions{})
 	if err != nil {
 		if !apiErrors.IsAlreadyExists(err) {
 			panic(fmt.Sprintf("Error trying to create secret: %s", err))
@@ -187,22 +187,22 @@ func NewPrometheusConfig(namespace string) *mdbv1.Prometheus {
 	}
 }
 
-func ensureObject(ctx *Context, obj k8sClient.Object) error {
+func ensureObject(ctx *TestContext, obj k8sClient.Object) error {
 	key := k8sClient.ObjectKeyFromObject(obj)
 	obj.SetLabels(TestLabels())
 
-	err := TestClient.Get(context.TODO(), key, obj)
+	err := TestClient.Get(ctx.Ctx, key, obj)
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
 			return err
 		}
-		err = TestClient.Create(context.TODO(), obj, &CleanupOptions{TestContext: ctx})
+		err = TestClient.Create(ctx.Ctx, obj, &CleanupOptions{TestContext: ctx})
 		if err != nil {
 			return err
 		}
 	} else {
 		fmt.Printf("%s %s/%s already exists!\n", reflect.TypeOf(obj), key.Namespace, key.Name)
-		err = TestClient.Update(context.TODO(), obj)
+		err = TestClient.Update(ctx.Ctx, obj)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func ensureObject(ctx *Context, obj k8sClient.Object) error {
 }
 
 // EnsureNamespace checks that the given namespace exists and creates it if not.
-func EnsureNamespace(ctx *Context, namespace string) error {
+func EnsureNamespace(ctx *TestContext, namespace string) error {
 	return ensureObject(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,

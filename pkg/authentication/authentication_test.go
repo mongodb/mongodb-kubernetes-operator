@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"context"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +17,7 @@ import (
 )
 
 func TestEnable(t *testing.T) {
+	ctx := context.Background()
 	t.Run("SCRAM only", func(t *testing.T) {
 		auth := automationconfig.Auth{}
 		user := mocks.BuildScramMongoDBUser("my-user")
@@ -27,7 +29,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -49,7 +51,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -67,7 +69,7 @@ func TestEnable(t *testing.T) {
 		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(agentSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -90,7 +92,7 @@ func TestEnable(t *testing.T) {
 			Build()
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)
@@ -115,7 +117,7 @@ func TestEnable(t *testing.T) {
 		agentSecret := x509.CreateAgentCertificateSecret("tls.crt", false, mdb.AgentCertificateSecretNamespacedName())
 		secrets := mocks.NewMockedSecretGetUpdateCreateDeleter(passwordSecret, agentSecret)
 
-		err := Enable(&auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
+		err := Enable(ctx, &auth, secrets, mdb, mdb.AgentCertificateSecretNamespacedName())
 		assert.NoError(t, err)
 
 		assert.Equal(t, false, auth.Disabled)

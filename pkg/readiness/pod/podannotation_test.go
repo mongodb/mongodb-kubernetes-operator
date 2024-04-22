@@ -17,6 +17,7 @@ import (
 
 // TestPatchPodAnnotation verifies that patching of the pod works correctly
 func TestPatchPodAnnotation(t *testing.T) {
+	ctx := context.Background()
 	clientset := fake.NewSimpleClientset(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-replica-set-0",
@@ -27,20 +28,21 @@ func TestPatchPodAnnotation(t *testing.T) {
 		},
 	})
 
-	pod, _ := clientset.CoreV1().Pods("test-ns").Get(context.TODO(), "my-replica-set-0", metav1.GetOptions{})
+	pod, _ := clientset.CoreV1().Pods("test-ns").Get(ctx, "my-replica-set-0", metav1.GetOptions{})
 	assert.Empty(t, pod.Annotations[mongodbAgentVersionAnnotation])
 
 	// adding the annotations
-	assert.NoError(t, PatchPodAnnotation("test-ns", 1, "my-replica-set-0", clientset))
-	pod, _ = clientset.CoreV1().Pods("test-ns").Get(context.TODO(), "my-replica-set-0", metav1.GetOptions{})
+	assert.NoError(t, PatchPodAnnotation(ctx, "test-ns", 1, "my-replica-set-0", clientset))
+	pod, _ = clientset.CoreV1().Pods("test-ns").Get(ctx, "my-replica-set-0", metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "1"}, pod.Annotations)
 
 	// changing the annotations - no new annotations were added
-	assert.NoError(t, PatchPodAnnotation("test-ns", 2, "my-replica-set-0", clientset))
-	pod, _ = clientset.CoreV1().Pods("test-ns").Get(context.TODO(), "my-replica-set-0", metav1.GetOptions{})
+	assert.NoError(t, PatchPodAnnotation(ctx, "test-ns", 2, "my-replica-set-0", clientset))
+	pod, _ = clientset.CoreV1().Pods("test-ns").Get(ctx, "my-replica-set-0", metav1.GetOptions{})
 	assert.Equal(t, map[string]string{"agent.mongodb.com/version": "2"}, pod.Annotations)
 }
 
 func TestUpdatePodAnnotationPodNotFound(t *testing.T) {
-	assert.True(t, apiErrors.IsNotFound(PatchPodAnnotation("wrong-ns", 1, "my-replica-set-0", fake.NewSimpleClientset())))
+	ctx := context.Background()
+	assert.True(t, apiErrors.IsNotFound(PatchPodAnnotation(ctx, "wrong-ns", 1, "my-replica-set-0", fake.NewSimpleClientset())))
 }

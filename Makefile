@@ -46,16 +46,25 @@ vet: ## Run go vet against code
 generate: controller-gen ## Generate code
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-$(GO-LICENSES):
-	go install github.com/google/go-licenses@latest
+$(GO_LICENSES):
+	@if ! which $@ &> /dev/null; then \
+	go install github.com/google/go-licenses@latest; \
+	fi
 
-licenses.csv: go.mod ## Track licenses in a CSV file
+licenses.csv: go.mod $(GO_LICENSES) ## Track licenses in a CSV file
 	@echo "Tracking licenses into file $@"
 	@echo "========================================"
 	GOOS=linux GOARCH=amd64 $(GO_LICENSES) csv --include_tests $(BASE_GO_PACKAGE)/... > $@
 
-.PHONY: check-licenses
-check-licenses: licenses.csv  ## Check licenses
+# We only check that go.mod is NOT newer than licenses.csv because the CI
+# tends to generate slightly different results, so content comparison wouldn't work
+licenses-tracked: ## Checks license.csv is up to date
+	@if [ go.mod -nt licenses.csv ]; then \
+	echo "License.csv is stale! Please run 'make licenses.csv' and commit"; exit 1; \
+	else echo "License.csv OK (up to date)"; fi
+
+.PHONY: check-licenses-compliance
+check-licenses-compliance: licenses.csv  ## Check licenses are compliant with our restrictions
 	@echo "Checking licenses not to be: $(DISALLOWED_LICENSES)"
 	@echo "============================================"
 	GOOS=linux GOARCH=amd64 $(GO_LICENSES) check --include_tests $(BASE_GO_PACKAGE)/... \
@@ -63,8 +72,11 @@ check-licenses: licenses.csv  ## Check licenses
 	@echo "--------------------"
 	@echo "Licenses check: PASS"
 
+.PHONY: check-licenses
+check-licenses: licenses-tracked check-licenses-compliance ## Check license tracking & compliance
+
 TEST ?= ./pkg/... ./api/... ./cmd/... ./controllers/... ./test/e2e/util/mongotester/...
-test: generate fmt vet manifests check-licenses ## Run unit tests
+test: generate fmt vet manifests ## Run unit tests
 	go test $(options) $(TEST) -coverprofile cover.out
 
 manager: generate fmt vet ## Build operator binary

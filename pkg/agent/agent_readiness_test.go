@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -22,17 +23,18 @@ func init() {
 }
 
 func TestAllReachedGoalState(t *testing.T) {
+	ctx := context.Background()
 	sts, err := statefulset.NewBuilder().SetName("sts").SetNamespace("test-ns").Build()
 	assert.NoError(t, err)
 
 	t.Run("Returns true if all pods are not found", func(t *testing.T) {
-		ready, err := AllReachedGoalState(sts, mockPodGetter{}, 3, 3, zap.S())
+		ready, err := AllReachedGoalState(ctx, sts, mockPodGetter{}, 3, 3, zap.S())
 		assert.NoError(t, err)
 		assert.True(t, ready)
 	})
 
 	t.Run("Returns true if all pods are ready", func(t *testing.T) {
-		ready, err := AllReachedGoalState(sts, mockPodGetter{pods: []corev1.Pod{
+		ready, err := AllReachedGoalState(ctx, sts, mockPodGetter{pods: []corev1.Pod{
 			createPodWithAgentAnnotation("3"),
 			createPodWithAgentAnnotation("3"),
 			createPodWithAgentAnnotation("3"),
@@ -42,7 +44,7 @@ func TestAllReachedGoalState(t *testing.T) {
 	})
 
 	t.Run("Returns false if one pod is not ready", func(t *testing.T) {
-		ready, err := AllReachedGoalState(sts, mockPodGetter{pods: []corev1.Pod{
+		ready, err := AllReachedGoalState(ctx, sts, mockPodGetter{pods: []corev1.Pod{
 			createPodWithAgentAnnotation("2"),
 			createPodWithAgentAnnotation("3"),
 			createPodWithAgentAnnotation("3"),
@@ -52,7 +54,7 @@ func TestAllReachedGoalState(t *testing.T) {
 	})
 
 	t.Run("Returns true when the pods are not found", func(t *testing.T) {
-		ready, err := AllReachedGoalState(sts, mockPodGetter{shouldReturnNotFoundError: true}, 3, 3, zap.S())
+		ready, err := AllReachedGoalState(ctx, sts, mockPodGetter{shouldReturnNotFoundError: true}, 3, 3, zap.S())
 		assert.NoError(t, err)
 		assert.True(t, ready)
 	})
@@ -92,7 +94,7 @@ type mockPodGetter struct {
 	shouldReturnNotFoundError bool
 }
 
-func (m mockPodGetter) GetPod(client.ObjectKey) (corev1.Pod, error) {
+func (m mockPodGetter) GetPod(context.Context, client.ObjectKey) (corev1.Pod, error) {
 	if m.shouldReturnNotFoundError || m.currPodIndex >= len(m.pods) {
 		return corev1.Pod{}, notFoundError()
 	}

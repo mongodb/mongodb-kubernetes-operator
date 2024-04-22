@@ -13,16 +13,17 @@ import (
 )
 
 const (
-	defaultAgentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
-	defaultLogPath                   = "/var/log/mongodb-mms-automation/readiness.log"
-	podNamespaceEnv                  = "POD_NAMESPACE"
-	automationConfigSecretEnv        = "AUTOMATION_CONFIG_MAP" //nolint
-	agentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
-	logPathEnv                       = "LOG_FILE_PATH"
-	hostNameEnv                      = "HOSTNAME"
-	readinessProbeLoggerBackups      = "READINESS_PROBE_LOGGER_BACKUPS"
-	readinessProbeLoggerMaxSize      = "READINESS_PROBE_LOGGER_MAX_SIZE"
-	readinessProbeLoggerMaxAge       = "READINESS_PROBE_LOGGER_MAX_AGE"
+	DefaultAgentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
+	AgentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
+
+	defaultLogPath              = "/var/log/mongodb-mms-automation/readiness.log"
+	podNamespaceEnv             = "POD_NAMESPACE"
+	automationConfigSecretEnv   = "AUTOMATION_CONFIG_MAP" //nolint
+	logPathEnv                  = "LOG_FILE_PATH"
+	hostNameEnv                 = "HOSTNAME"
+	readinessProbeLoggerBackups = "READINESS_PROBE_LOGGER_BACKUPS"
+	readinessProbeLoggerMaxSize = "READINESS_PROBE_LOGGER_MAX_SIZE"
+	readinessProbeLoggerMaxAge  = "READINESS_PROBE_LOGGER_MAX_AGE"
 )
 
 type Config struct {
@@ -32,12 +33,10 @@ type Config struct {
 	AutomationConfigSecretName string
 	HealthStatusReader         io.Reader
 	LogFilePath                string
-	Logger                     *lumberjack.Logger
 }
 
-func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Config, error) {
-	healthStatusFilePath := getEnvOrDefault(agentHealthStatusFilePathEnv, defaultAgentHealthStatusFilePath)
-	logFilePath := getEnvOrDefault(logPathEnv, defaultLogPath)
+func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file *os.File) (Config, error) {
+	logFilePath := GetEnvOrDefault(logPathEnv, defaultLogPath)
 
 	var namespace, automationConfigName, hostname string
 	if isHeadless {
@@ -56,19 +55,8 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 		}
 	}
 
-	logger := &lumberjack.Logger{
-		Filename:   readinessProbeLogFilePath(),
-		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
-		MaxSize:    readInt(readinessProbeLoggerMaxSize),
-		MaxAge:     readInt(readinessProbeLoggerMaxAge),
-	}
-
 	// Note, that we shouldn't close the file here - it will be closed very soon by the 'ioutil.ReadAll'
 	// in main.go
-	file, err := os.Open(healthStatusFilePath)
-	if err != nil {
-		return Config{}, err
-	}
 	return Config{
 		ClientSet:                  clientSet,
 		Namespace:                  namespace,
@@ -76,15 +64,24 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool) (Con
 		Hostname:                   hostname,
 		HealthStatusReader:         file,
 		LogFilePath:                logFilePath,
-		Logger:                     logger,
 	}, nil
 }
 
-func readinessProbeLogFilePath() string {
-	return getEnvOrDefault(logPathEnv, defaultLogPath)
+func GetLogger() *lumberjack.Logger {
+	logger := &lumberjack.Logger{
+		Filename:   readinessProbeLogFilePath(),
+		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
+		MaxSize:    readInt(readinessProbeLoggerMaxSize),
+		MaxAge:     readInt(readinessProbeLoggerMaxAge),
+	}
+	return logger
 }
 
-func getEnvOrDefault(envVar, defaultValue string) string {
+func readinessProbeLogFilePath() string {
+	return GetEnvOrDefault(logPathEnv, defaultLogPath)
+}
+
+func GetEnvOrDefault(envVar, defaultValue string) string {
 	value := strings.TrimSpace(os.Getenv(envVar))
 	if value == "" {
 		return defaultValue
@@ -101,7 +98,7 @@ func readInt(envVarName string) int {
 // readIntOrDefault returns the int value of an envvar of the given name.
 // defaults to the given value if not specified.
 func readIntOrDefault(envVarName string, defaultValue int) int {
-	envVar := getEnvOrDefault(envVarName, strconv.Itoa(defaultValue))
+	envVar := GetEnvOrDefault(envVarName, strconv.Itoa(defaultValue))
 	intValue, err := strconv.Atoi(envVar)
 	if err != nil {
 		return defaultValue

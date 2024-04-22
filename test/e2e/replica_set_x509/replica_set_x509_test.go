@@ -28,19 +28,20 @@ func TestMain(m *testing.M) {
 }
 
 func TestReplicaSetX509(t *testing.T) {
+	ctx := context.Background()
 	resourceName := "mdb-tls"
 	helmArgs := []setup.HelmArg{
 		{Name: "resource.tls.useX509", Value: "true"},
 		{Name: "resource.tls.sampleX509User", Value: "true"},
 	}
-	ctx, testConfig := setup.SetupWithTLS(t, resourceName, helmArgs...)
-	defer ctx.Teardown()
+	testCtx, testConfig := setup.SetupWithTLS(ctx, t, resourceName, helmArgs...)
+	defer testCtx.Teardown()
 
-	mdb, _ := e2eutil.NewTestMongoDB(ctx, resourceName, testConfig.Namespace)
+	mdb, _ := e2eutil.NewTestMongoDB(testCtx, resourceName, testConfig.Namespace)
 	mdb.Spec.Security.Authentication.Modes = []v1.AuthMode{"X509"}
 	mdb.Spec.Security.TLS = e2eutil.NewTestTLSConfig(false)
 
-	tester, err := FromX509Resource(t, mdb)
+	tester, err := FromX509Resource(ctx, t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,55 +52,55 @@ func TestReplicaSetX509(t *testing.T) {
 		}
 		users := mdb.GetAuthUsers()
 
-		t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(&mdb))
-		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(&mdb))
+		t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
+		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(ctx, &mdb))
+		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(ctx, &mdb))
 
-		cert, root, dir := createCerts(t, &mdb)
+		cert, root, dir := createCerts(ctx, t, &mdb)
 		defer os.RemoveAll(dir)
 
-		t.Run("Connectivity Fails without certs", tester.ConnectivityFails(WithURI(mongodbtests.GetConnectionStringForUser(mdb, users[0])), WithTls(mdb)))
-		t.Run("Connectivity Fails with invalid certs", tester.ConnectivityFails(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
+		t.Run("Connectivity Fails without certs", tester.ConnectivityFails(WithURI(mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0])), WithTls(ctx, mdb)))
+		t.Run("Connectivity Fails with invalid certs", tester.ConnectivityFails(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0]), root, cert))))
 	})
 
 	t.Run("Connection with valid certificate", func(t *testing.T) {
 		t.Run("Update MongoDB Resource", func(t *testing.T) {
-			err := e2eutil.UpdateMongoDBResource(&mdb, func(m *v1.MongoDBCommunity) {
+			err := e2eutil.UpdateMongoDBResource(ctx, &mdb, func(m *v1.MongoDBCommunity) {
 				m.Spec.Users = []v1.MongoDBUser{getValidUser()}
 			})
 			assert.NoError(t, err)
 		})
 
-		cert, root, dir := createCerts(t, &mdb)
+		cert, root, dir := createCerts(ctx, t, &mdb)
 		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
-		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(&mdb))
-		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(&mdb))
-		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
+		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(ctx, &mdb))
+		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(ctx, &mdb))
+		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0]), root, cert))))
 	})
 
 	t.Run("Rotate agent certificate", func(t *testing.T) {
-		agentCert, err := GetAgentCert(mdb)
+		agentCert, err := GetAgentCert(ctx, mdb)
 		if err != nil {
 			t.Fatal(err)
 		}
 		initialCertSerialNumber := agentCert.SerialNumber
 
 		initialAgentPem := &corev1.Secret{}
-		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), initialAgentPem)
+		err = e2eutil.TestClient.Get(ctx, mdb.AgentCertificatePemSecretNamespacedName(), initialAgentPem)
 		assert.NoError(t, err)
 
-		cert, root, dir := createCerts(t, &mdb)
+		cert, root, dir := createCerts(ctx, t, &mdb)
 		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
-		t.Run("Update certificate secret", tlstests.RotateAgentCertificate(&mdb))
-		t.Run("Wait for MongoDB to reach Running Phase after rotating agent cert", mongodbtests.MongoDBReachesRunningPhase(&mdb))
+		t.Run("Update certificate secret", tlstests.RotateAgentCertificate(ctx, &mdb))
+		t.Run("Wait for MongoDB to reach Running Phase after rotating agent cert", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
 
-		agentCert, err = GetAgentCert(mdb)
+		agentCert, err = GetAgentCert(ctx, mdb)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,48 +109,48 @@ func TestReplicaSetX509(t *testing.T) {
 		assert.NotEqual(t, finalCertSerialNumber, initialCertSerialNumber)
 
 		finalAgentPem := &corev1.Secret{}
-		err = e2eutil.TestClient.Get(context.TODO(), mdb.AgentCertificatePemSecretNamespacedName(), finalAgentPem)
+		err = e2eutil.TestClient.Get(ctx, mdb.AgentCertificatePemSecretNamespacedName(), finalAgentPem)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, finalAgentPem.Data, initialAgentPem.Data)
 
-		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
+		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0]), root, cert))))
 	})
 
 	t.Run("Transition to also allow SCRAM", func(t *testing.T) {
 		t.Run("Update MongoDB Resource", func(t *testing.T) {
-			err := e2eutil.UpdateMongoDBResource(&mdb, func(m *v1.MongoDBCommunity) {
+			err := e2eutil.UpdateMongoDBResource(ctx, &mdb, func(m *v1.MongoDBCommunity) {
 				m.Spec.Security.Authentication.Modes = []v1.AuthMode{"X509", "SCRAM"}
 				m.Spec.Security.Authentication.AgentMode = "X509"
 			})
 			assert.NoError(t, err)
 		})
 
-		cert, root, dir := createCerts(t, &mdb)
+		cert, root, dir := createCerts(ctx, t, &mdb)
 		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
-		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(&mdb))
-		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(&mdb))
-		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
+		t.Run("Basic tests", mongodbtests.BasicFunctionalityX509(ctx, &mdb))
+		t.Run("Agent certificate secrets configured", mongodbtests.AgentX509SecretsExists(ctx, &mdb))
+		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0]), root, cert))))
 	})
 
 	t.Run("Transition to SCRAM agent", func(t *testing.T) {
 		t.Run("Update MongoDB Resource", func(t *testing.T) {
-			err := e2eutil.UpdateMongoDBResource(&mdb, func(m *v1.MongoDBCommunity) {
+			err := e2eutil.UpdateMongoDBResource(ctx, &mdb, func(m *v1.MongoDBCommunity) {
 				m.Spec.Security.Authentication.AgentMode = "SCRAM"
 			})
 			assert.NoError(t, err)
 		})
 
-		cert, root, dir := createCerts(t, &mdb)
+		cert, root, dir := createCerts(ctx, t, &mdb)
 		defer os.RemoveAll(dir)
 
 		users := mdb.GetAuthUsers()
 
-		t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
-		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(mdb, users[0]), root, cert))))
+		t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
+		t.Run("Connectivity Succeeds", tester.ConnectivitySucceeds(WithURI(fmt.Sprintf("%s&tlsCAFile=%s&tlsCertificateKeyFile=%s", mongodbtests.GetConnectionStringForUser(ctx, mdb, users[0]), root, cert))))
 	})
 
 }
@@ -196,13 +197,13 @@ func getInvalidUser() v1.MongoDBUser {
 	}
 }
 
-func createCerts(t *testing.T, mdb *v1.MongoDBCommunity) (string, string, string) {
+func createCerts(ctx context.Context, t *testing.T, mdb *v1.MongoDBCommunity) (string, string, string) {
 	dir, _ := os.MkdirTemp("", "certdir")
 
 	t.Logf("Creating client certificate pem file")
 	cert, _ := os.CreateTemp(dir, "pem")
 	clientCertSecret := corev1.Secret{}
-	err := e2eutil.TestClient.Get(context.TODO(), types.NamespacedName{
+	err := e2eutil.TestClient.Get(ctx, types.NamespacedName{
 		Namespace: mdb.Namespace,
 		Name:      "my-x509-user-cert",
 	}, &clientCertSecret)

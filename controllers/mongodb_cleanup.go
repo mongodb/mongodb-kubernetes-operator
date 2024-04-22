@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -9,14 +10,14 @@ import (
 )
 
 // cleanupPemSecret cleans up the old pem secret generated for the agent certificate.
-func (r *ReplicaSetReconciler) cleanupPemSecret(currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
+func (r *ReplicaSetReconciler) cleanupPemSecret(ctx context.Context, currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
 	if currentMDB.GetAgentAuthMode() == lastAppliedMDBSpec.GetAgentAuthMode() {
 		return
 	}
 
 	if !currentMDB.IsAgentX509() && lastAppliedMDBSpec.IsAgentX509() {
 		agentCertSecret := lastAppliedMDBSpec.GetAgentCertificateRef()
-		if err := r.client.DeleteSecret(types.NamespacedName{
+		if err := r.client.DeleteSecret(ctx, types.NamespacedName{
 			Namespace: namespace,
 			Name:      agentCertSecret + "-pem",
 		}); err != nil {
@@ -30,11 +31,11 @@ func (r *ReplicaSetReconciler) cleanupPemSecret(currentMDB mdbv1.MongoDBCommunit
 }
 
 // cleanupScramSecrets cleans up old scram secrets based on the last successful applied mongodb spec.
-func (r *ReplicaSetReconciler) cleanupScramSecrets(currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
+func (r *ReplicaSetReconciler) cleanupScramSecrets(ctx context.Context, currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec mdbv1.MongoDBCommunitySpec, namespace string) {
 	secretsToDelete := getScramSecretsToDelete(currentMDB, lastAppliedMDBSpec)
 
 	for _, s := range secretsToDelete {
-		if err := r.client.DeleteSecret(types.NamespacedName{
+		if err := r.client.DeleteSecret(ctx, types.NamespacedName{
 			Name:      s,
 			Namespace: namespace,
 		}); err != nil {

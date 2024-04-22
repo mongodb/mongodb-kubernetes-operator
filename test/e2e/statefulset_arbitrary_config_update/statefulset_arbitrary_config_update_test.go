@@ -1,6 +1,7 @@
 package statefulset_arbitrary_config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -11,7 +12,7 @@ import (
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
-	setup "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
+	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/setup"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,25 +27,26 @@ func TestMain(m *testing.M) {
 }
 
 func TestStatefulSetArbitraryConfig(t *testing.T) {
-	ctx := setup.Setup(t)
-	defer ctx.Teardown()
+	ctx := context.Background()
+	testCtx := setup.Setup(ctx, t)
+	defer testCtx.Teardown()
 
-	mdb, user := e2eutil.NewTestMongoDB(ctx, "mdb0", "")
+	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
 
-	_, err := setup.GeneratePasswordForUser(ctx, user, "")
+	_, err := setup.GeneratePasswordForUser(testCtx, user, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tester, err := mongotester.FromResource(t, mdb)
+	tester, err := mongotester.FromResource(ctx, t, mdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, ctx))
-	t.Run("Basic tests", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Create MongoDB Resource", mongodbtests.CreateMongoDBResource(&mdb, testCtx))
+	t.Run("Basic tests", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Test basic connectivity", tester.ConnectivitySucceeds())
-	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(&mdb, 1))
+	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
 
 	overrideTolerations := []corev1.Toleration{
 		{
@@ -64,16 +66,16 @@ func TestStatefulSetArbitraryConfig(t *testing.T) {
 	overrideSpec.SpecWrapper.Spec.Template.Spec.Containers[1].ReadinessProbe = &corev1.Probe{TimeoutSeconds: 100}
 	overrideSpec.SpecWrapper.Spec.Template.Spec.Tolerations = overrideTolerations
 
-	err = e2eutil.UpdateMongoDBResource(&mdb, func(mdb *mdbv1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
+	err = e2eutil.UpdateMongoDBResource(ctx, &mdb, func(mdb *mdbv1.MongoDBCommunity) { mdb.Spec.StatefulSetConfiguration = overrideSpec })
 
 	assert.NoError(t, err)
 
-	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(&mdb))
+	t.Run("Basic tests after update", mongodbtests.BasicFunctionality(ctx, &mdb))
 	t.Run("Test basic connectivity after update", tester.ConnectivitySucceeds())
-	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(&mdb, "mongodb-agent", func(container corev1.Container) bool {
+	t.Run("Container has been merged by name", mongodbtests.StatefulSetContainerConditionIsTrue(ctx, &mdb, "mongodb-agent", func(container corev1.Container) bool {
 		return container.ReadinessProbe.TimeoutSeconds == 100
 	}))
-	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetConditionIsTrue(&mdb, func(sts appsv1.StatefulSet) bool {
+	t.Run("Tolerations have been added correctly", mongodbtests.StatefulSetConditionIsTrue(ctx, &mdb, func(sts appsv1.StatefulSet) bool {
 		return reflect.DeepEqual(overrideTolerations, sts.Spec.Template.Spec.Tolerations)
 	}))
 }
