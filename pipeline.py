@@ -67,9 +67,10 @@ def build_and_push_image(
     args: Dict[str, str],
     architectures: Set[str],
     release: bool,
-):
+) -> None:
     for arch in architectures:
-        image_tag = f"{image_name}-{arch}"
+        image_tag = f"{image_name}"
+        args["architecture"] = arch
         process_image(
             image_tag,
             build_args=args,
@@ -114,7 +115,7 @@ def push_manifest(
     architectures: Set[str],
     image_name: str,
     image_tag: str = "latest",
-):
+) -> None:
     print(f"Pushing manifest for {image_tag}")
     final_manifest = "{0}/{1}:{2}".format(config.repo_url, image_name, image_tag)
     remove_args = ["docker", "manifest", "rm", final_manifest]
@@ -140,7 +141,7 @@ def push_manifest(
 
 
 # Raises exceptions by default
-def run_cli_command(args: List[str], fail_on_error: bool = True):
+def run_cli_command(args: List[str], fail_on_error: bool = True) -> None:
     command = " ".join(args)
     print(f"Running: {command}")
     try:
@@ -228,7 +229,7 @@ def main() -> int:
         arch_set = set(args.arch)
     else:
         # Default is multi-arch
-        arch_set = ["amd64", "arm64"]
+        arch_set = {"amd64", "arm64"}
     print("Building for architectures:", ", ".join(map(str, arch_set)))
 
     image_args = build_image_args(config, image_name)

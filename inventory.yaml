@@ -1,5 +1,6 @@
 vars:
   registry: <registry>
+  architecture: amd64
 
 images:
 
@@ -205,7 +206,7 @@ images:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
             tag: $(inputs.params.release_version)-arm64
 
-  - name: readiness-probe-amd64
+  - name: readiness-probe
     vars:
       context: .
       template_context: scripts/dev/templates/readiness
@@ -214,7 +215,7 @@ images:
       - image
       - image_dev
 
-    platform: linux/amd64
+    platform: linux/$(inputs.params.architecture)
     stages:
       - name: readiness-init-context-build
         task_type: docker_build
@@ -228,7 +229,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-context-amd64
+            tag: $(inputs.params.version_id)-context-$(inputs.params.architecture)
 
       - name: readiness-template-ubi
         task_type: dockerfile_template
@@ -247,7 +248,7 @@ images:
         dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-$(inputs.params.architecture)
 
 
         labels:
@@ -255,9 +256,9 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-amd64
+            tag: $(inputs.params.version_id)-$(inputs.params.architecture)
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-amd64
+            tag: latest-$(inputs.params.architecture)
 
       - name: readiness-init-context-release
         task_type: docker_build
@@ -276,7 +277,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-amd64
+            tag: $(inputs.params.release_version)-context-$(inputs.params.architecture)
 
       - name: readiness-template-release
         task_type: dockerfile_template
@@ -296,7 +297,7 @@ images:
         tags: [ "readiness-probe", "release" , "ubi" ]
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-$(inputs.params.architecture)
 
         labels:
           quay.expires-after: Never
@@ -307,113 +308,9 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-amd64
+            tag: $(inputs.params.release_version)-$(inputs.params.architecture)
 
-  - name: readiness-probe-arm64
-    vars:
-      context: .
-      template_context: scripts/dev/templates/readiness
-
-    inputs:
-      - image
-      - image_dev
-
-    platform: linux/arm64
-    stages:
-      - name: readiness-init-context-build
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
-        tags: [ "readiness-probe", "ubi" ]
-        labels:
-          quay.expires-after: 48h
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-context-arm64
-
-      - name: readiness-template-ubi
-        task_type: dockerfile_template
-        tags: [ "ubi" ]
-        template_file_extension: readiness
-
-        inputs:
-          - base_image
-
-        output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
-
-      - name: readiness-init-build
-        task_type: docker_build
-        tags: [ "readiness-probe", "ubi" ]
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.version_id)
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-arm64
-
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-arm64
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-arm64
-
-      - name: readiness-init-context-release
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.builder
-        tags: [ "readiness-probe", "release" , "ubi" ]
-
-        labels:
-          quay.expires-after: Never
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        inputs:
-          - release_version
-          - builder_image
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-arm64
-
-      - name: readiness-template-release
-        task_type: dockerfile_template
-        tags: [ "readiness-probe", "release", "ubi" ]
-        template_file_extension: readiness
-        inputs:
-          - base_image
-          - release_version
-
-        output:
-          - dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-readinessprobe/$(inputs.params.release_version)/ubi/Dockerfile
-
-      - name: readiness-init-build-release
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/readiness/Dockerfile.readiness-$(inputs.params.release_version)
-        tags: [ "readiness-probe", "release" , "ubi" ]
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-arm64
-
-        labels:
-          quay.expires-after: Never
-
-        inputs:
-          - base_image
-          - release_version
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-arm64
-
-  - name: version-upgrade-hook-amd64
+  - name: version-upgrade-hook
     vars:
       context: .
       template_context: scripts/dev/templates/versionhook
@@ -422,7 +319,7 @@ images:
       - image
       - image_dev
 
-    platform: linux/amd64
+    platform: linux/$(inputs.params.architecture)
     stages:
       - name: version-upgrade-hook-context-build
         task_type: docker_build
@@ -437,7 +334,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-context-amd64
+            tag: $(inputs.params.version_id)-context-$(inputs.params.architecture)
 
       - name: version-post-start-hook-template-ubi
         task_type: dockerfile_template
@@ -456,16 +353,16 @@ images:
         tags: [ "post-start-hook", "ubi" ]
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-$(inputs.params.architecture)
 
         labels:
           quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-amd64
+            tag: $(inputs.params.version_id)-$(inputs.params.architecture)
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-amd64
+            tag: latest-$(inputs.params.architecture)
 
       - name: version-upgrade-hook-context-release
         task_type: docker_build
@@ -484,7 +381,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-amd64
+            tag: $(inputs.params.release_version)-context-$(inputs.params.architecture)
 
       - name: versionhook-template-release
         task_type: dockerfile_template
@@ -504,7 +401,7 @@ images:
         tags: [ "release", "post-start-hook",  "ubi" ]
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-$(inputs.params.architecture)
 
         labels:
           quay.expires-after: Never
@@ -515,108 +412,4 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-amd64
-
-  - name: version-upgrade-hook-arm64
-    vars:
-      context: .
-      template_context: scripts/dev/templates/versionhook
-
-    inputs:
-      - image
-      - image_dev
-
-    platform: linux/arm64
-    stages:
-      - name: version-upgrade-hook-context-build
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
-        tags: [ "post-start-hook", "ubi" ]
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-context-arm64
-
-      - name: version-post-start-hook-template-ubi
-        task_type: dockerfile_template
-        tags: [ "ubi" ]
-        template_file_extension: versionhook
-
-        inputs:
-          - base_image
-
-        output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
-
-      - name: version-upgrade-hook-build
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.version_id)
-        tags: [ "post-start-hook", "ubi" ]
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-arm64
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-arm64
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-arm64
-
-      - name: version-upgrade-hook-context-release
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.builder
-        tags: [ "release", "post-start-hook",  "ubi", ]
-
-        labels:
-          quay.expires-after: Never
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        inputs:
-          - release_version
-          - builder_image
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-arm64
-
-      - name: versionhook-template-release
-        task_type: dockerfile_template
-        tags: [ "post-start-hook", "release", "ubi" ]
-        template_file_extension: versionhook
-        inputs:
-          - base_image
-          - release_version
-
-        output:
-          - dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator-version-upgrade-post-start-hook/$(inputs.params.release_version)/ubi/Dockerfile
-
-      - name: version-upgrade-hook-build-release
-        task_type: docker_build
-        dockerfile: scripts/dev/templates/versionhook/Dockerfile.versionhook-$(inputs.params.release_version)
-        tags: [ "release", "post-start-hook",  "ubi" ]
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-arm64
-
-        labels:
-          quay.expires-after: Never
-
-        inputs:
-          - base_image
-          - release_version
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-arm64
+            tag: $(inputs.params.release_version)-$(inputs.params.architecture)

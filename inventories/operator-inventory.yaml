@@ -1,8 +1,9 @@
 vars:
   registry: <registry>
+  architecture: amd64
 
 images:
-  - name: operator-amd64
+  - name: operator
     vars:
       context: .
       template_context: scripts/dev/templates/operator
@@ -11,7 +12,7 @@ images:
       - image
       - image_dev
 
-    platform: linux/amd64
+    platform: linux/$(inputs.params.architecture)
 
     stages:
 #
@@ -30,7 +31,7 @@ images:
 
         output:
         - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-          tag: $(inputs.params.version_id)-context-amd64
+          tag: $(inputs.params.version_id)-context-$(inputs.params.architecture)
 
       - name: operator-template-dev
         task_type: dockerfile_template
@@ -51,16 +52,16 @@ images:
           - version_id
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-$(inputs.params.architecture)
 
         labels:
           quay.expires-after: 48h
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-amd64
+            tag: $(inputs.params.version_id)-$(inputs.params.architecture)
           - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-amd64
+            tag: latest-$(inputs.params.architecture)
 
 #
 # Release build stages
@@ -83,7 +84,7 @@ images:
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-amd64
+            tag: $(inputs.params.release_version)-context-$(inputs.params.architecture)
 
       - name: operator-template-release
         task_type: dockerfile_template
@@ -107,125 +108,11 @@ images:
         dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
 
         buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-amd64
+          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-$(inputs.params.architecture)
 
         labels:
           quay.expires-after: Never
 
         output:
           - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-amd64
-
-  - name: operator-arm64
-    vars:
-      context: .
-      template_context: scripts/dev/templates/operator
-
-    inputs:
-      - image
-      - image_dev
-
-    platform: linux/arm64
-
-    stages:
-      #
-      # Dev build stages
-      #
-      - name: operator-builder-dev
-        task_type: docker_build
-        tags: [ "ubi" ]
-        dockerfile: scripts/dev/templates/operator/Dockerfile.builder
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-context-arm64
-
-      - name: operator-template-dev
-        task_type: dockerfile_template
-        tags: [ "ubi" ]
-        template_file_extension: operator
-        inputs:
-          - base_image
-
-        output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
-
-      - name: operator-build-dev
-        task_type: docker_build
-        tags: [ "ubi" ]
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.version_id)
-
-        inputs:
-          - version_id
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image_dev):$(inputs.params.version_id)-context-arm64
-
-        labels:
-          quay.expires-after: 48h
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: $(inputs.params.version_id)-arm64
-          - registry: $(inputs.params.registry)/$(inputs.params.image_dev)
-            tag: latest-arm64
-
-      #
-      # Release build stages
-      #
-      - name: operator-builder-release
-        task_type: docker_build
-        tags: [ "ubi", "release" ]
-
-        inputs:
-          - builder_image
-          - release_version
-
-        dockerfile: scripts/dev/templates/operator/Dockerfile.builder
-
-        labels:
-          quay.expires-after: Never
-
-        buildargs:
-          builder_image: $(inputs.params.builder_image)
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-context-arm64
-
-      - name: operator-template-release
-        task_type: dockerfile_template
-        tags: [ "ubi", "release" ]
-        template_file_extension: operator
-        inputs:
-          - base_image
-          - release_version
-
-        output:
-          - dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
-          - dockerfile: $(inputs.params.s3_bucket)/mongodb-kubernetes-operator/$(inputs.params.release_version)/ubi/Dockerfile
-
-      - name: operator-build-release
-        task_type: docker_build
-        tags: [ "ubi", "release" ]
-
-        inputs:
-          - release_version
-
-        dockerfile: scripts/dev/templates/operator/Dockerfile.operator-$(inputs.params.release_version)
-
-        buildargs:
-          imagebase: $(inputs.params.registry)/$(inputs.params.image):$(inputs.params.release_version)-context-arm64
-
-        labels:
-          quay.expires-after: Never
-
-        output:
-          - registry: $(inputs.params.registry)/$(inputs.params.image)
-            tag: $(inputs.params.release_version)-arm64
+            tag: $(inputs.params.release_version)-$(inputs.params.architecture)
