@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 from typing import Dict, List, Set
+from scripts.ci.base_logger import logger
 
 from scripts.dev.dev_config import load_config, DevConfig
 from sonar.sonar import process_image
@@ -127,10 +128,10 @@ def push_manifest(
     image_name: str,
     image_tag: str = "latest",
 ) -> None:
-    print(f"Pushing manifest for {image_tag}")
+    logger.info(f"Pushing manifest for {image_tag}")
     final_manifest = "{0}/{1}:{2}".format(config.repo_url, image_name, image_tag)
     remove_args = ["docker", "manifest", "rm", final_manifest]
-    print("Removing existing manifest")
+    logger.info("Removing existing manifest")
     run_cli_command(remove_args, fail_on_error=False)
 
     create_args = [
@@ -143,18 +144,18 @@ def push_manifest(
     for arch in architectures:
         create_args.extend(["--amend", final_manifest + "-" + arch])
 
-    print("Creating new manifest")
+    logger.info("Creating new manifest")
     run_cli_command(create_args)
 
     push_args = ["docker", "manifest", "push", final_manifest]
-    print("Pushing new manifest")
+    logger.info("Pushing new manifest")
     run_cli_command(push_args)
 
 
 # Raises exceptions by default
 def run_cli_command(args: List[str], fail_on_error: bool = True) -> None:
     command = " ".join(args)
-    print(f"Running: {command}")
+    logger.debug(f"Running: {command}")
     try:
         cp = subprocess.run(
             command,
@@ -164,23 +165,23 @@ def run_cli_command(args: List[str], fail_on_error: bool = True) -> None:
             check=False,
         )
     except Exception as e:
-        print(f" Command raised the following exception: {e}")
+        logger.error(f" Command raised the following exception: {e}")
         if fail_on_error:
             raise Exception
         else:
-            print("Continuing...")
+            logger.warning("Continuing...")
             return
 
     if cp.returncode != 0:
         error_msg = cp.stderr.decode().strip()
         stdout = cp.stdout.decode().strip()
-        print(f"Error running command")
-        print(f"stdout:\n{stdout}")
-        print(f"stderr:\n{error_msg}")
+        logger.error(f"Error running command")
+        logger.error(f"stdout:\n{stdout}")
+        logger.error(f"stderr:\n{error_msg}")
         if fail_on_error:
             raise Exception
         else:
-            print("Continuing...")
+            logger.warning("Continuing...")
             return
 
 
@@ -217,7 +218,7 @@ def main() -> int:
 
     image_name = args.image_name
     if image_name not in VALID_IMAGE_NAMES:
-        print(
+        logger.error(
             f"Invalid image name: {image_name}. Valid options are: {VALID_IMAGE_NAMES}"
         )
         return 1
@@ -228,7 +229,7 @@ def main() -> int:
 
     # Warn user if trying to release E2E tests
     if args.release and image_name == "e2e":
-        print(
+        logger.warning(
             "Warning : releasing E2E test will fail because E2E image has no release version"
         )
 
@@ -241,7 +242,7 @@ def main() -> int:
     else:
         # Default is multi-arch
         arch_set = {"amd64", "arm64"}
-    print("Building for architectures:", ", ".join(map(str, arch_set)))
+    logger.info("Building for architectures:", ", ".join(map(str, arch_set)))
 
     image_args = build_image_args(config, image_name)
 
