@@ -4,6 +4,7 @@ import subprocess
 import sys
 from typing import Dict, List, Set
 from scripts.ci.base_logger import logger
+from scripts.ci.images_signing import sign_image, verify_signature
 
 from scripts.dev.dev_config import load_config, DevConfig
 from sonar.sonar import process_image
@@ -90,6 +91,14 @@ def build_and_push_image(
             skip_tags=args["skip_tags"],
             include_tags=args["include_tags"],
         )
+        if release:
+            registry = args["registry"] + "/" + args["image"]
+            context_tag = args["release_version"] + "-context-" + arch
+            release_tag = args["release_version"] + "-" + arch
+            sign_image(registry, context_tag)
+            sign_image(registry, release_tag)
+            verify_signature(registry, context_tag)
+            verify_signature(registry, release_tag)
 
     if args["image_dev"]:
         image_to_push = args["image_dev"]
@@ -105,10 +114,16 @@ def build_and_push_image(
         push_manifest(config, architectures, image_to_push, config.gh_run_id)
 
     if release:
+        registry = args["registry"] + "/" + args["image"]
+        context_tag = args["release_version"] + "-context"
+
         push_manifest(config, architectures, args["image"], args["release_version"])
-        push_manifest(
-            config, architectures, args["image"], args["release_version"] + "-context"
-        )
+        sign_image(registry, args["release_version"])
+        verify_signature(registry, args["release_version"])
+
+        push_manifest(config, architectures, args["image"], context_tag)
+        sign_image(registry, context_tag)
+        verify_signature(registry, context_tag)
 
 
 """
@@ -242,7 +257,7 @@ def main() -> int:
     else:
         # Default is multi-arch
         arch_set = {"amd64", "arm64"}
-    logger.info("Building for architectures:", ", ".join(map(str, arch_set)))
+    logger.info(f"Building for architectures: {','.join(arch_set)}")
 
     image_args = build_image_args(config, image_name)
 
