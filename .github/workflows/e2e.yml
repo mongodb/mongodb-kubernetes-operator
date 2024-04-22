@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - pipeline-argument: operator
+        - pipeline-argument: mongodb-kubernetes-operator
         - pipeline-argument: version-upgrade-hook
         - pipeline-argument: readiness-probe
         - pipeline-argument: agent
@@ -101,7 +101,7 @@ jobs:
         - test-name: replica_set_enterprise_upgrade_4_5
           distro: ubi
         - test-name: replica_set_enterprise_upgrade_5_6
-          distro: ubi
+          distro: ubi.
         - test-name: replica_set_enterprise_upgrade_6_7
           distro: ubi
         - test-name: replica_set_recovery
