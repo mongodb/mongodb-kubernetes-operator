@@ -4,7 +4,11 @@ import subprocess
 import sys
 from typing import Dict, List, Set
 from scripts.ci.base_logger import logger
-from scripts.ci.images_signing import sign_image, verify_signature
+from scripts.ci.images_signing import (
+    sign_image,
+    verify_signature,
+    mongodb_artifactory_login,
+)
 
 from scripts.dev.dev_config import load_config, DevConfig
 from sonar.sonar import process_image
@@ -84,6 +88,8 @@ def build_and_push_image(
     release: bool,
     sign: bool,
 ) -> None:
+    if sign:
+        mongodb_artifactory_login()
     for arch in architectures:
         image_tag = f"{image_name}"
         args["architecture"] = arch
