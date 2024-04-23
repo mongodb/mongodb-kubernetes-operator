@@ -29,8 +29,8 @@ def mongodb_artifactory_login() -> None:
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        logger.error("Authentication to MongoDB Artifactory failed :", e.returncode)
-        logger.error("Output:", e.stderr)
+        logger.error(f"Authentication to MongoDB Artifactory failed : {e.returncode}")
+        logger.error(f"Output: {e.stderr}")
 
 
 def get_ecr_login_password(region: str) -> Optional[str]:
