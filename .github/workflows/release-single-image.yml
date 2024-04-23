@@ -45,7 +45,7 @@ jobs:
         uses: docker/setup-qemu-action@v2
 
       - name: Publish Image To Quay
-        if: steps.release_status.outputs.OUTPUT == 'unreleased'
+        #if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release --sign
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
