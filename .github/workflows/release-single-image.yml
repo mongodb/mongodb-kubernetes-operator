@@ -44,15 +44,6 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
-      - name: Print environment variable
-        run: echo "${{ env.ARTIFACTORY_USERNAME }}"
-
-      - name: Try with vars
-        run: echo "${{ vars.ARTIFACTORY_USERNAME }}"
-
-      - name: List all environment variables
-        run: printenv
-
       - name: Publish Image To Quay
         #if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release --sign
@@ -60,8 +51,8 @@ jobs:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
           AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-          GRS_USERNAME: "${{ env.GRS_USERNAME }}"
+          GRS_USERNAME: "${{ vars.GRS_USERNAME }}"
           GRS_PASSWORD: "${{ secrets.GRS_PASSWORD }}"
-          PKCS11_URI: "${{ env.PKCS11_URI }}"
-          ARTIFACTORY_USERNAME: "${{ env.ARTIFACTORY_USERNAME }}"
+          PKCS11_URI: "${{ vars.PKCS11_URI }}"
+          ARTIFACTORY_USERNAME: "${{ vars.ARTIFACTORY_USERNAME }}"
           ARTIFACTORY_PASSWORD: "${{ secrets.ARTIFACTORY_PASSWORD }}"
