@@ -71,12 +71,18 @@ def build_image_args(config: DevConfig, image_name: str) -> Dict[str, str]:
     return arguments
 
 
+def sign_and_verify(registry: str, tag: str) -> None:
+    sign_image(registry, tag)
+    verify_signature(registry, tag)
+
+
 def build_and_push_image(
     image_name: str,
     config: DevConfig,
     args: Dict[str, str],
     architectures: Set[str],
     release: bool,
+    sign: bool,
 ) -> None:
     for arch in architectures:
         image_tag = f"{image_name}"
@@ -95,10 +101,9 @@ def build_and_push_image(
             registry = args["registry"] + "/" + args["image"]
             context_tag = args["release_version"] + "-context-" + arch
             release_tag = args["release_version"] + "-" + arch
-            sign_image(registry, context_tag)
-            sign_image(registry, release_tag)
-            verify_signature(registry, context_tag)
-            verify_signature(registry, release_tag)
+            if sign:
+                sign_and_verify(registry, context_tag)
+                sign_and_verify(registry, release_tag)
 
     if args["image_dev"]:
         image_to_push = args["image_dev"]
@@ -116,14 +121,11 @@ def build_and_push_image(
     if release:
         registry = args["registry"] + "/" + args["image"]
         context_tag = args["release_version"] + "-context"
-
         push_manifest(config, architectures, args["image"], args["release_version"])
-        sign_image(registry, args["release_version"])
-        verify_signature(registry, args["release_version"])
-
         push_manifest(config, architectures, args["image"], context_tag)
-        sign_image(registry, context_tag)
-        verify_signature(registry, context_tag)
+        if sign:
+            sign_and_verify(registry, args["release_version"])
+            sign_and_verify(registry, context_tag)
 
 
 """
@@ -211,6 +213,7 @@ def _parse_args() -> argparse.Namespace:
         help="for daily builds only, specify the list of architectures to build for images",
     )
     parser.add_argument("--tag", type=str)
+    parser.add_argument("--sign", action="store_true", default=False)
     return parser.parse_args()
 
 
@@ -219,9 +222,10 @@ Takes arguments:
 --image-name : The name of the image to build, must be one of VALID_IMAGE_NAMES
 --release : We push the image to the registry only if this flag is set
 --architecture : List of architectures to build for the image
+--sign : Sign images with our private key if sign is set (only for release)
 
 Run with --help for more information
-Example usage : `python pipeline.py --image-name agent --release`
+Example usage : `python pipeline.py --image-name agent --release --sign`
 
 Builds and push the docker image to the registry
 Many parameters are defined in the dev configuration, default path is : ~/.community-operator-dev/config.json
@@ -251,6 +255,8 @@ def main() -> int:
     # Skipping release tasks by default
     if not args.release:
         config.ensure_skip_tag("release")
+        if args.sign:
+            logger.warning("--sign flag has no effect without --release")
 
     if args.arch:
         arch_set = set(args.arch)
@@ -259,9 +265,14 @@ def main() -> int:
         arch_set = {"amd64", "arm64"}
     logger.info(f"Building for architectures: {','.join(arch_set)}")
 
+    if not args.sign:
+        logger.warning("--sign flag not provided, images won't be signed")
+
     image_args = build_image_args(config, image_name)
 
-    build_and_push_image(image_name, config, image_args, arch_set, args.release)
+    build_and_push_image(
+        image_name, config, image_args, arch_set, args.release, args.sign
+    )
     return 0
 
 
