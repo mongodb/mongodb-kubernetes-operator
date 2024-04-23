@@ -66,6 +66,7 @@ jobs:
           PKCS11_URI: "${{ env.PKCS11_URI }}"
           ARTIFACTORY_USERNAME: "${{ env.ARTIFACTORY_USERNAME }}"
           ARTIFACTORY_PASSWORD: "${{ secrets.ARTIFACTORY_PASSWORD }}"
+          AWS_DEFAULT_REGION: "${{ env.AWS_DEFAULT_REGION }}"
 
   create-draft-release:
     runs-on: ubuntu-latest

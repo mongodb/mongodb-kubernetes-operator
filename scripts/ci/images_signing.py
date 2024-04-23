@@ -22,9 +22,15 @@ def mongodb_artifactory_login() -> None:
         os.environ["ARTIFACTORY_USERNAME"],
         "artifactory.corp.mongodb.com/release-tools-container-registry-local/garasign-cosign",
     ]
-    subprocess.run(
-        command, input=os.environ["ARTIFACTORY_PASSWORD"].encode("utf-8"), check=True
-    )
+    try:
+        subprocess.run(
+            command,
+            input=os.environ["ARTIFACTORY_PASSWORD"].encode("utf-8"),
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error("Authentication to MongoDB Artifactory failed :", e.returncode)
+        logger.error("Output:", e.stderr)
 
 
 def get_ecr_login_password(region: str) -> Optional[str]:
@@ -71,7 +77,7 @@ def get_image_digest(image_name: str) -> Optional[str]:
 
     # Specify ECR credentials if necessary
     if is_ecr_registry(image_name):
-        aws_region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        aws_region = os.environ.get("AWS_DEFAULT_REGION", "eu-west-1")
         ecr_password = get_ecr_login_password(aws_region)
         digest_command.append(f"--creds=AWS:{ecr_password}")
 
