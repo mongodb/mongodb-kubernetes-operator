@@ -44,6 +44,9 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
+      - name: Print environment variable
+        run: echo "ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}"
+
       - name: Publish Image To Quay
         #if: steps.release_status.outputs.OUTPUT == 'unreleased'
         run: python pipeline.py --image-name ${{ github.event.inputs.pipeline-argument }} --release --sign
