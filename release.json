@@ -3,6 +3,6 @@
   "operator": "0.9.0",
   "version-upgrade-hook": "1.0.8",
   "readiness-probe": "1.0.18",
-  "agent": "107.0.1.8507-1",
+  "agent": "107.0.2.8531-1",
   "agent-tools-version": "100.9.4"
 }
