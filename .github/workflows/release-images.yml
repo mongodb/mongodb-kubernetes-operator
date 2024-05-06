@@ -56,11 +56,17 @@ jobs:
 
       - name: Publish Image To Quay
         if: steps.release_status.outputs.OUTPUT == 'unreleased'
-        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release
+        run: python pipeline.py --image-name ${{ matrix.pipeline-argument }} --release --sign
         env:
           MONGODB_COMMUNITY_CONFIG: "${{ github.workspace }}/scripts/ci/config.json"
           AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          GRS_USERNAME: "${{ vars.GRS_USERNAME }}"
+          GRS_PASSWORD: "${{ secrets.GRS_PASSWORD }}"
+          PKCS11_URI: "${{ vars.PKCS11_URI }}"
+          ARTIFACTORY_USERNAME: "${{ vars.ARTIFACTORY_USERNAME }}"
+          ARTIFACTORY_PASSWORD: "${{ secrets.ARTIFACTORY_PASSWORD }}"
+          AWS_DEFAULT_REGION: "${{ vars.AWS_DEFAULT_REGION }}"
 
   create-draft-release:
     runs-on: ubuntu-latest

@@ -1,7 +1,5 @@
-# MongoDB Kubernetes Operator 0.9.0
+# MongoDB Kubernetes Operator 0.10.0
 
-## MongoDBCommunity Resource
+## Released images signed
 
-- Changes
-  - Introduced support for [Mongodb7](https://www.mongodb.com/docs/manual/release-notes/7.0/)
-  - Upgrading Kubernetes client APIs to 1.26
+All container images published for the community operator are signed with our private key. This is visible on our Quay registry. Signature can be verified using our public key, which is available at [this address](https://cosign.mongodb.com/mongodb-enterprise-kubernetes-operator.pem).

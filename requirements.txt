@@ -1,4 +1,4 @@
-git+https://github.com/mongodb/sonar@0c21097a55a4426c8824f74cdcfbceb11b27bb68
+git+https://github.com/mongodb/sonar@bc7bf7732851425421f3cfe2a19cf50b0460e633
 github-action-templates==0.0.4
 docker==4.3.1
 kubernetes==26.1.0
@@ -17,4 +17,4 @@ semver==2.13.0
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
 setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
 certifi>=2022.12.7 # not directly required, pinned by Snyk to avoid a vulnerability
-urllib3>=1.26.5 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3<2 # not directly required, pinned by Snyk to avoid a vulnerability
