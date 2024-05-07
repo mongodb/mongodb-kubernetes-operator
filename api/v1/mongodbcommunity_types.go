@@ -104,6 +104,9 @@ type MongoDBCommunitySpec struct {
 	// AgentConfiguration sets options for the MongoDB automation agent
 	// +optional
 	AgentConfiguration AgentConfiguration `json:"agent,omitempty"`
+	// AgentConfiguration sets options for the MongoDB readiness probe
+	// +optional
+	ReadinessProbeConfiguration ReadinessProbeConfiguration `json:"readiness,omitempty"`
 
 	// AdditionalMongodConfig is additional configuration that can be passed to
 	// each data-bearing mongod at runtime. Uses the same structure as the mongod
@@ -375,6 +378,11 @@ type AgentConfiguration struct {
 	// +optional
 	// SystemLog configures system log of mongod
 	SystemLog *automationconfig.SystemLog `json:"systemLog,omitempty"`
+}
+
+type ReadinessProbeConfiguration struct {
+	// +optional
+	LogFile string `json:"logFile"` // if this is set, we should set LOG_FILE_PATH for the readinessProbe env var
 }
 
 // StatefulSetSpecWrapper is a wrapper around StatefulSetSpec with a custom implementation
