@@ -11,7 +11,7 @@ tqdm==v4.66.3
 boto3==1.16.21
 pymongo==4.6.3
 dnspython==2.6.1
-requests==2.31.0
+requests==2.32.0
 ruamel.yaml==0.17.9
 semver==2.13.0
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
