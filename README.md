@@ -65,6 +65,16 @@ Please file issues before filing PRs. For PRs to be accepted, contributors must 
 
 Reviewers, please ensure that the CLA has been signed by referring to [the contributors tool](https://contributors.corp.mongodb.com/) (internal link).
 
+## Linting
+
+This project uses the following linters upon every Pull Request:
+
+* `Black` is a tool that verifies if Python code is properly formatted
+* `MyPy` is a Static Type Checker for Python
+* `Kube-linter` is a tool that verified if all Kubernetes YAML manifests are formatted correctly
+* `Go vet` A built-in Go static checker
+* `Snyk` The vulnerability scanner
+
 ## License
 
 Please see the [LICENSE](LICENSE.md) file.
