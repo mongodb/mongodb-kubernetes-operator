@@ -161,11 +161,6 @@ func waitForStatefulSetCondition(ctx context.Context, t *testing.T, mdb *mdbv1.M
 	return waitForStatefulSetConditionWithSpecificSts(ctx, t, mdb, MembersStatefulSet, waitOpts, condition)
 }
 
-func waitForStatefulSetConditionArbiters(ctx context.Context, t *testing.T, mdb *mdbv1.MongoDBCommunity, waitOpts Options, condition func(set appsv1.StatefulSet) bool) error {
-	// uses members statefulset
-	return waitForStatefulSetConditionWithSpecificSts(ctx, t, mdb, ArbitersStatefulSet, waitOpts, condition)
-}
-
 func ForPodReadiness(ctx context.Context, t *testing.T, isReady bool, containerName string, timeout time.Duration, pod corev1.Pod) error {
 	return wait.PollUntilContextTimeout(ctx, time.Second*3, timeout, false, func(ctx context.Context) (done bool, err error) {
 		err = e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &pod)

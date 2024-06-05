@@ -7,7 +7,7 @@ jobs:
   Black:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Black Check
         uses: jpetrucciani/black-check@7f5b2ad20fa5484f1884f07c1937e032ed8cd939
@@ -21,3 +21,13 @@ jobs:
         uses: jpetrucciani/mypy-check@179fdad632bf3ccf4cabb7ee4307ef25e51d2f96
         with:
           path: scripts/*/*.py
+
+  Golangci-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6

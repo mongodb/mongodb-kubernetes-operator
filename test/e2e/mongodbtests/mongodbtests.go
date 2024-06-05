@@ -262,7 +262,7 @@ func HasExpectedMetadata(ctx context.Context, mdb *mdbv1.MongoDBCommunity, expec
 		assert.NoError(t, err)
 		assert.NotEmpty(t, statefulSetList.Items)
 		for _, s := range statefulSetList.Items {
-			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "statefulset "+s.Name)
+			containsMetadata(t, s.ObjectMeta, expectedLabels, expectedAnnotations, "statefulset "+s.Name)
 		}
 
 		volumeList := corev1.PersistentVolumeList{}
@@ -272,7 +272,7 @@ func HasExpectedMetadata(ctx context.Context, mdb *mdbv1.MongoDBCommunity, expec
 		for _, s := range volumeList.Items {
 			volName := s.Name
 			if strings.HasPrefix(volName, "data-volume-") || strings.HasPrefix(volName, "logs-volume-") {
-				containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "volume "+volName)
+				containsMetadata(t, s.ObjectMeta, expectedLabels, expectedAnnotations, "volume "+volName)
 			}
 		}
 
@@ -304,12 +304,12 @@ func HasExpectedMetadata(ctx context.Context, mdb *mdbv1.MongoDBCommunity, expec
 				continue
 			}
 
-			containsMetadata(t, &s.ObjectMeta, expectedLabels, expectedAnnotations, "pod "+s.Name)
+			containsMetadata(t, s.ObjectMeta, expectedLabels, expectedAnnotations, "pod "+s.Name)
 		}
 	}
 }
 
-func containsMetadata(t *testing.T, metadata *metav1.ObjectMeta, expectedLabels map[string]string, expectedAnnotations map[string]string, msg string) {
+func containsMetadata(t *testing.T, metadata metav1.ObjectMeta, expectedLabels map[string]string, expectedAnnotations map[string]string, msg string) {
 	labels := metadata.Labels
 	for k, v := range expectedLabels {
 		assert.Contains(t, labels, k, msg+" has label "+k)

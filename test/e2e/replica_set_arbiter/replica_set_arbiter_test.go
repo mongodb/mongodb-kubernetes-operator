@@ -69,9 +69,9 @@ func TestReplicaSetArbiter(t *testing.T) {
 			resourceName:     "mdb4",
 		},
 	}
-	for testName, _ := range tests {
+	for testName := range tests {
 		t.Run(testName, func(t *testing.T) {
-			testConfig, _ := tests[testName]
+			testConfig := tests[testName]
 			mdb, user := e2eutil.NewTestMongoDB(testCtx, testConfig.resourceName, "")
 			mdb.Spec.Arbiters = testConfig.numberOfArbiters
 			mdb.Spec.Members = testConfig.numberOfMembers

@@ -69,6 +69,7 @@ Reviewers, please ensure that the CLA has been signed by referring to [the contr
 
 This project uses the following linters upon every Pull Request:
 
+* `gosec` is a tool that find security problems in the code
 * `Black` is a tool that verifies if Python code is properly formatted
 * `MyPy` is a Static Type Checker for Python
 * `Kube-linter` is a tool that verified if all Kubernetes YAML manifests are formatted correctly
