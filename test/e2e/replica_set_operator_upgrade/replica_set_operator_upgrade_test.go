@@ -73,7 +73,7 @@ func TestReplicaSetOperatorUpgrade(t *testing.T) {
 // TestReplicaSetOperatorUpgradeFrom0_7_2 is intended to be run locally not in CI.
 // It simulates deploying cluster using community operator 0.7.2 and then upgrading it using newer version.
 func TestReplicaSetOperatorUpgradeFrom0_7_2(t *testing.T) {
-	ctx := context.Background()
+	ctx := context.Background() //nolint
 	t.Skip("Supporting this test in CI requires installing also CRDs from release v0.7.2")
 	resourceName := "mdb-upg"
 	testConfig := setup.LoadTestConfigFromEnv()

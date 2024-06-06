@@ -68,8 +68,8 @@ export NSS_WRAPPER_PASSWD=/tmp/passwd
 export LD_PRELOAD=libnss_wrapper.so
 export NSS_WRAPPER_GROUP=/etc/group
 fi
-
 `
+	//nolint:gosec //The credentials path is hardcoded in the container.
 	MongodbUserCommandWithAPIKeyExport = `current_uid=$(id -u)
 AGENT_API_KEY="$(cat /mongodb-automation/agent-api-key/agentApiKey)"
 declare -r current_uid
