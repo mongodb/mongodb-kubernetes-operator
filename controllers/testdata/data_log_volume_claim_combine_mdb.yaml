@@ -1,0 +1,12 @@
+apiVersion: mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: volume-claim-templates-mdb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "4.2.6"
+  security:
+    authentication:
+      modes: ["SCRAM"]
+  combineDataAndLogsVolumes: true
