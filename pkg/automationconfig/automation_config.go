@@ -276,7 +276,7 @@ type ReplicaSetMember struct {
 	// is different in AC from the CR(CR don't support float) - hence all the members are declared
 	// separately
 	Votes    *int              `json:"votes,omitempty"`
-	Priority float32           `json:"priority,omitempty"`
+	Priority float32           `json:"priority"`
 	Tags     map[string]string `json:"tags,omitempty"`
 }
 
