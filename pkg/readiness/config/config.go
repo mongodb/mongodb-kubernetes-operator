@@ -16,7 +16,7 @@ const (
 	DefaultAgentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
 	AgentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
 
-	defaultLogPath              = "/var/log/mongodb-mms-automation/readiness.log"
+	defaultLogPath              = "/proc/1/fd/1"
 	podNamespaceEnv             = "POD_NAMESPACE"
 	automationConfigSecretEnv   = "AUTOMATION_CONFIG_MAP" //nolint
 	logPathEnv                  = "LOG_FILE_PATH"
