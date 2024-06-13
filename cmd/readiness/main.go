@@ -210,7 +210,7 @@ func parseHealthStatus(reader io.Reader) (health.Status, error) {
 func initLogger(l *lumberjack.Logger) {
 	log := zap.New(zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		zapcore.AddSync(l),
+		zapcore.AddSync(os.Stdout),
 		zap.DebugLevel,
 	), zap.Development())
 	logger = log.Sugar()
