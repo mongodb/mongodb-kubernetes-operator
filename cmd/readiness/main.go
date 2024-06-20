@@ -225,6 +225,8 @@ func initLogger(l *lumberjack.Logger) {
 	core := zapcore.NewTee(cores...)
 	log := zap.New(core, zap.Development())
 	logger = log.Sugar()
+
+	logger.Infof("logging configuration: %+v", l)
 }
 
 func main() {
