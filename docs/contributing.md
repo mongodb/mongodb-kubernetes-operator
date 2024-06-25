@@ -140,7 +140,7 @@ kubectl get pods
 
 #### (Optional) Create a MongoDBCommunity Resource
 
-Follow the steps outlined [here](./deploy-configure.md) to deploy some resource.
+Follow the steps outlined [here](./deploy-configure.md) to deploy some resources.
 
 #### Cleanup
 To remove the operator and any created resources you can run
