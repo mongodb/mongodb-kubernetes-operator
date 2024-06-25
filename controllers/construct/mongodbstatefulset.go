@@ -2,6 +2,7 @@ package construct
 
 import (
 	"fmt"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"os"
 	"strconv"
 	"strings"
@@ -262,10 +263,10 @@ func AutomationAgentCommand(withAgentAPIKeyExport bool, logLevel string, logFile
 	// To keep consistent with old behavior not setting the logFile in the config does not log to stdout but keeps
 	// the default logFile as defined by DefaultAgentLogFile. Setting the logFile explictly to "/dev/stdout" will log to stdout.
 	agentLogOptions := ""
-	if logFile != "/dev/stdout" {
-		agentLogOptions += " -logFile " + logFile + " -logLevel " + logLevel + " -maxLogFileDurationHrs " + strconv.Itoa(maxLogFileDurationHours)
-	} else {
+	if logFile == "/dev/stdout" {
 		agentLogOptions += " -logLevel " + logLevel
+	} else {
+		agentLogOptions += " -logFile " + logFile + " -logLevel " + logLevel + " -maxLogFileDurationHrs " + strconv.Itoa(maxLogFileDurationHours)
 	}
 
 	if withAgentAPIKeyExport {
@@ -415,11 +416,37 @@ exec mongod -f %s;
 		container.WithArgs([]string{""}),
 		containerSecurityContext,
 		container.WithEnvs(
-			corev1.EnvVar{
-				Name:  agentHealthStatusFilePathEnv,
-				Value: "/healthstatus/agent-health-status.json",
-			},
+			collectEnvVars()...,
 		),
 		container.WithVolumeMounts(volumeMounts),
 	)
+}
+
+// Function to collect and return the environment variables to be used in the
+// MongoDB container.
+func collectEnvVars() []corev1.EnvVar {
+	var envVars []corev1.EnvVar
+
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  agentHealthStatusFilePathEnv,
+		Value: "/healthstatus/agent-health-status.json",
+	})
+
+	addEnvVarIfSet := func(name string) {
+		value := os.Getenv(name)
+		if value != "" {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  name,
+				Value: value,
+			})
+		}
+	}
+
+	addEnvVarIfSet(config.ReadinessProbeLoggerBackups)
+	addEnvVarIfSet(config.ReadinessProbeLoggerMaxSize)
+	addEnvVarIfSet(config.ReadinessProbeLoggerMaxAge)
+	addEnvVarIfSet(config.ReadinessProbeLoggerCompress)
+	addEnvVarIfSet(config.WithAgentFileLogging)
+
+	return envVars
 }
