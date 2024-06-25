@@ -33,6 +33,7 @@ See the [documentation](docs) to learn how to:
 
 1. [Install or upgrade](docs/install-upgrade.md) the Operator.
 1. [Deploy and configure](docs/deploy-configure.md) MongoDB resources.
+1. [Configure Logging](docs/logging.md) of the MongoDB resource components.
 1. [Create a database user](docs/users.md) with SCRAM authentication.
 1. [Secure MongoDB resource connections](docs/secure.md) using TLS.
 

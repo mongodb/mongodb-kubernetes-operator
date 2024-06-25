@@ -22,10 +22,10 @@ const (
 	automationConfigSecretEnv    = "AUTOMATION_CONFIG_MAP" //nolint
 	logPathEnv                   = "LOG_FILE_PATH"
 	hostNameEnv                  = "HOSTNAME"
-	readinessProbeLoggerBackups  = "READINESS_PROBE_LOGGER_BACKUPS"
-	readinessProbeLoggerMaxSize  = "READINESS_PROBE_LOGGER_MAX_SIZE"
-	readinessProbeLoggerMaxAge   = "READINESS_PROBE_LOGGER_MAX_AGE"
-	readinessProbeLoggerCompress = "READINESS_PROBE_LOGGER_COMPRESS"
+	ReadinessProbeLoggerBackups  = "READINESS_PROBE_LOGGER_BACKUPS"
+	ReadinessProbeLoggerMaxSize  = "READINESS_PROBE_LOGGER_MAX_SIZE"
+	ReadinessProbeLoggerMaxAge   = "READINESS_PROBE_LOGGER_MAX_AGE"
+	ReadinessProbeLoggerCompress = "READINESS_PROBE_LOGGER_COMPRESS"
 )
 
 type Config struct {
@@ -72,10 +72,10 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file
 func GetLogger() *lumberjack.Logger {
 	logger := &lumberjack.Logger{
 		Filename:   readinessProbeLogFilePath(),
-		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
-		MaxSize:    readIntOrDefault(readinessProbeLoggerMaxSize, 5),
-		MaxAge:     readInt(readinessProbeLoggerMaxAge),
-		Compress:   ReadBoolWitDefault(readinessProbeLoggerCompress, "false"),
+		MaxBackups: readIntOrDefault(ReadinessProbeLoggerBackups, 5),
+		MaxSize:    readIntOrDefault(ReadinessProbeLoggerMaxSize, 5),
+		MaxAge:     readInt(ReadinessProbeLoggerMaxAge),
+		Compress:   ReadBoolWitDefault(ReadinessProbeLoggerCompress, "false"),
 	}
 	return logger
 }
