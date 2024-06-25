@@ -15,15 +15,17 @@ import (
 const (
 	DefaultAgentHealthStatusFilePath = "/var/log/mongodb-mms-automation/agent-health-status.json"
 	AgentHealthStatusFilePathEnv     = "AGENT_STATUS_FILEPATH"
+	WithAgentFileLogging             = "MDB_WITH_AGENT_FILE_LOGGING"
 
-	defaultLogPath              = "/var/log/mongodb-mms-automation/readiness.log"
-	podNamespaceEnv             = "POD_NAMESPACE"
-	automationConfigSecretEnv   = "AUTOMATION_CONFIG_MAP" //nolint
-	logPathEnv                  = "LOG_FILE_PATH"
-	hostNameEnv                 = "HOSTNAME"
-	readinessProbeLoggerBackups = "READINESS_PROBE_LOGGER_BACKUPS"
-	readinessProbeLoggerMaxSize = "READINESS_PROBE_LOGGER_MAX_SIZE"
-	readinessProbeLoggerMaxAge  = "READINESS_PROBE_LOGGER_MAX_AGE"
+	defaultLogPath               = "/var/log/mongodb-mms-automation/readiness.log"
+	podNamespaceEnv              = "POD_NAMESPACE"
+	automationConfigSecretEnv    = "AUTOMATION_CONFIG_MAP" //nolint
+	logPathEnv                   = "LOG_FILE_PATH"
+	hostNameEnv                  = "HOSTNAME"
+	readinessProbeLoggerBackups  = "READINESS_PROBE_LOGGER_BACKUPS"
+	readinessProbeLoggerMaxSize  = "READINESS_PROBE_LOGGER_MAX_SIZE"
+	readinessProbeLoggerMaxAge   = "READINESS_PROBE_LOGGER_MAX_AGE"
+	readinessProbeLoggerCompress = "READINESS_PROBE_LOGGER_COMPRESS"
 )
 
 type Config struct {
@@ -71,8 +73,9 @@ func GetLogger() *lumberjack.Logger {
 	logger := &lumberjack.Logger{
 		Filename:   readinessProbeLogFilePath(),
 		MaxBackups: readIntOrDefault(readinessProbeLoggerBackups, 5),
-		MaxSize:    readInt(readinessProbeLoggerMaxSize),
+		MaxSize:    readIntOrDefault(readinessProbeLoggerMaxSize, 5),
 		MaxAge:     readInt(readinessProbeLoggerMaxAge),
+		Compress:   ReadBoolWitDefault(readinessProbeLoggerCompress, "false"),
 	}
 	return logger
 }
@@ -104,4 +107,10 @@ func readIntOrDefault(envVarName string, defaultValue int) int {
 		return defaultValue
 	}
 	return intValue
+}
+
+// ReadBoolWitDefault returns the boolean value of an envvar of the given name.
+func ReadBoolWitDefault(envVarName string, defaultValue string) bool {
+	envVar := GetEnvOrDefault(envVarName, defaultValue)
+	return strings.TrimSpace(strings.ToLower(envVar)) == "true"
 }

@@ -106,7 +106,7 @@ func TestDeadlockDetection(t *testing.T) {
 			isReadyExpected: false,
 		},
 	}
-	for testName, _ := range tests {
+	for testName := range tests {
 		testConfig := tests[testName]
 		t.Run(testName, func(t *testing.T) {
 			ready, err := isPodReady(ctx, testConfig.conf)
@@ -225,7 +225,7 @@ func TestObtainingCurrentStep(t *testing.T) {
 			expectedStep: "test",
 		},
 	}
-	for testName, _ := range tests {
+	for testName := range tests {
 		testConfig := tests[testName]
 		t.Run(testName, func(t *testing.T) {
 			step := findCurrentStep(testConfig.processStatuses)
