@@ -6,7 +6,7 @@ metadata:
 spec:
   members: 3
   type: ReplicaSet
-  version: "6.0.5"
+  version: "7.0.3"
   security:
     authentication:
       modes: ["SCRAM"]
