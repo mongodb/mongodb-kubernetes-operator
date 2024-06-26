@@ -58,7 +58,7 @@ def update_operator_deployment(operator_deployment: Dict, release: Dict) -> None
         if env["name"] == "READINESS_PROBE_IMAGE":
             env["value"] = _replace_tag(env["value"], release["readiness-probe"])
         if env["name"] == "AGENT_IMAGE":
-            env["value"] = _replace_tag(env["value"], release["agent"]["version"])
+            env["value"] = _replace_tag(env["value"], release["agent"])
 
 
 def update_chart_values(values: Dict, release: Dict) -> None:

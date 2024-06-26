@@ -1,11 +1,15 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.15.0
+    service.binding: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret
+    service.binding/connectionString: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=connectionString.standardSrv
+    service.binding/password: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=password
+    service.binding/provider: community
+    service.binding/type: mongodb
+    service.binding/username: path={.metadata.name}-{.spec.users[0].db}-{.spec.users[0].name},objectType=Secret,sourceKey=username
   name: mongodbcommunity.mongodbcommunity.mongodb.com
 spec:
   group: mongodbcommunity.mongodb.com
@@ -33,14 +37,19 @@ spec:
         description: MongoDBCommunity is the Schema for the mongodbs API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -54,9 +63,10 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               additionalMongodConfig:
-                description: 'AdditionalMongodConfig is additional configuration that
-                  can be passed to each data-bearing mongod at runtime. Uses the same
-                  structure as the mongod configuration file: https://www.mongodb.com/docs/manual/reference/configuration-options/'
+                description: |-
+                  AdditionalMongodConfig is additional configuration that can be passed to
+                  each data-bearing mongod at runtime. Uses the same structure as the mongod
+                  configuration file: https://www.mongodb.com/docs/manual/reference/configuration-options/
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -73,8 +83,9 @@ spec:
                       processes.
                     properties:
                       includeAuditLogsWithMongoDBLogs:
-                        description: set to 'true' to have the Automation Agent rotate
-                          the audit files along with mongodb log files
+                        description: |-
+                          set to 'true' to have the Automation Agent rotate the audit files along
+                          with mongodb log files
                         type: boolean
                       numTotal:
                         description: maximum number of log files to have total
@@ -83,14 +94,15 @@ spec:
                         description: maximum number of log files to leave uncompressed
                         type: integer
                       percentOfDiskspace:
-                        description: Maximum percentage of the total disk space these
-                          log files should take up. The string needs to be able to
-                          be converted to float64
+                        description: |-
+                          Maximum percentage of the total disk space these log files should take up.
+                          The string needs to be able to be converted to float64
                         type: string
                       sizeThresholdMB:
-                        description: Maximum size for an individual log file before
-                          rotation. The string needs to be able to be converted to
-                          float64. Fractional values of MB are supported.
+                        description: |-
+                          Maximum size for an individual log file before rotation.
+                          The string needs to be able to be converted to float64.
+                          Fractional values of MB are supported.
                         type: string
                       timeThresholdHrs:
                         description: maximum hours for an individual log file before
@@ -118,14 +130,15 @@ spec:
                     type: object
                 type: object
               arbiters:
-                description: 'Arbiters is the number of arbiters to add to the Replica
-                  Set. It is not recommended to have more than one arbiter per Replica
-                  Set. More info: https://www.mongodb.com/docs/manual/tutorial/add-replica-set-arbiter/'
+                description: |-
+                  Arbiters is the number of arbiters to add to the Replica Set.
+                  It is not recommended to have more than one arbiter per Replica Set.
+                  More info: https://www.mongodb.com/docs/manual/tutorial/add-replica-set-arbiter/
                 type: integer
               automationConfig:
-                description: AutomationConfigOverride is merged on top of the operator
-                  created automation config. Processes are merged by name. Currently
-                  Only the process.disabled field is supported.
+                description: |-
+                  AutomationConfigOverride is merged on top of the operator created automation config. Processes are merged
+                  by name. Currently Only the process.disabled field is supported.
                 properties:
                   processes:
                     items:
@@ -140,8 +153,9 @@ spec:
                             as float64
                           properties:
                             includeAuditLogsWithMongoDBLogs:
-                              description: set to 'true' to have the Automation Agent
-                                rotate the audit files along with mongodb log files
+                              description: |-
+                                set to 'true' to have the Automation Agent rotate the audit files along
+                                with mongodb log files
                               type: boolean
                             numTotal:
                               description: maximum number of log files to have total
@@ -150,15 +164,15 @@ spec:
                               description: maximum number of log files to leave uncompressed
                               type: integer
                             percentOfDiskspace:
-                              description: Maximum percentage of the total disk space
-                                these log files should take up. The string needs to
-                                be able to be converted to float64
+                              description: |-
+                                Maximum percentage of the total disk space these log files should take up.
+                                The string needs to be able to be converted to float64
                               type: string
                             sizeThresholdMB:
-                              description: Maximum size for an individual log file
-                                before rotation. The string needs to be able to be
-                                converted to float64. Fractional values of MB are
-                                supported.
+                              description: |-
+                                Maximum size for an individual log file before rotation.
+                                The string needs to be able to be converted to float64.
+                                Fractional values of MB are supported.
                               type: string
                             timeThresholdHrs:
                               description: maximum hours for an individual log file
@@ -178,8 +192,9 @@ spec:
                   replicaSet:
                     properties:
                       settings:
-                        description: MapWrapper is a wrapper for a map to be used
-                          by other structs. The CRD generator does not support map[string]interface{}
+                        description: |-
+                          MapWrapper is a wrapper for a map to be used by other structs.
+                          The CRD generator does not support map[string]interface{}
                           on the top level and hence we need to work around this with
                           a wrapping struct.
                         type: object
@@ -187,8 +202,9 @@ spec:
                     type: object
                 type: object
               featureCompatibilityVersion:
-                description: FeatureCompatibilityVersion configures the feature compatibility
-                  version that will be set for the deployment
+                description: |-
+                  FeatureCompatibilityVersion configures the feature compatibility version that will
+                  be set for the deployment
                 type: string
               memberConfig:
                 description: MemberConfig
@@ -233,8 +249,9 @@ spec:
                       to 9216.
                     type: integer
                   tlsSecretKeyRef:
-                    description: Name of a Secret (type kubernetes.io/tls) holding
-                      the certificates to use in the Prometheus endpoint.
+                    description: |-
+                      Name of a Secret (type kubernetes.io/tls) holding the certificates to use in the
+                      Prometheus endpoint.
                     properties:
                       key:
                         description: Key is the key in the secret storing this password.
@@ -255,12 +272,13 @@ spec:
                 - username
                 type: object
               replicaSetHorizons:
-                description: ReplicaSetHorizons Add this parameter and values if you
-                  need your database to be accessed outside of Kubernetes. This setting
-                  allows you to provide different DNS settings within the Kubernetes
-                  cluster and to the Kubernetes cluster. The Kubernetes Operator uses
-                  split horizon DNS for replica set members. This feature allows communication
-                  both within the Kubernetes cluster and from outside Kubernetes.
+                description: |-
+                  ReplicaSetHorizons Add this parameter and values if you need your database
+                  to be accessed outside of Kubernetes. This setting allows you to
+                  provide different DNS settings within the Kubernetes cluster and
+                  to the Kubernetes cluster. The Kubernetes Operator uses split horizon
+                  DNS for replica set members. This feature allows communication both
+                  within the Kubernetes cluster and from outside Kubernetes.
                 items:
                   additionalProperties:
                     type: string
@@ -273,18 +291,21 @@ spec:
                   authentication:
                     properties:
                       agentCertificateSecretRef:
-                        description: 'AgentCertificateSecret is a reference to a Secret
-                          containing the certificate and the key for the automation
-                          agent The secret needs to have available: - certificate
-                          under key: "tls.crt" - private key under key: "tls.key"
-                          If additionally, tls.pem is present, then it needs to be
-                          equal to the concatenation of tls.crt and tls.key'
+                        description: |-
+                          AgentCertificateSecret is a reference to a Secret containing the certificate and the key for the automation agent
+                          The secret needs to have available:
+                          - certificate under key: "tls.crt"
+                          - private key under key: "tls.key"
+                          If additionally, tls.pem is present, then it needs to be equal to the concatenation of tls.crt and tls.key
                         properties:
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       agentMode:
                         description: AgentMode contains the authentication mode used
                           by the automation agent.
@@ -322,9 +343,9 @@ spec:
                           description: The authentication restrictions the server
                             enforces on the role.
                           items:
-                            description: AuthenticationRestriction specifies a list
-                              of IP addresses and CIDR ranges users are allowed to
-                              connect to or from.
+                            description: |-
+                              AuthenticationRestriction specifies a list of IP addresses and CIDR ranges users
+                              are allowed to connect to or from.
                             properties:
                               clientSource:
                                 items:
@@ -353,9 +374,9 @@ spec:
                                   type: string
                                 type: array
                               resource:
-                                description: Resource specifies specifies the resources
-                                  upon which a privilege permits actions. See https://www.mongodb.com/docs/manual/reference/resource-document
-                                  for more.
+                                description: |-
+                                  Resource specifies specifies the resources upon which a privilege permits actions.
+                                  See https://www.mongodb.com/docs/manual/reference/resource-document for more.
                                 properties:
                                   anyResource:
                                     type: boolean
@@ -403,45 +424,48 @@ spec:
                       communication
                     properties:
                       caCertificateSecretRef:
-                        description: CaCertificateSecret is a reference to a Secret
-                          containing the certificate for the CA which signed the server
-                          certificates The certificate is expected to be available
-                          under the key "ca.crt"
+                        description: |-
+                          CaCertificateSecret is a reference to a Secret containing the certificate for the CA which signed the server certificates
+                          The certificate is expected to be available under the key "ca.crt"
                         properties:
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       caConfigMapRef:
-                        description: CaConfigMap is a reference to a ConfigMap containing
-                          the certificate for the CA which signed the server certificates
-                          The certificate is expected to be available under the key
-                          "ca.crt" This field is ignored when CaCertificateSecretRef
-                          is configured
+                        description: |-
+                          CaConfigMap is a reference to a ConfigMap containing the certificate for the CA which signed the server certificates
+                          The certificate is expected to be available under the key "ca.crt"
+                          This field is ignored when CaCertificateSecretRef is configured
                         properties:
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       certificateKeySecretRef:
-                        description: CertificateKeySecret is a reference to a Secret
-                          containing a private key and certificate to use for TLS.
-                          The key and cert are expected to be PEM encoded and available
-                          at "tls.key" and "tls.crt". This is the same format used
-                          for the standard "kubernetes.io/tls" Secret type, but no
-                          specific type is required. Alternatively, an entry tls.pem,
-                          containing the concatenation of cert and key, can be provided.
-                          If all of tls.pem, tls.crt and tls.key are present, the
-                          tls.pem one needs to be equal to the concatenation of tls.crt
-                          and tls.key
+                        description: |-
+                          CertificateKeySecret is a reference to a Secret containing a private key and certificate to use for TLS.
+                          The key and cert are expected to be PEM encoded and available at "tls.key" and "tls.crt".
+                          This is the same format used for the standard "kubernetes.io/tls" Secret type, but no specific type is required.
+                          Alternatively, an entry tls.pem, containing the concatenation of cert and key, can be provided.
+                          If all of tls.pem, tls.crt and tls.key are present, the tls.pem one needs to be equal to the concatenation of tls.crt and tls.key
                         properties:
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       enabled:
                         type: boolean
                       optional:
@@ -453,7 +477,8 @@ spec:
                     type: object
                 type: object
               statefulSet:
-                description: StatefulSetConfiguration holds the optional custom StatefulSet
+                description: |-
+                  StatefulSetConfiguration holds the optional custom StatefulSet
                   that should be merged into the operator created one.
                 properties:
                   metadata:
@@ -487,17 +512,16 @@ spec:
                 items:
                   properties:
                     additionalConnectionStringConfig:
-                      description: Additional options to be appended to the connection
-                        string. These options apply only to this user and will override
-                        any existing options in the resource.
+                      description: |-
+                        Additional options to be appended to the connection string.
+                        These options apply only to this user and will override any existing options in the resource.
                       nullable: true
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     connectionStringSecretName:
-                      description: ConnectionStringSecretName is the name of the secret
-                        object created by the operator which exposes the connection
-                        strings for the user. If provided, this secret must be different
-                        for each user in a deployment.
+                      description: |-
+                        ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
+                        If provided, this secret must be different for each user in a deployment.
                       type: string
                     connectionStringSecretNamespace:
                       description: ConnectionStringSecretNamespace is the namespace
@@ -544,10 +568,9 @@ spec:
                         type: object
                       type: array
                     scramCredentialsSecretName:
-                      description: ScramCredentialsSecretName appended by string "scram-credentials"
-                        is the name of the secret object created by the mongoDB operator
-                        for storing SCRAM credentials These secrets names must be
-                        different for each user in a deployment.
+                      description: |-
+                        ScramCredentialsSecretName appended by string "scram-credentials" is the name of the secret object created by the mongoDB operator for storing SCRAM credentials
+                        These secrets names must be different for each user in a deployment.
                       pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                       type: string
                   required:
@@ -593,9 +616,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
