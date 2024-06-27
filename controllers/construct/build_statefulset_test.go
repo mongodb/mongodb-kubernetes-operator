@@ -177,14 +177,14 @@ func TestMongod_Container(t *testing.T) {
 }
 
 func TestMongoDBAgentCommand(t *testing.T) {
-	cmd := AutomationAgentCommand(false, "INFO", "testfile", 24)
+	cmd := AutomationAgentCommand(false, mdbv1.LogLevelInfo, "testfile", 24)
 	baseCmd := MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions
 	assert.Len(t, cmd, 3)
 	assert.Equal(t, cmd[0], "/bin/bash")
 	assert.Equal(t, cmd[1], "-c")
 	assert.Equal(t, cmd[2], baseCmd+" -logFile testfile -logLevel INFO -maxLogFileDurationHrs 24")
 
-	cmd = AutomationAgentCommand(false, "INFO", "/dev/stdout", 24)
+	cmd = AutomationAgentCommand(false, mdbv1.LogLevelInfo, "/dev/stdout", 24)
 	assert.Len(t, cmd, 3)
 	assert.Equal(t, cmd[0], "/bin/bash")
 	assert.Equal(t, cmd[1], "-c")
