@@ -207,7 +207,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 
 	agentLogLevel := mdbv1.LogLevelInfo
 	if mdb.GetAgentLogLevel() != "" {
-		agentLogLevel = string(mdb.GetAgentLogLevel())
+		agentLogLevel = mdb.GetAgentLogLevel()
 	}
 
 	agentLogFile := automationconfig.DefaultAgentLogFile
