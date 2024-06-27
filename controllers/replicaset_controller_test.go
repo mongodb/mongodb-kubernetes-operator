@@ -85,6 +85,7 @@ func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
 				},
 			},
 			AgentConfiguration: mdbv1.AgentConfiguration{
+				LogLevel: "FATAL",
 				LogRotate: &automationconfig.CrdLogRotate{
 					SizeThresholdMB: "1",
 				},
