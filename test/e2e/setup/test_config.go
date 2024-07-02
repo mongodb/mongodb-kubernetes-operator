@@ -41,7 +41,7 @@ func LoadTestConfigFromEnv() TestConfig {
 		MongoDBImage:            envvar.GetEnvOrDefault(construct.MongodbImageEnv, "mongodb-community-server"),
 		MongoDBRepoUrl:          envvar.GetEnvOrDefault(construct.MongodbRepoUrl, "quay.io/mongodb"),
 		VersionUpgradeHookImage: envvar.GetEnvOrDefault(construct.VersionUpgradeHookImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2"),
-		AgentImage:              envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent:10.29.0.6830-1"), // TODO: better way to decide default agent image.
+		AgentImage:              envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent-ubi:10.29.0.6830-1"), // TODO: better way to decide default agent image.
 		ClusterWide:             envvar.ReadBool(clusterWideEnvName),
 		PerformCleanup:          envvar.ReadBool(performCleanupEnvName),
 		ReadinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
