@@ -61,7 +61,9 @@ to be able to run properly. Create a json file with the following content:
   "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
   "agent_image": "mongodb-agent-ubi-dev",
   "readiness_probe_image": "mongodb-kubernetes-readiness",
-  "s3_bucket": ""
+  "s3_bucket": "",
+  "mdb_local_operator": "",
+  "kubeconfig": "",
 }
 ```
 
