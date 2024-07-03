@@ -62,7 +62,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(ctx context.Context,
 		pwd := ""
 
 		if user.Database != constants.ExternalDB {
-			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: secretNamespace}
+			secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: mdb.Namespace}
 			pwd, err = secret.ReadKey(ctx, r.client, user.PasswordSecretKey, secretNamespacedName)
 			if err != nil {
 				return err
