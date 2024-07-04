@@ -132,6 +132,9 @@ type MongoDBCommunitySpec struct {
 	// MemberConfig
 	// +optional
 	MemberConfig []automationconfig.MemberOptions `json:"memberConfig,omitempty"`
+
+	// OverrideClusterDomain overrides the cluster domain.
+	OverrideClusterDomain string `json:"overrideClusterDomain,omitempty"`
 }
 
 // MapWrapper is a wrapper for a map to be used by other structs.
