@@ -69,7 +69,7 @@ to be able to run properly. Create a json file with the following content:
 
 #### Config Options
 
-1. `namespace` is the namespace that will be used by scripts/tooling. All the resources will be deployed here.
+1. `namespace` is the watch namespace of the operator, only in this namespace `MongoDBCommunity` are being reconciled. Additionally, this namespace will be used by scripts/tooling. All the resources will be deployed here.
 2. `repo_url` the repository that should be used to push/pull all images.
 3. `operator_image` will be used as the name of the operator deployment, and the name of the operator image when build.
 4. `e2e_image` the name of e2e test image that will be built.
