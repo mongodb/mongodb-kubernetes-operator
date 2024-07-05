@@ -42,6 +42,7 @@ You cannot disable SCRAM authentication.
    | `spec.users.roles` | array of objects | Configures roles assigned to the user. | Yes |
    | `spec.users.roles.role.name` | string | Name of the role. Valid values are [built-in roles](https://www.mongodb.com/docs/manual/reference/built-in-roles/#built-in-roles) and [custom roles](deploy-configure.md#define-a-custom-database-role) that you have defined. | Yes |
    | `spec.users.roles.role.db` | string | Database that the role applies to. | Yes |
+   | `spec.users.connectionStringSecretAnnotations` | object | Annotations of the secret object created by the operator which exposes the connection strings for the user. | No |
 
    ```yaml
    ---
