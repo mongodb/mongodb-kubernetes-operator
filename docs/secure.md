@@ -50,7 +50,7 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
    helm upgrade --install community-operator mongodb/community-operator \
    --namespace <namespace> --set resource.tls.useCertManager=true \
    --set createResource=true --set resource.tls.enabled=true \
-   --set namespace=<namespace> --create-namespace
+   --set namespace=<namespace>
    ```
 
   This creates a resource secured with TLS and generates the necessary
