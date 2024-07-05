@@ -36,20 +36,21 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
    helm repo update
    ```
 
-1. Install `cert-manager`:
+2. Install `cert-manager`:
 
    ```
-   helm install cert-manager jetstack/cert-manager --namespace cert-manager \ 
-   --create-namespace --set installCRDs=true
+   helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
    ```
 
-1. Create a TLS-secured MongoDBCommunity resource:
+3. Create a TLS-secured MongoDBCommunity resource:
+
+    This assumes you already have the operator installed in namespace `<namespace>`
 
    ```
    helm upgrade --install community-operator mongodb/community-operator \
-   --namespace mongodb --set resource.tls.useCertManager=true \
+   --namespace <namespace> --set resource.tls.useCertManager=true \
    --set createResource=true --set resource.tls.enabled=true \
-   --set namespace=mongodb --create-namespace
+   --set namespace=<namespace>
    ```
 
   This creates a resource secured with TLS and generates the necessary
@@ -72,21 +73,21 @@ To secure connections to MongoDBCommunity resources with TLS using `cert-manager
 
 1. Test your connection over TLS by 
 
-   - Connecting to a `mongod` container using `kubectl`:
+   - Connecting to a `mongod` container inside a pod using `kubectl`:
 
    ```
-   kubectl exec -it mongodb-replica-set -c mongod -- bash
+   kubectl exec -it <mongodb-replica-set-pod> -c mongod -- bash
    ```
 
-   Where `mongodb-replica-set` is the name of your MongoDBCommunity resource
+   Where `mongodb-replica-set-pod` is the name of a pod from your MongoDBCommunity resource
 
    - Then, use `mongosh` to connect over TLS:
+   For how to get the connection string look at [Deploy A Replica Set](deploy-configure.md#deploy-a-replica-set)
 
    ```
-   mongosh --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile \
-   /var/lib/tls/server/*.pem \ 
-   --host <mongodb-replica-set>.<mongodb-replica-set>-svc.<namespace>.svc.cluster.local
+   mongosh "<connection-string>" --tls --tlsCAFile /var/lib/tls/ca/ca.crt --tlsCertificateKeyFile /var/lib/tls/server/*.pem 
    ```
 
    Where `mongodb-replica-set` is the name of your MongoDBCommunity 
-   resource and `namespace` is the namespace of your deployment.
+   resource, `namespace` is the namespace of your deployment
+   and  `connection-string` is a connection string for your `<mongodb-replica-set>-svc` service.
