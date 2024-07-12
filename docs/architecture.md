@@ -10,7 +10,7 @@ The MongoDB Community Kubernetes Operator is a [Custom Resource Definition](http
 
 ## Cluster Configuration
 
-You create and update MongoDBCommunity resources by defining a MongoDBCommunity resource definition. When you apply the MongoDBCommunity resource definition to your Kubernetes environment, the Operator:
+You create and update MongoDBCommunity resources by defining a MongoDBCommunity resource definition in the namespace watched by the operator. When you apply the MongoDBCommunity resource definition to your Kubernetes environment, the Operator:
 
 1. Creates a [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) that contains one [pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/) for each [replica set](https://www.mongodb.com/docs/manual/replication/) member.
 1. Writes the Automation configuration as a [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and mounts it to each pod.

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
@@ -82,7 +83,9 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: watchNamespace,
+		Cache: cache.Options{
+			Namespaces: []string{watchNamespace},
+		},
 	})
 	if err != nil {
 		log.Sugar().Fatalf("Unable to create manager: %v", err)
