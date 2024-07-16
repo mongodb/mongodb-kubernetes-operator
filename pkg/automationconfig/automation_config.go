@@ -333,9 +333,9 @@ type Auth struct {
 
 type DeletedUser struct {
 	// User is the username that should be deleted
-	User string `json:"user",omitempty`
+	User string `json:"user,omitempty"`
 	// Dbs is the array of database names from which the authenticated user should be deleted
-	Dbs []string `json:"dbs",omitempty`
+	Dbs []string `json:"dbs,omitempty"`
 }
 
 type Prometheus struct {
