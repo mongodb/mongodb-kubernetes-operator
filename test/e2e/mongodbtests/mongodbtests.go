@@ -784,7 +784,7 @@ func RemoveUserFromResource(ctx context.Context, mdb *mdbv1.MongoDBCommunity) fu
 	}
 }
 
-func ConnectionStringSecretsAreCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCommunity, removedConnectionString string) func(t *testing.T) {
+func ConnectionStringSecretIsCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCommunity, removedConnectionString string) func(t *testing.T) {
 	return func(t *testing.T) {
 		connectionStringSecret := corev1.Secret{}
 		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
@@ -795,7 +795,7 @@ func ConnectionStringSecretsAreCleanedUp(ctx context.Context, mdb *mdbv1.MongoDB
 
 func AuthUsersDeletedIsUpdated(ctx context.Context, mdb *mdbv1.MongoDBCommunity, mdbUser mdbv1.MongoDBUser) func(t *testing.T) {
 	return func(t *testing.T) {
-		deletedUser := automationconfig.DeletedUser{User: mdbUser.Name, Dbs: []string{"admin"}}
+		deletedUser := automationconfig.DeletedUser{User: mdbUser.Name, Dbs: []string{mdbUser.DB}}
 
 		currentAc := getAutomationConfig(ctx, t, mdb)
 

@@ -99,7 +99,7 @@ func TestCleanupUsers(t *testing.T) {
 	deletedUser := mdb.Spec.Users[0]
 	t.Run("Delete user from MongoDB Resource", mongodbtests.RemoveUserFromResource(ctx, &mdb))
 	t.Run("MongoDB reaches Running phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
-	t.Run("Removed users are added to automation config", mongodbtests.AuthUsersDeletedIsUpdated(ctx, &mdb, user))
-	t.Run("Connection string secrets are cleaned up", mongodbtests.ConnectionStringSecretsAreCleanedUp(ctx, &mdb, deletedUser.GetConnectionStringSecretName(mdb.Name)))
+	t.Run("Removed users are added to automation config", mongodbtests.AuthUsersDeletedIsUpdated(ctx, &mdb, deletedUser))
+	t.Run("Connection string secrets are cleaned up", mongodbtests.ConnectionStringSecretIsCleanedUp(ctx, &mdb, deletedUser.GetConnectionStringSecretName(mdb.Name)))
 	t.Run("Delete MongoDB Resource", mongodbtests.DeleteMongoDBResource(&mdb, testCtx))
 }
