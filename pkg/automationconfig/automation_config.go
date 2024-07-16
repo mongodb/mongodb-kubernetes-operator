@@ -327,6 +327,15 @@ type Auth struct {
 	KeyFileWindows string `json:"keyfileWindows,omitempty"`
 	// AutoPwd is a required field when going from `Disabled=false` to `Disabled=true`
 	AutoPwd string `json:"autoPwd,omitempty"`
+	// UsersDeleted is an array of DeletedUser objects that define the authenticated users to be deleted from specified databases
+	UsersDeleted []DeletedUser `json:"usersDeleted,omitempty"`
+}
+
+type DeletedUser struct {
+	// User is the username that should be deleted
+	User string `json:"user",omitempty`
+	// Dbs is the array of database names from which the authenticated user should be deleted
+	Dbs []string `json:"dbs",omitempty`
 }
 
 type Prometheus struct {

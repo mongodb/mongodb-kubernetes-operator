@@ -3,6 +3,7 @@ package authentication
 import (
 	"context"
 	"fmt"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -32,4 +33,36 @@ func Enable(ctx context.Context, auth *automationconfig.Auth, secretGetUpdateCre
 		}
 	}
 	return nil
+}
+
+func AddRemovedUsers(auth *automationconfig.Auth, mdb mdbv1.MongoDBCommunity, lastAppliedSpec *mdbv1.MongoDBCommunitySpec) {
+	deletedUsers := getDeletedUsers(mdb.Spec, lastAppliedSpec)
+
+	auth.UsersDeleted = append(auth.UsersDeleted, deletedUsers...)
+}
+
+func getDeletedUsers(currentMDB mdbv1.MongoDBCommunitySpec, lastAppliedMDBSpec *mdbv1.MongoDBCommunitySpec) []automationconfig.DeletedUser {
+	type user struct {
+		db   string
+		name string
+	}
+	m := map[user]bool{}
+	var deletedUsers []automationconfig.DeletedUser
+
+	for _, mongoDBUser := range currentMDB.Users {
+		if mongoDBUser.DB != constants.ExternalDB {
+			m[user{db: mongoDBUser.DB, name: mongoDBUser.Name}] = true
+		}
+	}
+
+	for _, mongoDBUser := range lastAppliedMDBSpec.Users {
+		if mongoDBUser.DB == constants.ExternalDB {
+			continue
+		}
+		_, ok := m[user{db: mongoDBUser.DB, name: mongoDBUser.Name}]
+		if !ok {
+			deletedUsers = append(deletedUsers, automationconfig.DeletedUser{User: mongoDBUser.Name, Dbs: []string{mongoDBUser.DB}})
+		}
+	}
+	return deletedUsers
 }

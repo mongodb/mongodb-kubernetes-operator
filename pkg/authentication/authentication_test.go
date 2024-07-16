@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"context"
+	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,6 +131,99 @@ func TestEnable(t *testing.T) {
 		assert.Equal(t, "CN=mms-automation-agent,OU=ENG,O=MongoDB,C=US", auth.AutoUser)
 	})
 
+}
+
+func TestGetDeletedUsers(t *testing.T) {
+	lastAppliedSpec := mdbv1.MongoDBCommunitySpec{
+		Members:  3,
+		Type:     "ReplicaSet",
+		Version:  "7.0.2",
+		Arbiters: 0,
+		Security: mdbv1.Security{
+			Authentication: mdbv1.Authentication{
+				Modes: []mdbv1.AuthMode{"SCRAM"},
+			},
+		},
+		Users: []mdbv1.MongoDBUser{
+			{
+				Name: "testUser",
+				PasswordSecretRef: mdbv1.SecretKeyReference{
+					Name: "password-secret-name",
+				},
+				ConnectionStringSecretName: "connection-string-secret",
+				DB:                         "admin",
+			},
+		},
+	}
+
+	t.Run("no change same resource", func(t *testing.T) {
+		actual := getDeletedUsers(lastAppliedSpec, &lastAppliedSpec)
+
+		var expected []automationconfig.DeletedUser
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("new user", func(t *testing.T) {
+		current := mdbv1.MongoDBCommunitySpec{
+			Members:  3,
+			Type:     "ReplicaSet",
+			Version:  "7.0.2",
+			Arbiters: 0,
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
+			Users: []mdbv1.MongoDBUser{
+				{
+					Name: "testUser",
+					PasswordSecretRef: mdbv1.SecretKeyReference{
+						Name: "password-secret-name",
+					},
+					ConnectionStringSecretName: "connection-string-secret",
+					DB:                         "admin",
+				},
+				{
+					Name: "newUser",
+					PasswordSecretRef: mdbv1.SecretKeyReference{
+						Name: "new-password-secret-name",
+					},
+					ConnectionStringSecretName: "new-connection-string-secret",
+					DB:                         "admin",
+				},
+			},
+		}
+
+		var expected []automationconfig.DeletedUser
+		actual := getDeletedUsers(current, &lastAppliedSpec)
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("removed one user", func(t *testing.T) {
+		current := mdbv1.MongoDBCommunitySpec{
+			Members:  3,
+			Type:     "ReplicaSet",
+			Version:  "7.0.2",
+			Arbiters: 0,
+			Security: mdbv1.Security{
+				Authentication: mdbv1.Authentication{
+					Modes: []mdbv1.AuthMode{"SCRAM"},
+				},
+			},
+			Users: []mdbv1.MongoDBUser{},
+		}
+
+		expected := []automationconfig.DeletedUser{
+			{
+				User: "testUser",
+				Dbs:  []string{"admin"},
+			},
+		}
+		actual := getDeletedUsers(current, &lastAppliedSpec)
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func buildConfigurable(name string, auth []string, agent string, users ...authtypes.User) mocks.MockConfigurable {
