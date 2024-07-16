@@ -771,3 +771,34 @@ func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamesp
 	assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
 	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 }
+
+func RemoveUserFromResource(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users = []mdbv1.MongoDBUser{}
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ConnectionStringSecretsAreCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCommunity, removedConnectionString string) func(t *testing.T) {
+	return func(t *testing.T) {
+		connectionStringSecret := corev1.Secret{}
+		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
+
+		assert.Error(t, newErr)
+	}
+}
+
+func AuthUsersDeletedIsUpdated(ctx context.Context, mdb *mdbv1.MongoDBCommunity, mdbUser mdbv1.MongoDBUser) func(t *testing.T) {
+	return func(t *testing.T) {
+		deletedUser := automationconfig.DeletedUser{User: mdbUser.Name, Dbs: []string{"admin"}}
+
+		currentAc := getAutomationConfig(ctx, t, mdb)
+
+		assert.Contains(t, currentAc.Auth.UsersDeleted, deletedUser)
+	}
+}
