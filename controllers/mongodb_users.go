@@ -82,6 +82,9 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(ctx context.Context,
 		if err := secret.CreateOrUpdate(ctx, r.client, connectionStringSecret); err != nil {
 			return err
 		}
+
+		secretNamespacedName := types.NamespacedName{Name: user.PasswordSecretName, Namespace: secretNamespace}
+		r.secretWatcher.Watch(ctx, secretNamespacedName, mdb.NamespacedName())
 	}
 
 	return nil
