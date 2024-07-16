@@ -13,7 +13,7 @@ AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubi < $(MONGODB_COMMUNITY_CONFIG)
 
 HELM_CHART ?= ./helm-charts/charts/community-operator
 
-STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=0.9.0-arm64,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=1.0.8-arm64,readinessProbe.version=1.0.19-arm64,agent.version=13.19.0.8951-1-arm64,agent.name=$(AGENT_IMAGE_NAME)
+STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=latest,readinessProbe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
 STRING_SET_VALUES_LOCAL := $(STRING_SET_VALUES) --set operator.replicas=0
 
 DOCKERFILE ?= operator
@@ -134,7 +134,7 @@ install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml $(HELM_CHART) | kubectl apply -f -
 
 uninstall-crd:
-	kubectl delete crd --ignore-not-found=true mongodbcommunity.mongodbcommunity.mongodb.com
+	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
 
 uninstall-chart:
 	$(HELM) uninstall $(RELEASE_NAME_HELM) -n $(NAMESPACE)
