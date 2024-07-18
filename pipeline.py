@@ -87,7 +87,7 @@ def build_and_push_image(
     architectures: Set[str],
     release: bool,
     sign: bool,
-    insecure: bool,
+    insecure: bool = False,
 ) -> None:
     if sign:
         mongodb_artifactory_login()
