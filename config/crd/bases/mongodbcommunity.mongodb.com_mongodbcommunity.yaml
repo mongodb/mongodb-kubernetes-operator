@@ -223,6 +223,9 @@ spec:
               members:
                 description: Members is the number of members in the replica set
                 type: integer
+              overrideClusterDomain:
+                description: OverrideClusterDomain overrides the cluster domain.
+                type: string
               prometheus:
                 description: Prometheus configurations.
                 properties:
