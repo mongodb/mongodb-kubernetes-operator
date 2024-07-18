@@ -83,8 +83,8 @@ images:
         buildargs:
           agent_version: $(inputs.params.release_version)
           tools_version: $(inputs.params.tools_version)
-          agent_distro: rhel7_x86_64
-          tools_distro: rhel70-x86_64
+          agent_distro: $(inputs.params.agent_distro)
+          tools_distro: $(inputs.params.tools_distro)
 
         labels:
           quay.expires-after: Never
