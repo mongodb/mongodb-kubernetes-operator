@@ -181,7 +181,7 @@ func (p *Process) SetLogRotate(lr *CrdLogRotate) *Process {
 	return p
 }
 
-// SetLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
+// SetAuditLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
 func (p *Process) SetAuditLogRotate(lr *CrdLogRotate) *Process {
 	p.AuditLogRotate = ConvertCrdLogRotateToAC(lr)
 	return p
