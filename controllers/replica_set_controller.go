@@ -535,7 +535,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		AddModifications(getMongodConfigModification(mdb)).
 		AddModifications(modifications...).
 		AddProcessModification(func(_ int, p *automationconfig.Process) {
-			automationconfig.ConfigureAgentConfiguration(mdb.Spec.AgentConfiguration.SystemLog, mdb.Spec.AgentConfiguration.LogRotate, p)
+			automationconfig.ConfigureAgentConfiguration(mdb.Spec.AgentConfiguration.SystemLog, mdb.Spec.AgentConfiguration.LogRotate, mdb.Spec.AgentConfiguration.AuditLogRotate, p)
 		}).
 		Build()
 }

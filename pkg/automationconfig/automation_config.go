@@ -485,7 +485,7 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 	return ac, nil
 }
 
-func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, p *Process) {
+func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, auditLR *CrdLogRotate, p *Process) {
 	if systemLog != nil {
 		p.SetSystemLog(*systemLog)
 	}
@@ -498,6 +498,7 @@ func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, 
 			zap.S().Warn("Configuring LogRotate with systemLog.Destination = Syslog will not work")
 		}
 		p.SetLogRotate(logRotate)
+		p.SetAuditLogRotate(auditLR)
 	}
 
 }
