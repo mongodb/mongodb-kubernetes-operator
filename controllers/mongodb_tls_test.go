@@ -329,6 +329,7 @@ func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 			assert.Equal(t, "/tmp/test", process.Args26.Get("systemLog.path").String())
 			assert.Equal(t, "file", process.Args26.Get("systemLog.destination").String())
 			assert.Equal(t, process.LogRotate, automationconfig.ConvertCrdLogRotateToAC(mdb.Spec.AgentConfiguration.LogRotate))
+			assert.Equal(t, process.AuditLogRotate, automationconfig.ConvertCrdLogRotateToAC(mdb.Spec.AgentConfiguration.AuditLogRotate))
 		}
 	})
 

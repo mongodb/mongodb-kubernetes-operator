@@ -88,6 +88,9 @@ func newTestReplicaSetWithSystemLogAndLogRotate() mdbv1.MongoDBCommunity {
 				LogRotate: &automationconfig.CrdLogRotate{
 					SizeThresholdMB: "1",
 				},
+				AuditLogRotate: &automationconfig.CrdLogRotate{
+					SizeThresholdMB: "1",
+				},
 				SystemLog: &automationconfig.SystemLog{
 					Destination: automationconfig.File,
 					Path:        "/tmp/test",
