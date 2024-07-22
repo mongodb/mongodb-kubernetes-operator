@@ -20,9 +20,9 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 ## Running The Operator locally
 1. Use the dedicated make target which exports the needed environment variables and builds & runs the operator binary.
 
-   Before doing that you need to add 2 more fields to the `config.json` file from in [contributing.md](contributing.md):
-    - `mdb_local_operator`: needs to be set to `true`
-    - `kubeconfig`: needs to be set to the path of the configuration file mentioned above
+   Before doing that you need to add 2 more fields to the `config.json` file found in [contributing.md](contributing.md), because the python script looks for them in the file:
+    - `mdb_local_operator`: needs to be set to `true`, to allow for the operator to be run locally
+    - `kubeconfig`: needs to be set to the path of the `kubeconfig` configuration file, for example `$HOME/.kube/config`
   
    Then you can run the command:
   
