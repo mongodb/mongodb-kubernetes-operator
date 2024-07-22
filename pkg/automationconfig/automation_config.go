@@ -135,7 +135,8 @@ type Process struct {
 	ProcessType                 ProcessType  `json:"processType"`
 	Version                     string       `json:"version"`
 	AuthSchemaVersion           int          `json:"authSchemaVersion"`
-	LogRotate                   *AcLogRotate `json:"LogRotate,omitempty"`
+	LogRotate                   *AcLogRotate `json:"logRotate,omitempty"`
+	AuditLogRotate              *AcLogRotate `json:"auditLogRotate,omitempty"`
 }
 
 func (p *Process) SetPort(port int) *Process {
@@ -177,6 +178,12 @@ func (p *Process) SetSystemLog(systemLog SystemLog) *Process {
 // SetLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
 func (p *Process) SetLogRotate(lr *CrdLogRotate) *Process {
 	p.LogRotate = ConvertCrdLogRotateToAC(lr)
+	return p
+}
+
+// SetAuditLogRotate sets the acLogRotate by converting the CrdLogRotate to an acLogRotate.
+func (p *Process) SetAuditLogRotate(lr *CrdLogRotate) *Process {
+	p.AuditLogRotate = ConvertCrdLogRotateToAC(lr)
 	return p
 }
 
@@ -478,7 +485,7 @@ func FromBytes(acBytes []byte) (AutomationConfig, error) {
 	return ac, nil
 }
 
-func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, p *Process) {
+func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, auditLR *CrdLogRotate, p *Process) {
 	if systemLog != nil {
 		p.SetSystemLog(*systemLog)
 	}
@@ -491,6 +498,7 @@ func ConfigureAgentConfiguration(systemLog *SystemLog, logRotate *CrdLogRotate, 
 			zap.S().Warn("Configuring LogRotate with systemLog.Destination = Syslog will not work")
 		}
 		p.SetLogRotate(logRotate)
+		p.SetAuditLogRotate(auditLR)
 	}
 
 }

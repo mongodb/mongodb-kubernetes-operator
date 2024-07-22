@@ -44,7 +44,7 @@ func TestEnsureSecret(t *testing.T) {
 		ctx := context.Background()
 
 		desiredAutomationConfig, err = NewBuilder().SetMembers(3).AddProcessModification(func(i_ int, p *Process) {
-			p.SetLogRotate(&CrdLogRotate{
+			lr := &CrdLogRotate{
 				SizeThresholdMB: "0.001",
 				LogRotate: LogRotate{
 					TimeThresholdHrs:                1,
@@ -53,7 +53,9 @@ func TestEnsureSecret(t *testing.T) {
 					IncludeAuditLogsWithMongoDBLogs: false,
 				},
 				PercentOfDiskspace: "1",
-			})
+			}
+			p.SetLogRotate(lr)
+			p.SetAuditLogRotate(lr)
 		}).Build()
 		assert.NoError(t, err)
 
@@ -72,7 +74,9 @@ func TestEnsureSecret(t *testing.T) {
 		acFromBytes, err := FromBytes(bytes)
 		assert.NoError(t, err)
 		assert.Equal(t, 0.001, acFromBytes.Processes[0].LogRotate.SizeThresholdMB)
+		assert.Equal(t, 0.001, acFromBytes.Processes[0].AuditLogRotate.SizeThresholdMB)
 		assert.Equal(t, float64(1), acFromBytes.Processes[0].LogRotate.PercentOfDiskspace)
+		assert.Equal(t, float64(1), acFromBytes.Processes[0].AuditLogRotate.PercentOfDiskspace)
 	})
 
 	t.Run("test LogRotate marshal and unmarshal if not set", func(t *testing.T) {
