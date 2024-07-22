@@ -22,8 +22,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 	t.Run("no change same resource", func(t *testing.T) {
 		actual := getScramSecretsToDelete(lastApplied.Spec, lastApplied.Spec)
 
-		var expected []string
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string{}, actual)
 	})
 
 	t.Run("new user new secret", func(t *testing.T) {
@@ -44,10 +43,9 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 			},
 		)
 
-		var expected []string
 		actual := getScramSecretsToDelete(current.Spec, lastApplied.Spec)
 
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string{}, actual)
 	})
 
 	t.Run("old user new secret", func(t *testing.T) {
@@ -167,11 +165,10 @@ func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
 	t.Run("no change same resource", func(t *testing.T) {
 		actual := getConnectionStringSecretsToDelete(lastApplied.Spec, lastApplied.Spec, "my-rs")
 
-		var expected []string
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string{}, actual)
 	})
 
-	t.Run("new user new secret", func(t *testing.T) {
+	t.Run("new user does not require existing user cleanup", func(t *testing.T) {
 		current := newScramReplicaSet(
 			mdbv1.MongoDBUser{
 				Name: "testUser",
@@ -189,10 +186,9 @@ func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
 			},
 		)
 
-		var expected []string
 		actual := getConnectionStringSecretsToDelete(current.Spec, lastApplied.Spec, "my-rs")
 
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string{}, actual)
 	})
 
 	t.Run("old user new secret", func(t *testing.T) {
@@ -210,7 +206,7 @@ func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
 		assert.Equal(t, expected, actual)
 	})
 
-	t.Run("removed one user", func(t *testing.T) {
+	t.Run("removed one user and changed secret of the other", func(t *testing.T) {
 		lastApplied = newScramReplicaSet(
 			mdbv1.MongoDBUser{
 				Name: "testUser",

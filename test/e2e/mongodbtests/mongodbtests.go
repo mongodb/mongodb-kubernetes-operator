@@ -772,7 +772,7 @@ func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamesp
 	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 }
 
-func RemoveUserFromResource(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func RemoveAllUsersFromResource(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Users = []mdbv1.MongoDBUser{}
@@ -789,6 +789,7 @@ func ConnectionStringSecretIsCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCo
 		connectionStringSecret := corev1.Secret{}
 		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
 
+		fmt.Println(newErr)
 		assert.Error(t, newErr)
 	}
 }

@@ -157,7 +157,7 @@ func TestGetDeletedUsers(t *testing.T) {
 	}
 
 	t.Run("no change same resource", func(t *testing.T) {
-		actual := getDeletedUsers(lastAppliedSpec, &lastAppliedSpec)
+		actual := getRemovedUsersFromSpec(lastAppliedSpec, &lastAppliedSpec)
 
 		var expected []automationconfig.DeletedUser
 		assert.Equal(t, expected, actual)
@@ -195,7 +195,7 @@ func TestGetDeletedUsers(t *testing.T) {
 		}
 
 		var expected []automationconfig.DeletedUser
-		actual := getDeletedUsers(current, &lastAppliedSpec)
+		actual := getRemovedUsersFromSpec(current, &lastAppliedSpec)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -220,7 +220,7 @@ func TestGetDeletedUsers(t *testing.T) {
 				Dbs:  []string{"admin"},
 			},
 		}
-		actual := getDeletedUsers(current, &lastAppliedSpec)
+		actual := getRemovedUsersFromSpec(current, &lastAppliedSpec)
 
 		assert.Equal(t, expected, actual)
 	})

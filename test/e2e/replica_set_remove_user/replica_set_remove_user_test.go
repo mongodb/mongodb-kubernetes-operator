@@ -97,7 +97,7 @@ func TestCleanupUsers(t *testing.T) {
 	t.Run("Test Basic Connectivity", tester.ConnectivitySucceeds())
 	t.Run("Test SRV Connectivity", tester.ConnectivitySucceeds(WithURI(mdb.MongoSRVURI("")), WithoutTls(), WithReplicaSet(mdb.Name)))
 	deletedUser := mdb.Spec.Users[0]
-	t.Run("Delete user from MongoDB Resource", mongodbtests.RemoveUserFromResource(ctx, &mdb))
+	t.Run("Delete user from MongoDB Resource", mongodbtests.RemoveAllUsersFromResource(ctx, &mdb))
 	t.Run("MongoDB reaches Pending phase", mongodbtests.MongoDBReachesPendingPhase(ctx, &mdb))
 	t.Run("Removed users are added to automation config", mongodbtests.AuthUsersDeletedIsUpdated(ctx, &mdb, deletedUser))
 	t.Run("MongoDB reaches Running phase", mongodbtests.MongoDBReachesRunningPhase(ctx, &mdb))
