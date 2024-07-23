@@ -173,7 +173,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 			withFailedPhase())
 	}
 
-	ready, err := r.deployMongoDBReplicaSet(ctx, mdb)
+	ready, err := r.deployMongoDBReplicaSet(ctx, mdb, lastAppliedSpec)
 	if err != nil {
 		return status.Update(ctx, r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, fmt.Sprintf("Error deploying MongoDB ReplicaSet: %s", err)).
@@ -225,6 +225,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	if lastAppliedSpec != nil {
 		r.cleanupScramSecrets(ctx, mdb.Spec, *lastAppliedSpec, mdb.Namespace)
 		r.cleanupPemSecret(ctx, mdb.Spec, *lastAppliedSpec, mdb.Namespace)
+		r.cleanupConnectionStringSecrets(ctx, mdb.Spec, *lastAppliedSpec, mdb.Namespace, mdb.Name)
 	}
 
 	if err := r.updateLastSuccessfulConfiguration(ctx, mdb); err != nil {
@@ -331,7 +332,7 @@ func (r *ReplicaSetReconciler) deployStatefulSet(ctx context.Context, mdb mdbv1.
 
 // deployAutomationConfig deploys the AutomationConfig for the MongoDBCommunity resource.
 // The returned boolean indicates whether or not that Agents have all reached goal state.
-func (r *ReplicaSetReconciler) deployAutomationConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity) (bool, error) {
+func (r *ReplicaSetReconciler) deployAutomationConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity, lastAppliedSpec *mdbv1.MongoDBCommunitySpec) (bool, error) {
 	r.log.Infof("Creating/Updating AutomationConfig")
 
 	sts, err := r.client.GetStatefulSet(ctx, mdb.NamespacedName())
@@ -339,7 +340,7 @@ func (r *ReplicaSetReconciler) deployAutomationConfig(ctx context.Context, mdb m
 		return false, fmt.Errorf("failed to get StatefulSet: %s", err)
 	}
 
-	ac, err := r.ensureAutomationConfig(mdb, ctx)
+	ac, err := r.ensureAutomationConfig(mdb, ctx, lastAppliedSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to ensure AutomationConfig: %s", err)
 	}
@@ -408,10 +409,10 @@ func (r *ReplicaSetReconciler) shouldRunInOrder(ctx context.Context, mdb mdbv1.M
 // deployMongoDBReplicaSet will ensure that both the AutomationConfig secret and backing StatefulSet
 // have been successfully created. A boolean is returned indicating if the process is complete
 // and an error if there was one.
-func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(ctx context.Context, mdb mdbv1.MongoDBCommunity) (bool, error) {
+func (r *ReplicaSetReconciler) deployMongoDBReplicaSet(ctx context.Context, mdb mdbv1.MongoDBCommunity, lastAppliedSpec *mdbv1.MongoDBCommunitySpec) (bool, error) {
 	return functions.RunSequentially(r.shouldRunInOrder(ctx, mdb),
 		func() (bool, error) {
-			return r.deployAutomationConfig(ctx, mdb)
+			return r.deployAutomationConfig(ctx, mdb, lastAppliedSpec)
 		},
 		func() (bool, error) {
 			return r.deployStatefulSet(ctx, mdb)
@@ -489,8 +490,8 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(ctx context.Context, md
 
 // ensureAutomationConfig makes sure the AutomationConfig secret has been successfully created. The automation config
 // that was updated/created is returned.
-func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity, ctx context.Context) (automationconfig.AutomationConfig, error) {
-	ac, err := r.buildAutomationConfig(ctx, mdb)
+func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity, ctx context.Context, lastAppliedSpec *mdbv1.MongoDBCommunitySpec) (automationconfig.AutomationConfig, error) {
+	ac, err := r.buildAutomationConfig(ctx, mdb, lastAppliedSpec)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, fmt.Errorf("could not build automation config: %s", err)
 	}
@@ -622,7 +623,7 @@ func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Mo
 	}, nil
 }
 
-func (r ReplicaSetReconciler) buildAutomationConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity) (automationconfig.AutomationConfig, error) {
+func (r ReplicaSetReconciler) buildAutomationConfig(ctx context.Context, mdb mdbv1.MongoDBCommunity, lastAppliedSpec *mdbv1.MongoDBCommunitySpec) (automationconfig.AutomationConfig, error) {
 	tlsModification, err := getTLSConfigModification(ctx, r.client, r.client, mdb)
 	if err != nil {
 		return automationconfig.AutomationConfig{}, fmt.Errorf("could not configure TLS modification: %s", err)
@@ -641,6 +642,10 @@ func (r ReplicaSetReconciler) buildAutomationConfig(ctx context.Context, mdb mdb
 	auth := automationconfig.Auth{}
 	if err := authentication.Enable(ctx, &auth, r.client, &mdb, mdb.AgentCertificateSecretNamespacedName()); err != nil {
 		return automationconfig.AutomationConfig{}, err
+	}
+
+	if lastAppliedSpec != nil {
+		authentication.AddRemovedUsers(&auth, mdb, lastAppliedSpec)
 	}
 
 	prometheusModification := automationconfig.NOOP()

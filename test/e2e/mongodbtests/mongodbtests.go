@@ -771,3 +771,57 @@ func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamesp
 	assert.Equal(t, expectedOwnerReference.Name, ownerReferences[0].Name)
 	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 }
+
+func RemoveLastUserFromMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users = db.Spec.Users[:len(db.Spec.Users)-1]
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func EditConnectionStringSecretNameOfLastUser(ctx context.Context, mdb *mdbv1.MongoDBCommunity, newSecretName string) func(*testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users[len(db.Spec.Users)-1].ConnectionStringSecretName = newSecretName
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func ConnectionStringSecretIsCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCommunity, removedConnectionString string) func(t *testing.T) {
+	return func(t *testing.T) {
+		connectionStringSecret := corev1.Secret{}
+		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
+		
+		assert.EqualError(t, newErr, fmt.Sprintf("secrets \"%s\" not found", removedConnectionString))
+	}
+}
+
+func AuthUsersDeletedIsUpdated(ctx context.Context, mdb *mdbv1.MongoDBCommunity, mdbUser mdbv1.MongoDBUser) func(t *testing.T) {
+	return func(t *testing.T) {
+		deletedUser := automationconfig.DeletedUser{User: mdbUser.Name, Dbs: []string{mdbUser.DB}}
+
+		currentAc := getAutomationConfig(ctx, t, mdb)
+
+		assert.Contains(t, currentAc.Auth.UsersDeleted, deletedUser)
+	}
+}
+
+func AddUserToMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity, newUser mdbv1.MongoDBUser) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users = append(db.Spec.Users, newUser)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}

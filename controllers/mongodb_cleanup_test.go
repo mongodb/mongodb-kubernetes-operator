@@ -22,8 +22,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 	t.Run("no change same resource", func(t *testing.T) {
 		actual := getScramSecretsToDelete(lastApplied.Spec, lastApplied.Spec)
 
-		var expected []string
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("new user new secret", func(t *testing.T) {
@@ -44,10 +43,9 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 			},
 		)
 
-		var expected []string
 		actual := getScramSecretsToDelete(current.Spec, lastApplied.Spec)
 
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("old user new secret", func(t *testing.T) {
@@ -153,4 +151,91 @@ func TestReplicaSetReconcilerCleanupPemSecret(t *testing.T) {
 
 	_, err = r.client.GetSecret(ctx, mdb.AgentCertificatePemSecretNamespacedName())
 	assert.Error(t, err)
+}
+
+func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
+	lastApplied := newScramReplicaSet(mdbv1.MongoDBUser{
+		Name: "testUser",
+		PasswordSecretRef: mdbv1.SecretKeyReference{
+			Name: "password-secret-name",
+		},
+		ConnectionStringSecretName: "connection-string-secret",
+	})
+
+	t.Run("no change same resource", func(t *testing.T) {
+		actual := getConnectionStringSecretsToDelete(lastApplied.Spec, lastApplied.Spec, "my-rs")
+
+		assert.Equal(t, []string(nil), actual)
+	})
+
+	t.Run("new user does not require existing user cleanup", func(t *testing.T) {
+		current := newScramReplicaSet(
+			mdbv1.MongoDBUser{
+				Name: "testUser",
+				PasswordSecretRef: mdbv1.SecretKeyReference{
+					Name: "password-secret-name",
+				},
+				ConnectionStringSecretName: "connection-string-secret",
+			},
+			mdbv1.MongoDBUser{
+				Name: "newUser",
+				PasswordSecretRef: mdbv1.SecretKeyReference{
+					Name: "password-secret-name",
+				},
+				ConnectionStringSecretName: "connection-string-secret-2",
+			},
+		)
+
+		actual := getConnectionStringSecretsToDelete(current.Spec, lastApplied.Spec, "my-rs")
+
+		assert.Equal(t, []string(nil), actual)
+	})
+
+	t.Run("old user new secret", func(t *testing.T) {
+		current := newScramReplicaSet(mdbv1.MongoDBUser{
+			Name: "testUser",
+			PasswordSecretRef: mdbv1.SecretKeyReference{
+				Name: "password-secret-name",
+			},
+			ConnectionStringSecretName: "connection-string-secret-2",
+		})
+
+		expected := []string{"connection-string-secret"}
+		actual := getConnectionStringSecretsToDelete(current.Spec, lastApplied.Spec, "my-rs")
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("removed one user and changed secret of the other", func(t *testing.T) {
+		lastApplied = newScramReplicaSet(
+			mdbv1.MongoDBUser{
+				Name: "testUser",
+				PasswordSecretRef: mdbv1.SecretKeyReference{
+					Name: "password-secret-name",
+				},
+				ConnectionStringSecretName: "connection-string-secret",
+			},
+			mdbv1.MongoDBUser{
+				Name: "anotherUser",
+				PasswordSecretRef: mdbv1.SecretKeyReference{
+					Name: "password-secret-name",
+				},
+				ConnectionStringSecretName: "connection-string-secret-2",
+			},
+		)
+
+		current := newScramReplicaSet(mdbv1.MongoDBUser{
+			Name: "testUser",
+			PasswordSecretRef: mdbv1.SecretKeyReference{
+				Name: "password-secret-name",
+			},
+			ConnectionStringSecretName: "connection-string-secret-1",
+		})
+
+		expected := []string{"connection-string-secret", "connection-string-secret-2"}
+		actual := getConnectionStringSecretsToDelete(current.Spec, lastApplied.Spec, "my-rs")
+
+		assert.Equal(t, expected, actual)
+	})
+
 }
