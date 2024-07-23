@@ -800,8 +800,7 @@ func ConnectionStringSecretIsCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCo
 	return func(t *testing.T) {
 		connectionStringSecret := corev1.Secret{}
 		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
-
-		fmt.Println(newErr)
+		
 		assert.EqualError(t, newErr, fmt.Sprintf("secrets \"%s\" not found", removedConnectionString))
 	}
 }
