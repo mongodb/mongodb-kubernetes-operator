@@ -58,9 +58,9 @@ to be able to run properly. Create a json file with the following content:
   "repo_url": "localhost:5000",
   "operator_image": "mongodb-kubernetes-operator",
   "e2e_image": "community-operator-e2e",
-  "version_upgrade_hook_image": "community-operator-version-upgrade-post-start-hook",
+  "version_upgrade_hook_image": "mongodb-kubernetes-operator-version-upgrade-post-start-hook",
   "agent_image": "mongodb-agent-ubi-dev",
-  "readiness_probe_image": "mongodb-kubernetes-readiness",
+  "readiness_probe_image": "mongodb-kubernetes-readinessprobe",
   "s3_bucket": ""
 }
 ```
@@ -132,6 +132,14 @@ make operator-image deploy
 
 This will build and deploy the operator to namespace specified in your configuration file.
 
+If you are using a local docker registry you should run the following command.
+The additional `IMG_BUILD_ARGS=--insecure` variable will add the `--insecure` flag to the command creating the manifests.
+This is necessary if your local registry is not secure. Read more about the flag on the [documentatio](https://docs.docker.com/reference/cli/docker/manifest/#working-with-insecure-registries)
+
+```sh
+IMG_BUILD_ARGS=--insecure make operator-image deploy
+```
+
 
 #### See the operator deployment
 ```sh
@@ -149,7 +157,7 @@ To remove the operator and any created resources you can run
 make undeploy
 ```
 
-Alternatively, you can run the operator locally with
+Alternatively, you can run the operator locally. Make sure you follow the steps outlined in [run-operator-locally.md](run-operator-locally.md)
 
 ```sh
 make run
@@ -168,7 +176,8 @@ make test
 ### E2E Tests
 
 If this is the first time running E2E tests, you will need to ensure that you have built and pushed
-all images required by the E2E tests. You can do this by running.
+all images required by the E2E tests. You can do this by running the following command, 
+or with the additional `IMG_BUILD_ARGS=--insecure` described above.
 
 ```sh
 make all-images
@@ -180,7 +189,7 @@ For subsequent tests you can use
 make e2e-k8s test=<test-name>
 ```
 
-This will only re-build the e2e test image.
+This will only re-build the e2e test image. Add `IMG_BUILD_ARGS=--insecure` if necessary
 
 We have built a simple mechanism to run E2E tests on your cluster using a runner
 that deploys a series of Kubernetes objects, runs them, and awaits for their
@@ -199,7 +208,7 @@ replica_set_scale
 ...
 ```
 
-The tests should run individually using the runner like this:
+The tests should run individually using the runner like this, or additionally with `IMG_BUILD_ARGS=--insecure`:
 
 ```sh
 make e2e-k8s test=replica_set

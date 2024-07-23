@@ -18,17 +18,23 @@ Being able to run and build the binary locally can help with faster feedback-cyc
 - Run e2e tests locally
 
 ## Running The Operator locally
-1. Use the dedicated make target which exports the needed environment variables and builds & runs the operator binary
+1. Use the dedicated make target which exports the needed environment variables and builds & runs the operator binary.
 
-```sh
-make run
-```
+   Before doing that you need to add 2 more fields to the `config.json` file found in [contributing.md](contributing.md), because the python script looks for them in the file:
+    - `mdb_local_operator`: needs to be set to `true`, to allow for the operator to be run locally
+    - `kubeconfig`: needs to be set to the path of the `kubeconfig` configuration file, for example `$HOME/.kube/config`
+  
+   Then you can run the command:
+  
+    ```sh
+       make run
+    ```
 
 2.  For debugging one can use the following make target, which uses [dlv](https://github.com/go-delve/delve):
 
-```sh
-make debug
-```
+    ```sh
+    make debug
+    ```
 
 ## Running e2e tests with the local operator
 - Our [e2e tests](../test/e2e), contains sub-steps that will install the following helm-chart: [operator.yaml](../helm-charts/charts/community-operator/templates/operator.yaml)

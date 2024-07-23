@@ -9,8 +9,7 @@ NAMESPACE := $(shell jq -r .namespace < $(MONGODB_COMMUNITY_CONFIG))
 UPGRADE_HOOK_IMG := $(shell jq -r .version_upgrade_hook_image < $(MONGODB_COMMUNITY_CONFIG))
 READINESS_PROBE_IMG := $(shell jq -r .readiness_probe_image < $(MONGODB_COMMUNITY_CONFIG))
 REGISTRY := $(shell jq -r .repo_url < $(MONGODB_COMMUNITY_CONFIG))
-AGENT_IMAGE_NAME := $(shell jq -r .agent_image_ubi < $(MONGODB_COMMUNITY_CONFIG))
-
+AGENT_IMAGE_NAME := $(shell jq -r .agent_image < $(MONGODB_COMMUNITY_CONFIG))
 HELM_CHART ?= ./helm-charts/charts/community-operator
 
 STRING_SET_VALUES := --set namespace=$(NAMESPACE),versionUpgradeHook.name=$(UPGRADE_HOOK_IMG),readinessProbe.name=$(READINESS_PROBE_IMG),registry.operator=$(REPO_URL),operator.operatorImageName=$(OPERATOR_IMAGE),operator.version=latest,registry.agent=$(REGISTRY),registry.versionUpgradeHook=$(REGISTRY),registry.readinessProbe=$(REGISTRY),registry.operator=$(REGISTRY),versionUpgradeHook.version=latest,readinessProbe.version=latest,agent.version=latest,agent.name=$(AGENT_IMAGE_NAME)
@@ -134,7 +133,7 @@ install-rbac:
 	$(HELM) template $(STRING_SET_VALUES) -s templates/operator_roles.yaml $(HELM_CHART) | kubectl apply -f -
 
 uninstall-crd:
-	kubectl delete crd mongodbcommunity.mongodbcommunity.mongodb.com
+	kubectl delete crd --ignore-not-found mongodbcommunity.mongodbcommunity.mongodb.com
 
 uninstall-chart:
 	$(HELM) uninstall $(RELEASE_NAME_HELM) -n $(NAMESPACE)
@@ -193,19 +192,19 @@ generate-env-file: ## generates a local-test.env for local testing
 ##@ Image
 
 operator-image: ## Build and push the operator image
-	python pipeline.py --image-name operator
+	python pipeline.py --image-name operator $(IMG_BUILD_ARGS)
 
 e2e-image: ## Build and push e2e test image
-	python pipeline.py --image-name e2e
+	python pipeline.py --image-name e2e $(IMG_BUILD_ARGS)
 
 agent-image: ## Build and push agent image
-	python pipeline.py --image-name agent
+	python pipeline.py --image-name agent $(IMG_BUILD_ARGS)
 
 readiness-probe-image: ## Build and push readiness probe image
-	python pipeline.py --image-name readiness-probe
+	python pipeline.py --image-name readiness-probe $(IMG_BUILD_ARGS)
 
 version-upgrade-post-start-hook-image: ## Build and push version upgrade post start hook image
-	python pipeline.py --image-name version-upgrade-hook
+	python pipeline.py --image-name version-upgrade-hook $(IMG_BUILD_ARGS)
 
 all-images: operator-image e2e-image agent-image readiness-probe-image version-upgrade-post-start-hook-image ## create all required images
 

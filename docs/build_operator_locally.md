@@ -40,7 +40,7 @@ git submodule update --init
 ```
 
 
-5. Build and deploy the operator:
+5. Build and deploy the operator. Also add `IMG_BUILD_ARGS=--insecure` as described [here](contributing.md#deploying-the-operator) if necessary:
 
 ```sh
 # builds all required images and then deploys the operator
