@@ -22,7 +22,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 	t.Run("no change same resource", func(t *testing.T) {
 		actual := getScramSecretsToDelete(lastApplied.Spec, lastApplied.Spec)
 
-		assert.Equal(t, []string{}, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("new user new secret", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
 
 		actual := getScramSecretsToDelete(current.Spec, lastApplied.Spec)
 
-		assert.Equal(t, []string{}, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("old user new secret", func(t *testing.T) {
@@ -165,7 +165,7 @@ func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
 	t.Run("no change same resource", func(t *testing.T) {
 		actual := getConnectionStringSecretsToDelete(lastApplied.Spec, lastApplied.Spec, "my-rs")
 
-		assert.Equal(t, []string{}, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("new user does not require existing user cleanup", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestReplicaSetReconcilerCleanupConnectionStringSecrets(t *testing.T) {
 
 		actual := getConnectionStringSecretsToDelete(current.Spec, lastApplied.Spec, "my-rs")
 
-		assert.Equal(t, []string{}, actual)
+		assert.Equal(t, []string(nil), actual)
 	})
 
 	t.Run("old user new secret", func(t *testing.T) {

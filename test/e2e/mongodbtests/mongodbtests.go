@@ -772,10 +772,22 @@ func assertEqualOwnerReference(t *testing.T, resourceType string, resourceNamesp
 	assert.Equal(t, expectedOwnerReference.UID, ownerReferences[0].UID)
 }
 
-func RemoveAllUsersFromResource(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
+func RemoveLastUserFromMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity) func(*testing.T) {
 	return func(t *testing.T) {
 		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
-			db.Spec.Users = []mdbv1.MongoDBUser{}
+			db.Spec.Users = db.Spec.Users[:len(db.Spec.Users)-1]
+		})
+
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func EditConnectionStringSecretNameOfLastUser(ctx context.Context, mdb *mdbv1.MongoDBCommunity, newSecretName string) func(*testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users[len(db.Spec.Users)-1].ConnectionStringSecretName = newSecretName
 		})
 
 		if err != nil {
@@ -790,7 +802,7 @@ func ConnectionStringSecretIsCleanedUp(ctx context.Context, mdb *mdbv1.MongoDBCo
 		newErr := e2eutil.TestClient.Get(ctx, types.NamespacedName{Name: removedConnectionString, Namespace: mdb.Namespace}, &connectionStringSecret)
 
 		fmt.Println(newErr)
-		assert.Error(t, newErr)
+		assert.EqualError(t, newErr, fmt.Sprintf("secrets \"%s\" not found", removedConnectionString))
 	}
 }
 
@@ -801,5 +813,16 @@ func AuthUsersDeletedIsUpdated(ctx context.Context, mdb *mdbv1.MongoDBCommunity,
 		currentAc := getAutomationConfig(ctx, t, mdb)
 
 		assert.Contains(t, currentAc.Auth.UsersDeleted, deletedUser)
+	}
+}
+
+func AddUserToMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity, newUser mdbv1.MongoDBUser) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users = append(db.Spec.Users, newUser)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
