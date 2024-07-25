@@ -92,7 +92,7 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 					previousUser.Username,
 					user.Username))
 		} else {
-			connectionStringSecretNameMap[connectionStringSecretName] = user
+			scramSecretNameMap[scramSecretName] = user
 		}
 
 		if user.Database == constants.ExternalDB {
@@ -100,7 +100,7 @@ func validateUsers(mdb mdbv1.MongoDBCommunity) error {
 				return fmt.Errorf("X.509 user %s present but X.509 is not enabled", user.Username)
 			}
 			if user.PasswordSecretKey != "" {
-				return fmt.Errorf("X509 user %s shoul not have a password secret key", user.Username)
+				return fmt.Errorf("X509 user %s should not have a password secret key", user.Username)
 			}
 			if user.PasswordSecretName != "" {
 				return fmt.Errorf("X509 user %s should not have a password secret name", user.Username)
