@@ -74,6 +74,40 @@ spec:
                 description: AgentConfiguration sets options for the MongoDB automation
                   agent
                 properties:
+                  AuditLogRotate:
+                    description: AuditLogRotate if enabled, will enable AuditLogRotate
+                      for all processes.
+                    properties:
+                      includeAuditLogsWithMongoDBLogs:
+                        description: |-
+                          set to 'true' to have the Automation Agent rotate the audit files along
+                          with mongodb log files
+                        type: boolean
+                      numTotal:
+                        description: maximum number of log files to have total
+                        type: integer
+                      numUncompressed:
+                        description: maximum number of log files to leave uncompressed
+                        type: integer
+                      percentOfDiskspace:
+                        description: |-
+                          Maximum percentage of the total disk space these log files should take up.
+                          The string needs to be able to be converted to float64
+                        type: string
+                      sizeThresholdMB:
+                        description: |-
+                          Maximum size for an individual log file before rotation.
+                          The string needs to be able to be converted to float64.
+                          Fractional values of MB are supported.
+                        type: string
+                      timeThresholdHrs:
+                        description: maximum hours for an individual log file before
+                          rotation
+                        type: integer
+                    required:
+                    - sizeThresholdMB
+                    - timeThresholdHrs
+                    type: object
                   logFile:
                     type: string
                   logLevel:
