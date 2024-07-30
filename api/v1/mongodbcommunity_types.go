@@ -374,7 +374,7 @@ type AgentConfiguration struct {
 	LogRotate *automationconfig.CrdLogRotate `json:"logRotate,omitempty"`
 	// +optional
 	// AuditLogRotate if enabled, will enable AuditLogRotate for all processes.
-	AuditLogRotate *automationconfig.CrdLogRotate `json:"AuditLogRotate,omitempty"`
+	AuditLogRotate *automationconfig.CrdLogRotate `json:"auditLogRotate,omitempty"`
 	// +optional
 	// SystemLog configures system log of mongod
 	SystemLog *automationconfig.SystemLog `json:"systemLog,omitempty"`
