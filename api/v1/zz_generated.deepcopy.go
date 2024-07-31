@@ -34,6 +34,11 @@ func (in *AgentConfiguration) DeepCopyInto(out *AgentConfiguration) {
 		*out = new(automationconfig.CrdLogRotate)
 		**out = **in
 	}
+	if in.AuditLogRotate != nil {
+		in, out := &in.AuditLogRotate, &out.AuditLogRotate
+		*out = new(automationconfig.CrdLogRotate)
+		**out = **in
+	}
 	if in.SystemLog != nil {
 		in, out := &in.SystemLog, &out.SystemLog
 		*out = new(automationconfig.SystemLog)

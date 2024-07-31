@@ -74,7 +74,7 @@ spec:
                 description: AgentConfiguration sets options for the MongoDB automation
                   agent
                 properties:
-                  AuditLogRotate:
+                  auditLogRotate:
                     description: AuditLogRotate if enabled, will enable AuditLogRotate
                       for all processes.
                     properties:
