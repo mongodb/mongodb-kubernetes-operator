@@ -1,19 +1,18 @@
-# MongoDB Kubernetes Operator 0.10.0
+# MongoDB Kubernetes Operator 0.11.0
 
-## Released images signed
+## Migrating agent images to ubi
+All agent images were updated to use the ubi repo
 
-All container images published for the community operator are signed with our private key. This is visible on our Quay registry. Signature can be verified using our public key, which is available at [this address](https://cosign.mongodb.com/mongodb-enterprise-kubernetes-operator.pem).
+## Documentation improvements
+Improvements were made to the documentatio of using the community operator as well as the one for local development.
 
 ## Logging changes
-- The agent logging can be configured to stdout
-- ReadinessProbe logging configuration can now be configured
-- More can be found [here](logging.md).
+- Added `AuditLogRotate` field to `AgentConfiguration`
+- Fixed JSON key to be lower case: `logRotate` 
 
-## Overriding Mongod settings via the CRD 
-- Example can be found [here](../config/samples/mongodb.com_v1_mongodbcommunity_override_ac_setting.yaml).
-
-## ReadinessProbe error logging
-- fixed a red herring which caused the probe to panic when the health status is not available. Instead it will just log the error
+## Bug Fixes
+- Users removed from the resource are now also deleted from the database and their connection string secretes are cleaned up
+- Colisions of the scram secret name will now be spotted by spec validation
 
 ## Important Bumps
-- Bumped K8S libs to 1.27
+- Bumped go to 1.22
