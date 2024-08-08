@@ -45,16 +45,16 @@ spec:
         - name: OPERATOR_NAME
           value: mongodb-kubernetes-operator
         - name: AGENT_IMAGE
-          value: quay.io/mongodb/mongodb-agent-ubi:107.0.1.8507-1
+          value: quay.io/mongodb/mongodb-agent-ubi:107.0.7.8596-1
         - name: VERSION_UPGRADE_HOOK_IMAGE
-          value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.8
+          value: quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.9
         - name: READINESS_PROBE_IMAGE
-          value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.19
+          value: quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.20
         - name: MONGODB_IMAGE
           value: mongodb-community-server
         - name: MONGODB_REPO_URL
           value: quay.io/mongodb
-        image: quay.io/mongodb/mongodb-kubernetes-operator:0.10.0
+        image: quay.io/mongodb/mongodb-kubernetes-operator:0.11.0
         imagePullPolicy: Always
         name: mongodb-kubernetes-operator
         resources:
