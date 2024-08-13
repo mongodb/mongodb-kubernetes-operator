@@ -1,7 +1,8 @@
 module github.com/mongodb/mongodb-kubernetes-operator
 
-go 1.22
-toolchain go1.22.5
+go 1.22.0
+
+toolchain go1.22.6
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
