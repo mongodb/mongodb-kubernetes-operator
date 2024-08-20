@@ -390,7 +390,7 @@ func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
 	clientOptions := options.Client()
 	for _, opts := range allOpts {
 		clientOptions.Opts = append(clientOptions.Opts, func(co *options.ClientOptions) error {
-			co = opts
+			*co = *opts
 
 			return nil
 		})
