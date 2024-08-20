@@ -547,7 +547,10 @@ func WithoutTls() OptionApplier {
 // WithURI will add URI connection string
 func WithURI(uri string) OptionApplier {
 	var clientOptions options.ClientOptions
-	_ = options.Client().ApplyURI(uri).Opts[0](&clientOptions)
+	setterFns := options.Client().ApplyURI(uri).Opts
+	for _, set := range setterFns {
+		_ = set(&clientOptions)
+	}
 
 	return clientOptionAdder{option: &clientOptions}
 }
