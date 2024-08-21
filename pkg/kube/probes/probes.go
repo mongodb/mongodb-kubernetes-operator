@@ -31,28 +31,28 @@ func WithExecCommand(cmd []string) Modification {
 
 func WithFailureThreshold(failureThreshold int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.FailureThreshold = int32(failureThreshold) // #nosec G115
+		probe.FailureThreshold = int32(failureThreshold)
 	}
 }
 
 func WithInitialDelaySeconds(initialDelaySeconds int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.InitialDelaySeconds = int32(initialDelaySeconds) // #nosec G115
+		probe.InitialDelaySeconds = int32(initialDelaySeconds)
 	}
 }
 func WithSuccessThreshold(successThreshold int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.SuccessThreshold = int32(successThreshold) // #nosec G115
+		probe.SuccessThreshold = int32(successThreshold)
 	}
 }
 func WithPeriodSeconds(periodSeconds int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.PeriodSeconds = int32(periodSeconds) // #nosec G115
+		probe.PeriodSeconds = int32(periodSeconds)
 	}
 }
 func WithTimeoutSeconds(timeoutSeconds int) Modification {
 	return func(probe *corev1.Probe) {
-		probe.TimeoutSeconds = int32(timeoutSeconds) // #nosec G115
+		probe.TimeoutSeconds = int32(timeoutSeconds)
 	}
 }
 
