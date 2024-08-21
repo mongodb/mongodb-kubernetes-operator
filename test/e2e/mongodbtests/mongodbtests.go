@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -34,11 +33,6 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 		return
 	}
 	t.Run(msg, f)
-}
-
-func strPointer(n float32) *string {
-	s := strconv.FormatFloat(float64(n), 'f', -1, 64)
-	return &s
 }
 
 // StatefulSetBecomesReady ensures that the underlying stateful set
@@ -438,7 +432,13 @@ func AutomationConfigHasVoteTagPriorityConfigured(ctx context.Context, mdb *mdbv
 		rsMemebers := currentAc.ReplicaSets
 
 		for _, m := range rsMemebers[0].Members {
-			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: strPointer(m.Priority), Tags: m.Tags})
+			var priorityPtr *string
+			var priority string
+			if m.Priority != nil {
+				priority = fmt.Sprintf("%f", *m.Priority)
+				priorityPtr = &priority
+			}
+			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: priorityPtr, Tags: m.Tags})
 		}
 		assert.ElementsMatch(t, memberOptions, acMemberOptions)
 	}

@@ -283,7 +283,7 @@ type ReplicaSetMember struct {
 	// is different in AC from the CR(CR don't support float) - hence all the members are declared
 	// separately
 	Votes    *int              `json:"votes,omitempty"`
-	Priority float32           `json:"priority,omitempty"`
+	Priority *float32          `json:"priority,omitempty"`
 	Tags     map[string]string `json:"tags,omitempty"`
 }
 
@@ -294,7 +294,7 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 	// ensure that the number of voting members in the replica set is not more than 7
 	// as this is the maximum number of voting members.
 	votes := 0
-	priority := 0.0
+	priority := float32(0.0)
 
 	if isVotingMember {
 		votes = 1
@@ -307,7 +307,7 @@ func newReplicaSetMember(name string, id int, horizons ReplicaSetHorizons, isArb
 		ArbiterOnly: isArbiter,
 		Horizons:    horizons,
 		Votes:       &votes,
-		Priority:    float32(priority),
+		Priority:    &priority,
 	}
 }
 
