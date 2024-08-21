@@ -55,18 +55,18 @@ func (r *ReplicaSetPortManager) GetServicePorts() []corev1.ServicePort {
 
 	if !portChangeRequired || oldPort == r.expectedPort {
 		return []corev1.ServicePort{{
-			Port: int32(r.expectedPort),
+			Port: int32(r.expectedPort), // #nosec G115
 			Name: "mongodb",
 		}}
 	}
 
 	servicePorts := []corev1.ServicePort{
 		{
-			Port: int32(r.expectedPort),
+			Port: int32(r.expectedPort), // #nosec G115
 			Name: "mongodb-new",
 		},
 		{
-			Port: int32(oldPort),
+			Port: int32(oldPort), // #nosec G115
 			Name: "mongodb",
 		},
 	}
