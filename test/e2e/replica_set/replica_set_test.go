@@ -70,7 +70,7 @@ func TestReplicaSet(t *testing.T) {
 		{
 			Votes:    intPtr(1),
 			Tags:     map[string]string{"foo2": "bar2"},
-			Priority: strPtr("1"),
+			Priority: strPtr("1.0"),
 		},
 		{
 			Votes:    intPtr(1),

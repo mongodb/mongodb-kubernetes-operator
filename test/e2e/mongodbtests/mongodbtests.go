@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -429,16 +430,13 @@ func AutomationConfigHasVoteTagPriorityConfigured(ctx context.Context, mdb *mdbv
 
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(ctx, t, mdb)
-		rsMemebers := currentAc.ReplicaSets
+		rsMembers := currentAc.ReplicaSets
+		sort.Slice(rsMembers[0].Members, func(i, j int) bool {
+			return rsMembers[0].Members[i].Id < rsMembers[0].Members[j].Id
+		})
 
-		for _, m := range rsMemebers[0].Members {
-			var priorityPtr *string
-			var priority string
-			if m.Priority != nil {
-				priority = fmt.Sprintf("%f", *m.Priority)
-				priorityPtr = &priority
-			}
-			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: priorityPtr, Tags: m.Tags})
+		for _, m := range rsMembers[0].Members {
+			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: floatPtrTostringPtr(m.Priority), Tags: m.Tags})
 		}
 		assert.ElementsMatch(t, memberOptions, acMemberOptions)
 	}
@@ -824,4 +822,12 @@ func AddUserToMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity,
 			t.Fatal(err)
 		}
 	}
+}
+
+func floatPtrTostringPtr(floatPtr *float32) *string {
+	if floatPtr != nil {
+		stringValue := fmt.Sprintf("%.1f", *floatPtr)
+		return &stringValue
+	}
+	return nil
 }
