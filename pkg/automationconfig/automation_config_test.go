@@ -477,6 +477,23 @@ func TestAreEqual(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, areEqual)
 	})
+
+	t.Run("Automation Configs with nil and zero values are not equal", func(t *testing.T) {
+		votes := 1
+		priority := "0.0"
+		firstBuilder := NewBuilder().SetName("name0").SetMongoDBVersion("mdbVersion0").SetOptions(Options{DownloadBase: "downloadBase0"}).SetDomain("domain0").SetMembers(2).SetAuth(Auth{Disabled: true})
+		firstBuilder.SetMemberOptions([]MemberOptions{MemberOptions{Votes: &votes, Priority: &priority}})
+		firstAc, _ := firstBuilder.Build()
+		firstAc.Version = 2
+		secondBuilder := NewBuilder().SetName("name0").SetMongoDBVersion("mdbVersion0").SetOptions(Options{DownloadBase: "downloadBase0"}).SetDomain("domain0").SetMembers(2).SetAuth(Auth{Disabled: true})
+		secondBuilder.SetMemberOptions([]MemberOptions{MemberOptions{Votes: &votes, Priority: nil}})
+		secondAc, _ := secondBuilder.Build()
+		secondAc.Version = 2
+
+		areEqual, err := AreEqual(firstAc, secondAc)
+		assert.NoError(t, err)
+		assert.False(t, areEqual)
+	})
 }
 
 func TestValidateFCV(t *testing.T) {
