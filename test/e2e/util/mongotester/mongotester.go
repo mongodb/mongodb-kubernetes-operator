@@ -30,11 +30,11 @@ import (
 type Tester struct {
 	ctx         context.Context
 	mongoClient *mongo.Client
-	clientOpts  []*options.ClientOptions
+	clientOpts  []options.Lister[options.ClientOptions]
 	resource    *mdbv1.MongoDBCommunity
 }
 
-func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
+func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...options.Lister[options.ClientOptions]) *Tester {
 	t := &Tester{
 		ctx:      ctx,
 		resource: mdb,
@@ -47,15 +47,13 @@ func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...*option
 // of options.ClientOptions, and return the final desired list
 // making any modifications required
 type OptionApplier interface {
-	ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions
+	ApplyOption(opts ...options.Lister[options.ClientOptions]) []options.Lister[options.ClientOptions]
 }
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
-// and the hosts from the resource.
-func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
-	var clientOpts []*options.ClientOptions
-
-	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
+func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity) (*Tester, error) {
+	// and the hosts from the resource.
+	clientOpts := WithHosts(mdb.Hosts("")).ApplyOption()
 
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
@@ -71,29 +69,17 @@ func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity,
 		clientOpts = WithScram(user.Name, string(passwordSecret.Data[user.PasswordSecretRef.Key])).ApplyOption(clientOpts...)
 	}
 
-	// add any additional options
-	for _, opt := range opts {
-		clientOpts = opt.ApplyOption(clientOpts...)
-	}
-
 	return newTester(ctx, &mdb, clientOpts...), nil
 }
 
-func FromX509Resource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
-	var clientOpts []*options.ClientOptions
-
-	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
+func FromX509Resource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity) (*Tester, error) {
+	clientOpts := WithHosts(mdb.Hosts("")).ApplyOption()
 
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		clientOpts = WithX509().ApplyOption(clientOpts...)
-	}
-
-	// add any additional options
-	for _, opt := range opts {
-		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
 	return newTester(ctx, &mdb, clientOpts...), nil
@@ -112,7 +98,7 @@ func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 }
 
 func (m *Tester) ConnectivityRejected(ctx context.Context, opts ...OptionApplier) func(t *testing.T) {
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
@@ -190,7 +176,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 type verifyAdminResultFunc func(t *testing.T) bool
 
 func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, opts ...OptionApplier) func(t *testing.T) {
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
@@ -232,7 +218,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 
 func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) func(t *testing.T) {
 
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
@@ -293,7 +279,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 			return nil
 		}
 
-		if err := m.ensureClient(&options.ClientOptions{TLSConfig: tls}); err != nil {
+		if err := m.ensureClient(options.Client().SetTLSConfig(tls)); err != nil {
 			t.Fatal(err)
 		}
 
@@ -383,20 +369,8 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 
 // ensureClient establishes a mongo client connection applying any addition
 // client options on top of what were provided at construction.
-func (t *Tester) ensureClient(opts ...*options.ClientOptions) error {
-	allOpts := t.clientOpts
-	allOpts = append(allOpts, opts...)
-
-	clientOptions := options.Client()
-	for _, opts := range allOpts {
-		clientOptions.Opts = append(clientOptions.Opts, func(co *options.ClientOptions) error {
-			*co = *opts
-
-			return nil
-		})
-	}
-
-	mongoClient, err := mongo.Connect(clientOptions)
+func (t *Tester) ensureClient(opts ...options.Lister[options.ClientOptions]) error {
+	mongoClient, err := mongo.Connect(append(t.clientOpts, opts...)...)
 	if err != nil {
 		return err
 	}
@@ -441,10 +415,10 @@ func (m *Tester) PrometheusEndpointIsReachable(username, password string, useTls
 // clientOptionAdder is the standard implementation that simply adds a
 // new options.ClientOption to the mongo client
 type clientOptionAdder struct {
-	option *options.ClientOptions
+	option options.Lister[options.ClientOptions]
 }
 
-func (c clientOptionAdder) ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions {
+func (c clientOptionAdder) ApplyOption(opts ...options.Lister[options.ClientOptions]) []options.Lister[options.ClientOptions] {
 	return append(opts, c.option)
 }
 
@@ -473,48 +447,37 @@ func (c clientOptionRemover) ApplyOption(opts ...*options.ClientOptions) []*opti
 // WithScram provides a configuration option that will configure the MongoDB resource
 // with the given username and password
 func WithScram(username, password string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: "SCRAM-SHA-256",
-				AuthSource:    "admin",
-				Username:      username,
-				Password:      password,
-			},
-		},
+	return clientOptionAdder{option: options.Client().SetAuth(options.Credential{
+		AuthMechanism: "SCRAM-SHA-256",
+		AuthSource:    "admin",
+		Username:      username,
+		Password:      password,
+	}),
 	}
 }
 
 func WithScramWithAuth(username, password string, authenticationMechanism string) OptionApplier {
 	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: authenticationMechanism,
-				AuthSource:    "admin",
-				Username:      username,
-				Password:      password,
-			},
-		},
+		option: options.Client().SetAuth(options.Credential{
+			AuthMechanism: authenticationMechanism,
+			AuthSource:    "admin",
+			Username:      username,
+			Password:      password,
+		}),
 	}
 }
 
 func WithX509() OptionApplier {
 	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: "MONGODB-X509",
-			},
-		},
+		option: options.Client().SetAuth(options.Credential{
+			AuthMechanism: "MONGODB-X509",
+		}),
 	}
 }
 
 // WithHosts configures the hosts of the deployment
 func WithHosts(hosts []string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Hosts: hosts,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetHosts(hosts)}
 }
 
 // WithTls configures the client to use tls
@@ -528,40 +491,22 @@ func WithTls(ctx context.Context, mdb mdbv1.MongoDBCommunity) OptionApplier {
 }
 
 func withTls(tls *tls.Config) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			TLSConfig: tls,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetTLSConfig(tls)}
 }
 
 // WithoutTls will remove the tls configuration
 func WithoutTls() OptionApplier {
-	return clientOptionRemover{
-		removalPredicate: func(opt *options.ClientOptions) bool {
-			return opt.TLSConfig != nil
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetTLSConfig(nil)}
 }
 
 // WithURI will add URI connection string
 func WithURI(uri string) OptionApplier {
-	var clientOptions options.ClientOptions
-	setterFns := options.Client().ApplyURI(uri).Opts
-	for _, set := range setterFns {
-		_ = set(&clientOptions)
-	}
-
-	return clientOptionAdder{option: &clientOptions}
+	return clientOptionAdder{option: options.Client().ApplyURI(uri)}
 }
 
 // WithReplicaSet will explicitly add a replicaset name
 func WithReplicaSet(rsname string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			ReplicaSet: &rsname,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetReplicaSet(rsname)}
 }
 
 // getClientTLSConfig reads in the tls fixtures
