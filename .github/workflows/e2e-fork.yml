@@ -231,7 +231,7 @@ jobs:
 
     - name: Upload Diagnostics
       if: always() && steps.dump_diagnostics.outcome == 'success'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       continue-on-error: true
       with:
         name: ${{ matrix.test-name }}-${{ matrix.distro }}-diagnostics
