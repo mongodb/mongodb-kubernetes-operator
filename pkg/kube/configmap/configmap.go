@@ -85,14 +85,14 @@ func UpdateField(ctx context.Context, getUpdater GetUpdater, objectKey client.Ob
 // CreateOrUpdate creates the given ConfigMap if it doesn't exist,
 // or updates it if it does.
 func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, cm corev1.ConfigMap) error {
-	_, err := getUpdateCreator.GetConfigMap(ctx, types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace})
-	if err != nil {
+	if err := getUpdateCreator.UpdateConfigMap(ctx, cm); err != nil {
 		if apiErrors.IsNotFound(err) {
 			return getUpdateCreator.CreateConfigMap(ctx, cm)
+		} else {
+			return err
 		}
-		return err
 	}
-	return getUpdateCreator.UpdateConfigMap(ctx, cm)
+	return nil
 }
 
 // filelikePropertiesToMap converts a file-like field in a ConfigMap to a map[string]string.
