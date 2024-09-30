@@ -53,15 +53,16 @@ type GetUpdateCreateDeleter interface {
 
 // CreateOrUpdate creates the given StatefulSet if it doesn't exist,
 // or updates it if it does.
-func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, sts appsv1.StatefulSet) (appsv1.StatefulSet, error) {
-	_, err := getUpdateCreator.GetStatefulSet(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
-	if err != nil {
+func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, statefulSet appsv1.StatefulSet) (appsv1.StatefulSet, error) {
+	if sts, err := getUpdateCreator.UpdateStatefulSet(ctx, statefulSet); err != nil {
 		if apiErrors.IsNotFound(err) {
-			return appsv1.StatefulSet{}, getUpdateCreator.CreateStatefulSet(ctx, sts)
+			return statefulSet, getUpdateCreator.CreateStatefulSet(ctx, statefulSet)
+		} else {
+			return appsv1.StatefulSet{}, err
 		}
-		return appsv1.StatefulSet{}, err
+	} else {
+		return sts, nil
 	}
-	return getUpdateCreator.UpdateStatefulSet(ctx, sts)
 }
 
 // GetAndUpdate applies the provided function to the most recent version of the object

@@ -59,6 +59,9 @@ func (m mockedClient) Create(_ context.Context, obj k8sClient.Object, _ ...k8sCl
 func (m mockedClient) Update(_ context.Context, obj k8sClient.Object, _ ...k8sClient.UpdateOption) error {
 	relevantMap := m.ensureMapFor(obj)
 	objKey := k8sClient.ObjectKeyFromObject(obj)
+	if _, ok := relevantMap[objKey]; !ok {
+		return errors.NewNotFound(schema.GroupResource{}, obj.GetName())
+	}
 	relevantMap[objKey] = obj
 	return nil
 }
