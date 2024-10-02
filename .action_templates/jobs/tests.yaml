@@ -13,6 +13,8 @@ tests:
           distro: ubi
         - test-name: replica_set_enterprise_upgrade_6_7
           distro: ubi
+        - test-name: replica_set_enterprise_upgrade_7_8
+          distro: ubi
         - test-name: replica_set_recovery
           distro: ubi
         - test-name: replica_set_mongod_readiness
