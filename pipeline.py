@@ -26,7 +26,7 @@ AGENT_DISTRO_KEY = "agent_distro"
 TOOLS_DISTRO_KEY = "tools_distro"
 
 AGENT_DISTROS_PER_ARCH = {
-    "amd64": {AGENT_DISTRO_KEY: "rhel88_x86_64", TOOLS_DISTRO_KEY: "rhel88-x86_64"},
+    "amd64": {AGENT_DISTRO_KEY: "rhel8_x86_64", TOOLS_DISTRO_KEY: "rhel88-x86_64"},
     "arm64": {AGENT_DISTRO_KEY: "amzn2_aarch64", TOOLS_DISTRO_KEY: "rhel88-aarch64"},
 }
 
