@@ -28,7 +28,10 @@ linters:
     - rowserrcheck
     - gosec
     - unconvert
-
+linters-settings:
+  gosec:
+    excludes:
+      - G115
 run:
   modules-download-mode: mod
   # timeout for analysis, e.g. 30s, 5m, default is 1m

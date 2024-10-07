@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/versions"
+
+	"k8s.io/utils/ptr"
 )
 
 type Topology string
@@ -351,7 +352,7 @@ func (b *Builder) Build() (AutomationConfig, error) {
 		if len(b.memberOptions) > i {
 			// override the member options if explicitly specified in the spec
 			members[i].Votes = b.memberOptions[i].Votes
-			members[i].Priority = b.memberOptions[i].GetPriority()
+			members[i].Priority = ptr.To(b.memberOptions[i].GetPriority())
 			members[i].Tags = b.memberOptions[i].Tags
 		}
 	}

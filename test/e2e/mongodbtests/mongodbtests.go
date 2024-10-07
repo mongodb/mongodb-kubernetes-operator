@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -34,11 +34,6 @@ func SkipTestIfLocal(t *testing.T, msg string, f func(t *testing.T)) {
 		return
 	}
 	t.Run(msg, f)
-}
-
-func strPointer(n float32) *string {
-	s := strconv.FormatFloat(float64(n), 'f', -1, 64)
-	return &s
 }
 
 // StatefulSetBecomesReady ensures that the underlying stateful set
@@ -435,10 +430,13 @@ func AutomationConfigHasVoteTagPriorityConfigured(ctx context.Context, mdb *mdbv
 
 	return func(t *testing.T) {
 		currentAc := getAutomationConfig(ctx, t, mdb)
-		rsMemebers := currentAc.ReplicaSets
+		rsMembers := currentAc.ReplicaSets
+		sort.Slice(rsMembers[0].Members, func(i, j int) bool {
+			return rsMembers[0].Members[i].Id < rsMembers[0].Members[j].Id
+		})
 
-		for _, m := range rsMemebers[0].Members {
-			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: strPointer(m.Priority), Tags: m.Tags})
+		for _, m := range rsMembers[0].Members {
+			acMemberOptions = append(acMemberOptions, automationconfig.MemberOptions{Votes: m.Votes, Priority: floatPtrTostringPtr(m.Priority), Tags: m.Tags})
 		}
 		assert.ElementsMatch(t, memberOptions, acMemberOptions)
 	}
@@ -824,4 +822,12 @@ func AddUserToMongoDBCommunity(ctx context.Context, mdb *mdbv1.MongoDBCommunity,
 			t.Fatal(err)
 		}
 	}
+}
+
+func floatPtrTostringPtr(floatPtr *float32) *string {
+	if floatPtr != nil {
+		stringValue := fmt.Sprintf("%.1f", *floatPtr)
+		return &stringValue
+	}
+	return nil
 }

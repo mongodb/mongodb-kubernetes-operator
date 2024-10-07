@@ -99,14 +99,14 @@ func UpdateField(ctx context.Context, getUpdater GetUpdater, objectKey client.Ob
 
 // CreateOrUpdate creates the Secret if it doesn't exist, other wise it updates it
 func CreateOrUpdate(ctx context.Context, getUpdateCreator GetUpdateCreator, secret corev1.Secret) error {
-	_, err := getUpdateCreator.GetSecret(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace})
-	if err != nil {
+	if err := getUpdateCreator.UpdateSecret(ctx, secret); err != nil {
 		if SecretNotExist(err) {
 			return getUpdateCreator.CreateSecret(ctx, secret)
+		} else {
+			return err
 		}
-		return err
 	}
-	return getUpdateCreator.UpdateSecret(ctx, secret)
+	return nil
 }
 
 // HasAllKeys returns true if the provided secret contains an element for every
