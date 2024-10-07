@@ -8,7 +8,7 @@ import (
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	. "github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/mongodbtests"
@@ -76,7 +76,7 @@ func testConfigAuthentication(ctx context.Context, mdb mdbv1.MongoDBCommunity, u
 		}
 		t.Logf("Config: use Sha256: %t (use label: %t), use Sha1: %t", pickedOpts.sha256, pickedOpts.useLabelForSha256, pickedOpts.sha1)
 
-		enabledMechanisms := primitive.A{"SCRAM-SHA-256"}
+		enabledMechanisms := bson.A{"SCRAM-SHA-256"}
 		var acceptedModes []mdbv1.AuthMode
 		if pickedOpts.sha256 {
 			if pickedOpts.useLabelForSha256 {
@@ -88,9 +88,9 @@ func testConfigAuthentication(ctx context.Context, mdb mdbv1.MongoDBCommunity, u
 		if pickedOpts.sha1 {
 			acceptedModes = append(acceptedModes, "SCRAM-SHA-1")
 			if pickedOpts.sha256 {
-				enabledMechanisms = primitive.A{"SCRAM-SHA-256", "SCRAM-SHA-1"}
+				enabledMechanisms = bson.A{"SCRAM-SHA-256", "SCRAM-SHA-1"}
 			} else {
-				enabledMechanisms = primitive.A{"SCRAM-SHA-1"}
+				enabledMechanisms = bson.A{"SCRAM-SHA-1"}
 			}
 		}
 
