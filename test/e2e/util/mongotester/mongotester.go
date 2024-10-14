@@ -120,7 +120,7 @@ func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testin
 }
 
 func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries, opts...)
+	return m.hasAdminParameter("featureCompatibilityVersion", bson.D{{"version", fcv}}, tries, opts...)
 }
 
 func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
