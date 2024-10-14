@@ -208,15 +208,18 @@ func parseHealthStatus(reader io.Reader) (health.Status, error) {
 }
 
 func initLogger(l *lumberjack.Logger) {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
 	consoleCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.NewJSONEncoder(encoderConfig),
 		zapcore.AddSync(os.Stdout),
 		zap.DebugLevel)
 
 	cores := []zapcore.Core{consoleCore}
 	if config.ReadBoolWitDefault(config.WithAgentFileLogging, "true") {
 		fileCore := zapcore.NewCore(
-			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+			zapcore.NewJSONEncoder(encoderConfig),
 			zapcore.AddSync(l),
 			zap.DebugLevel)
 		cores = append(cores, fileCore)
