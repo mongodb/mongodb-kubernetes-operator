@@ -314,6 +314,13 @@ func (in *MongoDBUser) DeepCopyInto(out *MongoDBUser) {
 		*out = make([]Role, len(*in))
 		copy(*out, *in)
 	}
+	if in.ConnectionStringSecretAnnotations != nil {
+		in, out := &in.ConnectionStringSecretAnnotations, &out.ConnectionStringSecretAnnotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	in.AdditionalConnectionStringConfig.DeepCopyInto(&out.AdditionalConnectionStringConfig)
 }
 
