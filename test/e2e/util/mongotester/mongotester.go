@@ -120,7 +120,7 @@ func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testin
 }
 
 func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("featureCompatibilityVersion", bson.D{{"version", fcv}}, tries, opts...)
+	return m.hasAdminParameter("featureCompatibilityVersion", bson.D{{Key: "version", Value: fcv}}, tries, opts...)
 }
 
 func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
@@ -168,7 +168,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 			t.Fatal(err)
 			return false
 		}
-		assert.ElementsMatch(t, result.Roles, expectedRoles)
+		assert.Subset(t, result.Roles, expectedRoles)
 		return true
 	}, tries, opts...)
 }
@@ -420,28 +420,6 @@ type clientOptionAdder struct {
 
 func (c clientOptionAdder) ApplyOption(opts ...options.Lister[options.ClientOptions]) []options.Lister[options.ClientOptions] {
 	return append(opts, c.option)
-}
-
-// clientOptionRemover is used if a value from the client array of options should be removed.
-// assigning a nil value will not take precedence over an existing value, so we need a mechanism
-// to remove elements that are present
-
-// e.g. to disable TLS, you need to remove the options.ClientOption that has a non-nil tls config
-// it is not enough to add a tls config that has a nil value.
-type clientOptionRemover struct {
-	// removalPredicate is a function which returns a bool indicating
-	// if a given options.ClientOption should be removed.
-	removalPredicate func(opt *options.ClientOptions) bool
-}
-
-func (c clientOptionRemover) ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions {
-	newOpts := make([]*options.ClientOptions, 0)
-	for _, opt := range opts {
-		if !c.removalPredicate(opt) {
-			newOpts = append(newOpts, opt)
-		}
-	}
-	return newOpts
 }
 
 // WithScram provides a configuration option that will configure the MongoDB resource

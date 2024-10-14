@@ -22,13 +22,18 @@ func TestTlsRemoval_RemovesCorrectConfig(t *testing.T) {
 	// remove the tls value
 	opts = removalOpt.ApplyOption(opts...)
 
+	var errs []error
 	raw := options.ClientOptions{}
 	for _, opt := range opts {
 		for _, fn := range opt.List() {
-			fn(&raw)
+			err := fn(&raw)
+			if err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
+	assert.Len(t, errs, 0)
 	assert.Len(t, opts, 3, "tls removal should remove an element")
 	assert.NotNil(t, raw.Hosts, "tls removal should not effect other configs")
 	assert.Len(t, raw.Hosts, 3, "original configs should not be changed")
@@ -39,12 +44,17 @@ func TestWithScram_AddsScramOption(t *testing.T) {
 	opts := WithScram("username", "password").ApplyOption()
 
 	raw := options.ClientOptions{}
+	var errs []error
 	for _, opt := range opts {
 		for _, fn := range opt.List() {
-			fn(&raw)
+			err := fn(&raw)
+			if err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
+	assert.Len(t, errs, 0)
 	assert.Len(t, opts, 1)
 	assert.NotNil(t, opts)
 	assert.Equal(t, raw.Auth.AuthMechanism, "SCRAM-SHA-256")
