@@ -2,7 +2,7 @@
   "golang-builder-image": "golang:1.22",
   "operator": "0.11.0",
   "version-upgrade-hook": "1.0.9",
-  "readiness-probe": "1.0.20",
+  "readiness-probe": "1.0.21",
   "agent": "108.0.0.8694-1",
   "agent-tools-version": "100.10.0"
 }
