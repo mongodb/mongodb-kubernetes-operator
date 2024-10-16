@@ -12,6 +12,7 @@ type builder struct {
 	name            string
 	namespace       string
 	ownerReferences []metav1.OwnerReference
+	annotations     map[string]string
 }
 
 func (b *builder) SetName(name string) *builder {
@@ -40,6 +41,15 @@ func (b *builder) SetLabels(labels map[string]string) *builder {
 		newLabels[k] = v
 	}
 	b.labels = newLabels
+	return b
+}
+
+func (b *builder) SetAnnotations(annotations map[string]string) *builder {
+	newAnnotations := make(map[string]string, len(annotations))
+	for k, v := range annotations {
+		newAnnotations[k] = v
+	}
+	b.annotations = newAnnotations
 	return b
 }
 
@@ -72,6 +82,7 @@ func (b builder) Build() corev1.Secret {
 			Namespace:       b.namespace,
 			OwnerReferences: b.ownerReferences,
 			Labels:          b.labels,
+			Annotations:     b.annotations,
 		},
 		Data: b.data,
 		Type: b.dataType,
@@ -80,6 +91,7 @@ func (b builder) Build() corev1.Secret {
 
 func Builder() *builder {
 	return &builder{
+		annotations:     map[string]string{},
 		labels:          map[string]string{},
 		data:            map[string][]byte{},
 		ownerReferences: []metav1.OwnerReference{},
