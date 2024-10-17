@@ -245,7 +245,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 			if err != nil && shouldSucceed {
-				t.Logf("Was not able to connect, when we should have been able to!")
+				t.Logf("Was not able to connect, when we should have been able to! Error: %v", err)
 				return false, nil
 			}
 			if err == nil && !shouldSucceed {
@@ -303,9 +303,13 @@ func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(
 		connectivityOpts := defaults()
 		err := wait.PollUntilContextTimeout(m.ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			opts, err := m.getCommandLineOptions()
+			fmt.Printf("Debugging: Unparsed options: %v, error: %v\n", opts, err)
 			assert.NoError(t, err)
 
 			parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+			fmt.Printf("Debugging: parsed: %v, %v\n", parsed, reflect.TypeOf(parsed))
+			fmt.Printf("Debugging: expected: %vm %v\n", expected, reflect.TypeOf(parsed))
+			fmt.Printf("Debugging: selected: %vm %v\n", parsed.Get(selector).Data(), reflect.TypeOf(parsed.Get(selector).Data()))
 
 			return expected == parsed.Get(selector).Data(), nil
 		})
