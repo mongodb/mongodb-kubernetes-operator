@@ -315,6 +315,12 @@ func WithObjectMetadata(labels map[string]string, annotations map[string]string)
 	}
 }
 
+func WithPersistentVolumeClaimRetentionPolicy(persistentVolumeClaimRetentionPolicy appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy) Modification {
+	return func(set *appsv1.StatefulSet) {
+		set.Spec.PersistentVolumeClaimRetentionPolicy = &persistentVolumeClaimRetentionPolicy
+	}
+}
+
 func findVolumeClaimIndexByName(name string, pvcs []corev1.PersistentVolumeClaim) int {
 	for idx, pvc := range pvcs {
 		if pvc.Name == name {

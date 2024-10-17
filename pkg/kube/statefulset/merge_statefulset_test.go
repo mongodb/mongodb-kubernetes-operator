@@ -60,6 +60,9 @@ func TestGetLabelSelectorRequirementByKey(t *testing.T) {
 }
 
 func TestMergeSpec(t *testing.T) {
+	var overridePersistentVolumeClaimRetentionPolicy appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy
+	overridePersistentVolumeClaimRetentionPolicy.WhenDeleted = "Deleted"
+	overridePersistentVolumeClaimRetentionPolicy.WhenScaled = "Deleted"
 
 	original := New(
 		WithName("original"),
@@ -67,6 +70,7 @@ func TestMergeSpec(t *testing.T) {
 		WithReplicas(3),
 		WithRevisionHistoryLimit(10),
 		WithPodManagementPolicyType(appsv1.OrderedReadyPodManagement),
+		WithPersistentVolumeClaimRetentionPolicy(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{}),
 		WithSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"a": "1",
@@ -95,6 +99,7 @@ func TestMergeSpec(t *testing.T) {
 		WithReplicas(5),
 		WithRevisionHistoryLimit(15),
 		WithPodManagementPolicyType(appsv1.ParallelPodManagement),
+		WithPersistentVolumeClaimRetentionPolicy(overridePersistentVolumeClaimRetentionPolicy),
 		WithSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"a": "10",
@@ -124,6 +129,7 @@ func TestMergeSpec(t *testing.T) {
 		assert.Equal(t, int32(5), *mergedSpec.Replicas)
 		assert.Equal(t, int32(15), *mergedSpec.RevisionHistoryLimit)
 		assert.Equal(t, appsv1.ParallelPodManagement, mergedSpec.PodManagementPolicy)
+		assert.Equal(t, overridePersistentVolumeClaimRetentionPolicy, *mergedSpec.PersistentVolumeClaimRetentionPolicy)
 	})
 
 	matchLabels := mergedSpec.Selector.MatchLabels
