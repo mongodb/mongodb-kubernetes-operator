@@ -60,9 +60,7 @@ func TestGetLabelSelectorRequirementByKey(t *testing.T) {
 }
 
 func TestMergeSpec(t *testing.T) {
-	var overridePersistentVolumeClaimRetentionPolicy appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy
-	overridePersistentVolumeClaimRetentionPolicy.WhenDeleted = "Deleted"
-	overridePersistentVolumeClaimRetentionPolicy.WhenScaled = "Deleted"
+	overridePersistentVolumeClaimRetentionPolicy := appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{WhenDeleted: "Delete", WhenScaled: "Delete"}
 
 	original := New(
 		WithName("original"),

@@ -221,6 +221,18 @@ func StatefulSetHasUpdateStrategy(ctx context.Context, mdb *mdbv1.MongoDBCommuni
 	}
 }
 
+// StatefulSetHasPersistentVolumeClaimRetentionPolicy verifies that the StatefulSet holding this MongoDB
+// resource has the correct PersistentVolumeClaim Retention Policy
+func StatefulSetHasPersistentVolumeClaimRetentionPolicy(ctx context.Context, mdb *mdbv1.MongoDBCommunity, persistentVolumeClaimRetentionPolicy appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy) func(t *testing.T) {
+	return func(t *testing.T) {
+		err := wait.ForStatefulSetToHavePersistentVolumeClaimRetentionPolicy(ctx, t, mdb, persistentVolumeClaimRetentionPolicy, wait.RetryInterval(time.Second*15), wait.Timeout(time.Minute*8))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("StatefulSet %s/%s is ready!", mdb.Namespace, mdb.Name)
+	}
+}
+
 // GetPersistentVolumes returns all persistent volumes on the cluster
 func getPersistentVolumesList(ctx context.Context) (*corev1.PersistentVolumeList, error) {
 	return e2eutil.TestClient.CoreV1Client.PersistentVolumes().List(ctx, metav1.ListOptions{})
