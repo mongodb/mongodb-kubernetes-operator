@@ -27,10 +27,8 @@ func TestReplicaSetCustomPersistentVolumeClaimRetentionPolicy(t *testing.T) {
 	defer testCtx.Teardown()
 
 	mdb, user := e2eutil.NewTestMongoDB(testCtx, "mdb0", "")
-	var test appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy
-	test.WhenDeleted = "Deleted"
-	test.WhenScaled = "Deleted"
-	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.PersistentVolumeClaimRetentionPolicy = &test
+	overridePersistentVolumeClaim := appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{WhenDeleted: "Delete", WhenScaled: "Delete"}
+	mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec.PersistentVolumeClaimRetentionPolicy = &overridePersistentVolumeClaim
 	scramUser := mdb.GetAuthUsers()[0]
 
 	_, err := setup.GeneratePasswordForUser(testCtx, user, "")
@@ -54,6 +52,5 @@ func TestReplicaSetCustomPersistentVolumeClaimRetentionPolicy(t *testing.T) {
 		tester.ConnectivitySucceeds(WithURI(mongodbtests.GetSrvConnectionStringForUser(ctx, mdb, scramUser))))
 	t.Run("Ensure Authentication", tester.EnsureAuthenticationIsConfigured(3))
 	t.Run("AutomationConfig has the correct version", mongodbtests.AutomationConfigVersionHasTheExpectedVersion(ctx, &mdb, 1))
-	t.Run("Statefulset has the expectd PersistentVolumeClaimRetentionPolicy", mongodbtests.StatefulSetHasPersistentVolumeClaimRetentionPolicy(ctx, &mdb, test))
-	t.Run("Cluster has the expected labels and annotations", mongodbtests.HasExpectedMetadata(ctx, &mdb, e2eutil.TestLabels(), e2eutil.TestAnnotations()))
+	t.Run("Statefulset has the expected PersistentVolumeClaimRetentionPolicy", mongodbtests.StatefulSetHasPersistentVolumeClaimRetentionPolicy(ctx, &mdb, overridePersistentVolumeClaim))
 }

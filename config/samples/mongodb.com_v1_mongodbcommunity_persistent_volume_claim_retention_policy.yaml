@@ -2,7 +2,7 @@
 apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
-  name: mongodb-specify-readiness-probe-values
+  name: mongodb-specify-volumeclaimretention-values
 spec:
   members: 3
   type: ReplicaSet
