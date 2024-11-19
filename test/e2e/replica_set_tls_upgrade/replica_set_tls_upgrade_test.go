@@ -28,6 +28,8 @@ func TestReplicaSetTLSUpgrade(t *testing.T) {
 	ctx := context.Background()
 	resourceName := "mdb-tls"
 
+	t.Setenv("MONGODB_LOG_ALL", "debug")
+
 	testCtx, testConfig := setup.SetupWithTLS(ctx, t, resourceName)
 	defer testCtx.Teardown()
 
