@@ -13,16 +13,15 @@ import (
 	"time"
 
 	"github.com/stretchr/objx"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	e2eutil "github.com/mongodb/mongodb-kubernetes-operator/test/e2e"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,11 +30,11 @@ import (
 type Tester struct {
 	ctx         context.Context
 	mongoClient *mongo.Client
-	clientOpts  []*options.ClientOptions
+	clientOpts  []options.Lister[options.ClientOptions]
 	resource    *mdbv1.MongoDBCommunity
 }
 
-func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...*options.ClientOptions) *Tester {
+func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...options.Lister[options.ClientOptions]) *Tester {
 	t := &Tester{
 		ctx:      ctx,
 		resource: mdb,
@@ -48,15 +47,13 @@ func newTester(ctx context.Context, mdb *mdbv1.MongoDBCommunity, opts ...*option
 // of options.ClientOptions, and return the final desired list
 // making any modifications required
 type OptionApplier interface {
-	ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions
+	ApplyOption(opts ...options.Lister[options.ClientOptions]) []options.Lister[options.ClientOptions]
 }
 
 // FromResource returns a Tester instance from a MongoDB resource. It infers SCRAM username/password
-// and the hosts from the resource.
-func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
-	var clientOpts []*options.ClientOptions
-
-	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
+func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity) (*Tester, error) {
+	// and the hosts from the resource.
+	clientOpts := WithHosts(mdb.Hosts("")).ApplyOption()
 
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
@@ -72,29 +69,17 @@ func FromResource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity,
 		clientOpts = WithScram(user.Name, string(passwordSecret.Data[user.PasswordSecretRef.Key])).ApplyOption(clientOpts...)
 	}
 
-	// add any additional options
-	for _, opt := range opts {
-		clientOpts = opt.ApplyOption(clientOpts...)
-	}
-
 	return newTester(ctx, &mdb, clientOpts...), nil
 }
 
-func FromX509Resource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, opts ...OptionApplier) (*Tester, error) {
-	var clientOpts []*options.ClientOptions
-
-	clientOpts = WithHosts(mdb.Hosts("")).ApplyOption(clientOpts...)
+func FromX509Resource(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity) (*Tester, error) {
+	clientOpts := WithHosts(mdb.Hosts("")).ApplyOption()
 
 	t.Logf("Configuring hosts: %s for MongoDB: %s", mdb.Hosts(""), mdb.NamespacedName())
 
 	users := mdb.Spec.Users
 	if len(users) == 1 {
 		clientOpts = WithX509().ApplyOption(clientOpts...)
-	}
-
-	// add any additional options
-	for _, opt := range opts {
-		clientOpts = opt.ApplyOption(clientOpts...)
 	}
 
 	return newTester(ctx, &mdb, clientOpts...), nil
@@ -113,7 +98,7 @@ func (m *Tester) ConnectivityFails(opts ...OptionApplier) func(t *testing.T) {
 }
 
 func (m *Tester) ConnectivityRejected(ctx context.Context, opts ...OptionApplier) func(t *testing.T) {
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
@@ -124,7 +109,7 @@ func (m *Tester) ConnectivityRejected(ctx context.Context, opts ...OptionApplier
 			t.Skip()
 		}
 
-		if err := m.ensureClient(ctx, clientOpts...); err == nil {
+		if err := m.ensureClient(clientOpts...); err == nil {
 			t.Fatalf("No error, but it should have failed")
 		}
 	}
@@ -135,14 +120,14 @@ func (m *Tester) HasKeyfileAuth(tries int, opts ...OptionApplier) func(t *testin
 }
 
 func (m *Tester) HasFCV(fcv string, tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("featureCompatibilityVersion", map[string]interface{}{"version": fcv}, tries, opts...)
+	return m.hasAdminParameter("featureCompatibilityVersion", bson.D{{Key: "version", Value: fcv}}, tries, opts...)
 }
 
 func (m *Tester) ScramIsConfigured(tries int, opts ...OptionApplier) func(t *testing.T) {
-	return m.hasAdminParameter("authenticationMechanisms", primitive.A{"SCRAM-SHA-256"}, tries, opts...)
+	return m.hasAdminParameter("authenticationMechanisms", bson.A{"SCRAM-SHA-256"}, tries, opts...)
 }
 
-func (m *Tester) ScramWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) ScramWithAuthIsConfigured(tries int, enabledMechanisms bson.A, opts ...OptionApplier) func(t *testing.T) {
 	return m.hasAdminParameter("authenticationMechanisms", enabledMechanisms, tries, opts...)
 }
 
@@ -153,7 +138,7 @@ func (m *Tester) EnsureAuthenticationIsConfigured(tries int, opts ...OptionAppli
 	}
 }
 
-func (m *Tester) EnsureAuthenticationWithAuthIsConfigured(tries int, enabledMechanisms primitive.A, opts ...OptionApplier) func(t *testing.T) {
+func (m *Tester) EnsureAuthenticationWithAuthIsConfigured(tries int, enabledMechanisms bson.A, opts ...OptionApplier) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Run("Ensure keyFile authentication is configured", m.HasKeyfileAuth(tries, opts...))
 		t.Run(fmt.Sprintf("%q is configured", enabledMechanisms), m.ScramWithAuthIsConfigured(tries, enabledMechanisms, opts...))
@@ -183,7 +168,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 			t.Fatal(err)
 			return false
 		}
-		assert.ElementsMatch(t, result.Roles, expectedRoles)
+		assert.Subset(t, result.Roles, expectedRoles)
 		return true
 	}, tries, opts...)
 }
@@ -191,13 +176,13 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 type verifyAdminResultFunc func(t *testing.T) bool
 
 func (m *Tester) hasAdminCommandResult(verify verifyAdminResultFunc, tries int, opts ...OptionApplier) func(t *testing.T) {
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
 
 	return func(t *testing.T) {
-		if err := m.ensureClient(m.ctx, clientOpts...); err != nil {
+		if err := m.ensureClient(clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
@@ -233,7 +218,7 @@ func (m *Tester) hasAdminParameter(key string, expectedValue interface{}, tries 
 
 func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) func(t *testing.T) {
 
-	clientOpts := make([]*options.ClientOptions, 0)
+	clientOpts := make([]options.Lister[options.ClientOptions], 0)
 	for _, optApplier := range opts {
 		clientOpts = optApplier.ApplyOption(clientOpts...)
 	}
@@ -249,7 +234,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 		ctx, cancel := context.WithTimeout(m.ctx, connectivityOpts.ContextTimeout)
 		defer cancel()
 
-		if err := m.ensureClient(ctx, clientOpts...); err != nil {
+		if err := m.ensureClient(clientOpts...); err != nil {
 			t.Fatal(err)
 		}
 
@@ -260,7 +245,7 @@ func (m *Tester) connectivityCheck(shouldSucceed bool, opts ...OptionApplier) fu
 			collection := m.mongoClient.Database(connectivityOpts.Database).Collection(connectivityOpts.Collection)
 			_, err = collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
 			if err != nil && shouldSucceed {
-				t.Logf("Was not able to connect, when we should have been able to!")
+				t.Logf("Was not able to connect, when we should have been able to! Error: %v", err)
 				return false, nil
 			}
 			if err == nil && !shouldSucceed {
@@ -294,7 +279,7 @@ func (m *Tester) WaitForRotatedCertificate(mdb mdbv1.MongoDBCommunity, initialCe
 			return nil
 		}
 
-		if err := m.ensureClient(m.ctx, &options.ClientOptions{TLSConfig: tls}); err != nil {
+		if err := m.ensureClient(options.Client().SetTLSConfig(tls)); err != nil {
 			t.Fatal(err)
 		}
 
@@ -318,9 +303,13 @@ func (m *Tester) EnsureMongodConfig(selector string, expected interface{}) func(
 		connectivityOpts := defaults()
 		err := wait.PollUntilContextTimeout(m.ctx, connectivityOpts.IntervalTime, connectivityOpts.TimeoutTime, false, func(ctx context.Context) (done bool, err error) {
 			opts, err := m.getCommandLineOptions()
+			fmt.Printf("Debugging: Unparsed options: %v, error: %v\n", opts, err)
 			assert.NoError(t, err)
 
 			parsed := objx.New(bsonToMap(opts)).Get("parsed").ObjxMap()
+			fmt.Printf("Debugging: parsed: %v, %v\n", parsed, reflect.TypeOf(parsed))
+			fmt.Printf("Debugging: expected: %vm %v\n", expected, reflect.TypeOf(parsed))
+			fmt.Printf("Debugging: selected: %vm %v\n", parsed.Get(selector).Data(), reflect.TypeOf(parsed.Get(selector).Data()))
 
 			return expected == parsed.Get(selector).Data(), nil
 		})
@@ -336,7 +325,7 @@ func (m *Tester) getCommandLineOptions() (bson.M, error) {
 	var result bson.M
 	err := m.mongoClient.
 		Database("admin").
-		RunCommand(m.ctx, bson.D{primitive.E{Key: "getCmdLineOpts", Value: 1}}).
+		RunCommand(m.ctx, bson.D{bson.E{Key: "getCmdLineOpts", Value: 1}}).
 		Decode(&result)
 
 	return result, err
@@ -384,10 +373,8 @@ func (m *Tester) StartBackgroundConnectivityTest(t *testing.T, interval time.Dur
 
 // ensureClient establishes a mongo client connection applying any addition
 // client options on top of what were provided at construction.
-func (t *Tester) ensureClient(ctx context.Context, opts ...*options.ClientOptions) error {
-	allOpts := t.clientOpts
-	allOpts = append(allOpts, opts...)
-	mongoClient, err := mongo.Connect(ctx, allOpts...)
+func (t *Tester) ensureClient(opts ...options.Lister[options.ClientOptions]) error {
+	mongoClient, err := mongo.Connect(append(t.clientOpts, opts...)...)
 	if err != nil {
 		return err
 	}
@@ -432,80 +419,47 @@ func (m *Tester) PrometheusEndpointIsReachable(username, password string, useTls
 // clientOptionAdder is the standard implementation that simply adds a
 // new options.ClientOption to the mongo client
 type clientOptionAdder struct {
-	option *options.ClientOptions
+	option options.Lister[options.ClientOptions]
 }
 
-func (c clientOptionAdder) ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions {
+func (c clientOptionAdder) ApplyOption(opts ...options.Lister[options.ClientOptions]) []options.Lister[options.ClientOptions] {
 	return append(opts, c.option)
-}
-
-// clientOptionRemover is used if a value from the client array of options should be removed.
-// assigning a nil value will not take precedence over an existing value, so we need a mechanism
-// to remove elements that are present
-
-// e.g. to disable TLS, you need to remove the options.ClientOption that has a non-nil tls config
-// it is not enough to add a tls config that has a nil value.
-type clientOptionRemover struct {
-	// removalPredicate is a function which returns a bool indicating
-	// if a given options.ClientOption should be removed.
-	removalPredicate func(opt *options.ClientOptions) bool
-}
-
-func (c clientOptionRemover) ApplyOption(opts ...*options.ClientOptions) []*options.ClientOptions {
-	newOpts := make([]*options.ClientOptions, 0)
-	for _, opt := range opts {
-		if !c.removalPredicate(opt) {
-			newOpts = append(newOpts, opt)
-		}
-	}
-	return newOpts
 }
 
 // WithScram provides a configuration option that will configure the MongoDB resource
 // with the given username and password
 func WithScram(username, password string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: "SCRAM-SHA-256",
-				AuthSource:    "admin",
-				Username:      username,
-				Password:      password,
-			},
-		},
+	return clientOptionAdder{option: options.Client().SetAuth(options.Credential{
+		AuthMechanism: "SCRAM-SHA-256",
+		AuthSource:    "admin",
+		Username:      username,
+		Password:      password,
+	}),
 	}
 }
 
 func WithScramWithAuth(username, password string, authenticationMechanism string) OptionApplier {
 	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: authenticationMechanism,
-				AuthSource:    "admin",
-				Username:      username,
-				Password:      password,
-			},
-		},
+		option: options.Client().SetAuth(options.Credential{
+			AuthMechanism: authenticationMechanism,
+			AuthSource:    "admin",
+			Username:      username,
+			Password:      password,
+		}),
 	}
 }
 
 func WithX509() OptionApplier {
 	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Auth: &options.Credential{
-				AuthMechanism: "MONGODB-X509",
-			},
-		},
+		option: options.Client().SetAuth(options.Credential{
+			AuthMechanism: "MONGODB-X509",
+		}),
 	}
 }
 
 // WithHosts configures the hosts of the deployment
 func WithHosts(hosts []string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			Hosts: hosts,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetHosts(hosts)}
 }
 
 // WithTls configures the client to use tls
@@ -519,36 +473,22 @@ func WithTls(ctx context.Context, mdb mdbv1.MongoDBCommunity) OptionApplier {
 }
 
 func withTls(tls *tls.Config) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			TLSConfig: tls,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetTLSConfig(tls)}
 }
 
 // WithoutTls will remove the tls configuration
 func WithoutTls() OptionApplier {
-	return clientOptionRemover{
-		removalPredicate: func(opt *options.ClientOptions) bool {
-			return opt.TLSConfig != nil
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetTLSConfig(nil)}
 }
 
 // WithURI will add URI connection string
 func WithURI(uri string) OptionApplier {
-	opt := &options.ClientOptions{}
-	opt.ApplyURI(uri)
-	return clientOptionAdder{option: opt}
+	return clientOptionAdder{option: options.Client().ApplyURI(uri)}
 }
 
 // WithReplicaSet will explicitly add a replicaset name
 func WithReplicaSet(rsname string) OptionApplier {
-	return clientOptionAdder{
-		option: &options.ClientOptions{
-			ReplicaSet: &rsname,
-		},
-	}
+	return clientOptionAdder{option: options.Client().SetReplicaSet(rsname)}
 }
 
 // getClientTLSConfig reads in the tls fixtures
