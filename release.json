@@ -1,5 +1,5 @@
 {
-  "golang-builder-image": "golang:1.22",
+  "golang-builder-image": "golang:1.23",
   "operator": "0.11.0",
   "version-upgrade-hook": "1.0.9",
   "readiness-probe": "1.0.21",
