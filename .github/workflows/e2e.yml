@@ -157,6 +157,8 @@ jobs:
           distro: ubi
         - test-name: replica_set_remove_user
           distro: ubi
+        - test-name: replica_set_custom_persistentvolumeclaimretentionpolicy_test
+          distro: ubi
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
