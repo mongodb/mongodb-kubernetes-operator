@@ -205,6 +205,7 @@ func ConnectionStringSecretsAreConfigured(ctx context.Context, mdb *mdbv1.MongoD
 
 			assert.NoError(t, err)
 			assertEqualOwnerReference(t, "Secret", secretNamespacedName, secret.GetOwnerReferences(), expectedOwnerReference)
+			containsMetadata(t, secret.ObjectMeta, map[string]string{}, user.ConnectionStringSecretAnnotations, "secret "+secretNamespacedName.Name)
 		}
 	}
 }
@@ -677,6 +678,18 @@ func AddConnectionStringOptionToUser(ctx context.Context, mdb *mdbv1.MongoDBComm
 		t.Logf("Adding %s:%v to connection string to first user", key, value)
 		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
 			db.Spec.Users[0].AdditionalConnectionStringConfig.SetOption(key, value)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func AddConnectionStringAnnotationsToUser(ctx context.Context, mdb *mdbv1.MongoDBCommunity, annotations map[string]string) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Logf("Adding %v to connection string annotations", annotations)
+		err := e2eutil.UpdateMongoDBResource(ctx, mdb, func(db *mdbv1.MongoDBCommunity) {
+			db.Spec.Users[0].ConnectionStringSecretAnnotations = annotations
 		})
 		if err != nil {
 			t.Fatal(err)
