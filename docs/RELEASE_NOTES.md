@@ -2,3 +2,6 @@
 
 ## Added support for MongoDB 8.0.0 GA
 MongoDB 8.0.0 GA is now officially supported by the Operator
+
+## Added support for persistentVolumeClaimRetentionPolicy
+Add persistentVolumeClaimRetentionPolicy on MongoDB statefulset.
