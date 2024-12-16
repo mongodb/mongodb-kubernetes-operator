@@ -2,7 +2,9 @@
 ## How to Release
 * Prepare release PR:
     * Pull the changes in the helm-charts sub module folder to get the latest main.
-      * `cd helm-charts && git pull origin main`.
+      * `cd helm-charts`
+      * `git submodule update --init` if submodule was not initialised before
+      * `git pull origin main`
     * Update any changing versions in [release.json](../release.json).
     * Ensure that [the release notes](./RELEASE_NOTES.md) are up to date for this release.
     * Run `python scripts/ci/update_release.py` to update the relevant yaml manifests.
