@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"testing"
 	"strings"
+	"testing"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/test/e2e/util/mongotester"
 
@@ -16,7 +16,7 @@ import (
 
 const (
 	testWatchNamespaceEnvName = "TEST_WATCH_NAMESPACE"
-	testMongoDBNamespaces = "ns1,ns2"
+	testMongoDBNamespaces     = "ns1,ns2"
 )
 
 func TestMain(m *testing.M) {
