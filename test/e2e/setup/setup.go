@@ -49,6 +49,9 @@ func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
 	}
 
 	config := LoadTestConfigFromEnv()
+	if err := ensureWatchNamespaces(testCtx, config); err != nil {
+		t.Fatal(err)
+	}
 	if err := DeployOperator(ctx, config, "mdb", false, false); err != nil {
 		t.Fatal(err)
 	}
@@ -57,13 +60,16 @@ func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
 }
 
 func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additionalHelmArgs ...HelmArg) (*e2eutil.TestContext, TestConfig) {
-	textCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	config := LoadTestConfigFromEnv()
+	if err := ensureWatchNamespaces(testCtx, config); err != nil {
+		t.Fatal(err)
+	}
 	if err := deployCertManager(config); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +78,7 @@ func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additi
 		t.Fatal(err)
 	}
 
-	return textCtx, config
+	return testCtx, config
 }
 
 func SetupWithTestConfig(ctx context.Context, t *testing.T, testConfig TestConfig, withTLS, defaultOperator bool, resourceName string) *e2eutil.TestContext {
@@ -88,6 +94,9 @@ func SetupWithTestConfig(ctx context.Context, t *testing.T, testConfig TestConfi
 		}
 	}
 
+	if err := ensureWatchNamespaces(testCtx, testConfig); err != nil {
+		t.Fatal(err)
+	}
 	if err := DeployOperator(ctx, testConfig, resourceName, withTLS, defaultOperator); err != nil {
 		t.Fatal(err)
 	}
@@ -138,17 +147,17 @@ func extractRegistryNameAndVersion(fullImage string) (string, string, string) {
 }
 
 // getHelmArgs returns a map of helm arguments that are required to install the operator.
-func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName string, withTLS bool, defaultOperator bool, additionalHelmArgs ...HelmArg) map[string]string {
+func getHelmArgs(testConfig TestConfig, watchNamespaces []string, resourceName string, withTLS bool, defaultOperator bool, additionalHelmArgs ...HelmArg) map[string]interface{} {
 	agentRegistry, agentName, agentVersion := extractRegistryNameAndVersion(testConfig.AgentImage)
 	versionUpgradeHookRegistry, versionUpgradeHookName, versionUpgradeHookVersion := extractRegistryNameAndVersion(testConfig.VersionUpgradeHookImage)
 	readinessProbeRegistry, readinessProbeName, readinessProbeVersion := extractRegistryNameAndVersion(testConfig.ReadinessProbeImage)
 	operatorRegistry, operatorName, operatorVersion := extractRegistryNameAndVersion(testConfig.OperatorImage)
 
-	helmArgs := make(map[string]string)
+	helmArgs := make(map[string]interface{})
 
 	helmArgs["namespace"] = testConfig.Namespace
 
-	helmArgs["operator.watchNamespace"] = watchNamespace
+	helmArgs["operator.watchNamespaces"] = watchNamespaces
 
 	if !defaultOperator {
 		helmArgs["operator.operatorImageName"] = operatorName
@@ -189,18 +198,18 @@ func getHelmArgs(testConfig TestConfig, watchNamespace string, resourceName stri
 func DeployOperator(ctx context.Context, config TestConfig, resourceName string, withTLS bool, defaultOperator bool, additionalHelmArgs ...HelmArg) error {
 	e2eutil.OperatorNamespace = config.Namespace
 	fmt.Printf("Setting operator namespace to %s\n", e2eutil.OperatorNamespace)
-	watchNamespace := config.Namespace
+	watchNamespaces := config.WatchNamespaces
 	if config.ClusterWide {
-		watchNamespace = "*"
+		watchNamespaces = []string{"*"}
 	}
-	fmt.Printf("Setting namespace to watch to %s\n", watchNamespace)
+	fmt.Printf("Setting namespace to watch to %s\n", strings.Join(watchNamespaces, ","))
 
 	helmChartName := "mongodb-kubernetes-operator"
 	if err := helm.Uninstall(helmChartName, config.Namespace); err != nil {
 		return err
 	}
 
-	helmArgs := getHelmArgs(config, watchNamespace, resourceName, withTLS, defaultOperator, additionalHelmArgs...)
+	helmArgs := getHelmArgs(config, watchNamespaces, resourceName, withTLS, defaultOperator, additionalHelmArgs...)
 	helmFlags := map[string]string{
 		"namespace":        config.Namespace,
 		"create-namespace": "",
@@ -256,7 +265,7 @@ func deployCertManager(config TestConfig) error {
 		"namespace":        config.CertManagerNamespace,
 		"create-namespace": "",
 	}
-	values := map[string]string{"installCRDs": "true"}
+	values := map[string]interface{}{"installCRDs": "true"}
 	if err := helm.Install(charlUrl, helmChartName, flags, values); err != nil {
 		return fmt.Errorf("failed to install cert-manager Helm chart: %s", err)
 	}
@@ -282,4 +291,14 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionWithCon
 		}
 		return false, nil
 	}
+}
+
+func ensureWatchNamespaces(ctx *e2eutil.TestContext, config TestConfig) error {
+	for _, namespace := range config.WatchNamespaces {
+		err := e2eutil.EnsureNamespace(ctx, namespace)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

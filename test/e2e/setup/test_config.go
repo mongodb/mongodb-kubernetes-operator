@@ -7,6 +7,7 @@ import (
 
 const (
 	testNamespaceEnvName            = "TEST_NAMESPACE"
+	testWatchNamespacesEnvName      = "TEST_WATCH_NAMESPACE"
 	testCertManagerNamespaceEnvName = "TEST_CERT_MANAGER_NAMESPACE"
 	testCertManagerVersionEnvName   = "TEST_CERT_MANAGER_VERSION"
 	operatorImageEnvName            = "OPERATOR_IMAGE"
@@ -18,6 +19,7 @@ const (
 
 type TestConfig struct {
 	Namespace               string
+	WatchNamespaces         []string
 	CertManagerNamespace    string
 	CertManagerVersion      string
 	OperatorImage           string
@@ -35,6 +37,7 @@ type TestConfig struct {
 func LoadTestConfigFromEnv() TestConfig {
 	return TestConfig{
 		Namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "mongodb"),
+		WatchNamespaces:         envvar.ReadCSVOrDefault(testWatchNamespacesEnvName, []string{"mongodb"}),
 		CertManagerNamespace:    envvar.GetEnvOrDefault(testCertManagerNamespaceEnvName, "cert-manager"),
 		CertManagerVersion:      envvar.GetEnvOrDefault(testCertManagerVersionEnvName, "v1.5.3"),
 		OperatorImage:           envvar.GetEnvOrDefault(operatorImageEnvName, "quay.io/mongodb/community-operator-dev:latest"),

@@ -20,7 +20,7 @@ func DependencyUpdate(chartPath string) error {
 }
 
 // Install a helm chert at the given path with the given name and the provided set arguments.
-func Install(chartPath, chartName string, flags map[string]string, templateValues map[string]string) error {
+func Install(chartPath, chartName string, flags map[string]string, templateValues map[string]interface{}) error {
 	helmArgs := []string{"install"}
 	helmArgs = append(helmArgs, chartName, chartPath)
 	for flagKey, flagValue := range flags {
@@ -53,10 +53,15 @@ func executeHelmCommand(args []string, messagePredicate func(string) bool) error
 
 // mapToHelmValuesArg accepts a map of string to string and returns a list of arguments
 // that can be passed to a shell helm command.
-func mapToHelmValuesArg(m map[string]string) []string {
+func mapToHelmValuesArg(m map[string]interface{}) []string {
 	var args []string
 	for k, v := range m {
-		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))
+		if strValue, ok := v.(string); ok {
+			args = append(args, "--set", fmt.Sprintf("%s=%s", k, strValue))
+		}
+		if sliceValue, ok := v.([]string); ok {
+			args = append(args, "--set", fmt.Sprintf("%s={%s}", k, strings.Join(sliceValue, ",")))
+		}
 	}
 	return args
 }
