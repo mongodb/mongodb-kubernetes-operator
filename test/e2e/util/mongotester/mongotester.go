@@ -183,7 +183,7 @@ func (m *Tester) VerifyRoles(expectedRoles []automationconfig.CustomRole, tries 
 			t.Fatal(err)
 			return false
 		}
-		assert.Contains(t, result.Roles, expectedRoles)
+		assert.ElementsMatch(t, result.Roles, expectedRoles)
 		return true
 	}, tries, opts...)
 }
