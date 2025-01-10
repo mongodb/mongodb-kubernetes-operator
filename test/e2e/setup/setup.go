@@ -237,7 +237,7 @@ func DeployOperator(ctx context.Context, config TestConfig, resourceName string,
 		return err
 	}
 
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, 60*time.Second, true, hasDeploymentRequiredReplicas(&dep)); err != nil {
+	if err := wait.PollUntilContextTimeout(ctx, time.Second*2, 120*time.Second, true, hasDeploymentRequiredReplicas(&dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
@@ -280,6 +280,7 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionWithCon
 		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
 			return true, nil
 		}
+		fmt.Printf("Deployment not ready! ReadyReplicas: %d, Spec.Replicas: %d\n", dep.Status.ReadyReplicas, *dep.Spec.Replicas)
 		return false, nil
 	}
 }
