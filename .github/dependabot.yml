@@ -5,9 +5,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - "slaskawi"
-      - "lsierant"
-      - "mircea-cosbuc"
-      - "nammn"
-      - "Julien-Ben"
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
