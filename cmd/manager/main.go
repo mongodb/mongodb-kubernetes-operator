@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -60,18 +62,20 @@ func main() {
 	}
 
 	// Get watch namespace from environment variable.
-	namespace, nsSpecified := os.LookupEnv(WatchNamespaceEnv)
+	namespaces, nsSpecified := os.LookupEnv(WatchNamespaceEnv)
 	if !nsSpecified {
 		log.Sugar().Fatal("No namespace specified to watch")
 	}
 
 	// If namespace is a wildcard use the empty string to represent all namespaces
-	watchNamespace := ""
-	if namespace == "*" {
+	var watchNamespaces []string
+	if namespaces == "*" {
 		log.Info("Watching all namespaces")
 	} else {
-		watchNamespace = namespace
-		log.Sugar().Infof("Watching namespace: %s", watchNamespace)
+		for _, ns := range strings.Split(namespaces, ",") {
+			watchNamespaces = append(watchNamespaces, strings.TrimSpace(ns))
+		}
+		log.Sugar().Infof("Watching namespace: %s", strings.Join(watchNamespaces, ","))
 	}
 
 	// Get a config to talk to the apiserver
@@ -82,7 +86,9 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: watchNamespace,
+		Cache: cache.Options{
+			Namespaces: watchNamespaces,
+		},
 	})
 	if err != nil {
 		log.Sugar().Fatalf("Unable to create manager: %v", err)

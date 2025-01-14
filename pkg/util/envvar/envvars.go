@@ -41,3 +41,10 @@ func ReadBool(envVarName string) bool {
 	envVar := GetEnvOrDefault(envVarName, "false")
 	return strings.TrimSpace(strings.ToLower(envVar)) == "true"
 }
+
+func ReadCSVOrDefault(envVarName string, defaultValue []string) []string {
+	if val, ok := os.LookupEnv(envVarName); ok {
+		return strings.Split(val, ",")
+	}
+	return defaultValue
+}
