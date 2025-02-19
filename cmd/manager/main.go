@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers"
 	"github.com/mongodb/mongodb-kubernetes-operator/controllers/construct"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -56,7 +58,14 @@ func main() {
 		log.Sugar().Fatalf("Failed to configure logger: %v", err)
 	}
 
-	if !hasRequiredVariables(log, construct.AgentImageEnv, construct.VersionUpgradeHookImageEnv, construct.ReadinessProbeImageEnv) {
+	if !hasRequiredVariables(
+		log,
+		construct.MongodbRepoUrlEnv,
+		construct.MongodbImageEnv,
+		construct.AgentImageEnv,
+		construct.VersionUpgradeHookImageEnv,
+		construct.ReadinessProbeImageEnv,
+	) {
 		os.Exit(1)
 	}
 
@@ -99,7 +108,15 @@ func main() {
 	}
 
 	// Setup Controller.
-	if err = controllers.NewReconciler(mgr).SetupWithManager(mgr); err != nil {
+	if err = controllers.NewReconciler(
+		mgr,
+		os.Getenv(construct.MongodbRepoUrlEnv),
+		os.Getenv(construct.MongodbImageEnv),
+		envvar.GetEnvOrDefault(construct.MongoDBImageTypeEnv, construct.DefaultImageType),
+		os.Getenv(construct.AgentImageEnv),
+		os.Getenv(construct.VersionUpgradeHookImageEnv),
+		os.Getenv(construct.ReadinessProbeImageEnv),
+	).SetupWithManager(mgr); err != nil {
 		log.Sugar().Fatalf("Unable to create controller: %v", err)
 	}
 	// +kubebuilder:scaffold:builder
