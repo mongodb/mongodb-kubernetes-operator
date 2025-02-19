@@ -2,12 +2,13 @@ package controllers
 
 import (
 	"context"
+	"testing"
+
 	mdbv1 "github.com/mongodb/mongodb-kubernetes-operator/api/v1"
 	kubeClient "github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/client"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestReplicaSetReconcilerCleanupScramSecrets(t *testing.T) {
@@ -140,7 +141,7 @@ func TestReplicaSetReconcilerCleanupPemSecret(t *testing.T) {
 	err := createAgentCertPemSecret(ctx, client, mdb, "CERT", "KEY", "")
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 	secret, err := r.client.GetSecret(ctx, mdb.AgentCertificatePemSecretNamespacedName())
 	assert.NoError(t, err)
