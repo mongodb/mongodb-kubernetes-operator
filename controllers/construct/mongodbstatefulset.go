@@ -95,7 +95,7 @@ type MongoDBStatefulSetOwner interface {
 	// GetNamespace returns the namespace the resource is defined in.
 	GetNamespace() string
 	// GetMongoDBVersion returns the version of MongoDB to be used for this resource.
-	GetMongoDBVersion(annotations map[string]string) string
+	GetMongoDBVersion() string
 	// AutomationConfigSecretName returns the name of the secret which will contain the automation config.
 	AutomationConfigSecretName() string
 	// GetUpdateStrategyType returns the UpdateStrategyType of the statefulset.
