@@ -1114,7 +1114,7 @@ func (m *MongoDBCommunity) CurrentArbiters() int {
 	return m.Status.CurrentStatefulSetArbitersReplicas
 }
 
-func (m *MongoDBCommunity) GetMongoDBVersion(map[string]string) string {
+func (m *MongoDBCommunity) GetMongoDBVersion() string {
 	return m.Spec.Version
 }
 
@@ -1122,7 +1122,7 @@ func (m *MongoDBCommunity) GetMongoDBVersion(map[string]string) string {
 // Here it's the same as GetMongoDBVersion, but a different name is used in order to make
 // the usage clearer in enterprise (where it's a method of OpsManager but is used for the AppDB)
 func (m *MongoDBCommunity) GetMongoDBVersionForAnnotation() string {
-	return m.GetMongoDBVersion(nil)
+	return m.GetMongoDBVersion()
 }
 
 func (m *MongoDBCommunity) StatefulSetReplicasThisReconciliation() int {
