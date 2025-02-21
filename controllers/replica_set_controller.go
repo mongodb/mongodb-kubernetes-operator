@@ -212,7 +212,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase().
-		withVersion(mdb.GetMongoDBVersion(nil)))
+		withVersion(mdb.GetMongoDBVersion()))
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
