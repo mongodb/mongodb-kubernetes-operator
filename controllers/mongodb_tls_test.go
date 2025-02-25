@@ -34,7 +34,7 @@ func TestStatefulSetIsCorrectlyConfiguredWithTLS(t *testing.T) {
 	err = createTLSConfigMap(ctx, client, mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -61,7 +61,7 @@ func TestStatefulSetIsCorrectlyConfiguredWithTLSAndX509(t *testing.T) {
 	err = createAgentCertSecret(ctx, client, mdb, crt, key, "")
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -230,7 +230,7 @@ func TestStatefulSetIsCorrectlyConfiguredWithPrometheusTLS(t *testing.T) {
 	err = createTLSConfigMap(ctx, cli, mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -259,7 +259,7 @@ func TestStatefulSetIsCorrectlyConfiguredWithTLSAfterChangingExistingVolumes(t *
 	err = createTLSConfigMap(ctx, cli, mdb)
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -301,7 +301,7 @@ func TestAutomationConfigIsCorrectlyConfiguredWithTLS(t *testing.T) {
 
 		tlsModification, err := getTLSConfigModification(ctx, client, client, mdb)
 		assert.NoError(t, err)
-		ac, err := buildAutomationConfig(mdb, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
+		ac, err := buildAutomationConfig(mdb, false, automationconfig.Auth{}, automationconfig.AutomationConfig{}, tlsModification)
 		assert.NoError(t, err)
 
 		return ac
@@ -383,7 +383,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		err = createTLSConfigMap(ctx, c, mdb)
 		assert.NoError(t, err)
 
-		r := NewReconciler(kubeClient.NewManagerWithClient(c))
+		r := NewReconciler(kubeClient.NewManagerWithClient(c), "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
@@ -413,7 +413,7 @@ func TestTLSOperatorSecret(t *testing.T) {
 		err = k8sclient.CreateSecret(ctx, s)
 		assert.NoError(t, err)
 
-		r := NewReconciler(kubeClient.NewManagerWithClient(k8sclient))
+		r := NewReconciler(kubeClient.NewManagerWithClient(k8sclient), "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
@@ -456,7 +456,7 @@ func TestPemSupport(t *testing.T) {
 		err = createTLSConfigMap(ctx, c, mdb)
 		assert.NoError(t, err)
 
-		r := NewReconciler(kubeClient.NewManagerWithClient(c))
+		r := NewReconciler(kubeClient.NewManagerWithClient(c), "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
@@ -476,7 +476,7 @@ func TestPemSupport(t *testing.T) {
 		err = createTLSConfigMap(ctx, c, mdb)
 		assert.NoError(t, err)
 
-		r := NewReconciler(kubeClient.NewManagerWithClient(c))
+		r := NewReconciler(kubeClient.NewManagerWithClient(c), "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 		err = r.ensureTLSResources(ctx, mdb)
 		assert.NoError(t, err)
@@ -496,7 +496,7 @@ func TestPemSupport(t *testing.T) {
 		err = createTLSConfigMap(ctx, c, mdb)
 		assert.NoError(t, err)
 
-		r := NewReconciler(kubeClient.NewManagerWithClient(c))
+		r := NewReconciler(kubeClient.NewManagerWithClient(c), "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 		err = r.ensureTLSResources(ctx, mdb)
 		assert.Error(t, err)
@@ -544,7 +544,7 @@ func TestTLSConfigReferencesToCACertAreValidated(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			r := NewReconciler(mgr)
+			r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 			_, err = r.validateTLSConfig(ctx, mdb)
 			if tc.expectedError != nil {
