@@ -5,7 +5,7 @@ jobs:
     # run on master, or if a PR is being created from a branch, or if it has been manually triggered.
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     steps:
-    - template: cancel-previous
+    # - template: cancel-previous
     - template: checkout
     - template: setup-and-install-python
     - template: quay-login
@@ -13,7 +13,7 @@ jobs:
     - template: build-and-push-development-images
   - template: tests
     steps:
-    - template: cancel-previous
+    # - template: cancel-previous
     - template: checkout
     - template: set-run-status
     - template: setup-and-install-python
