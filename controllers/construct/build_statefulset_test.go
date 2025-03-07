@@ -1,7 +1,6 @@
 package construct
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -21,10 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func init() {
-	os.Setenv(VersionUpgradeHookImageEnv, "version-upgrade-hook-image")
-}
-
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
 	return mdbv1.MongoDBCommunity{
 		ObjectMeta: metav1.ObjectMeta{
@@ -40,12 +35,8 @@ func newTestReplicaSet() mdbv1.MongoDBCommunity {
 }
 
 func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
-	t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-	t.Setenv(MongodbImageEnv, "mongodb-community-server")
-	t.Setenv(AgentImageEnv, "agent-image")
-
 	mdb := newTestReplicaSet()
-	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(AgentImageEnv), true)
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, "fake-mongodbImage", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage", true)
 	sts := &appsv1.StatefulSet{}
 
 	t.Run("1st Call", func(t *testing.T) {
@@ -63,13 +54,10 @@ func TestMultipleCalls_DoNotCauseSideEffects(t *testing.T) {
 }
 
 func TestManagedSecurityContext(t *testing.T) {
-	t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-	t.Setenv(MongodbImageEnv, "mongodb-community-server")
-	t.Setenv(AgentImageEnv, "agent-image")
 	t.Setenv(podtemplatespec.ManagedSecurityContextEnv, "true")
 
 	mdb := newTestReplicaSet()
-	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(AgentImageEnv), true)
+	stsFunc := BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, "fake-mongodbImage", "fake-agentImage", "fake-versionUpgradeHookImage", "fake-readinessProbeImage", true)
 
 	sts := &appsv1.StatefulSet{}
 	stsFunc(sts)
@@ -77,89 +65,9 @@ func TestManagedSecurityContext(t *testing.T) {
 	assertStatefulSetIsBuiltCorrectly(t, mdb, sts)
 }
 
-func TestGetMongoDBImage(t *testing.T) {
-	type testConfig struct {
-		setArgs       func(t *testing.T)
-		version       string
-		expectedImage string
-	}
-	tests := map[string]testConfig{
-		"Default UBI8 Community image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(MongodbImageEnv, "mongodb-community-server")
-			},
-			version:       "6.0.5",
-			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
-		},
-		"Overridden UBI8 Enterprise image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(MongodbImageEnv, "mongodb-enterprise-server")
-			},
-			version:       "6.0.5",
-			expectedImage: "docker.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
-		},
-		"Overridden UBI8 Enterprise image from Quay": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "quay.io/mongodb")
-				t.Setenv(MongodbImageEnv, "mongodb-enterprise-server")
-			},
-			version:       "6.0.5",
-			expectedImage: "quay.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
-		},
-		"Overridden Ubuntu Community image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(MongodbImageEnv, "mongodb-community-server")
-				t.Setenv(MongoDBImageType, "ubuntu2204")
-			},
-			version:       "6.0.5",
-			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubuntu2204",
-		},
-		"Overridden UBI Community image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(MongodbImageEnv, "mongodb-community-server")
-				t.Setenv(MongoDBImageType, "ubi8")
-			},
-			version:       "6.0.5",
-			expectedImage: "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
-		},
-		"Docker Inc images": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "docker.io")
-				t.Setenv(MongodbImageEnv, "mongo")
-			},
-			version:       "6.0.5",
-			expectedImage: "docker.io/mongo:6.0.5",
-		},
-		"Deprecated AppDB images defined the old way": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(MongodbRepoUrl, "quay.io")
-				t.Setenv(MongodbImageEnv, "mongodb/mongodb-enterprise-appdb-database-ubi")
-				// In this example, we intentionally don't use the suffix from the env. variable and let users
-				// define it in the version instead. There are some known customers who do this.
-				// This is a backwards compatibility case.
-				t.Setenv(MongoDBImageType, "will-be-ignored")
-			},
-
-			version:       "5.0.14-ent",
-			expectedImage: "quay.io/mongodb/mongodb-enterprise-appdb-database-ubi:5.0.14-ent",
-		},
-	}
-	for testName := range tests {
-		t.Run(testName, func(t *testing.T) {
-			testConfig := tests[testName]
-			testConfig.setArgs(t)
-			image := getMongoDBImage(testConfig.version)
-			assert.Equal(t, testConfig.expectedImage, image)
-		})
-	}
-}
-
 func TestMongod_Container(t *testing.T) {
-	c := container.New(mongodbContainer("4.2", []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
+	const mongodbImageMock = "fake-mongodbImage"
+	c := container.New(mongodbContainer(mongodbImageMock, []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 1)
@@ -168,7 +76,7 @@ func TestMongod_Container(t *testing.T) {
 	})
 
 	t.Run("Image is correct", func(t *testing.T) {
-		assert.Equal(t, getMongoDBImage("4.2"), c.Image)
+		assert.Equal(t, mongodbImageMock, c.Image)
 	})
 
 	t.Run("Resource requirements are correct", func(t *testing.T) {
@@ -210,7 +118,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	}
 
 	agentContainer := sts.Spec.Template.Spec.Containers[0]
-	assert.Equal(t, "agent-image", agentContainer.Image)
+	assert.Equal(t, "fake-agentImage", agentContainer.Image)
 	probe := agentContainer.ReadinessProbe
 	assert.True(t, reflect.DeepEqual(probes.New(DefaultReadiness()), *probe))
 	assert.Equal(t, probes.New(DefaultReadiness()).FailureThreshold, probe.FailureThreshold)
@@ -231,7 +139,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 	assertContainsVolumeMountWithName(t, agentContainer.VolumeMounts, "my-rs-keyfile")
 
 	mongodContainer := sts.Spec.Template.Spec.Containers[1]
-	assert.Equal(t, "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8", mongodContainer.Image)
+	assert.Equal(t, "fake-mongodbImage", mongodContainer.Image)
 	assert.Len(t, mongodContainer.VolumeMounts, 6)
 	if !managedSecurityContext {
 		assert.NotNil(t, sts.Spec.Template.Spec.Containers[1].SecurityContext)
@@ -248,7 +156,7 @@ func assertStatefulSetIsBuiltCorrectly(t *testing.T, mdb mdbv1.MongoDBCommunity,
 
 	initContainer := sts.Spec.Template.Spec.InitContainers[0]
 	assert.Equal(t, versionUpgradeHookName, initContainer.Name)
-	assert.Equal(t, "version-upgrade-hook-image", initContainer.Image)
+	assert.Equal(t, "fake-versionUpgradeHookImage", initContainer.Image)
 	assert.Len(t, initContainer.VolumeMounts, 1)
 	if !managedSecurityContext {
 		assert.NotNil(t, sts.Spec.Template.Spec.InitContainers[0].SecurityContext)
