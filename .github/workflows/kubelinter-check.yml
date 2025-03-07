@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Scan directory ./deploy/clusterwide/ with kube-linter
       uses: stackrox/kube-linter-action@v1.0.3
