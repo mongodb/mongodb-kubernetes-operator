@@ -41,13 +41,13 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'dependencies') || contains(github.event.pull_request.labels.*.name,
       'safe-to-test')
     steps:
-    # template: .action_templates/steps/checkout-fork.yaml
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{github.event.pull_request.head.sha}}
-        repository: ${{github.event.pull_request.head.repo.full_name}}
-        submodules: true
+    # template: .action_templates/steps/build-and-push-development-images.yaml
+    - name: Build and Push Images
+      run: |
+        python pipeline.py --image-name ${{ matrix.pipeline-argument }}  --tag ${{ github.run_id }}
+      env:
+        MONGODB_COMMUNITY_CONFIG: ${{ github.workspace }}/scripts/ci/config.json
+        version_id: ${{ github.run_id }}
   # template: .action_templates/jobs/tests.yaml
   tests:
     runs-on: ubuntu-latest
@@ -118,10 +118,8 @@ jobs:
         - test-name: replica_set_remove_user
           distro: ubi
     steps:
-    # template: .action_templates/steps/checkout-fork.yaml
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{github.event.pull_request.head.sha}}
-        repository: ${{github.event.pull_request.head.repo.full_name}}
-        submodules: true
+    # template: .action_templates/steps/save-run-status.yaml
+    - name: Save run status
+      if: always()
+      run: echo "::set-output name=last_run_status::${{ steps.e2e_test.outcome }}"
+        > last_run_status
