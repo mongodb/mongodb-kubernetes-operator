@@ -128,7 +128,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
-	err, lastAppliedSpec := r.validateSpec(mdb)
+	lastAppliedSpec, err := r.validateSpec(mdb)
 	if err != nil {
 		return status.Update(ctx, r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -596,20 +596,20 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 // If there has not yet been a successful configuration, the function runs the initial Spec validations. Otherwise,
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
 // The validation also returns the lastSuccessFulConfiguration Spec as mdbv1.MongoDBCommunitySpec.
-func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *mdbv1.MongoDBCommunitySpec) {
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (*mdbv1.MongoDBCommunitySpec, error) {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
-		return validation.ValidateInitialSpec(mdb, r.log), nil
+		return nil, validation.ValidateInitialSpec(mdb, r.log)
 	}
 
 	lastSpec := mdbv1.MongoDBCommunitySpec{}
 	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
-		return err, &lastSpec
+		return &lastSpec, err
 	}
 
-	return validation.ValidateUpdate(mdb, lastSpec, r.log), &lastSpec
+	return &lastSpec, validation.ValidateUpdate(mdb, lastSpec, r.log)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
