@@ -77,6 +77,7 @@ func (r ReplicaSetReconciler) updateConnectionStringSecrets(ctx context.Context,
 			SetField("username", user.Username).
 			SetField("password", pwd).
 			SetOwnerReferences(mdb.GetOwnerReferences()).
+			SetAnnotations(user.ConnectionStringSecretAnnotations).
 			Build()
 
 		if err := secret.CreateOrUpdate(ctx, r.client, connectionStringSecret); err != nil {
