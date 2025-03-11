@@ -226,7 +226,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 		withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase().
-		withVersion(mdb.GetMongoDBVersion(nil)))
+		withVersion(mdb.GetMongoDBVersion()))
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
@@ -491,7 +491,7 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(ctx context.Context, md
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	mongodbImage := getMongoDBImage(r.mongodbRepoUrl, r.mongodbImage, r.mongodbImageType, mdb.GetMongoDBVersion(nil))
+	mongodbImage := getMongoDBImage(r.mongodbRepoUrl, r.mongodbImage, r.mongodbImageType, mdb.GetMongoDBVersion())
 	buildStatefulSetModificationFunction(mdb, mongodbImage, r.agentImage, r.versionUpgradeHookImage, r.readinessProbeImage)(&set)
 	if isArbiter {
 		buildArbitersModificationFunction(mdb)(&set)
