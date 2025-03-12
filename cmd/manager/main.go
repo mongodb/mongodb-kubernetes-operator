@@ -44,7 +44,7 @@ func configureLogger() (*zap.Logger, error) {
 func hasRequiredVariables(logger *zap.Logger, envVariables ...string) bool {
 	allPresent := true
 	for _, envVariable := range envVariables {
-		if _, envSpecified := os.LookupEnv(envVariable); !envSpecified {
+		if _, envSpecified := os.LookupEnv(envVariable); !envSpecified { // nolint:forbidigo
 			logger.Error(fmt.Sprintf("required environment variable %s not found", envVariable))
 			allPresent = false
 		}
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	// Get watch namespace from environment variable.
-	namespace, nsSpecified := os.LookupEnv(WatchNamespaceEnv)
+	namespace, nsSpecified := os.LookupEnv(WatchNamespaceEnv) // nolint:forbidigo
 	if !nsSpecified {
 		log.Sugar().Fatal("No namespace specified to watch")
 	}
@@ -110,12 +110,12 @@ func main() {
 	// Setup Controller.
 	if err = controllers.NewReconciler(
 		mgr,
-		os.Getenv(construct.MongodbRepoUrlEnv),
-		os.Getenv(construct.MongodbImageEnv),
-		envvar.GetEnvOrDefault(construct.MongoDBImageTypeEnv, construct.DefaultImageType),
-		os.Getenv(construct.AgentImageEnv),
-		os.Getenv(construct.VersionUpgradeHookImageEnv),
-		os.Getenv(construct.ReadinessProbeImageEnv),
+		os.Getenv(construct.MongodbRepoUrlEnv), // nolint:forbidigo
+		os.Getenv(construct.MongodbImageEnv),   // nolint:forbidigo
+		envvar.GetEnvOrDefault(construct.MongoDBImageTypeEnv, construct.DefaultImageType), // nolint:forbidigo
+		os.Getenv(construct.AgentImageEnv),                                                // nolint:forbidigo
+		os.Getenv(construct.VersionUpgradeHookImageEnv),                                   // nolint:forbidigo
+		os.Getenv(construct.ReadinessProbeImageEnv),                                       // nolint:forbidigo
 	).SetupWithManager(mgr); err != nil {
 		log.Sugar().Fatalf("Unable to create controller: %v", err)
 	}

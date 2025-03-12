@@ -417,7 +417,7 @@ func collectEnvVars() []corev1.EnvVar {
 	})
 
 	addEnvVarIfSet := func(name string) {
-		value := os.Getenv(name)
+		value := os.Getenv(name) // nolint:forbidigo
 		if value != "" {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  name,

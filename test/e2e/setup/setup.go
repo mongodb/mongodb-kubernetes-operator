@@ -42,7 +42,7 @@ const (
 )
 
 func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
-	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
 }
 
 func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additionalHelmArgs ...HelmArg) (*e2eutil.TestContext, TestConfig) {
-	textCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	textCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additi
 }
 
 func SetupWithTestConfig(ctx context.Context, t *testing.T, testConfig TestConfig, withTLS, defaultOperator bool, resourceName string) *e2eutil.TestContext {
-	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)

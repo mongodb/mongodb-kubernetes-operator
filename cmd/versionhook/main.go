@@ -32,7 +32,7 @@ func main() {
 
 	logger.Info("Running version change post-start hook")
 
-	if statusPath := os.Getenv(agentStatusFilePathEnv); statusPath == "" {
+	if statusPath := os.Getenv(agentStatusFilePathEnv); statusPath == "" { // nolint:forbidigo
 		logger.Fatalf(`Required environment variable "%s" not set`, agentStatusFilePathEnv)
 		return
 	}
@@ -124,7 +124,7 @@ func waitForAgentHealthStatus() (agent.Health, error) {
 // getAgentHealthStatus returns an instance of agent.Health read
 // from the health file on disk
 func getAgentHealthStatus() (agent.Health, error) {
-	f, err := os.Open(os.Getenv(agentStatusFilePathEnv))
+	f, err := os.Open(os.Getenv(agentStatusFilePathEnv)) // nolint:forbidigo
 	if err != nil {
 		return agent.Health{}, err
 	}
@@ -150,7 +150,7 @@ func readAgentHealthStatus(reader io.Reader) (agent.Health, error) {
 }
 
 func getHostname() string {
-	return os.Getenv("HOSTNAME")
+	return os.Getenv("HOSTNAME") // nolint:forbidigo
 }
 
 // shouldDeletePod returns a boolean value indicating if this pod should be deleted

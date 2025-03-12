@@ -43,15 +43,15 @@ func BuildFromEnvVariables(clientSet kubernetes.Interface, isHeadless bool, file
 	var namespace, automationConfigName, hostname string
 	if isHeadless {
 		var ok bool
-		namespace, ok = os.LookupEnv(podNamespaceEnv)
+		namespace, ok = os.LookupEnv(podNamespaceEnv) // nolint:forbidigo
 		if !ok {
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", podNamespaceEnv)
 		}
-		automationConfigName, ok = os.LookupEnv(automationConfigSecretEnv)
+		automationConfigName, ok = os.LookupEnv(automationConfigSecretEnv) // nolint:forbidigo
 		if !ok {
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", automationConfigSecretEnv)
 		}
-		hostname, ok = os.LookupEnv(hostNameEnv)
+		hostname, ok = os.LookupEnv(hostNameEnv) // nolint:forbidigo
 		if !ok {
 			return Config{}, fmt.Errorf("the '%s' environment variable must be set", hostNameEnv)
 		}
@@ -85,7 +85,7 @@ func readinessProbeLogFilePath() string {
 }
 
 func GetEnvOrDefault(envVar, defaultValue string) string {
-	value := strings.TrimSpace(os.Getenv(envVar))
+	value := strings.TrimSpace(os.Getenv(envVar)) // nolint:forbidigo
 	if value == "" {
 		return defaultValue
 	}

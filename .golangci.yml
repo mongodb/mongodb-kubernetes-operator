@@ -16,6 +16,9 @@ issues:
       - goconst
       - golint
       text: "underscore"
+    - path: pkg/util/envvar/
+      linters:
+        - forbidigo
 linters:
   enable:
     - govet
@@ -28,10 +31,25 @@ linters:
     - rowserrcheck
     - gosec
     - unconvert
+    - forbidigo
 linters-settings:
   gosec:
     excludes:
       - G115
+  forbidigo:
+    forbid:
+      - p: os\.(Getenv|LookupEnv|Environ|ExpandEnv)
+        pkg: os
+        msg: "Reading environemnt variables here is prohibited. Please read environment variables in the main package."
+      - p: os\.(Clearenv|Unsetenv|Setenv)
+        msg: "Modifying environemnt variables is prohibited."
+        pkg: os
+      - p: envvar\.(Read.*?|MergeWithOverride|GetEnvOrDefault)
+        pkg: github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar
+        msg: "Using this envvar package here is prohibited. Please work with environment variables in the main package."
+    # Rules with the `pkg` depend on it
+    analyze-types: true
+
 run:
   modules-download-mode: mod
   # timeout for analysis, e.g. 30s, 5m, default is 1m
