@@ -16,7 +16,10 @@ issues:
       - goconst
       - golint
       text: "underscore"
-    - path: pkg/util/envvar/
+    - path: ^pkg\/util\/envvar
+      linters:
+        - forbidigo
+    - path: ^cmd\/(readiness|versionhook|manager)\/main\.go$
       linters:
         - forbidigo
 linters:

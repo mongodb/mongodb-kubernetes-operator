@@ -180,7 +180,7 @@ func performCheckOMMode(health health.Status) bool {
 }
 
 func isHeadlessMode() bool {
-	return os.Getenv(headlessAgent) == "true" // nolint:forbidigo
+	return os.Getenv(headlessAgent) == "true"
 }
 
 func kubernetesClientset() (kubernetes.Interface, error) {
