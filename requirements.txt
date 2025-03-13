@@ -12,7 +12,7 @@ boto3==1.16.21
 pymongo==4.6.3
 dnspython==2.6.1
 requests==2.32.3
-ruamel.yaml==0.17.9
+ruamel.yaml==0.18.10
 semver==2.13.0
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
 setuptools==71.0.3 # not directly required, pinned by Snyk to avoid a vulnerability
