@@ -82,6 +82,8 @@ type MonitoringVersion struct {
 	Name             string            `json:"name"`
 	BaseUrl          string            `json:"baseUrl"`
 	AdditionalParams map[string]string `json:"additionalParams,omitempty"`
+	LogPath          string            `json:"logPath"`
+	LogRotate        AcLogRotate       `json:"logRotate"`
 }
 
 // CrdLogRotate is the crd definition of LogRotate including fields in strings while the agent supports them as float64
