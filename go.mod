@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.15
-	github.com/spf13/cast v1.6.0
+	github.com/spf13/cast v1.7.1
 	github.com/stretchr/objx v0.5.2
 	github.com/stretchr/testify v1.9.0
 	github.com/xdg/stringprep v1.0.3
