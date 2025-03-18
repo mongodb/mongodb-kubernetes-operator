@@ -5,6 +5,12 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      - dependency-name: k8s.io/api
+      - dependency-name: k8s.io/apimachinery
+      - dependency-name: k8s.io/client-go
+      - dependency-name: k8s.io/code-generator
+      - dependency-name: sigs.k8s.io/controller-runtime
   - package-ecosystem: pip
     directory: "/"
     schedule:
