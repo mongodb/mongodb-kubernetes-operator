@@ -530,3 +530,20 @@ func createAutomationConfig(name, mongodbVersion, domain string, opts Options, a
 	ac.Version = acVersion
 	return ac
 }
+
+func TestReplicaSetId(t *testing.T) {
+	id := "rs0"
+	ac, err := NewBuilder().
+		SetName("my-rs").
+		SetDomain("my-ns.svc.cluster.local").
+		SetMongoDBVersion("4.2.0").
+		SetMembers(3).
+		AddVersion(defaultMongoDbVersion("4.3.2")).
+		SetReplicaSetId(&id).
+		Build()
+
+	assert.NoError(t, err)
+	assert.Len(t, ac.ReplicaSets, 1)
+	rs := ac.ReplicaSets[0]
+	assert.Equal(t, rs.Id, id, "The provided id should be used")
+}
