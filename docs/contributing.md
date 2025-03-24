@@ -132,18 +132,29 @@ make operator-image deploy
 
 This will build and deploy the operator to namespace specified in your configuration file.
 
+If this is your first time building the operator, you may need to fetch the missing dependencies. Navigate to `./helm-charts/charts/community-operator` and run:
+
+```sh
+helm dependency build
+```
+
 If you are using a local docker registry you should run the following command.
 The additional `IMG_BUILD_ARGS=--insecure` variable will add the `--insecure` flag to the command creating the manifests.
-This is necessary if your local registry is not secure. Read more about the flag on the [documentatio](https://docs.docker.com/reference/cli/docker/manifest/#working-with-insecure-registries)
+This is necessary if your local registry is not secure. Read more about the flag on the [documentation](https://docs.docker.com/reference/cli/docker/manifest/#working-with-insecure-registries)
 
 ```sh
 IMG_BUILD_ARGS=--insecure make operator-image deploy
 ```
 
+If you are using a local Docker registry and following the config.json from this guide, you need to build all the images, not just the operator. To do this, run the following command:
 
-#### See the operator deployment
 ```sh
-kubectl get pods
+IMG_BUILD_ARGS=--insecure make all-images deploy
+```
+
+#### See the operator deployment in the `mongodb` namespace
+```sh
+kubectl get pods -n mongodb
 ```
 
 #### (Optional) Create a MongoDBCommunity Resource
