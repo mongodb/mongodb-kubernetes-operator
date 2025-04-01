@@ -527,8 +527,10 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, isEnterprise bool, auth a
 	}
 
 	var acOverrideSettings map[string]interface{}
+	var acReplicaSetId *string
 	if mdb.Spec.AutomationConfigOverride != nil {
 		acOverrideSettings = mdb.Spec.AutomationConfigOverride.ReplicaSet.Settings.Object
+		acReplicaSetId = mdb.Spec.AutomationConfigOverride.ReplicaSet.Id
 	}
 
 	return automationconfig.NewBuilder().
@@ -545,6 +547,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, isEnterprise bool, auth a
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetReplicaSetId(acReplicaSetId).
 		SetSettings(acOverrideSettings).
 		SetMemberOptions(mdb.Spec.MemberConfig).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).

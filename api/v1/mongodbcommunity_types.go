@@ -328,6 +328,9 @@ type AutomationConfigOverride struct {
 }
 
 type OverrideReplicaSet struct {
+	// Id can be used together with additionalMongodConfig.replication.replSetName
+	// to manage clusters where replSetName differs from the MongoDBCommunity resource name
+	Id *string `json:"id,omitempty"`
 	// +kubebuilder:validation:Type=object
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Settings MapWrapper `json:"settings,omitempty"`
