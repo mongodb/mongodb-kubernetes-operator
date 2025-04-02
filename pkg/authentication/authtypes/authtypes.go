@@ -73,6 +73,9 @@ type User struct {
 	// ConnectionStringSecretNamespace is the namespace of the secret object created by the operator which exposes the connection strings for the user.
 	ConnectionStringSecretNamespace string `json:"connectionStringSecretNamespace,omitempty"`
 
+	// ConnectionStringSecretAnnotations is the annotations of the secret object created by the operator which exposes the connection strings for the user.
+	ConnectionStringSecretAnnotations map[string]string
+
 	// ConnectionStringOptions contains connection string options for this user
 	// These options will be appended at the end of the connection string and
 	// will override any existing options from the resources.

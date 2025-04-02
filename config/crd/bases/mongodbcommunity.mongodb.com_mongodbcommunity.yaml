@@ -577,6 +577,13 @@ spec:
                       nullable: true
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    connectionStringSecretAnnotations:
+                      additionalProperties:
+                        type: string
+                      description: ConnectionStringSecretAnnotations is the annotations
+                        of the secret object created by the operator which exposes
+                        the connection strings for the user.
+                      type: object
                     connectionStringSecretName:
                       description: |-
                         ConnectionStringSecretName is the name of the secret object created by the operator which exposes the connection strings for the user.
