@@ -1,5 +1,5 @@
 # MongoDB Kubernetes Operator 0.13.0
 
-## Minor fixes and improvements
+## Added support for persistentVolumeClaimRetentionPolicy
+Add persistentVolumeClaimRetentionPolicy on MongoDB statefulset.
 
- - Bumped kube APIs to 1.30

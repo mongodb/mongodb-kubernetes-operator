@@ -97,6 +97,18 @@ func ForStatefulSetToHaveUpdateStrategy(ctx context.Context, t *testing.T, mdb *
 	})
 }
 
+// ForStatefulSetToHavePersistentVolumeClaimRetentionPolicy waits until all replicas of the StatefulSet with the given name
+// have reached the ready status
+func ForStatefulSetToHavePersistentVolumeClaimRetentionPolicy(ctx context.Context, t *testing.T, mdb *mdbv1.MongoDBCommunity, persistentVolumeClaimRetentionPolicy appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy, opts ...Configuration) error {
+	options := newOptions(opts...)
+	return waitForStatefulSetCondition(ctx, t, mdb, options, func(sts appsv1.StatefulSet) bool {
+		if sts.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled == persistentVolumeClaimRetentionPolicy.WhenScaled && sts.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted == persistentVolumeClaimRetentionPolicy.WhenDeleted {
+			return true
+		}
+		return false
+	})
+}
+
 // ForStatefulSetToBeReady waits until all replicas of the StatefulSet with the given name
 // have reached the ready status
 func ForStatefulSetToBeReady(ctx context.Context, t *testing.T, mdb *mdbv1.MongoDBCommunity, opts ...Configuration) error {

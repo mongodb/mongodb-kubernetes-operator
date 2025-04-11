@@ -53,6 +53,12 @@ func StatefulSetSpecs(defaultSpec, overrideSpec appsv1.StatefulSetSpec) appsv1.S
 		mergedSpec.ServiceName = overrideSpec.ServiceName
 	}
 
+	if overrideSpec.PersistentVolumeClaimRetentionPolicy != nil {
+		overridePersistentVolumeClaimRetentionPolicy := appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{WhenDeleted: overrideSpec.PersistentVolumeClaimRetentionPolicy.WhenDeleted,
+			WhenScaled: overrideSpec.PersistentVolumeClaimRetentionPolicy.WhenScaled}
+		mergedSpec.PersistentVolumeClaimRetentionPolicy = &overridePersistentVolumeClaimRetentionPolicy
+	}
+
 	mergedSpec.Template = PodTemplateSpecs(defaultSpec.Template, overrideSpec.Template)
 	mergedSpec.VolumeClaimTemplates = VolumeClaimTemplates(defaultSpec.VolumeClaimTemplates, overrideSpec.VolumeClaimTemplates)
 	return mergedSpec
