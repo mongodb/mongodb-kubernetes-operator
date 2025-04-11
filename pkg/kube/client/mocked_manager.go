@@ -73,7 +73,7 @@ func (m *MockedManager) GetScheme() *runtime.Scheme {
 // GetAdmissionDecoder returns the runtime.Decoder based on the scheme.
 func (m *MockedManager) GetAdmissionDecoder() admission.Decoder {
 	// just returning nothing
-	return *admission.NewDecoder(runtime.NewScheme())
+	return admission.NewDecoder(runtime.NewScheme())
 }
 
 // GetAPIReader returns the client reader
@@ -114,7 +114,7 @@ func (m *MockedManager) GetWebhookServer() webhook.Server {
 	return nil
 }
 
-func (m *MockedManager) AddMetricsExtraHandler(path string, handler http.Handler) error {
+func (m *MockedManager) AddMetricsServerExtraHandler(path string, handler http.Handler) error {
 	return nil
 }
 

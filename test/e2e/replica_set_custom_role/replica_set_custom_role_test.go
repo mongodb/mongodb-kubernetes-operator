@@ -71,6 +71,19 @@ func TestReplicaSetCustomRole(t *testing.T) {
 			}},
 			Roles: []mdbv1.Role{},
 		},
+		{
+			Role: "MongodbAutomationAgentUserRole",
+			DB:   "admin",
+			Privileges: []mdbv1.Privilege{
+				{
+					Resource: mdbv1.Resource{
+						AnyResource: true,
+					},
+					Actions: []string{"bypassDefaultMaxTimeMS"},
+				},
+			},
+			Roles: []mdbv1.Role{},
+		},
 	}
 
 	_, err := setup.GeneratePasswordForUser(testCtx, user, "")

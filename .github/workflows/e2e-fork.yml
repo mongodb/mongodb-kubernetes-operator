@@ -43,23 +43,23 @@ jobs:
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
+      uses: styfle/cancel-workflow-action@0.12.1
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
         submodules: true
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.10.4
     - name: Cache Dependencies
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ hashFiles('requirements.txt') }}
@@ -67,14 +67,14 @@ jobs:
       run: pip install -r requirements.txt
     # template: .action_templates/steps/quay-login.yaml
     - name: Login to Quay.io
-      uses: docker/login-action@v1
+      uses: docker/login-action@v3
       with:
         registry: quay.io
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_TOKEN }}
     # template: .action_templates/steps/set-up-qemu.yaml
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
     # template: .action_templates/steps/build-and-push-development-images.yaml
     - name: Build and Push Images
       run: |
@@ -156,12 +156,12 @@ jobs:
     steps:
     # template: .action_templates/steps/cancel-previous.yaml
     - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@89f242ee29e10c53a841bfe71cc0ce7b2f065abc # 0.9.0
+      uses: styfle/cancel-workflow-action@0.12.1
       with:
         access_token: ${{ github.token }}
     # template: .action_templates/steps/checkout-fork.yaml
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: ${{github.event.pull_request.head.sha}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
@@ -176,7 +176,7 @@ jobs:
   # see https://github.com/actions/runner/issues/432
     - name: Restore last run status
       id: last_run
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: last_run_status
         key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}
@@ -186,11 +186,11 @@ jobs:
       run: cat last_run_status
     # template: .action_templates/steps/setup-and-install-python.yaml
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.10.4
     - name: Cache Dependencies
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ hashFiles('requirements.txt') }}

@@ -36,7 +36,7 @@ func TestAnnotations() map[string]string {
 }
 
 func TestDataDir() string {
-	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata")
+	return envvar.GetEnvOrDefault(testDataDirEnv, "/workspace/testdata") // nolint:forbidigo
 }
 
 func TlsTestDataDir() string {

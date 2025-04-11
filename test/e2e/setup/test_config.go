@@ -34,18 +34,19 @@ type TestConfig struct {
 
 func LoadTestConfigFromEnv() TestConfig {
 	return TestConfig{
-		Namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "mongodb"),
-		CertManagerNamespace:    envvar.GetEnvOrDefault(testCertManagerNamespaceEnvName, "cert-manager"),
-		CertManagerVersion:      envvar.GetEnvOrDefault(testCertManagerVersionEnvName, "v1.5.3"),
-		OperatorImage:           envvar.GetEnvOrDefault(operatorImageEnvName, "quay.io/mongodb/community-operator-dev:latest"),
-		MongoDBImage:            envvar.GetEnvOrDefault(construct.MongodbImageEnv, "mongodb-community-server"),
-		MongoDBRepoUrl:          envvar.GetEnvOrDefault(construct.MongodbRepoUrl, "quay.io/mongodb"),
-		VersionUpgradeHookImage: envvar.GetEnvOrDefault(construct.VersionUpgradeHookImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2"),
-		AgentImage:              envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent-ubi:10.29.0.6830-1"), // TODO: better way to decide default agent image.
-		ClusterWide:             envvar.ReadBool(clusterWideEnvName),
-		PerformCleanup:          envvar.ReadBool(performCleanupEnvName),
-		ReadinessProbeImage:     envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"),
-		HelmChartPath:           envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-charts/charts/community-operator"),
-		LocalOperator:           envvar.ReadBool(LocalOperatorEnvName),
+		Namespace:               envvar.GetEnvOrDefault(testNamespaceEnvName, "mongodb"),                                                                                           // nolint:forbidigo
+		CertManagerNamespace:    envvar.GetEnvOrDefault(testCertManagerNamespaceEnvName, "cert-manager"),                                                                           // nolint:forbidigo
+		CertManagerVersion:      envvar.GetEnvOrDefault(testCertManagerVersionEnvName, "v1.5.3"),                                                                                   // nolint:forbidigo
+		OperatorImage:           envvar.GetEnvOrDefault(operatorImageEnvName, "quay.io/mongodb/community-operator-dev:latest"),                                                     // nolint:forbidigo
+		MongoDBImage:            envvar.GetEnvOrDefault(construct.MongodbImageEnv, "mongodb-community-server"),                                                                     // nolint:forbidigo
+		MongoDBRepoUrl:          envvar.GetEnvOrDefault(construct.MongodbRepoUrlEnv, "quay.io/mongodb"),                                                                            // nolint:forbidigo
+		VersionUpgradeHookImage: envvar.GetEnvOrDefault(construct.VersionUpgradeHookImageEnv, "quay.io/mongodb/mongodb-kubernetes-operator-version-upgrade-post-start-hook:1.0.2"), // nolint:forbidigo
+		// TODO: better way to decide default agent image.
+		AgentImage:          envvar.GetEnvOrDefault(construct.AgentImageEnv, "quay.io/mongodb/mongodb-agent-ubi:10.29.0.6830-1"),                 // nolint:forbidigo
+		ClusterWide:         envvar.ReadBool(clusterWideEnvName),                                                                                 // nolint:forbidigo
+		PerformCleanup:      envvar.ReadBool(performCleanupEnvName),                                                                              // nolint:forbidigo
+		ReadinessProbeImage: envvar.GetEnvOrDefault(construct.ReadinessProbeImageEnv, "quay.io/mongodb/mongodb-kubernetes-readinessprobe:1.0.3"), // nolint:forbidigo
+		HelmChartPath:       envvar.GetEnvOrDefault(helmChartPathEnvName, "/workspace/helm-charts/charts/community-operator"),                    // nolint:forbidigo
+		LocalOperator:       envvar.ReadBool(LocalOperatorEnvName),                                                                               // nolint:forbidigo
 	}
 }
