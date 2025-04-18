@@ -240,6 +240,8 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
                 type: object
+              combineDataAndLogsVolumes:
+                type: boolean
               featureCompatibilityVersion:
                 description: |-
                   FeatureCompatibilityVersion configures the feature compatibility version that will
