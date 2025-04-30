@@ -11,8 +11,11 @@
 ## Improvements
  - Refactored environment variable propagation ([#1676](https://github.com/mongodb/mongodb-kubernetes-operator/pull/1676)).
  - Introduced a linter to limit inappropriate usage of environment variables within the codebase ([#1690](https://github.com/mongodb/mongodb-kubernetes-operator/pull/1690)).
+ - Add persistentVolumeClaimRetentionPolicy on MongoDB statefulset ([#1633](https://github.com/mongodb/mongodb-kubernetes-operator/pull/1633)).
 
 ## Security & Dependency Updates
  - **CVE Updates**: Updated packages `crypto`, `net` and `oauth2` to remediate multiple CVEs
  - Upgraded to Go 1.24 and Kubernetes dependencies to 1.30.x .
+
+
 
