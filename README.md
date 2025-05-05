@@ -1,6 +1,6 @@
 > **DEPRECATED:** This repository is no longer maintained. Please use the new repository at [mongodb/mongodb-kubernetes](https://github.com/mongodb/mongodb-kubernetes) instead.
 >
-> For more information on this decision - what it means and entails - see the [announcement](https://github.com/mongodb/mongodb-kubernetes/releases/tag/v1.0.0) and our [public documentation](https://www.mongodb.com/docs/kubernetes-operator/).
+> For more information on this decision - what it means and entails - see the [announcement](https://github.com/mongodb/mongodb-kubernetes/releases/tag/v1.0.0) and our [public documentation](https://www.mongodb.com/docs/kubernetes/current/).
 >
 > A detailed migration guide is available to help you transition smoothly - see [guide](https://github.com/mongodb/mongodb-kubernetes/blob/master/docs/migration/community-operator-migration.md). There will be no functional changes in the new repository - only a better and unified experience as well as improved visibility into the development process.
 
