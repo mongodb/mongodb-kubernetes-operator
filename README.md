@@ -1,4 +1,4 @@
-> **DEPRECATED:** This repository is no longer maintained. Please use the new repository at [mongodb/mongodb-kubernetes](https://github.com/mongodb/mongodb-kubernetes) instead.
+> **DEPRECATED:** This repository is deprecated but we will continue a best-effort support until November 2025. Please use the new repository at [mongodb/mongodb-kubernetes](https://github.com/mongodb/mongodb-kubernetes) instead.
 >
 > For more information on this decision - what it means and entails - see the [announcement](https://github.com/mongodb/mongodb-kubernetes/releases/tag/v1.0.0) and our [public documentation](https://www.mongodb.com/docs/kubernetes/current/).
 >
