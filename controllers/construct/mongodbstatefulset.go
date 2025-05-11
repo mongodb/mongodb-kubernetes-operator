@@ -3,6 +3,7 @@ package construct
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
@@ -130,6 +131,13 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		"app": mdb.ServiceName(),
 	}
 
+	// Get the MongoDB image from the environment variable or use the default value
+	mdbCommunity, ok := mdb.(*mdbv1.MongoDBCommunity)
+	if !ok {
+		// If the type assertion fails, we can safely return nil
+		mdbCommunity = nil
+	}
+
 	// the health status volume is required in both agent and mongod pods.
 	// the mongod requires it to determine if an upgrade is happening and needs to kill the pod
 	// to prevent agent deadlock
@@ -176,8 +184,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		scriptsVolume = statefulset.CreateVolumeFromEmptyDir("agent-scripts")
 		scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
 
-		upgradeInitContainer = podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount}, versionUpgradeHookImage))
-		readinessInitContainer = podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount}, readinessProbeImage))
+		upgradeInitContainer = podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount}, versionUpgradeHookImage, mdbCommunity))
+		readinessInitContainer = podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount}, readinessProbeImage, mdbCommunity))
 		scriptsVolumeMod = podtemplatespec.WithVolume(scriptsVolume)
 		hooksVolumeMod = podtemplatespec.WithVolume(hooksVolume)
 
@@ -244,8 +252,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(tmpVolume),
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
-				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage)),
-				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mongodbImage, mongodVolumeMounts, mdb.GetMongodConfiguration())),
+				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage, mdbCommunity)),
+				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mongodbImage, mongodVolumeMounts, mdb.GetMongodConfiguration(), mdbCommunity)),
 				upgradeInitContainer,
 				readinessInitContainer,
 			),
@@ -277,14 +285,14 @@ func AutomationAgentCommand(withAgentAPIKeyExport bool, logLevel mdbv1.LogLevel,
 	return []string{"/bin/bash", "-c", MongodbUserCommand + BaseAgentCommand() + " -cluster=" + clusterFilePath + automationAgentOptions + agentLogOptions}
 }
 
-func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel mdbv1.LogLevel, logFile string, maxLogFileDurationHours int, agentImage string) container.Modification {
+func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []corev1.VolumeMount, logLevel mdbv1.LogLevel, logFile string, maxLogFileDurationHours int, agentImage string, mdbResource interface{}) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(AgentName),
 		container.WithImage(agentImage),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithReadinessProbe(DefaultReadiness()),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
+		container.WithResourceRequirements(getContainerResources(mdbResource, AgentName)),
 		container.WithVolumeMounts(volumeMounts),
 		container.WithCommand(AutomationAgentCommand(false, logLevel, logFile, maxLogFileDurationHours)),
 		containerSecurityContext,
@@ -314,13 +322,13 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 	)
 }
 
-func versionUpgradeHookInit(volumeMount []corev1.VolumeMount, versionUpgradeHookImage string) container.Modification {
+func versionUpgradeHookInit(volumeMount []corev1.VolumeMount, versionUpgradeHookImage string, mdbResource interface{}) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
 		container.WithImage(versionUpgradeHookImage),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
+		container.WithResourceRequirements(getContainerResources(mdbResource, versionUpgradeHookName)),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 		containerSecurityContext,
@@ -353,7 +361,7 @@ func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 
 // readinessProbeInit returns a modification function which will add the readiness probe container.
 // this container will copy the readiness probe binary into the /opt/scripts directory.
-func readinessProbeInit(volumeMount []corev1.VolumeMount, readinessProbeImage string) container.Modification {
+func readinessProbeInit(volumeMount []corev1.VolumeMount, readinessProbeImage string, mdbResource interface{}) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(ReadinessProbeContainerName),
@@ -361,12 +369,12 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount, readinessProbeImage st
 		container.WithImage(readinessProbeImage),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
+		container.WithResourceRequirements(getContainerResources(mdbResource, ReadinessProbeContainerName)),
 		containerSecurityContext,
 	)
 }
 
-func mongodbContainer(mongodbImage string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
+func mongodbContainer(mongodbImage string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration, mdbResource interface{}) container.Modification {
 	filePath := additionalMongoDBConfig.GetDBDataDir() + "/" + automationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 if [ -e "/hooks/version-upgrade" ]; then
@@ -393,7 +401,7 @@ exec mongod -f %s;
 	return container.Apply(
 		container.WithName(MongodbName),
 		container.WithImage(mongodbImage),
-		container.WithResourceRequirements(resourcerequirements.Defaults()),
+		container.WithResourceRequirements(getContainerResources(mdbResource, MongodbName)),
 		container.WithCommand(containerCommand),
 		// The official image provides both CMD and ENTRYPOINT. We're reusing the former and need to replace
 		// the latter with an empty string.
@@ -433,4 +441,43 @@ func collectEnvVars() []corev1.EnvVar {
 	addEnvVarIfSet(config.WithAgentFileLogging)
 
 	return envVars
+}
+
+// getContainerResources returns the resources to use for a specific container
+// If no custom resources are specified, default values are used
+func getContainerResources(mdb interface{}, containerName string) corev1.ResourceRequirements {
+	// Check if the interface can be converted to MongoDBCommunity
+	mdbCommunity, ok := mdb.(*mdbv1.MongoDBCommunity)
+	if !ok || mdbCommunity == nil {
+		return resourcerequirements.Defaults()
+	}
+
+	// Check if the Resources field is initialized
+	// We need to check this differently because we can't call IsNil directly on a struct field
+	resourcesField := reflect.ValueOf(mdbCommunity.Spec).FieldByName("Resources")
+	if !resourcesField.IsValid() {
+		return resourcerequirements.Defaults()
+	}
+
+	// Based on the container type, return custom resources or default values
+	switch containerName {
+	case MongodbName:
+		if mdbCommunity.Spec.Resources.Mongod != nil {
+			return *mdbCommunity.Spec.Resources.Mongod
+		}
+	case AgentName:
+		if mdbCommunity.Spec.Resources.Agent != nil {
+			return *mdbCommunity.Spec.Resources.Agent
+		}
+	case ReadinessProbeContainerName:
+		if mdbCommunity.Spec.Resources.ReadinessProbe != nil {
+			return *mdbCommunity.Spec.Resources.ReadinessProbe
+		}
+	case versionUpgradeHookName:
+		if mdbCommunity.Spec.Resources.VersionUpgradeHook != nil {
+			return *mdbCommunity.Spec.Resources.VersionUpgradeHook
+		}
+	}
+
+	return resourcerequirements.Defaults()
 }
