@@ -132,6 +132,14 @@ type MongoDBCommunitySpec struct {
 	// MemberConfig
 	// +optional
 	MemberConfig []automationconfig.MemberOptions `json:"memberConfig,omitempty"`
+
+	// Resources define the resources for the MongoDB pods.
+	// +kubebuilder:validation:Type=object
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +nullable
+
+	Resources ResourcesSpec `json:"resources,omitempty"`
 }
 
 // MapWrapper is a wrapper for a map to be used by other structs.
@@ -1224,4 +1232,23 @@ type MongoDBCommunityList struct {
 
 func init() {
 	SchemeBuilder.Register(&MongoDBCommunity{}, &MongoDBCommunityList{})
+}
+
+// ResourcesSpec specifies the resources for the containers
+type ResourcesSpec struct {
+	// Resources for the container mongod
+	// +optional
+	Mongod *corev1.ResourceRequirements `json:"mongod,omitempty"`
+
+	// Resources for the container agent
+	// +optional
+	Agent *corev1.ResourceRequirements `json:"agent,omitempty"`
+
+	// Resources for the container readiness probe
+	// +optional
+	ReadinessProbe *corev1.ResourceRequirements `json:"readinessProbe,omitempty"`
+
+	// Resources for the container version upgrade hook
+	// +optional
+	VersionUpgradeHook *corev1.ResourceRequirements `json:"versionUpgradeHook,omitempty"`
 }

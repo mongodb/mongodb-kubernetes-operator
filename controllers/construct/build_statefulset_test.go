@@ -67,7 +67,20 @@ func TestManagedSecurityContext(t *testing.T) {
 
 func TestMongod_Container(t *testing.T) {
 	const mongodbImageMock = "fake-mongodbImage"
-	c := container.New(mongodbContainer(mongodbImageMock, []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration()))
+
+	// Create a basic MongoDBCommunity instance without custom resources
+	mdb := &mdbv1.MongoDBCommunity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-rs",
+			Namespace: "my-ns",
+		},
+		Spec: mdbv1.MongoDBCommunitySpec{
+			Members: 3,
+			Version: "6.0.5",
+		},
+	}
+
+	c := container.New(mongodbContainer(mongodbImageMock, []corev1.VolumeMount{}, mdbv1.NewMongodConfiguration(), mdb))
 
 	t.Run("Has correct Env vars", func(t *testing.T) {
 		assert.Len(t, c.Env, 1)
