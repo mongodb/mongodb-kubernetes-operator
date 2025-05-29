@@ -72,7 +72,7 @@ To deploy your first replica set:
 
    **NOTE**: The Community Kubernetes Operator sets the [`ssl` connection option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-options) to `true` if you [Secure MongoDBCommunity Resource Connections using TLS](secure.md#secure-mongodbcommunity-resource-connections-using-tls).</br></br>
 
-   You can use the connection strings in this secret in your application:
+   To connect your application you can reference the connection string directly from the secret:
 
    ```yaml
    containers:
@@ -84,7 +84,7 @@ To deploy your first replica set:
              name: <metadata.name>-<auth-db>-<username>
              key: connectionString.standardSrv
 
-5. Connect to one of your application's pods in the Kubernetes cluster:
+6. Connect to one of your application's pods in the Kubernetes cluster:
 
    **NOTE**: You can access your replica set only from a pod in the same Kubernetes cluster. You can't access your replica set from outside of the Kubernetes cluster.
 
@@ -98,7 +98,7 @@ To deploy your first replica set:
    user@app:~$
    ```
 
-6. Use one of the connection strings returned in step 4 to connect to the replica set. The following example uses [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) to connect to a replica set:
+7. Use one of the connection strings returned in step 4 to connect to the replica set. The following example uses [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) to connect to a replica set:
 
    ```
    mongosh "mongodb+srv://<username>:<password>@example-mongodb-svc.mongodb.svc.cluster.local/admin?ssl=true"
