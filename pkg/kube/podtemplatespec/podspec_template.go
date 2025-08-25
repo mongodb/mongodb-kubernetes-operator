@@ -93,13 +93,21 @@ func WithInitContainerByIndex(index int, funcs ...func(container *corev1.Contain
 	}
 }
 
-// WithPodLabels sets the PodTemplateSpec's Labels
+// WithPodLabels merges the provided labels with existing PodTemplateSpec labels.
+// This preserves labels added by external systems (like Kyverno policies) while
+// allowing the operator to add or override its own labels.
 func WithPodLabels(labels map[string]string) Modification {
 	if labels == nil {
 		labels = map[string]string{}
 	}
 	return func(podTemplateSpec *corev1.PodTemplateSpec) {
-		podTemplateSpec.ObjectMeta.Labels = labels
+		if podTemplateSpec.ObjectMeta.Labels == nil {
+			podTemplateSpec.ObjectMeta.Labels = map[string]string{}
+		}
+
+		for k, v := range labels {
+			podTemplateSpec.ObjectMeta.Labels[k] = v
+		}
 	}
 }
 

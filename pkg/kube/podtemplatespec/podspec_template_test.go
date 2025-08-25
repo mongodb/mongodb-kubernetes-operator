@@ -615,3 +615,63 @@ func getCustomContainer() corev1.Container {
 		Image: "image-1",
 	}
 }
+
+func TestWithPodLabels_MergeWithExistingLabels(t *testing.T) {
+	existingPodTemplate := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"foo.bar/customer": "acme-corp",
+				"foo.bar/env":      "prod",
+				"external-label":   "preserve-me",
+			},
+		},
+	}
+
+	operatorLabels := map[string]string{
+		"app":     "database",
+		"version": "6.0",
+	}
+
+	modification := WithPodLabels(operatorLabels)
+	modification(existingPodTemplate)
+
+	expectedLabels := map[string]string{
+		"foo.bar/customer": "acme-corp",   // Preserved from existing
+		"foo.bar/env":      "prod",        // Preserved from existing
+		"external-label":   "preserve-me", // Preserved from existing
+		"app":              "database",    // Added by operator
+		"version":          "6.0",         // Added by operator
+	}
+
+	assert.Equal(t, expectedLabels, existingPodTemplate.ObjectMeta.Labels)
+}
+
+func TestWithPodLabels_OverrideExistingLabels(t *testing.T) {
+	existingPodTemplate := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"app":            "old-app",
+				"version":        "5.0",
+				"external-label": "should-be-preserved",
+			},
+		},
+	}
+
+	operatorLabels := map[string]string{
+		"app":     "database", // Should override existing
+		"version": "6.0",      // Should override existing
+		"tier":    "backend",  // Should be added
+	}
+
+	modification := WithPodLabels(operatorLabels)
+	modification(existingPodTemplate)
+
+	expectedLabels := map[string]string{
+		"external-label": "should-be-preserved", // Preserved
+		"app":            "database",            // Overridden by operator
+		"version":        "6.0",                 // Overridden by operator
+		"tier":           "backend",             // Added by operator
+	}
+
+	assert.Equal(t, expectedLabels, existingPodTemplate.ObjectMeta.Labels)
+}
