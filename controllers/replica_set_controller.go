@@ -492,9 +492,10 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(ctx context.Context, md
 	}
 
 	mongodbImage := getMongoDBImage(r.mongodbRepoUrl, r.mongodbImage, r.mongodbImageType, mdb.GetMongoDBVersion())
-	buildStatefulSetModificationFunction(mdb, mongodbImage, r.agentImage, r.versionUpgradeHookImage, r.readinessProbeImage)(&set)
 	if isArbiter {
-		buildArbitersModificationFunction(mdb)(&set)
+		buildArbitersModificationFunction(mdb, mongodbImage, r.agentImage, r.versionUpgradeHookImage, r.readinessProbeImage)(&set)
+	} else {
+		buildMembersModificationFunction(mdb, mongodbImage, r.agentImage, r.versionUpgradeHookImage, r.readinessProbeImage)(&set)
 	}
 
 	if _, err = statefulset.CreateOrUpdate(ctx, r.client, set); err != nil {
@@ -739,10 +740,10 @@ func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Mo
 	}
 }
 
-// buildStatefulSetModificationFunction takes a MongoDB resource and converts it into
-// the corresponding stateful set
-func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage, true)
+// buildBaseStatefulSetModificationFunction takes a MongoDB resource and creates statfulset base
+// the tatfulset base.
+func buildBaseStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string, isArbiter bool) statefulset.Modification {
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage, true, isArbiter)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
@@ -753,8 +754,6 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbIma
 				buildAgentX509(mdb),
 			),
 		),
-
-		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
 		statefulset.WithObjectMetadata(
 			mdb.Spec.StatefulSetConfiguration.MetadataWrapper.Labels,
 			mdb.Spec.StatefulSetConfiguration.MetadataWrapper.Annotations,
@@ -762,8 +761,19 @@ func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbIma
 	)
 }
 
-func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
+func buildMembersModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string) statefulset.Modification {
+	commonModification := buildBaseStatefulSetModificationFunction(mdb, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage, false)
 	return statefulset.Apply(
+		commonModification,
+		statefulset.WithCustomSpecs(mdb.Spec.StatefulSetConfiguration.SpecWrapper.Spec),
+	)
+}
+
+func buildArbitersModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string) statefulset.Modification {
+	commonModification := buildBaseStatefulSetModificationFunction(mdb, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage, true)
+
+	return statefulset.Apply(
+		commonModification,
 		statefulset.WithReplicas(mdb.StatefulSetArbitersThisReconciliation()),
 		statefulset.WithServiceName(mdb.ServiceName()),
 		statefulset.WithName(mdb.ArbiterNamespacedName().Name),
