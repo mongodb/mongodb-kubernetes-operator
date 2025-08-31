@@ -125,7 +125,7 @@ type MongoDBStatefulSetOwner interface {
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
 // MongoDBStatefulSetOwner.
 // It doesn't configure TLS or additional containers/env vars that the statefulset might need.
-func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string, withInitContainers bool) statefulset.Modification {
+func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string, withInitContainers bool, isArbiter bool) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -188,21 +188,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 	dataVolumeClaim := statefulset.NOOP()
 	logVolumeClaim := statefulset.NOOP()
 	singleModeVolumeClaim := func(s *appsv1.StatefulSet) {}
-	if mdb.HasSeparateDataAndLogsVolumes() {
-		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
-		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir())
-		dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
-		logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
-		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
-		mongodVolumeMounts = append(mongodVolumeMounts, dataVolumeMount, logVolumeMount)
-	} else {
-		mounts := []corev1.VolumeMount{
-			statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir(), statefulset.WithSubPath("data")),
-			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
-		}
-		mongodbAgentVolumeMounts = append(mongodbAgentVolumeMounts, mounts...)
-		mongodVolumeMounts = append(mongodVolumeMounts, mounts...)
-		singleModeVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
+	if !isArbiter {
+		createVolumesForMembers(mdb, &dataVolumeClaim, &logVolumeClaim, &singleModeVolumeClaim, &mongodbAgentVolumeMounts, &mongodVolumeMounts)
 	}
 
 	podSecurityContext, _ := podtemplatespec.WithDefaultSecurityContextsModifications()
@@ -433,4 +420,26 @@ func collectEnvVars() []corev1.EnvVar {
 	addEnvVarIfSet(config.WithAgentFileLogging)
 
 	return envVars
+}
+
+// buildVolumesForMembers creates volume configurations for regular MongoDB data members
+// These members need persistent storage for data and logs
+func createVolumesForMembers(mdb MongoDBStatefulSetOwner, dataVolumeClaim *statefulset.Modification, logVolumeClaim *statefulset.Modification, singleModeVolumeClaim *func(s *appsv1.StatefulSet), mongodbAgentVolumeMounts *[]corev1.VolumeMount, mongodVolumeMounts *[]corev1.VolumeMount) {
+
+	if mdb.HasSeparateDataAndLogsVolumes() {
+		logVolumeMount := statefulset.CreateVolumeMount(mdb.LogsVolumeName(), automationconfig.DefaultAgentLogPath)
+		dataVolumeMount := statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir())
+		*dataVolumeClaim = statefulset.WithVolumeClaim(mdb.DataVolumeName(), dataPvc(mdb.DataVolumeName()))
+		*logVolumeClaim = statefulset.WithVolumeClaim(mdb.LogsVolumeName(), logsPvc(mdb.LogsVolumeName()))
+		*mongodbAgentVolumeMounts = append(*mongodbAgentVolumeMounts, dataVolumeMount, logVolumeMount)
+		*mongodVolumeMounts = append(*mongodVolumeMounts, dataVolumeMount, logVolumeMount)
+	} else {
+		mounts := []corev1.VolumeMount{
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), mdb.GetMongodConfiguration().GetDBDataDir(), statefulset.WithSubPath("data")),
+			statefulset.CreateVolumeMount(mdb.DataVolumeName(), automationconfig.DefaultAgentLogPath, statefulset.WithSubPath("logs")),
+		}
+		*mongodbAgentVolumeMounts = append(*mongodbAgentVolumeMounts, mounts...)
+		*mongodVolumeMounts = append(*mongodVolumeMounts, mounts...)
+
+	}
 }
