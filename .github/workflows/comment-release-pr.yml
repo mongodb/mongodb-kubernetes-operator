@@ -9,7 +9,7 @@ jobs:
     if: startsWith(github.event.pull_request.title, 'Release MongoDB Kubernetes Operator')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v3
+      - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

@@ -503,7 +503,7 @@ func BasicFunctionality(ctx context.Context, mdb *mdbv1.MongoDBCommunity, skipSt
 			t.Run("Test Status Was Updated", Status(ctx, mdb, mdbv1.MongoDBCommunityStatus{
 				MongoURI:                   mdb.MongoURI(""),
 				Phase:                      mdbv1.Running,
-				Version:                    mdb.GetMongoDBVersion(nil),
+				Version:                    mdb.GetMongoDBVersion(),
 				CurrentMongoDBMembers:      mdb.Spec.Members,
 				CurrentStatefulSetReplicas: mdb.Spec.Members,
 			}))

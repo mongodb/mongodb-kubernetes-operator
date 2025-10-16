@@ -2,12 +2,10 @@ package construct
 
 import (
 	"fmt"
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 	"os"
 	"strconv"
-	"strings"
 
-	"github.com/mongodb/mongodb-kubernetes-operator/pkg/util/envvar"
+	"github.com/mongodb/mongodb-kubernetes-operator/pkg/readiness/config"
 
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/automationconfig"
 	"github.com/mongodb/mongodb-kubernetes-operator/pkg/kube/container"
@@ -28,6 +26,16 @@ var (
 	OfficialMongodbRepoUrls = []string{"docker.io/mongodb", "quay.io/mongodb"}
 )
 
+// Environment variables used to configure the MongoDB StatefulSet.
+const (
+	MongodbRepoUrlEnv          = "MONGODB_REPO_URL"
+	MongodbImageEnv            = "MONGODB_IMAGE"
+	MongoDBImageTypeEnv        = "MDB_IMAGE_TYPE"
+	AgentImageEnv              = "AGENT_IMAGE"
+	VersionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
+	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
+)
+
 const (
 	AgentName   = "mongodb-agent"
 	MongodbName = "mongod"
@@ -42,18 +50,12 @@ const (
 	mongodbDatabaseServiceAccountName = "mongodb-database"
 	agentHealthStatusFilePathValue    = "/var/log/mongodb-mms-automation/healthstatus/agent-health-status.json"
 
-	MongodbRepoUrl                           = "MONGODB_REPO_URL"
 	OfficialMongodbEnterpriseServerImageName = "mongodb-enterprise-server"
 
 	headlessAgentEnv           = "HEADLESS_AGENT"
 	podNamespaceEnv            = "POD_NAMESPACE"
 	automationConfigEnv        = "AUTOMATION_CONFIG_MAP"
-	AgentImageEnv              = "AGENT_IMAGE"
-	MongodbImageEnv            = "MONGODB_IMAGE"
-	MongoDBImageType           = "MDB_IMAGE_TYPE"
 	MongoDBAssumeEnterpriseEnv = "MDB_ASSUME_ENTERPRISE"
-	VersionUpgradeHookImageEnv = "VERSION_UPGRADE_HOOK_IMAGE"
-	ReadinessProbeImageEnv     = "READINESS_PROBE_IMAGE"
 
 	automationMongodConfFileName = "automation-mongod.conf"
 	keyfileFilePath              = "/var/lib/mongodb-mms-automation/authentication/keyfile"
@@ -93,7 +95,7 @@ type MongoDBStatefulSetOwner interface {
 	// GetNamespace returns the namespace the resource is defined in.
 	GetNamespace() string
 	// GetMongoDBVersion returns the version of MongoDB to be used for this resource.
-	GetMongoDBVersion(annotations map[string]string) string
+	GetMongoDBVersion() string
 	// AutomationConfigSecretName returns the name of the secret which will contain the automation config.
 	AutomationConfigSecretName() string
 	// GetUpdateStrategyType returns the UpdateStrategyType of the statefulset.
@@ -123,7 +125,7 @@ type MongoDBStatefulSetOwner interface {
 // BuildMongoDBReplicaSetStatefulSetModificationFunction builds the parts of the replica set that are common between every resource that implements
 // MongoDBStatefulSetOwner.
 // It doesn't configure TLS or additional containers/env vars that the statefulset might need.
-func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, agentImage string, withInitContainers bool) statefulset.Modification {
+func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSetOwner, scaler scale.ReplicaSetScaler, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string, withInitContainers bool) statefulset.Modification {
 	labels := map[string]string{
 		"app": mdb.ServiceName(),
 	}
@@ -174,8 +176,8 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 		scriptsVolume = statefulset.CreateVolumeFromEmptyDir("agent-scripts")
 		scriptsVolumeMount := statefulset.CreateVolumeMount(scriptsVolume.Name, "/opt/scripts", statefulset.WithReadOnly(false))
 
-		upgradeInitContainer = podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount}))
-		readinessInitContainer = podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount}))
+		upgradeInitContainer = podtemplatespec.WithInitContainer(versionUpgradeHookName, versionUpgradeHookInit([]corev1.VolumeMount{hooksVolumeMount}, versionUpgradeHookImage))
+		readinessInitContainer = podtemplatespec.WithInitContainer(ReadinessProbeContainerName, readinessProbeInit([]corev1.VolumeMount{scriptsVolumeMount}, readinessProbeImage))
 		scriptsVolumeMod = podtemplatespec.WithVolume(scriptsVolume)
 		hooksVolumeMod = podtemplatespec.WithVolume(hooksVolume)
 
@@ -243,7 +245,7 @@ func BuildMongoDBReplicaSetStatefulSetModificationFunction(mdb MongoDBStatefulSe
 				podtemplatespec.WithVolume(keyFileVolume),
 				podtemplatespec.WithServiceAccount(mongodbDatabaseServiceAccountName),
 				podtemplatespec.WithContainer(AgentName, mongodbAgentContainer(mdb.AutomationConfigSecretName(), mongodbAgentVolumeMounts, agentLogLevel, agentLogFile, agentMaxLogFileDurationHours, agentImage)),
-				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mdb.GetMongoDBVersion(nil), mongodVolumeMounts, mdb.GetMongodConfiguration())),
+				podtemplatespec.WithContainer(MongodbName, mongodbContainer(mongodbImage, mongodVolumeMounts, mdb.GetMongodConfiguration())),
 				upgradeInitContainer,
 				readinessInitContainer,
 			),
@@ -312,12 +314,12 @@ func mongodbAgentContainer(automationConfigSecretName string, volumeMounts []cor
 	)
 }
 
-func versionUpgradeHookInit(volumeMount []corev1.VolumeMount) container.Modification {
+func versionUpgradeHookInit(volumeMount []corev1.VolumeMount, versionUpgradeHookImage string) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(versionUpgradeHookName),
 		container.WithCommand([]string{"cp", "version-upgrade-hook", "/hooks/version-upgrade"}),
-		container.WithImage(os.Getenv(VersionUpgradeHookImageEnv)),
+		container.WithImage(versionUpgradeHookImage),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
@@ -351,12 +353,12 @@ func logsPvc(logsVolumeName string) persistentvolumeclaim.Modification {
 
 // readinessProbeInit returns a modification function which will add the readiness probe container.
 // this container will copy the readiness probe binary into the /opt/scripts directory.
-func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification {
+func readinessProbeInit(volumeMount []corev1.VolumeMount, readinessProbeImage string) container.Modification {
 	_, containerSecurityContext := podtemplatespec.WithDefaultSecurityContextsModifications()
 	return container.Apply(
 		container.WithName(ReadinessProbeContainerName),
 		container.WithCommand([]string{"cp", "/probes/readinessprobe", "/opt/scripts/readinessprobe"}),
-		container.WithImage(os.Getenv(ReadinessProbeImageEnv)),
+		container.WithImage(readinessProbeImage),
 		container.WithImagePullPolicy(corev1.PullAlways),
 		container.WithVolumeMounts(volumeMount),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
@@ -364,25 +366,7 @@ func readinessProbeInit(volumeMount []corev1.VolumeMount) container.Modification
 	)
 }
 
-func getMongoDBImage(version string) string {
-	repoUrl := os.Getenv(MongodbRepoUrl)
-	imageType := envvar.GetEnvOrDefault(MongoDBImageType, DefaultImageType)
-
-	if strings.HasSuffix(repoUrl, "/") {
-		repoUrl = strings.TrimRight(repoUrl, "/")
-	}
-	mongoImageName := os.Getenv(MongodbImageEnv)
-	for _, officialUrl := range OfficialMongodbRepoUrls {
-		if repoUrl == officialUrl {
-			return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, imageType)
-		}
-	}
-
-	// This is the old images backwards compatibility code path.
-	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
-}
-
-func mongodbContainer(version string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
+func mongodbContainer(mongodbImage string, volumeMounts []corev1.VolumeMount, additionalMongoDBConfig mdbv1.MongodConfiguration) container.Modification {
 	filePath := additionalMongoDBConfig.GetDBDataDir() + "/" + automationMongodConfFileName
 	mongoDbCommand := fmt.Sprintf(`
 if [ -e "/hooks/version-upgrade" ]; then
@@ -408,7 +392,7 @@ exec mongod -f %s;
 
 	return container.Apply(
 		container.WithName(MongodbName),
-		container.WithImage(getMongoDBImage(version)),
+		container.WithImage(mongodbImage),
 		container.WithResourceRequirements(resourcerequirements.Defaults()),
 		container.WithCommand(containerCommand),
 		// The official image provides both CMD and ENTRYPOINT. We're reusing the former and need to replace
@@ -433,7 +417,7 @@ func collectEnvVars() []corev1.EnvVar {
 	})
 
 	addEnvVarIfSet := func(name string) {
-		value := os.Getenv(name)
+		value := os.Getenv(name) // nolint:forbidigo
 		if value != "" {
 			envVars = append(envVars, corev1.EnvVar{
 				Name:  name,

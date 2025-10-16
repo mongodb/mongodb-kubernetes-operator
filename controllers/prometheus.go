@@ -36,7 +36,7 @@ func getPrometheusModification(ctx context.Context, getUpdateCreator secret.GetU
 	var scheme string
 
 	if mdb.Spec.Prometheus.TLSSecretRef.Name != "" {
-		certKey, err = getPemOrConcatenatedCrtAndKey(ctx, getUpdateCreator, mdb, mdb.PrometheusTLSSecretNamespacedName())
+		certKey, err = getPemOrConcatenatedCrtAndKey(ctx, getUpdateCreator, mdb.PrometheusTLSSecretNamespacedName())
 		if err != nil {
 			return automationconfig.NOOP(), err
 		}

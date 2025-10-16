@@ -60,7 +60,7 @@ func init() {
 	zap.ReplaceGlobals(logger)
 }
 
-func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
+func NewReconciler(mgr manager.Manager, mongodbRepoUrl, mongodbImage, mongodbImageType, agentImage, versionUpgradeHookImage, readinessProbeImage string) *ReplicaSetReconciler {
 	mgrClient := mgr.GetClient()
 	secretWatcher := watch.New()
 	configMapWatcher := watch.New()
@@ -70,6 +70,13 @@ func NewReconciler(mgr manager.Manager) *ReplicaSetReconciler {
 		log:              zap.S(),
 		secretWatcher:    &secretWatcher,
 		configMapWatcher: &configMapWatcher,
+
+		mongodbRepoUrl:          mongodbRepoUrl,
+		mongodbImage:            mongodbImage,
+		mongodbImageType:        mongodbImageType,
+		agentImage:              agentImage,
+		versionUpgradeHookImage: versionUpgradeHookImage,
+		readinessProbeImage:     readinessProbeImage,
 	}
 }
 
@@ -93,6 +100,13 @@ type ReplicaSetReconciler struct {
 	log              *zap.SugaredLogger
 	secretWatcher    *watch.ResourceWatcher
 	configMapWatcher *watch.ResourceWatcher
+
+	mongodbRepoUrl          string
+	mongodbImage            string
+	mongodbImageType        string
+	agentImage              string
+	versionUpgradeHookImage string
+	readinessProbeImage     string
 }
 
 // +kubebuilder:rbac:groups=mongodbcommunity.mongodb.com,resources=mongodbcommunity,verbs=get;list;watch;create;update;patch;delete
@@ -128,7 +142,7 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	r.log.Infof("Reconciling MongoDB")
 
 	r.log.Debug("Validating MongoDB.Spec")
-	err, lastAppliedSpec := r.validateSpec(mdb)
+	lastAppliedSpec, err := r.validateSpec(mdb)
 	if err != nil {
 		return status.Update(ctx, r.client.Status(), &mdb, statusOptions().
 			withMessage(Error, fmt.Sprintf("error validating new Spec: %s", err)).
@@ -205,20 +219,20 @@ func (r ReplicaSetReconciler) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	res, err := status.Update(ctx, r.client.Status(), &mdb, statusOptions().
-		withMongoURI(mdb.MongoURI(os.Getenv(clusterDomain))).
+		withMongoURI(mdb.MongoURI(os.Getenv(clusterDomain))). // nolint:forbidigo
 		withMongoDBMembers(mdb.AutomationConfigMembersThisReconciliation()).
 		withStatefulSetReplicas(mdb.StatefulSetReplicasThisReconciliation()).
 		withStatefulSetArbiters(mdb.StatefulSetArbitersThisReconciliation()).
 		withMongoDBArbiters(mdb.AutomationConfigArbitersThisReconciliation()).
 		withMessage(None, "").
 		withRunningPhase().
-		withVersion(mdb.GetMongoDBVersion(nil)))
+		withVersion(mdb.GetMongoDBVersion()))
 	if err != nil {
 		r.log.Errorf("Error updating the status of the MongoDB resource: %s", err)
 		return res, err
 	}
 
-	if err := r.updateConnectionStringSecrets(ctx, mdb, os.Getenv(clusterDomain)); err != nil {
+	if err := r.updateConnectionStringSecrets(ctx, mdb, os.Getenv(clusterDomain)); err != nil { // nolint:forbidigo
 		r.log.Errorf("Could not update connection string secrets: %s", err)
 	}
 
@@ -477,7 +491,8 @@ func (r *ReplicaSetReconciler) createOrUpdateStatefulSet(ctx context.Context, md
 		return fmt.Errorf("error getting StatefulSet: %s", err)
 	}
 
-	buildStatefulSetModificationFunction(mdb)(&set)
+	mongodbImage := getMongoDBImage(r.mongodbRepoUrl, r.mongodbImage, r.mongodbImageType, mdb.GetMongoDBVersion())
+	buildStatefulSetModificationFunction(mdb, mongodbImage, r.agentImage, r.versionUpgradeHookImage, r.readinessProbeImage)(&set)
 	if isArbiter {
 		buildArbitersModificationFunction(mdb)(&set)
 	}
@@ -499,9 +514,9 @@ func (r ReplicaSetReconciler) ensureAutomationConfig(mdb mdbv1.MongoDBCommunity,
 	return automationconfig.EnsureSecret(ctx, r.client, types.NamespacedName{Name: mdb.AutomationConfigSecretName(), Namespace: mdb.Namespace}, mdb.GetOwnerReferences(), ac)
 }
 
-func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
-	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
-	arbiterDomain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))
+func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, isEnterprise bool, auth automationconfig.Auth, currentAc automationconfig.AutomationConfig, modifications ...automationconfig.Modification) (automationconfig.AutomationConfig, error) {
+	domain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain))        // nolint:forbidigo
+	arbiterDomain := getDomain(mdb.ServiceName(), mdb.Namespace, os.Getenv(clusterDomain)) // nolint:forbidigo
 
 	zap.S().Debugw("AutomationConfigMembersThisReconciliation", "mdb.AutomationConfigMembersThisReconciliation()", mdb.AutomationConfigMembersThisReconciliation())
 
@@ -512,12 +527,14 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 	}
 
 	var acOverrideSettings map[string]interface{}
+	var acReplicaSetId *string
 	if mdb.Spec.AutomationConfigOverride != nil {
 		acOverrideSettings = mdb.Spec.AutomationConfigOverride.ReplicaSet.Settings.Object
+		acReplicaSetId = mdb.Spec.AutomationConfigOverride.ReplicaSet.Id
 	}
 
 	return automationconfig.NewBuilder().
-		IsEnterprise(guessEnterprise(mdb)).
+		IsEnterprise(isEnterprise).
 		SetTopology(automationconfig.ReplicaSetTopology).
 		SetName(mdb.Name).
 		SetDomain(domain).
@@ -530,6 +547,7 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		SetFCV(mdb.Spec.FeatureCompatibilityVersion).
 		SetOptions(automationconfig.Options{DownloadBase: "/var/lib/mongodb-mms-automation"}).
 		SetAuth(auth).
+		SetReplicaSetId(acReplicaSetId).
 		SetSettings(acOverrideSettings).
 		SetMemberOptions(mdb.Spec.MemberConfig).
 		SetDataDir(mdb.GetMongodConfiguration().GetDBDataDir()).
@@ -541,8 +559,8 @@ func buildAutomationConfig(mdb mdbv1.MongoDBCommunity, auth automationconfig.Aut
 		Build()
 }
 
-func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
-	overrideAssumption, err := strconv.ParseBool(os.Getenv(construct.MongoDBAssumeEnterpriseEnv))
+func guessEnterprise(mdb mdbv1.MongoDBCommunity, mongodbImage string) bool {
+	overrideAssumption, err := strconv.ParseBool(os.Getenv(construct.MongoDBAssumeEnterpriseEnv)) // nolint:forbidigo
 	if err == nil {
 		return overrideAssumption
 	}
@@ -561,7 +579,7 @@ func guessEnterprise(mdb mdbv1.MongoDBCommunity) bool {
 	if len(overriddenImage) > 0 {
 		return strings.Contains(overriddenImage, construct.OfficialMongodbEnterpriseServerImageName)
 	}
-	return os.Getenv(construct.MongodbImageEnv) == construct.OfficialMongodbEnterpriseServerImageName
+	return mongodbImage == construct.OfficialMongodbEnterpriseServerImageName
 }
 
 // buildService creates a Service that will be used for the Replica Set StatefulSet
@@ -596,20 +614,20 @@ func (r *ReplicaSetReconciler) buildService(mdb mdbv1.MongoDBCommunity, portMana
 // If there has not yet been a successful configuration, the function runs the initial Spec validations. Otherwise,
 // it checks that the attempted Spec is valid in relation to the Spec that resulted from that last successful configuration.
 // The validation also returns the lastSuccessFulConfiguration Spec as mdbv1.MongoDBCommunitySpec.
-func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (error, *mdbv1.MongoDBCommunitySpec) {
+func (r ReplicaSetReconciler) validateSpec(mdb mdbv1.MongoDBCommunity) (*mdbv1.MongoDBCommunitySpec, error) {
 	lastSuccessfulConfigurationSaved, ok := mdb.Annotations[lastSuccessfulConfiguration]
 	if !ok {
 		// First version of Spec
-		return validation.ValidateInitialSpec(mdb, r.log), nil
+		return nil, validation.ValidateInitialSpec(mdb, r.log)
 	}
 
 	lastSpec := mdbv1.MongoDBCommunitySpec{}
 	err := json.Unmarshal([]byte(lastSuccessfulConfigurationSaved), &lastSpec)
 	if err != nil {
-		return err, &lastSpec
+		return &lastSpec, err
 	}
 
-	return validation.ValidateUpdate(mdb, lastSpec, r.log), &lastSpec
+	return &lastSpec, validation.ValidateUpdate(mdb, lastSpec, r.log)
 }
 
 func getCustomRolesModification(mdb mdbv1.MongoDBCommunity) (automationconfig.Modification, error) {
@@ -671,6 +689,7 @@ func (r ReplicaSetReconciler) buildAutomationConfig(ctx context.Context, mdb mdb
 
 	automationConfig, err := buildAutomationConfig(
 		mdb,
+		guessEnterprise(mdb, r.mongodbImage),
 		auth,
 		currentAC,
 		tlsModification,
@@ -720,16 +739,10 @@ func getMongodConfigModification(mdb mdbv1.MongoDBCommunity) automationconfig.Mo
 	}
 }
 
-// buildStatefulSet takes a MongoDB resource and converts it into
+// buildStatefulSetModificationFunction takes a MongoDB resource and converts it into
 // the corresponding stateful set
-func buildStatefulSet(mdb mdbv1.MongoDBCommunity) (appsv1.StatefulSet, error) {
-	sts := appsv1.StatefulSet{}
-	buildStatefulSetModificationFunction(mdb)(&sts)
-	return sts, nil
-}
-
-func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity) statefulset.Modification {
-	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, os.Getenv(construct.AgentImageEnv), true)
+func buildStatefulSetModificationFunction(mdb mdbv1.MongoDBCommunity, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage string) statefulset.Modification {
+	commonModification := construct.BuildMongoDBReplicaSetStatefulSetModificationFunction(&mdb, &mdb, mongodbImage, agentImage, versionUpgradeHookImage, readinessProbeImage, true)
 	return statefulset.Apply(
 		commonModification,
 		statefulset.WithOwnerReference(mdb.GetOwnerReferences()),
@@ -768,4 +781,19 @@ func getDomain(service, namespace, clusterName string) string {
 // if this is not the case, then we should ensure to skip past the annotation check otherwise the pods will remain in pending state forever.
 func isPreReadinessInitContainerStatefulSet(sts appsv1.StatefulSet) bool {
 	return container.GetByName(construct.ReadinessProbeContainerName, sts.Spec.Template.Spec.InitContainers) == nil
+}
+
+func getMongoDBImage(repoUrl, mongodbImage, mongodbImageType, version string) string {
+	if strings.HasSuffix(repoUrl, "/") {
+		repoUrl = strings.TrimRight(repoUrl, "/")
+	}
+	mongoImageName := mongodbImage
+	for _, officialUrl := range construct.OfficialMongodbRepoUrls {
+		if repoUrl == officialUrl {
+			return fmt.Sprintf("%s/%s:%s-%s", repoUrl, mongoImageName, version, mongodbImageType)
+		}
+	}
+
+	// This is the old images backwards compatibility code path.
+	return fmt.Sprintf("%s/%s:%s", repoUrl, mongoImageName, version)
 }

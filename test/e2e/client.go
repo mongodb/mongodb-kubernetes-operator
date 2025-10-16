@@ -196,7 +196,6 @@ func RunTest(m *testing.M) (int, error) {
 	testEnv = &envtest.Environment{
 		UseExistingCluster:       &useExistingCluster,
 		AttachControlPlaneOutput: true,
-		KubeAPIServerFlags:       []string{"--authorization-mode=RBAC"},
 	}
 
 	fmt.Println("Starting test environment")

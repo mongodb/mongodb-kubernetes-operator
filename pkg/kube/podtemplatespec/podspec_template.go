@@ -297,7 +297,7 @@ func FindContainerByName(name string, podTemplateSpec *corev1.PodTemplateSpec) *
 }
 
 func WithDefaultSecurityContextsModifications() (Modification, container.Modification) {
-	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv)
+	managedSecurityContext := envvar.ReadBool(ManagedSecurityContextEnv) // nolint:forbidigo
 	configureContainerSecurityContext := container.NOOP()
 	configurePodSpecSecurityContext := NOOP()
 	if !managedSecurityContext {

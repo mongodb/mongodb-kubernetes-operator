@@ -36,7 +36,7 @@ jobs:
       # Checkout the code base #
       ##########################
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           # Make sure we also get the helm-charts submodule!
           submodules: true

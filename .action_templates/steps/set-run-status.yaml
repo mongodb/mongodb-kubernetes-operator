@@ -7,7 +7,7 @@
   # see https://github.com/actions/runner/issues/432
 - name: Restore last run status
   id: last_run
-  uses: actions/cache@v2
+  uses: actions/cache@v4
   with:
     path: last_run_status
     key: ${{ github.run_id }}-${{ matrix.test-name }}-${{ matrix.distro }}

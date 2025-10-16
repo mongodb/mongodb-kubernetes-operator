@@ -46,9 +46,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func init() {
-	os.Setenv(construct.AgentImageEnv, "agent-image")
-}
+const (
+	AgentImage = "fake-agentImage"
+)
 
 func newTestReplicaSet() mdbv1.MongoDBCommunity {
 	return mdbv1.MongoDBCommunity{
@@ -162,7 +162,7 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
@@ -178,12 +178,10 @@ func TestKubernetesResources_AreCreated(t *testing.T) {
 
 func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 	ctx := context.Background()
-	t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
-	t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
 
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "docker.io/mongodb", "mongodb-community-server", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -195,7 +193,7 @@ func TestStatefulSet_IsCorrectlyConfigured(t *testing.T) {
 
 	agentContainer := sts.Spec.Template.Spec.Containers[1]
 	assert.Equal(t, construct.AgentName, agentContainer.Name)
-	assert.Equal(t, os.Getenv(construct.AgentImageEnv), agentContainer.Image)
+	assert.Equal(t, AgentImage, agentContainer.Image)
 	expectedProbe := probes.New(construct.DefaultReadiness())
 	assert.True(t, reflect.DeepEqual(&expectedProbe, agentContainer.ReadinessProbe))
 
@@ -215,66 +213,42 @@ func TestGuessEnterprise(t *testing.T) {
 	type testConfig struct {
 		setArgs            func(t *testing.T)
 		mdb                mdbv1.MongoDBCommunity
+		mongodbImage       string
 		expectedEnterprise bool
 	}
 	tests := map[string]testConfig{
 		"No override and Community image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
-			},
+			setArgs:            func(t *testing.T) {},
 			mdb:                mdbv1.MongoDBCommunity{},
+			mongodbImage:       "mongodb-community-server",
 			expectedEnterprise: false,
 		},
 		"No override and Enterprise image": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
-			},
+			setArgs:            func(t *testing.T) {},
 			mdb:                mdbv1.MongoDBCommunity{},
+			mongodbImage:       "mongodb-enterprise-server",
 			expectedEnterprise: true,
 		},
 		"Assuming enterprise manually": {
 			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
 				t.Setenv(construct.MongoDBAssumeEnterpriseEnv, "true")
 			},
 			mdb:                mdbv1.MongoDBCommunity{},
+			mongodbImage:       "mongodb-community-server",
 			expectedEnterprise: true,
 		},
 		"Assuming community manually": {
 			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "docker.io/mongodb")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
 				t.Setenv(construct.MongoDBAssumeEnterpriseEnv, "false")
 			},
 			mdb:                mdbv1.MongoDBCommunity{},
-			expectedEnterprise: false,
-		},
-		"Enterprise with different repo": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
-			},
-			mdb:                mdbv1.MongoDBCommunity{},
-			expectedEnterprise: true,
-		},
-		"Community with different repo": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
-			},
-			mdb:                mdbv1.MongoDBCommunity{},
+			mongodbImage:       "mongodb-enterprise-server",
 			expectedEnterprise: false,
 		},
 		// This one is a corner case. We don't expect users to fall here very often as there are
 		// dedicated variables to control this type of behavior.
 		"Enterprise with StatefulSet override": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-community-server")
-			},
+			setArgs: func(t *testing.T) {},
 			mdb: mdbv1.MongoDBCommunity{
 				Spec: mdbv1.MongoDBCommunitySpec{
 					StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
@@ -295,13 +269,11 @@ func TestGuessEnterprise(t *testing.T) {
 					},
 				},
 			},
+			mongodbImage:       "mongodb-community-server",
 			expectedEnterprise: true,
 		},
 		"Enterprise with StatefulSet override to Community": {
-			setArgs: func(t *testing.T) {
-				t.Setenv(construct.MongodbRepoUrl, "some_other_repo.com/some_other_org")
-				t.Setenv(construct.MongodbImageEnv, "mongodb-enterprise-server")
-			},
+			setArgs: func(t *testing.T) {},
 			mdb: mdbv1.MongoDBCommunity{
 				Spec: mdbv1.MongoDBCommunitySpec{
 					StatefulSetConfiguration: mdbv1.StatefulSetConfiguration{
@@ -322,6 +294,7 @@ func TestGuessEnterprise(t *testing.T) {
 					},
 				},
 			},
+			mongodbImage:       "mongodb-enterprise-server",
 			expectedEnterprise: false,
 		},
 	}
@@ -329,7 +302,7 @@ func TestGuessEnterprise(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			testConfig := tests[testName]
 			testConfig.setArgs(t)
-			calculatedEnterprise := guessEnterprise(testConfig.mdb)
+			calculatedEnterprise := guessEnterprise(testConfig.mdb, testConfig.mongodbImage)
 			assert.Equal(t, testConfig.expectedEnterprise, calculatedEnterprise)
 		})
 	}
@@ -349,7 +322,7 @@ func TestChangingVersion_ResultsInRollingUpdateStrategyType(t *testing.T) {
 	mdb := newTestReplicaSet()
 	mgr := client.NewManager(ctx, &mdb)
 	mgrClient := mgr.GetClient()
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -390,16 +363,16 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
 		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = "4.0.0"
-		sts, err := buildStatefulSet(mdb)
-		assert.NoError(t, err)
+		sts := appsv1.StatefulSet{}
+		buildStatefulSetModificationFunction(mdb, "fake-mongodbImage", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")(&sts)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
 	t.Run("On No Version Change, First Version", func(t *testing.T) {
 		mdb := newTestReplicaSet()
 		mdb.Spec.Version = "4.0.0"
 		delete(mdb.Annotations, annotations.LastAppliedMongoDBVersion)
-		sts, err := buildStatefulSet(mdb)
-		assert.NoError(t, err)
+		sts := appsv1.StatefulSet{}
+		buildStatefulSetModificationFunction(mdb, "fake-mongodbImage", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")(&sts)
 		assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
 	t.Run("On Version Change", func(t *testing.T) {
@@ -415,9 +388,8 @@ func TestBuildStatefulSet_ConfiguresUpdateStrategyCorrectly(t *testing.T) {
 		assert.NoError(t, err)
 
 		mdb.Annotations[annotations.LastAppliedMongoDBVersion] = string(bytes)
-		sts, err := buildStatefulSet(mdb)
-
-		assert.NoError(t, err)
+		sts := appsv1.StatefulSet{}
+		buildStatefulSetModificationFunction(mdb, "fake-mongodbImage", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")(&sts)
 		assert.Equal(t, appsv1.OnDeleteStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
 	})
 }
@@ -427,7 +399,7 @@ func TestService_isCorrectlyCreatedAndUpdated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -452,7 +424,7 @@ func TestService_usesCustomMongodPortWhenSpecified(t *testing.T) {
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -516,7 +488,7 @@ func TestService_changesMongodPortOnRunningClusterWithArbiters(t *testing.T) {
 
 	mgr := client.NewManager(ctx, &mdb)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 
 	t.Run("Prepare cluster with arbiters and change port", func(t *testing.T) {
 		err := createUserPasswordSecret(ctx, mgr.Client, mdb, "password-secret-name", "pass")
@@ -745,7 +717,7 @@ func TestService_configuresPrometheusCustomPorts(t *testing.T) {
 		Build())
 
 	assert.NoError(t, err)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -782,7 +754,7 @@ func TestService_configuresPrometheus(t *testing.T) {
 		Build())
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -808,7 +780,7 @@ func TestAutomationConfig_versionIsBumpedOnChange(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -833,7 +805,7 @@ func TestAutomationConfig_versionIsNotBumpedWithNoChanges(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -854,7 +826,7 @@ func TestAutomationConfigFCVIsNotIncreasedWhenUpgradingMinorVersion(t *testing.T
 	mdb := newTestReplicaSet()
 	mdb.Spec.Version = "4.2.2"
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -888,7 +860,7 @@ func TestAutomationConfig_CustomMongodConfig(t *testing.T) {
 	mdb.Spec.AdditionalMongodConfig.Object = mongodConfig
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -932,7 +904,7 @@ func TestExistingPasswordAndKeyfile_AreUsedWhenTheSecretExists(t *testing.T) {
 		Build())
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -963,7 +935,7 @@ func TestReplicaSet_IsScaledDown_OneMember_AtATime_WhenItAlreadyExists(t *testin
 	mdb.Spec.Members = 5
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1008,7 +980,7 @@ func TestReplicaSet_IsScaledUp_OneMember_AtATime_WhenItAlreadyExists(t *testing.
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1078,7 +1050,7 @@ func TestAnnotationsAreAppliedToResource(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1094,7 +1066,7 @@ func TestAnnotationsAreAppliedToResource(t *testing.T) {
 // results in the AuthoritativeSet of the created AutomationConfig to have the expectedValue provided.
 func assertAuthoritativeSet(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity, expectedValue bool) {
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1110,7 +1082,7 @@ func assertAuthoritativeSet(ctx context.Context, t *testing.T, mdb mdbv1.MongoDB
 
 func assertReplicaSetIsConfiguredWithScram(ctx context.Context, t *testing.T, mdb mdbv1.MongoDBCommunity) {
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1144,7 +1116,7 @@ func assertReplicaSetIsConfiguredWithScramTLS(ctx context.Context, t *testing.T,
 	assert.NoError(t, err)
 	err = createTLSConfigMap(ctx, newClient, mdb)
 	assert.NoError(t, err)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1184,7 +1156,7 @@ func assertReplicaSetIsConfiguredWithX509(ctx context.Context, t *testing.T, mdb
 	err = createAgentCertSecret(ctx, newClient, mdb, crt, key, "")
 	assert.NoError(t, err)
 
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1244,7 +1216,7 @@ func TestReplicaSet_IsScaledUpToDesiredMembers_WhenFirstCreated(t *testing.T) {
 	mdb := newTestReplicaSet()
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1347,7 +1319,7 @@ func TestInconsistentReplicas(t *testing.T) {
 	mdb.Spec.Members = 4
 
 	mgr := client.NewManager(ctx, &mdb)
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: mdb.Namespace, Name: mdb.Name}})
 	assert.NoError(t, err)
 }
@@ -1367,7 +1339,7 @@ func performReconciliationAndGetStatefulSet(ctx context.Context, t *testing.T, f
 	assert.NoError(t, err)
 	mgr := client.NewManager(ctx, &mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(ctx, mdb, mgr.Client))
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 
@@ -1381,7 +1353,7 @@ func performReconciliationAndGetService(ctx context.Context, t *testing.T, fileP
 	assert.NoError(t, err)
 	mgr := client.NewManager(ctx, &mdb)
 	assert.NoError(t, generatePasswordsForAllUsers(ctx, mdb, mgr.Client))
-	r := NewReconciler(mgr)
+	r := NewReconciler(mgr, "fake-mongodbRepoUrl", "fake-mongodbImage", "ubi8", AgentImage, "fake-versionUpgradeHookImage", "fake-readinessProbeImage")
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: mdb.NamespacedName()})
 	assertReconciliationSuccessful(t, res, err)
 	svc, err := mgr.Client.GetService(ctx, types.NamespacedName{Name: mdb.ServiceName(), Namespace: mdb.Namespace})
@@ -1467,4 +1439,75 @@ func marshalRuntimeObjectFromYAMLBytes(bytes []byte, obj runtime.Object) error {
 		return err
 	}
 	return json.Unmarshal(jsonBytes, &obj)
+}
+
+func TestGetMongoDBImage(t *testing.T) {
+	type testConfig struct {
+		mongodbRepoUrl   string
+		mongodbImage     string
+		mongodbImageType string
+		version          string
+		expectedImage    string
+	}
+	tests := map[string]testConfig{
+		"Default UBI8 Community image": {
+			mongodbRepoUrl:   "docker.io/mongodb",
+			mongodbImage:     "mongodb-community-server",
+			mongodbImageType: "ubi8",
+			version:          "6.0.5",
+			expectedImage:    "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
+		},
+		"Overridden UBI8 Enterprise image": {
+			mongodbRepoUrl:   "docker.io/mongodb",
+			mongodbImage:     "mongodb-enterprise-server",
+			mongodbImageType: "ubi8",
+			version:          "6.0.5",
+			expectedImage:    "docker.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
+		},
+		"Overridden UBI8 Enterprise image from Quay": {
+			mongodbRepoUrl:   "quay.io/mongodb",
+			mongodbImage:     "mongodb-enterprise-server",
+			mongodbImageType: "ubi8",
+			version:          "6.0.5",
+			expectedImage:    "quay.io/mongodb/mongodb-enterprise-server:6.0.5-ubi8",
+		},
+		"Overridden Ubuntu Community image": {
+			mongodbRepoUrl:   "docker.io/mongodb",
+			mongodbImage:     "mongodb-community-server",
+			mongodbImageType: "ubuntu2204",
+			version:          "6.0.5",
+			expectedImage:    "docker.io/mongodb/mongodb-community-server:6.0.5-ubuntu2204",
+		},
+		"Overridden UBI Community image": {
+			mongodbRepoUrl:   "docker.io/mongodb",
+			mongodbImage:     "mongodb-community-server",
+			mongodbImageType: "ubi8",
+			version:          "6.0.5",
+			expectedImage:    "docker.io/mongodb/mongodb-community-server:6.0.5-ubi8",
+		},
+		"Docker Inc images": {
+			mongodbRepoUrl:   "docker.io",
+			mongodbImage:     "mongo",
+			mongodbImageType: "ubi8",
+			version:          "6.0.5",
+			expectedImage:    "docker.io/mongo:6.0.5",
+		},
+		"Deprecated AppDB images defined the old way": {
+			mongodbRepoUrl: "quay.io",
+			mongodbImage:   "mongodb/mongodb-enterprise-appdb-database-ubi",
+			// In this example, we intentionally don't use the suffix from the env. variable and let users
+			// define it in the version instead. There are some known customers who do this.
+			// This is a backwards compatibility case.
+			mongodbImageType: "will-be-ignored",
+			version:          "5.0.14-ent",
+			expectedImage:    "quay.io/mongodb/mongodb-enterprise-appdb-database-ubi:5.0.14-ent",
+		},
+	}
+	for testName := range tests {
+		t.Run(testName, func(t *testing.T) {
+			testConfig := tests[testName]
+			image := getMongoDBImage(testConfig.mongodbRepoUrl, testConfig.mongodbImage, testConfig.mongodbImageType, testConfig.version)
+			assert.Equal(t, testConfig.expectedImage, image)
+		})
+	}
 }

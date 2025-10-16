@@ -42,7 +42,7 @@ const (
 )
 
 func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
-	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func Setup(ctx context.Context, t *testing.T) *e2eutil.TestContext {
 }
 
 func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additionalHelmArgs ...HelmArg) (*e2eutil.TestContext, TestConfig) {
-	textCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	textCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func SetupWithTLS(ctx context.Context, t *testing.T, resourceName string, additi
 }
 
 func SetupWithTestConfig(ctx context.Context, t *testing.T, testConfig TestConfig, withTLS, defaultOperator bool, resourceName string) *e2eutil.TestContext {
-	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv))
+	testCtx, err := e2eutil.NewContext(ctx, t, envvar.ReadBool(performCleanupEnv)) // nolint:forbidigo
 
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func DeployOperator(ctx context.Context, config TestConfig, resourceName string,
 		return err
 	}
 
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, 60*time.Second, true, hasDeploymentRequiredReplicas(&dep)); err != nil {
+	if err := wait.PollUntilContextTimeout(ctx, time.Second*2, 120*time.Second, true, hasDeploymentRequiredReplicas(&dep)); err != nil {
 		return errors.New("error building operator deployment: the deployment does not have the required replicas")
 	}
 	fmt.Println("Successfully installed the operator deployment")
@@ -280,6 +280,7 @@ func hasDeploymentRequiredReplicas(dep *appsv1.Deployment) wait.ConditionWithCon
 		if dep.Status.ReadyReplicas == *dep.Spec.Replicas {
 			return true, nil
 		}
+		fmt.Printf("Deployment not ready! ReadyReplicas: %d, Spec.Replicas: %d\n", dep.Status.ReadyReplicas, *dep.Spec.Replicas)
 		return false, nil
 	}
 }
