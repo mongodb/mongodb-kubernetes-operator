@@ -1,0 +1,125 @@
+{
+  "name": "paywithpi-backend",
+  "version": "1.0.0",
+  "description": "PayWithPi backend (TypeScript + tests + Docker + Stripe example)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "lint": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,md}\"",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "validator": "^13.9.0",
+    "stripe": "^12.0.0" /* replace with current major as needed */
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.4.0",
+    "@types/supertest": "^2.0.12",
+    "eslint": "^8.44.0",
+    "eslint-config-prettier": "^9.3.0",
+    "eslint-plugin-import": "^2.28.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.0",
+    "supertest": "^6.4.3",
+    "ts-jest": "^29.1.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.0"
+  }
+}
+
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
+
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "sourceMap": false
+  },
+  "exclude": ["**/*.test.ts", "node_modules"]
+}
+
+import express from 'express';
+import cors from 'cors';
+import paymentsRouter from './routes/payments';
+
+const app = express();
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'paywithpi-backend' });
+});
+
+app.use('/payments', paymentsRouter);
+
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'internal_server_error' });
+});
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+export default app;
+
+import Stripe from 'stripe';
+
+export interface ChargeInput {
+  amount: number; // in major units, e.g. 12.5
+  currency: string; // e.g. 'USD'
+  source: string; // token or payment_method id
+  receipt_email?: string | null;
+}
+
+export default class StripeProvider {
+  private stripe: Stripe;
+  constructor() {
+    const secret = process.env.STRIPE_SECRET_KEY;
+    if (!secret) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    // Use Stripe with the version matching installed package; adapt as necessary
+    this.stripe = new Stripe(secret, { apiVersion: '2024-11-15' });
+  }
+
+  // charges the amount and returns a simplified transaction object
+  async charge(input: ChargeInput) {
+    // Convert to cents if currency is USD-like. Better: for production, use smallest currency unit rules.
+    const amountInCents = Math.round(input.amount * 100);
+
+    const paymentIntent = await this.stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency:*
